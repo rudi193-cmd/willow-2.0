@@ -1,9 +1,10 @@
 """
 events/stop.py — Stop hook: per-turn cleanup + session composite writer.
-Depth stack and thread file cleanup. Session composite written to hanuman/sessions/store.
+Depth stack and thread file cleanup. Session composite written to {agent}/sessions/store.
 Heavy pipeline (handoff writing) lives in events/shutdown.py — run via /shutdown skill.
 """
 import json
+import os
 import sys
 from collections import Counter
 from datetime import datetime, timezone, timedelta
@@ -24,7 +25,7 @@ except Exception:
 
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
 THREAD_FILE = Path("/tmp/willow-context-thread.json")
-_AGENT = "hanuman"
+_AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
 
 
 def read_turns_since(cursor: str, turns_file: Path) -> list[str]:

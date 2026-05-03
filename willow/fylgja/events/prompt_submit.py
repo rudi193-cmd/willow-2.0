@@ -137,7 +137,7 @@ def _run_feedback(prompt: str, session_id: str) -> None:
         try:
             call("store_put", {
                 "app_id": AGENT,
-                "collection": "hanuman/feedback",
+                "collection": f"{AGENT}/feedback",
                 "record": {
                     "id": f"fb-{session_id[:8]}-{abs(hash(item['rule'])) % 99999:05d}",
                     "type": item["type"],
@@ -173,7 +173,8 @@ def _run_route(prompt: str, session_id: str) -> None:
     try:
         # Hook context: rules only, no LLM fallback.
         # LLM fallback is available via willow_route MCP tool where latency is acceptable.
-        from willow.routing.oracle import match_rules, load_rules
+        from willow.routing.oracle import match_rules, load_rules, _write_decision
+        from datetime import datetime, timezone
         import time
         t0 = time.monotonic()
         rules = load_rules(session_id)
@@ -184,6 +185,15 @@ def _run_route(prompt: str, session_id: str) -> None:
         agent = matched["agent"]
         rule = matched["id"]
         print(f"[ROUTE] → {agent}  rule={rule}  conf=1.00  {latency}ms")
+        _write_decision({
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "session_id": session_id,
+            "prompt_snippet": stripped[:40],
+            "routed_to": agent,
+            "rule_matched": rule,
+            "confidence": 1.0,
+            "latency_ms": latency,
+        })
     except Exception:
         pass
 

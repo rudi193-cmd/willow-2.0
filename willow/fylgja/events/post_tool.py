@@ -24,7 +24,7 @@ _SIGNIFICANT = {
     "mcp__willow__willow_knowledge_at",
 }
 
-_AGENT = "hanuman"
+_AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
 
 
 def _target_from_input(tool_name: str, tool_input: dict) -> str:
@@ -107,12 +107,16 @@ def _write_trace(session_id: str, tool_name: str, tool_input: dict) -> None:
         }
         call("store_put", {
             "app_id": _AGENT,
-            "collection": "hanuman/turns/store",
+            "collection": f"{_AGENT}/turns/store",
             "record": record,
         }, timeout=3)
         _record_rate(key)
-    except Exception:
-        pass
+    except Exception as e:
+        try:
+            with open("/tmp/willow-post-tool-error.log", "a") as _f:
+                _f.write(f"{datetime.now(timezone.utc).isoformat()} trace_write_failed agent={_AGENT} tool={tool_name} err={e}\n")
+        except Exception:
+            pass
 
 
 def main():

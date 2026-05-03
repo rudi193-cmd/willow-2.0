@@ -64,6 +64,21 @@ def main():
         cursors[ch_id] = cur.fetchone()[0]
 
     cur.execute("LISTEN grove_channel")
+
+    # Announce presence via HEARTBEAT bus message
+    try:
+        cur.execute("SELECT id FROM grove.channels WHERE name = 'general' LIMIT 1")
+        row = cur.fetchone()
+        if row:
+            cur.execute(
+                "INSERT INTO grove.messages (channel_id, sender, content, bus_type, to_agent, priority)"
+                " VALUES (%s, %s, %s, 'HEARTBEAT', '__all__', 6)",
+                (row[0], AGENT, f"{AGENT} online"),
+            )
+            conn.commit()
+    except Exception:
+        pass
+
     print(
         f"[grove-listen] ready as {AGENT} — "
         + ", ".join(f"#{n}" for n in ch_map.values()),
@@ -98,12 +113,11 @@ def main():
                     for row in cur.fetchall():
                         cursors[ch_id] = row[0]
                         msg_id, sender, content = row[0], row[1], str(row[2])
-                        mention = is_mention(content, AGENT) and sender.lower() != AGENT.lower()
-                        prefix = "[MENTION] " if mention else ""
-                        print(
-                            f"{prefix}[#{ch_name}:{msg_id}] {sender}: {content[:400]}",
-                            flush=True,
-                        )
+                        if is_mention(content, AGENT) and sender.lower() != AGENT.lower():
+                            print(
+                                f"[MENTION] [#{ch_name}:{msg_id}] {sender}: {content[:400]}",
+                                flush=True,
+                            )
         except Exception as e:
             print(f"[grove-listen-error] {e}", flush=True)
             try:

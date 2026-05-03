@@ -72,10 +72,13 @@ def run_compost() -> None:
         return
     now = datetime.now(timezone.utc).isoformat()
     today = now[:10].replace("-", "")
+    snippet = " / ".join(
+        l.strip() for l in turns[-6:] if l.strip() and not l.startswith("[")
+    )[:200] or f"{len(turns)} turns"
     result = call("willow_knowledge_ingest", {
         "app_id": AGENT,
         "title": f"Session {today} — {AGENT}",
-        "summary": str(TURNS_FILE),
+        "summary": snippet,
         "source_type": "session",
         "category": "session",
         "domain": AGENT,
@@ -92,7 +95,7 @@ def run_feedback_pipeline() -> None:
     try:
         records = call("store_search", {
             "app_id": AGENT,
-            "collection": "hanuman/feedback",
+            "collection": f"{AGENT}/feedback",
             "query": "status pending",
         }, timeout=10)
         if not isinstance(records, list) or not records:

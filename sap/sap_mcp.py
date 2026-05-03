@@ -836,7 +836,10 @@ async def list_tools() -> list[types.Tool]:
         types.Tool(
             name="willow_handoff_latest",
             description="Call second (parallel with willow_status). Returns last session state: what was in-flight, what's pending, 17 questions. Read this before touching any code or submitting any task — work was in progress before this session.",
-            inputSchema={"type": "object", "properties": {}},
+            inputSchema={"type": "object", "properties": {
+                "agent": {"type": "string", "description": "Filter to this agent's handoffs only (e.g. 'heimdallr'). Defaults to WILLOW_AGENT_NAME env var."},
+                "app_id": {"type": "string", "description": "Alias for agent (ignored if agent is set)."},
+            }},
         ),
         types.Tool(
             name="willow_handoff_search",
@@ -1726,18 +1729,38 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
             if not Path(HANDOFF_DB).exists():
                 result = {"error": "handoffs.db not found. Run willow_handoff_rebuild first."}
             else:
+                import json as _json
+                _agent_filter = (
+                    arguments.get("agent")
+                    or arguments.get("app_id")
+                    or os.environ.get("WILLOW_AGENT_NAME", "")
+                )
                 conn = _sqlite3.connect(HANDOFF_DB)
                 conn.row_factory = _sqlite3.Row
                 cur = conn.cursor()
-                row = cur.execute("""
-                    SELECT f.filename, h.handoff_date, h.summary, h.open_threads, h.questions, h.raw_content
-                    FROM handoffs h JOIN files f ON h.file_id = f.id
-                    WHERE h.file_type = 'session'
-                    ORDER BY f.mtime DESC LIMIT 1
-                """).fetchone()
+                if _agent_filter:
+                    row = cur.execute("""
+                        SELECT f.filename, h.handoff_date, h.summary, h.open_threads, h.questions, h.raw_content
+                        FROM handoffs h JOIN files f ON h.file_id = f.id
+                        WHERE h.file_type = 'session' AND f.filename LIKE ?
+                        ORDER BY f.mtime DESC LIMIT 1
+                    """, (f"%{_agent_filter}%",)).fetchone()
+                    if not row:
+                        row = cur.execute("""
+                            SELECT f.filename, h.handoff_date, h.summary, h.open_threads, h.questions, h.raw_content
+                            FROM handoffs h JOIN files f ON h.file_id = f.id
+                            WHERE h.file_type = 'session'
+                            ORDER BY f.mtime DESC LIMIT 1
+                        """).fetchone()
+                else:
+                    row = cur.execute("""
+                        SELECT f.filename, h.handoff_date, h.summary, h.open_threads, h.questions, h.raw_content
+                        FROM handoffs h JOIN files f ON h.file_id = f.id
+                        WHERE h.file_type = 'session'
+                        ORDER BY f.mtime DESC LIMIT 1
+                    """).fetchone()
                 conn.close()
                 if row:
-                    import json as _json
                     result = {
                         "filename": row["filename"],
                         "date": row["handoff_date"],

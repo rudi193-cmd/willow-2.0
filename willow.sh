@@ -38,7 +38,7 @@ export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/SAFE/Applications}"
 unset WILLOW_PG_HOST WILLOW_PG_PORT WILLOW_PG_PASS
 export WILLOW_PG_DB="${WILLOW_PG_DB:-willow_19}"
 export WILLOW_PG_USER="${WILLOW_PG_USER:-$(whoami)}"
-export WILLOW_AGENT_NAME="heimdallr"
+export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
 
 # Python path — willow-1.9 first, no legacy paths
 export PYTHONPATH="${WILLOW_ROOT}:${PYTHONPATH:-}"

@@ -12,7 +12,7 @@ description: Write a Willow 1.9 session handoff — 17 questions, rebuild DB, wr
 
 ```
 # HANDOFF: <title>
-From: hanuman (Claude Code, Sonnet 4.6)
+From: {AGENT} (Claude Code, Sonnet 4.6)
 
 ## What I Now Understand
 <2-3 sentences of architectural truth, not task summary>
@@ -28,7 +28,7 @@ Q17: "What is the next single bite?"
 <anything that could break the next session>
 ```
 
-3. **Write the file** to `~/Ashokoa/agents/hanuman/index/haumana_handoffs/SESSION_HANDOFF_<YYYYMMDD>_hanuman_<letter>.md`.
+3. **Write the file** to `~/Ashokoa/agents/{AGENT}/index/haumana_handoffs/SESSION_HANDOFF_<YYYYMMDD>_{AGENT}_<letter>.md` where `{AGENT}` = `$WILLOW_AGENT_NAME` (default: `hanuman`).
 4. **Rebuild DB** — call `willow_handoff_rebuild`.
 5. **Confirm** — report filename and Q17.
 
