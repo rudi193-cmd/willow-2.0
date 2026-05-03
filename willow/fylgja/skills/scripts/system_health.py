@@ -139,15 +139,21 @@ def check_ollama() -> Check:
 
 
 def check_mcp() -> Check:
-    if tcp_alive(MCP_HOST, MCP_PORT):
-        return Check("MCP server", HEALTHY, f"responding at {MCP_HOST}:{MCP_PORT}")
-    # Try alternate common port
-    for alt_port in (8080, 3000):
-        if tcp_alive(MCP_HOST, alt_port):
-            return Check("MCP server", WARN,
-                         f"not on {MCP_PORT} but {MCP_HOST}:{alt_port} is open — verify config")
+    # System is portless — sap_mcp.py runs over stdio, not HTTP.
+    # Check for the running process instead of a TCP port.
+    import subprocess as _sp
+    try:
+        result = _sp.run(
+            ["pgrep", "-f", "sap_mcp.py"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            pid = result.stdout.strip().splitlines()[0]
+            return Check("MCP server", HEALTHY, f"sap_mcp.py running (pid {pid})")
+    except Exception:
+        pass
     return Check("MCP server", CRITICAL,
-                 f"not reachable at {MCP_HOST}:{MCP_PORT} — run `willow restart`")
+                 "sap_mcp.py not running — run `willow restart`")
 
 
 def check_forks(repo_path: Path) -> Check:
