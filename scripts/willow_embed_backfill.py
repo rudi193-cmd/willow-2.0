@@ -25,6 +25,7 @@ from core.willow_store import WillowStore
 
 BATCH_SIZE = 100
 SLEEP_S = 0.05
+MAX_EMBED_CHARS = 6000  # nomic-embed-text context limit (~8192 tokens)
 PROGRESS_COLLECTION = "hanuman/tasks"
 PROGRESS_ID = "embed_backfill_progress"
 
@@ -65,14 +66,18 @@ def _write_progress(store: WillowStore, table: str, done: int, total: int, start
 
 def _backfill_table(pg: PgBridge, store: WillowStore, table: str, text_expr: str,
                     dry_run: bool, limit: int, total_offset: int, grand_total: int,
-                    started_at: float) -> int:
+                    started_at: float, extra_filter: str | None = None) -> int:
     """Backfill NULL embeddings for one table. Returns count of rows processed."""
     processed = 0
+    where = "embedding IS NULL"
+    if extra_filter:
+        where += f" AND {extra_filter}"
     while True:
+        pg._ensure_conn()
         with pg.conn.cursor() as cur:
             cur.execute(
                 f"SELECT id, {text_expr} AS text FROM {table}"
-                f" WHERE embedding IS NULL LIMIT %s",
+                f" WHERE {where} LIMIT %s",
                 (BATCH_SIZE,),
             )
             rows = cur.fetchall()
@@ -86,11 +91,12 @@ def _backfill_table(pg: PgBridge, store: WillowStore, table: str, text_expr: str
             if dry_run:
                 processed += 1
                 continue
-            vec = embed(text or "")
+            vec = embed((text or "")[:MAX_EMBED_CHARS])
             if vec is None:
                 print(f"  [{table}] {row_id}: Ollama unavailable — stopping", flush=True)
                 return processed
             vec_str = str(vec)
+            pg._ensure_conn()
             with pg.conn.cursor() as cur:
                 cur.execute(
                     f"UPDATE {table} SET embedding = %s::vector WHERE id = %s",
@@ -116,33 +122,36 @@ def main():
     store = WillowStore()
 
     tables = [
-        ("knowledge",   "COALESCE(title, '') || ' ' || COALESCE(summary, '')"),
-        ("opus_atoms",  "content"),
-        ("jeles_atoms", "COALESCE(title, '') || ' ' || content"),
+        ("knowledge",   "COALESCE(title, '') || ' ' || COALESCE(summary, '')", "invalid_at IS NULL"),
+        ("opus_atoms",  "content", None),
+        ("jeles_atoms", "COALESCE(title, '') || ' ' || content", None),
     ]
 
     # Count grand total for progress reporting
     grand_total = 0
     table_counts = []
-    for table, text_expr in tables:
+    for table, text_expr, extra_filter in tables:
+        where = "embedding IS NULL"
+        if extra_filter:
+            where += f" AND {extra_filter}"
         with pg.conn.cursor() as cur:
-            cur.execute(f"SELECT COUNT(*) FROM {table} WHERE embedding IS NULL")
+            cur.execute(f"SELECT COUNT(*) FROM {table} WHERE {where}")
             null_count = cur.fetchone()[0]
-        table_counts.append((table, text_expr, null_count))
+        table_counts.append((table, text_expr, extra_filter, null_count))
         grand_total += null_count
 
     started_at = time.time()
     total_offset = 0
     total = 0
 
-    for table, text_expr, null_count in table_counts:
+    for table, text_expr, extra_filter, null_count in table_counts:
         if null_count == 0:
             print(f"[{table}] 0 NULL embeddings — skipping", flush=True)
             continue
 
         print(f"[{table}] {null_count} NULL embeddings — backfilling...", flush=True)
         n = _backfill_table(pg, store, table, text_expr, args.dry_run, args.limit,
-                            total_offset, grand_total, started_at)
+                            total_offset, grand_total, started_at, extra_filter)
         total_offset += n
         total += n
         print(f"[{table}] done: {n} rows {'would be ' if args.dry_run else ''}processed", flush=True)
