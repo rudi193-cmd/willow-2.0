@@ -2,7 +2,7 @@
 
 *Maintained synthesis — last updated 2026-05-04. Update when Sean ratifies.*
 
-These 9 items are pending Sean's explicit call before the fleet can close them. They live in Kart (visible in the Tasks pane). Once ratified, each becomes executable without further check-in.
+8 items pending Sean's explicit call. 1 resolved (R4). Once ratified, each becomes executable without further check-in.
 
 Source: WILLOW_DECISIONS.md (Desktop), generated 2026-05-03.
 
@@ -39,15 +39,11 @@ This is family data, not system data. It's the most important thing stranded.
 
 ---
 
-## R4 — frank_ledger Write Path
+## R4 — frank_ledger Write Path ✓ RESOLVED
 
-**The situation:** `frank_ledger` is a tamper-evident audit ledger for recording fleet decisions. It exists in both databases with 5 test entries and zero real ones. The write path was never built.
+**Decision:** Build the write path.
 
-**Sean's choices:**
-- **Use it going forward** — build the write path (20 lines of Python), log every significant decision
-- **Archive it** — mark archived, accept that Grove is the living record
-
-**Status:** Open. Loki has flagged archiving. The frank_ledger write path is also in Loki's overnight build list (ratified alongside blanket authorization). Hanuman will build it unless Sean says archive.
+**Executed:** `willow_frank_ledger_write` and `willow_frank_ledger_read` wired as MCP tools (commit d77840e, 2026-05-04). Ratified via blanket authorization (Grove msg 7372). Chain is live with real entries.
 
 ---
 
