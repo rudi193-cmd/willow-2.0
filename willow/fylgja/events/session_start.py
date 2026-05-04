@@ -175,6 +175,13 @@ def _subscribe_dispatch() -> int:
     return len(addressed)
 
 
+def _send_heartbeat() -> None:
+    try:
+        _grove_call("grove_heartbeat", {"sender": AGENT}, timeout=5)
+    except Exception:
+        pass
+
+
 def _ensure_grove_mcp() -> str:
     """Check grove monitor is running via PID file. Returns status string."""
     pid_file = Path("/tmp/grove-monitor.pid")
@@ -300,6 +307,7 @@ def main():
     summary.append(_ensure_grove_mcp())
     if session_id:
         _register_jeles(session_id)
+    _send_heartbeat()
     dispatch_count = _subscribe_dispatch()
     if dispatch_count:
         summary.append(f"dispatch={dispatch_count}")
