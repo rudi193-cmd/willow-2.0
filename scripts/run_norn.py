@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """scripts/run_norn.py — fire norn_pass against production willow_19."""
+import argparse
 import sys
 import json
 from pathlib import Path
@@ -8,8 +9,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.metabolic import norn_pass
 
+parser = argparse.ArgumentParser(description="Run norn intelligence pass")
+parser.add_argument("--dry-run", action="store_true")
+parser.add_argument("--collections", nargs="*",
+                    help="SOIL collection glob patterns for reflection pass, "
+                         "e.g. 'user-*/story-timeline/atoms/'")
+args = parser.parse_args()
+
 print("[norn] Starting production intelligence run...", flush=True)
-report = norn_pass(dry_run=False)
+report = norn_pass(dry_run=args.dry_run, collections=args.collections or None)
 print(json.dumps(report, indent=2, default=str))
 
 totals = {

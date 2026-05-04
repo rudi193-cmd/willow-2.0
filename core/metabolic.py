@@ -195,7 +195,91 @@ def write_briefing(report: dict) -> None:
     conn.close()
 
 
-def norn_pass(dry_run: bool = False) -> dict:
+def soil_reflection_pass(store, collection_patterns: list[str], dry_run: bool = False) -> int:
+    """
+    ExpeL-style reflection over SOIL session_composite atoms.
+    For each pattern, finds matching collections, groups composites by user+app,
+    and writes a reflection atom when N >= 3 sessions exist.
+    Returns count of reflection atoms written.
+    """
+    import fnmatch
+    from collections import Counter, defaultdict
+
+    all_collections = store.collections()
+    written = 0
+
+    # Gather session_composites grouped by (user_uuid, app_id)
+    groups: dict[tuple, list[dict]] = defaultdict(list)
+    for pattern in collection_patterns:
+        for coll in all_collections:
+            if fnmatch.fnmatch(coll, pattern):
+                try:
+                    records = store.list(coll)
+                except Exception:
+                    continue
+                for rec in records:
+                    if rec.get("type") != "session_composite":
+                        continue
+                    uid = rec.get("user_uuid", "unknown")
+                    app = rec.get("app_id", coll.split("/")[1] if "/" in coll else coll)
+                    groups[(uid, app)].append(rec)
+
+    for (uid, app), sessions in groups.items():
+        if len(sessions) < 3:
+            continue
+
+        # ExpeL clustering: frequency analysis across sessions
+        entity_counter: Counter = Counter()
+        durations, nodes, edges = [], [], []
+        for s in sessions:
+            for et in s.get("entity_types_used", []):
+                entity_counter[et] += 1
+            if s.get("duration_seconds"):
+                durations.append(s["duration_seconds"])
+            if s.get("nodes_created"):
+                nodes.append(s["nodes_created"])
+            if s.get("edges_made"):
+                edges.append(s["edges_made"])
+
+        top_types = [t for t, _ in entity_counter.most_common(3)]
+        avg_dur = int(sum(durations) / len(durations)) if durations else 0
+        avg_nodes = round(sum(nodes) / len(nodes), 1) if nodes else 0
+
+        insight_parts = [f"{len(sessions)} sessions analyzed."]
+        if top_types:
+            insight_parts.append(f"Dominant entity types: {', '.join(top_types)}.")
+        if avg_dur:
+            insight_parts.append(f"Average session: {avg_dur // 60}m {avg_dur % 60}s.")
+        if avg_nodes:
+            insight_parts.append(f"Average nodes per session: {avg_nodes}.")
+        insight = " ".join(insight_parts)
+
+        reflection_id = f"reflection-{app}-{uid[:8]}-{len(sessions)}"
+        reflection = {
+            "id": reflection_id,
+            "type": "reflection",
+            "source_app": app,
+            "user_uuid": uid,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "insight": insight,
+            "evidence_sessions": [s.get("id", "") for s in sessions],
+            "session_count": len(sessions),
+        }
+
+        if not dry_run:
+            dest_collection = f"user-{uid}/{app}/atoms/reflections"
+            try:
+                store.put(dest_collection, reflection)
+                written += 1
+            except Exception:
+                pass
+        else:
+            written += 1
+
+    return written
+
+
+def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> dict:
     """Run all Norn jobs including intelligence passes. Returns report dict."""
     composted = compost_pass(dry_run=dry_run)
     communities = community_pass(dry_run=dry_run)
@@ -269,6 +353,18 @@ def norn_pass(dry_run: bool = False) -> dict:
     }
     if intelligence_error:
         report["intelligence_error"] = intelligence_error
+    # SOIL reflection pass — only when collections are specified
+    reflections_written = 0
+    if collections:
+        try:
+            from core.willow_store import WillowStore
+            store = WillowStore()
+            reflections_written = soil_reflection_pass(store, collections, dry_run=dry_run)
+        except Exception as _re:
+            import sys as _sys
+            print(f"[norn] soil reflection pass error: {_re}", file=_sys.stderr)
+    report["reflections_written"] = reflections_written
+
     if not dry_run:
         write_briefing(report)
     return report
