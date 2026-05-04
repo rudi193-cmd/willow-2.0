@@ -920,6 +920,31 @@ async def list_tools() -> list[types.Tool]:
                 "required": ["item_id", "action"],
             },
         ),
+        # ── Frank Ledger ─────────────────────────────────────────────────────
+        types.Tool(
+            name="willow_frank_ledger_write",
+            description="Append a tamper-evident entry to the frank_ledger. Use for ratified decisions, check-in notes, significant fleet events. Each entry is chained to the previous via SHA-256.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project":    {"type": "string", "description": "Namespace for this entry (e.g. 'hanuman', 'sean', 'fleet')"},
+                    "event_type": {"type": "string", "description": "Type of event: 'decision', 'ratification', 'check_in', 'milestone', 'note'"},
+                    "content":    {"type": "object", "description": "JSON object with the entry content — include 'summary' key at minimum"},
+                },
+                "required": ["project", "event_type", "content"],
+            },
+        ),
+        types.Tool(
+            name="willow_frank_ledger_read",
+            description="Read entries from the frank_ledger, optionally filtered by project.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project": {"type": "string", "description": "Filter by project namespace (omit for all)"},
+                    "limit":   {"type": "integer", "default": 20, "description": "Max entries to return (default 20)"},
+                },
+            },
+        ),
         # ── W19TR — Temporal Replay ───────────────────────────────────────────
         types.Tool(
             name="willow_knowledge_at",
@@ -956,6 +981,8 @@ _tool_executor = concurrent.futures.ThreadPoolExecutor(
     max_workers=4, thread_name_prefix="willow-tool"
 )
 _TOOL_TIMEOUT = float(os.environ.get("WILLOW_TOOL_TIMEOUT", "45"))
+_TOOL_TIMEOUT_INFERENCE = float(os.environ.get("WILLOW_INFERENCE_TIMEOUT", "300"))
+_INFERENCE_TOOLS = {"willow_chat"}
 
 
 def _qualifies_as_flag(record: dict, deviation: float) -> bool:
@@ -971,20 +998,22 @@ def _qualifies_as_flag(record: dict, deviation: float) -> bool:
 async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     loop = asyncio.get_event_loop()
     try:
+        _timeout = _TOOL_TIMEOUT_INFERENCE if name in _INFERENCE_TOOLS else _TOOL_TIMEOUT
         return await asyncio.wait_for(
             loop.run_in_executor(_tool_executor, functools.partial(_call_tool_sync, name, arguments)),
-            timeout=_TOOL_TIMEOUT,
+            timeout=_timeout,
         )
     except asyncio.TimeoutError:
+        _timeout = _TOOL_TIMEOUT_INFERENCE if name in _INFERENCE_TOOLS else _TOOL_TIMEOUT
         print(
-            f"[willow] TIMEOUT tool={name} app={arguments.get('app_id','')} limit={_TOOL_TIMEOUT}s",
+            f"[willow] TIMEOUT tool={name} app={arguments.get('app_id','')} limit={_timeout}s",
             file=sys.stderr, flush=True,
         )
         return [types.TextContent(type="text", text=json.dumps({
             "error": "timeout",
             "tool": name,
-            "timeout_s": _TOOL_TIMEOUT,
-            "message": f"Tool exceeded {_TOOL_TIMEOUT}s — Postgres may be slow. Check willow_status.",
+            "timeout_s": _timeout,
+            "message": f"Tool exceeded {_timeout}s — Postgres may be slow. Check willow_status.",
         }))]
     except Exception as _outer_err:
         print(f"[willow] UNHANDLED tool={name}: {_outer_err}", file=sys.stderr, flush=True)
@@ -1039,7 +1068,7 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                     "flag_state": "open",
                     "title": rec.get("title", rec.get("b17", rid)),
                     "severity": rec.get("severity", "medium"),
-                    "b17": rec.get("b17", ""),
+                    "b17": rec.get("b17") or f"FLAG-{rid[:8]}",
                     "created": datetime.now().isoformat(),
                     "acknowledged": None,
                     "resolved": None,
@@ -1868,6 +1897,27 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
             else:
                 result = skip_item(item_id)
 
+        elif name == "willow_frank_ledger_write":
+            if not pg:
+                result = {"error": "not_available", "reason": "Postgres not connected"}
+            else:
+                record_id = pg.ledger_append(
+                    project=arguments["project"],
+                    event_type=arguments["event_type"],
+                    content=arguments["content"],
+                )
+                result = {"id": record_id, "status": "written"}
+
+        elif name == "willow_frank_ledger_read":
+            if not pg:
+                result = {"error": "not_available", "reason": "Postgres not connected"}
+            else:
+                entries = pg.ledger_read(
+                    project=arguments.get("project"),
+                    limit=arguments.get("limit", 20),
+                )
+                result = {"entries": entries, "count": len(entries)}
+
         else:
             result = {"error": f"Unknown tool: {name}"}
 
@@ -2117,7 +2167,12 @@ def _chat_ollama(agent: str, message: str) -> str | None:
         data = json.dumps({
             "model": os.environ.get("WILLOW_OLLAMA_MODEL", "qwen2.5:3b"),
             "messages": [
-                {"role": "system", "content": f"You are {agent}, a Willow agent. Be concise."},
+                {"role": "system", "content": (
+                    f"You are {agent}, a local AI coordinator for Sean Campbell's personal fleet. "
+                    "You have access to a knowledge base, task queue, and agent network. "
+                    "Be direct, concise, and honest. You run locally — no cloud, no external services. "
+                    "When you don't know something, say so."
+                )},
                 {"role": "user", "content": message},
             ],
             "stream": True,
