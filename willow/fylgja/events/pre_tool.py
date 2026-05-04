@@ -29,6 +29,13 @@ BASH_BLOCKS = [
      "Use Glob tool for file listings — it supports patterns and integrates with the KB."),
 ]
 
+# Loki runs disk audits. These read-only patterns bypass the builder guards above.
+_AUDIT_AGENTS = {"loki"}
+_AUDIT_ALLOW_PATTERNS = [
+    r"^\s*psql\s+-[lL]",   # list databases only — no writes
+    r"^\s*ls(\s|$)",        # file listing for disk audit
+]
+
 F5_PROSE_TOOLS = {
     "mcp__willow__store_put": "record",
     "mcp__willow__store_update": "record",
@@ -37,6 +44,10 @@ F5_PROSE_TOOLS = {
 
 
 def check_bash_block(command: str) -> str | None:
+    if AGENT in _AUDIT_AGENTS:
+        for pattern in _AUDIT_ALLOW_PATTERNS:
+            if re.search(pattern, command, re.MULTILINE):
+                return None
     for pattern, reason in BASH_BLOCKS:
         if re.search(pattern, command, re.MULTILINE):
             return reason
