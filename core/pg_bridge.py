@@ -440,11 +440,21 @@ def _rrf_merge(ann_results: list, ilike_results: list, k: int = 60) -> list:
 
 class PgBridge:
     def __init__(self):
-        self.conn = get_connection()
+        self._local = threading.local()
         self._last_ingest_error = None
 
+    # Thread-local conn: each thread in the MCP executor gets its own
+    # connection from the pool, preventing concurrent-access corruption.
+    @property
+    def conn(self):
+        return getattr(self._local, "conn", None)
+
+    @conn.setter
+    def conn(self, value):
+        self._local.conn = value
+
     def close(self) -> None:
-        """Return connection to pool. Safe to call multiple times."""
+        """Return this thread's connection to pool. Safe to call multiple times."""
         if self.conn is not None:
             release_connection(self.conn)
             self.conn = None
@@ -458,10 +468,17 @@ class PgBridge:
     # ── Connection resilience ─────────────────────────────────────────────────
 
     def _ensure_conn(self):
-        """Re-acquire from pool if connection was dropped or gone stale."""
+        """Acquire or re-acquire this thread's pool connection if dropped or stale."""
         if self.conn is None or self.conn.closed:
             self.conn = get_connection()
             return
+        # Clear any aborted transaction before probing — INERROR connections
+        # pass the closed check but poison every subsequent query.
+        try:
+            if self.conn.info.transaction_status in (2, 3):  # INTRANS or INERROR
+                self.conn.rollback()
+        except Exception:
+            pass
         try:
             with self.conn.cursor() as _cur:
                 _cur.execute("SELECT 1")
@@ -645,8 +662,16 @@ class PgBridge:
     def knowledge_search(self, query: str, project: Optional[str] = None,
                          include_invalid: bool = False, limit: int = 20) -> list:
         self._ensure_conn()
-        filters = ["(title ILIKE %s OR summary ILIKE %s)"]
-        params = [f"%{query}%", f"%{query}%"]
+        # Split multi-word queries into AND-ed ILIKE terms so "grove fleet"
+        # finds atoms containing both words, not the exact phrase.
+        words = query.split()
+        filters = []
+        params: list = []
+        for word in words:
+            filters.append("(title ILIKE %s OR summary ILIKE %s)")
+            params.extend([f"%{word}%", f"%{word}%"])
+        if not filters:
+            return []
         if project:
             filters.append("project = %s")
             params.append(project)
