@@ -3,9 +3,9 @@
 Markdown docs indexer (Layer 3) — indexes all .md files in github/ and agents/
 into public.knowledge (project='docs').
 One atom per file. Short files (<3000 chars) = full content. Longer = first 3000 chars.
+Streams files in batches of 100 to keep memory flat.
 """
 import os
-import glob
 import hashlib
 import json
 from datetime import datetime, timezone
@@ -24,18 +24,17 @@ ROOTS = [
     "/home/sean-campbell/Ashokoa/agents",
 ]
 
-# Skip generated/noise directories
 SKIP_DIRS = {
     "node_modules", ".git", "__pycache__", ".mypy_cache",
     "dist", "build", ".next", ".nuxt", "venv", ".venv",
 }
 
 MAX_CONTENT = 3000
+BATCH_SIZE = 100
 
 
 def should_skip_path(path: str) -> bool:
-    parts = set(Path(path).parts)
-    return bool(parts & SKIP_DIRS)
+    return bool(set(Path(path).parts) & SKIP_DIRS)
 
 
 def make_atom_id(filepath: str) -> str:
@@ -44,12 +43,21 @@ def make_atom_id(filepath: str) -> str:
 
 def make_title(filepath: str) -> str:
     p = Path(filepath)
-    # relative to home
     try:
-        rel = p.relative_to("/home/sean-campbell")
-        return str(rel)
+        return str(p.relative_to("/home/sean-campbell"))
     except ValueError:
         return p.name
+
+
+def iter_md_files():
+    for root in ROOTS:
+        if not os.path.exists(root):
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+            for fn in filenames:
+                if fn.endswith(".md"):
+                    yield os.path.join(dirpath, fn)
 
 
 def get_existing_ids(conn) -> set:
@@ -58,50 +66,7 @@ def get_existing_ids(conn) -> set:
         return {row[0] for row in cur.fetchall()}
 
 
-def bulk_insert(conn, atoms: list[dict], existing_ids: set) -> tuple[int, int]:
-    inserted = 0
-    skipped = 0
-    now = datetime.now(timezone.utc)
-    batch = []
-
-    with conn.cursor() as cur:
-        for a in atoms:
-            if a["atom_id"] in existing_ids:
-                skipped += 1
-                continue
-
-            content_json = json.dumps({"file_path": a["filepath"]})
-            batch.append((
-                a["atom_id"],
-                "docs",
-                now,      # valid_at
-                None,     # invalid_at
-                now,      # created_at
-                a["title"],
-                a["summary"],
-                content_json,
-                "file",
-                "reference",
-                None,     # embedding
-            ))
-            existing_ids.add(a["atom_id"])
-
-            if len(batch) >= 500:
-                _flush(cur, batch)
-                conn.commit()
-                inserted += len(batch)
-                print(f"  +{inserted} docs atoms so far...", flush=True)
-                batch = []
-
-        if batch:
-            _flush(cur, batch)
-            conn.commit()
-            inserted += len(batch)
-
-    return inserted, skipped
-
-
-def _flush(cur, batch):
+def flush_batch(cur, batch):
     psycopg2.extras.execute_values(cur, """
         INSERT INTO public.knowledge
             (id, project, valid_at, invalid_at, created_at, title, summary, content,
@@ -112,46 +77,57 @@ def _flush(cur, batch):
 
 
 def main():
-    print("[docs] Scanning for .md files...")
-    all_files = []
-    for root in ROOTS:
-        if not os.path.exists(root):
-            continue
-        for fp in glob.glob(os.path.join(root, "**", "*.md"), recursive=True):
-            if not should_skip_path(fp):
-                all_files.append(fp)
-
-    print(f"[docs] Found {len(all_files)} markdown files.")
-
+    print("[docs] Connecting to DB...", flush=True)
     conn = psycopg2.connect(**DB_PARAMS)
     existing_ids = get_existing_ids(conn)
-    print(f"[docs] {len(existing_ids)} existing doc atoms (will skip).")
+    print(f"[docs] {len(existing_ids)} existing doc atoms (will skip). Scanning...", flush=True)
 
-    atoms = []
-    errors = 0
-    for i, fp in enumerate(all_files):
-        if (i + 1) % 200 == 0:
-            print(f"  reading {i+1}/{len(all_files)}...", flush=True)
-        try:
-            with open(fp, "r", encoding="utf-8", errors="replace") as f:
-                text = f.read()
-            if len(text.strip()) < 20:
-                continue  # skip empty/stub files
-            summary = text[:MAX_CONTENT].strip()
-            atoms.append({
-                "atom_id": make_atom_id(fp),
-                "filepath": fp,
-                "title": make_title(fp),
-                "summary": summary,
-            })
-        except Exception as e:
-            errors += 1
+    now = datetime.now(timezone.utc)
+    batch = []
+    inserted = skipped = errors = scanned = 0
 
-    print(f"[docs] {len(atoms)} files readable ({errors} errors). Inserting...")
-    inserted, skipped = bulk_insert(conn, atoms, existing_ids)
+    with conn.cursor() as cur:
+        for fp in iter_md_files():
+            scanned += 1
+            atom_id = make_atom_id(fp)
+            if atom_id in existing_ids:
+                skipped += 1
+                if scanned % 500 == 0:
+                    print(f"  scanned {scanned}, inserted {inserted}, skipped {skipped}...", flush=True)
+                continue
+            try:
+                with open(fp, "r", encoding="utf-8", errors="replace") as f:
+                    text = f.read(MAX_CONTENT + 1)
+                if len(text.strip()) < 20:
+                    skipped += 1
+                    continue
+                summary = text[:MAX_CONTENT].strip()
+            except Exception:
+                errors += 1
+                continue
+
+            batch.append((
+                atom_id, "docs", now, None, now,
+                make_title(fp), summary,
+                json.dumps({"file_path": fp}),
+                "file", "reference", None,
+            ))
+            existing_ids.add(atom_id)
+
+            if len(batch) >= BATCH_SIZE:
+                flush_batch(cur, batch)
+                conn.commit()
+                inserted += len(batch)
+                batch = []
+                print(f"  scanned {scanned}, inserted {inserted}, skipped {skipped}...", flush=True)
+
+        if batch:
+            flush_batch(cur, batch)
+            conn.commit()
+            inserted += len(batch)
+
     conn.close()
-    print(f"[docs] Done. {inserted} new atoms, {skipped} skipped.")
-    return inserted
+    print(f"[docs] Done. scanned={scanned} inserted={inserted} skipped={skipped} errors={errors}", flush=True)
 
 
 if __name__ == "__main__":

@@ -77,7 +77,7 @@ def _backfill_table(pg: PgBridge, store: WillowStore, table: str, text_expr: str
         with pg.conn.cursor() as cur:
             cur.execute(
                 f"SELECT id, {text_expr} AS text FROM {table}"
-                f" WHERE {where} LIMIT %s",
+                f" WHERE {where} ORDER BY created_at DESC LIMIT %s",
                 (BATCH_SIZE,),
             )
             rows = cur.fetchall()
@@ -122,7 +122,8 @@ def main():
     store = WillowStore()
 
     tables = [
-        ("knowledge",   "COALESCE(title, '') || ' ' || COALESCE(summary, '')", "invalid_at IS NULL"),
+        ("knowledge",   "COALESCE(title, '') || ' ' || COALESCE(summary, '')",
+         "invalid_at IS NULL AND project NOT IN ('session-turn', 'conversation', 'file_location', 'die-namic-index', 'willow_index', 'global')"),
         ("opus_atoms",  "content", None),
         ("jeles_atoms", "COALESCE(title, '') || ' ' || content", None),
     ]

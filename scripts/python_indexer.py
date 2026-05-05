@@ -4,10 +4,10 @@ Python codebase indexer (Layer 2) — indexes .py files from github/ and agents/
 into public.knowledge (project='codebase').
 Extracts: file path, module docstring, function/class signatures.
 One atom per file. Skips generated, tiny, and test files.
+Streams files in batches of 100 to keep memory flat.
 """
 import os
 import ast
-import glob
 import hashlib
 import json
 from datetime import datetime, timezone
@@ -34,11 +34,7 @@ SKIP_DIRS = {
 
 MIN_LINES = 10
 MAX_SUMMARY = 3000
-
-
-def should_skip_path(path: str) -> bool:
-    parts = set(Path(path).parts)
-    return bool(parts & SKIP_DIRS)
+BATCH_SIZE = 100
 
 
 def make_atom_id(filepath: str) -> str:
@@ -47,27 +43,22 @@ def make_atom_id(filepath: str) -> str:
 
 def make_title(filepath: str) -> str:
     try:
-        rel = Path(filepath).relative_to("/home/sean-campbell")
-        return str(rel)
+        return str(Path(filepath).relative_to("/home/sean-campbell"))
     except ValueError:
         return Path(filepath).name
 
 
 def extract_signatures(source: str) -> str:
-    """Extract module docstring + top-level function/class signatures."""
     try:
         tree = ast.parse(source)
     except SyntaxError:
         return ""
 
     parts = []
-
-    # Module docstring
     mod_doc = ast.get_docstring(tree)
     if mod_doc:
         parts.append(f"Module: {mod_doc[:300]}")
 
-    # Top-level defs
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             doc = ast.get_docstring(node) or ""
@@ -90,54 +81,24 @@ def extract_signatures(source: str) -> str:
     return "\n".join(parts)
 
 
+def iter_py_files():
+    for root in ROOTS:
+        if not os.path.exists(root):
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+            for fn in filenames:
+                if fn.endswith(".py"):
+                    yield os.path.join(dirpath, fn)
+
+
 def get_existing_ids(conn) -> set:
     with conn.cursor() as cur:
         cur.execute("SELECT id FROM public.knowledge WHERE project='codebase'")
         return {row[0] for row in cur.fetchall()}
 
 
-def bulk_insert(conn, atoms: list[dict], existing_ids: set) -> tuple[int, int]:
-    inserted = 0
-    skipped = 0
-    now = datetime.now(timezone.utc)
-    batch = []
-
-    with conn.cursor() as cur:
-        for a in atoms:
-            if a["atom_id"] in existing_ids:
-                skipped += 1
-                continue
-
-            content_json = json.dumps({"file_path": a["filepath"], "lines": a["lines"]})
-            batch.append((
-                a["atom_id"],
-                "codebase",
-                now, None, now,
-                a["title"],
-                a["summary"],
-                content_json,
-                "file",
-                "code",
-                None,
-            ))
-            existing_ids.add(a["atom_id"])
-
-            if len(batch) >= 500:
-                _flush(cur, batch)
-                conn.commit()
-                inserted += len(batch)
-                print(f"  +{inserted} code atoms so far...", flush=True)
-                batch = []
-
-        if batch:
-            _flush(cur, batch)
-            conn.commit()
-            inserted += len(batch)
-
-    return inserted, skipped
-
-
-def _flush(cur, batch):
+def flush_batch(cur, batch):
     psycopg2.extras.execute_values(cur, """
         INSERT INTO public.knowledge
             (id, project, valid_at, invalid_at, created_at, title, summary, content,
@@ -148,55 +109,62 @@ def _flush(cur, batch):
 
 
 def main():
-    print("[code] Scanning for .py files...")
-    all_files = []
-    for root in ROOTS:
-        if not os.path.exists(root):
-            continue
-        for fp in glob.glob(os.path.join(root, "**", "*.py"), recursive=True):
-            if not should_skip_path(fp):
-                all_files.append(fp)
-
-    print(f"[code] Found {len(all_files)} Python files.")
-
+    print("[code] Connecting to DB...", flush=True)
     conn = psycopg2.connect(**DB_PARAMS)
     existing_ids = get_existing_ids(conn)
-    print(f"[code] {len(existing_ids)} existing code atoms (will skip).")
+    print(f"[code] {len(existing_ids)} existing code atoms (will skip). Scanning...", flush=True)
 
-    atoms = []
-    errors = 0
-    for i, fp in enumerate(all_files):
-        if (i + 1) % 500 == 0:
-            print(f"  reading {i+1}/{len(all_files)}...", flush=True)
-        try:
-            with open(fp, "r", encoding="utf-8", errors="replace") as f:
-                source = f.read()
-            lines = source.count("\n")
-            if lines < MIN_LINES:
+    now = datetime.now(timezone.utc)
+    batch = []
+    inserted = skipped = errors = scanned = 0
+
+    with conn.cursor() as cur:
+        for fp in iter_py_files():
+            scanned += 1
+            atom_id = make_atom_id(fp)
+            if atom_id in existing_ids:
+                skipped += 1
+                if scanned % 500 == 0:
+                    print(f"  scanned {scanned}, inserted {inserted}, skipped {skipped}...", flush=True)
                 continue
 
-            sigs = extract_signatures(source)
-            # Summary = signatures if available, else first MAX_SUMMARY chars of source
-            if sigs and len(sigs) > 50:
-                summary = sigs[:MAX_SUMMARY]
-            else:
-                summary = source[:MAX_SUMMARY].strip()
+            try:
+                with open(fp, "r", encoding="utf-8", errors="replace") as f:
+                    source = f.read(MAX_SUMMARY * 3)  # read enough for AST + summary
+                lines = source.count("\n")
+                if lines < MIN_LINES:
+                    skipped += 1
+                    continue
 
-            atoms.append({
-                "atom_id": make_atom_id(fp),
-                "filepath": fp,
-                "title": make_title(fp),
-                "summary": summary,
-                "lines": lines,
-            })
-        except Exception:
-            errors += 1
+                sigs = extract_signatures(source)
+                summary = (sigs[:MAX_SUMMARY] if sigs and len(sigs) > 50
+                           else source[:MAX_SUMMARY].strip())
+            except Exception:
+                errors += 1
+                continue
 
-    print(f"[code] {len(atoms)} files parsed ({errors} errors). Inserting...")
-    inserted, skipped = bulk_insert(conn, atoms, existing_ids)
+            batch.append((
+                atom_id, "codebase", now, None, now,
+                make_title(fp), summary,
+                json.dumps({"file_path": fp, "lines": lines}),
+                "file", "code", None,
+            ))
+            existing_ids.add(atom_id)
+
+            if len(batch) >= BATCH_SIZE:
+                flush_batch(cur, batch)
+                conn.commit()
+                inserted += len(batch)
+                batch = []
+                print(f"  scanned {scanned}, inserted {inserted}, skipped {skipped}...", flush=True)
+
+        if batch:
+            flush_batch(cur, batch)
+            conn.commit()
+            inserted += len(batch)
+
     conn.close()
-    print(f"[code] Done. {inserted} new atoms, {skipped} skipped.")
-    return inserted
+    print(f"[code] Done. scanned={scanned} inserted={inserted} skipped={skipped} errors={errors}", flush=True)
 
 
 if __name__ == "__main__":
