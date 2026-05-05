@@ -111,6 +111,30 @@ try:
 except Exception as _pg_init_err:
     pg = None
     print(f"[pg] PgBridge init failed: {_pg_init_err}", file=sys.stderr)
+    # Write a flag file so /startup and monitoring can detect this silently-broken state.
+    try:
+        import pathlib as _pl, os as _os
+        _flag = _pl.Path(_os.path.expanduser("~/.willow/pg_failure.flag"))
+        _flag.parent.mkdir(parents=True, exist_ok=True)
+        _flag.write_text(str(_pg_init_err))
+    except Exception:
+        pass
+    # Best-effort Grove alert via raw psycopg2 — PgBridge unavailable but Grove DB may still work.
+    try:
+        import psycopg2 as _psy, os as _os
+        _gc = _psy.connect(dbname=_os.environ.get("WILLOW_PG_DB", "willow_19"))
+        with _gc.cursor() as _c:
+            _c.execute("SELECT id FROM grove.channels WHERE name='general' LIMIT 1")
+            _ch = _c.fetchone()
+            if _ch:
+                _c.execute(
+                    "INSERT INTO grove.messages (channel_id, sender, content) VALUES (%s, %s, %s)",
+                    (_ch[0], "willow-mcp", f"[ALERT] pg=None at MCP startup — KB unavailable. {_pg_init_err}"),
+                )
+        _gc.commit()
+        _gc.close()
+    except Exception:
+        pass
 
 
 def _startup_backfill_check() -> None:
