@@ -33,6 +33,7 @@ BASH_BLOCKS = [
 _AUDIT_AGENTS = {"loki"}
 _AUDIT_ALLOW_PATTERNS = [
     r"^\s*psql\s+-[lL]",   # list databases only — no writes
+    r"(?i)^\s*psql\s+.*-c\s+['\"]?\s*(select|show|\\[a-z\\])",  # read-only: SELECT/SHOW/meta-commands only
     r"^\s*ls(\s|$)",        # file listing for disk audit
 ]
 

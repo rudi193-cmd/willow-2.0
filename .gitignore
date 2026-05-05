@@ -19,6 +19,12 @@ sap/log/*.md
 # RLM chunk state — ephemeral, never commit
 .claude/rlm_state/
 
+# Claude Code runtime artifacts
+.claude/scheduled_tasks.lock
+
+# Agent KB atom scratch files — ephemeral, ingested into Postgres
+agents/hanuman/kb-atoms/
+
 # Python virtual environments
 .venv/
 venv/
