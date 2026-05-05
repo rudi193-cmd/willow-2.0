@@ -9,9 +9,16 @@ sys.path = [REPO_ROOT] + [p for p in sys.path if "willow-1.7" not in p]
 
 os.environ["WILLOW_PG_DB"] = "willow_19_test"
 
+# PGUSER is the standard psycopg2/libpq env var — use it as a fallback so CI
+# workflows that set PGUSER=postgres but not WILLOW_PG_USER still connect correctly.
+if not os.environ.get("WILLOW_PG_USER") and os.environ.get("PGUSER"):
+    os.environ["WILLOW_PG_USER"] = os.environ["PGUSER"]
+
 _PG_USER = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
 _PG_HOST = os.environ.get("WILLOW_PG_HOST")
 _PG_PORT = os.environ.get("WILLOW_PG_PORT")
+
+print(f"[conftest] pg user={_PG_USER!r} host={_PG_HOST!r} port={_PG_PORT!r}", flush=True)
 
 
 def _ensure_test_db():
@@ -23,6 +30,7 @@ def _ensure_test_db():
             user=_PG_USER,
             host=_PG_HOST,
             port=_PG_PORT,
+            connect_timeout=10,
         )
         conn.autocommit = True
         with conn.cursor() as cur:
