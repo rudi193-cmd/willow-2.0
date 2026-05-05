@@ -86,11 +86,26 @@ def _cleanup(*_) -> None:
     sys.exit(0)
 
 
+def _already_running() -> bool:
+    """Return True if a watchdog with our PID file is still alive (GAP 3: prevent double-spawn)."""
+    try:
+        pid = int(PID_FILE.read_text().strip())
+        os.kill(pid, 0)  # signal 0 = existence check, no signal sent
+        return True
+    except (FileNotFoundError, ValueError, ProcessLookupError, PermissionError):
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--interval", type=int, default=DEFAULT_INTERVAL)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
+
+    # GAP 3: bail out if another watchdog instance is already running
+    if _already_running():
+        print(f"[willow-watchdog] already running (PID {PID_FILE.read_text().strip()}) — exiting", flush=True)
+        sys.exit(0)
 
     signal.signal(signal.SIGTERM, _cleanup)
     signal.signal(signal.SIGINT, _cleanup)
