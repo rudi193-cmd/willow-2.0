@@ -91,9 +91,15 @@ def _backfill_table(pg: PgBridge, store: WillowStore, table: str, text_expr: str
             if dry_run:
                 processed += 1
                 continue
-            vec = embed((text or "")[:MAX_EMBED_CHARS])
+            vec = None
+            for attempt in range(3):
+                vec = embed((text or "")[:MAX_EMBED_CHARS])
+                if vec is not None:
+                    break
+                print(f"  [{table}] {row_id}: Ollama unavailable (attempt {attempt+1}/3) — retrying in 5s", flush=True)
+                time.sleep(5)
             if vec is None:
-                print(f"  [{table}] {row_id}: Ollama unavailable — stopping", flush=True)
+                print(f"  [{table}] {row_id}: Ollama unavailable after 3 attempts — stopping", flush=True)
                 return processed
             vec_str = str(vec)
             pg._ensure_conn()
