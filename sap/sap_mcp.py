@@ -30,15 +30,20 @@ from datetime import datetime
 from pathlib import Path
 
 # ── Path setup ────────────────────────────────────────────────────────────────
-# SAP library
-_SAP_ROOT = Path(__file__).parent.parent  # willow-1.7/
-if str(_SAP_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SAP_ROOT))
+_SAP_ROOT = Path(__file__).parent.parent  # willow-1.9/
+_WILLOW_CORE = _SAP_ROOT / "core"
 
-# WillowStore + pg_bridge (live in willow-1.7/core/)
-_WILLOW_CORE = Path(__file__).parent.parent / "core"
-if str(_WILLOW_CORE) not in sys.path:
-    sys.path.insert(0, str(_WILLOW_CORE))
+# _SAP_ROOT must be first so `from core.X import` resolves correctly.
+# Re-insert unconditionally so PYTHONPATH ordering doesn't push it down.
+_sap_str = str(_SAP_ROOT)
+if _sap_str in sys.path:
+    sys.path.remove(_sap_str)
+sys.path.insert(0, _sap_str)
+
+# core/ on path for legacy `from willow_store import` style imports
+_core_str = str(_WILLOW_CORE)
+if _core_str not in sys.path:
+    sys.path.insert(1, _core_str)
 
 try:
     from core.memory_sanitizer import scan_struct, log_flags as _sanitizer_log
@@ -2263,6 +2268,7 @@ def _hot_reload(target: str = "all") -> dict:
 
     if target in ("all", "postgres"):
         try:
+            sys.modules.pop("core.pg_bridge", None)
             import core.pg_bridge as _pgmod
             importlib.reload(_pgmod)
             pg = _pgmod.PgBridge()
