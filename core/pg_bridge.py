@@ -360,16 +360,17 @@ def _connect() -> "psycopg2.connection":
 
 
 # Module-level connection pool — shared across all PgBridge instances in this process.
-# minconn=1 keeps one warm; maxconn=10 caps total connections so scripts and the MCP
-# server never exhaust Postgres's connection slots simultaneously.
-_pool: Optional["psycopg2.pool.SimpleConnectionPool"] = None
+# ThreadedConnectionPool is required: the MCP server runs tool calls in a
+# ThreadPoolExecutor, so multiple threads share this pool concurrently.
+# SimpleConnectionPool is explicitly documented as not thread-safe.
+_pool: Optional["psycopg2.pool.ThreadedConnectionPool"] = None
 
 
-def _get_pool() -> "psycopg2.pool.SimpleConnectionPool":
+def _get_pool() -> "psycopg2.pool.ThreadedConnectionPool":
     global _pool
     if _pool is None:
         from psycopg2 import pool as _pg_pool
-        _pool = _pg_pool.SimpleConnectionPool(minconn=1, maxconn=10, **_pg_kwargs())
+        _pool = _pg_pool.ThreadedConnectionPool(minconn=1, maxconn=10, **_pg_kwargs())
         conn = _pool.getconn()
         init_schema(conn)
         _pool.putconn(conn)
@@ -687,6 +688,7 @@ class PgBridge:
 
     def _knowledge_ann(self, vec: list, limit: int,
                        project: Optional[str] = None) -> list:
+        self._ensure_conn()  # re-acquire if Ollama embed call staled the connection
         vec_str = str(vec)
         filters = ["embedding IS NOT NULL", "invalid_at IS NULL"]
         params: list = [vec_str, limit]
@@ -716,6 +718,7 @@ class PgBridge:
         vec = embed(query)
         if vec is None:
             return self.search_opus(query, limit=limit)
+        self._ensure_conn()
         vec_str = str(vec)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
@@ -732,6 +735,7 @@ class PgBridge:
         vec = embed(query)
         if vec is None:
             return []
+        self._ensure_conn()
         vec_str = str(vec)
         filters = ["embedding IS NOT NULL"]
         params: list = [vec_str, limit]

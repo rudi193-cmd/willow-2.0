@@ -2261,7 +2261,7 @@ def _chat_fleet(agent: str, message: str) -> str | None:
 
 
 def _hot_reload(target: str = "all") -> dict:
-    global pg, store
+    global pg, store, _pg19, _pg19_error
     import importlib
     reloaded = []
     errors = []
@@ -2275,6 +2275,8 @@ def _hot_reload(target: str = "all") -> dict:
             import core.pg_bridge as _pgmod
             importlib.reload(_pgmod)
             pg = _pgmod.PgBridge()
+            _pg19 = None   # force re-init on next semantic search so it uses the fresh pool
+            _pg19_error = None
             reloaded.append("postgres: connected")
         except Exception as e:
             errors.append(f"postgres: {e}")
