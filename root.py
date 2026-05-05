@@ -114,25 +114,12 @@ def _write_fingerprint(fp: str) -> None:
 
 
 def step_4_vault() -> Path:
-    """Create Fernet vault at ~/.willow/vault.db."""
-    from cryptography.fernet import Fernet
-    home = Path.home()
-    key_path = home / ".willow" / ".master.key"
-    vault_path = home / ".willow" / "vault.db"
-
-    if not key_path.exists():
-        key_path.write_bytes(Fernet.generate_key())
-        key_path.chmod(0o600)
-
-    conn = sqlite3.connect(str(vault_path))
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS credentials (
-            name TEXT PRIMARY KEY, env_key TEXT, value_enc BLOB
-        )
-    """)
-    conn.commit()
-    conn.close()
-    return vault_path
+    """Create Fernet vault using the canonical core/vault.py implementation."""
+    sys.path.insert(0, str(WILLOW_ROOT))
+    from core.vault import Vault, _DEFAULT_VAULT
+    v = Vault()
+    v.init()
+    return _DEFAULT_VAULT
 
 
 def _load_pg_bridge():

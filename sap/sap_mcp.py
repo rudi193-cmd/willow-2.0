@@ -66,13 +66,17 @@ except ImportError:
     sys.exit(1)
 
 # ── SAP gate (ready for per-tool auth) ────────────────────────────────────────
+# If the gate fails to import, the server runs in RESTRICTED mode: only the
+# health/status tools are served. All other tools return gate_unavailable.
+# This is fail-closed: a broken gate must not silently open all tools.
+_GATE_DOWN_ALLOWED = frozenset({"willow_status", "willow_health"})
 try:
     from sap.core.gate import authorized as sap_authorized, list_authorized as sap_list_authorized, permitted as sap_permitted
     _SAP_GATE = True
 except Exception as _e:
     _SAP_GATE = False
     sap_permitted = None  # type: ignore[assignment]
-    print(f"SAP gate unavailable: {_e}", file=sys.stderr)
+    print(f"[SECURITY] SAP gate unavailable — server running in RESTRICTED mode: {_e}", file=sys.stderr)
     # Log to gaps.jsonl so the audit trail reflects gate-down state
     import json as _json
     from datetime import datetime as _dt, timezone as _tz
@@ -1061,8 +1065,17 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
             if _gl_reason:
                 import sys as _sys
                 print(f"[gleipnir] {app_id}: {_gl_reason}", file=_sys.stderr)
-        if _SAP_GATE and app_id not in _INFRA_IDS:
-            if not sap_authorized(app_id):
+        if not _SAP_GATE and name not in _GATE_DOWN_ALLOWED:
+            return [types.TextContent(type="text", text=json.dumps({
+                "error": "gate_unavailable",
+                "tool": name,
+                "message": "SAP gate failed to load — server is in restricted mode. Only willow_status and willow_health are available.",
+            }))]
+        # _INFRA_IDS skip sap_authorized() (PGP check) because they have no SAFE manifests,
+        # but they still go through sap_permitted() for per-tool access control.
+        # TODO: create SAFE manifests for infra agents and remove this bypass entirely.
+        if _SAP_GATE:
+            if app_id not in _INFRA_IDS and not sap_authorized(app_id):
                 return [types.TextContent(type="text", text=json.dumps({
                     "error": "unauthorized",
                     "app_id": app_id,
@@ -1605,14 +1618,14 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
 
         # ── Task Executor (inline — submit = execute, no queue, no daemon) ──────
         elif name == "willow_task_submit":
-            import subprocess as _sp, uuid as _uuid2, time as _time
+            import subprocess as _sp, uuid as _uuid2, time as _time, shlex as _shlex
             _task_cmd  = arguments["task"]
             _task_id   = _uuid2.uuid4().hex[:8].upper()
             _started   = _time.time()
             try:
                 _proc = _sp.run(
-                    _task_cmd,
-                    shell=True,
+                    _shlex.split(_task_cmd),
+                    shell=False,
                     capture_output=True,
                     text=True,
                     timeout=120,

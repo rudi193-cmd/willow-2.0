@@ -7,9 +7,11 @@ MODEL = "nomic-embed-text"
 TIMEOUT_S = 60
 _RETRIES = 3
 _RETRY_DELAY_S = 5
+MAX_CHARS = 8_000  # nomic-embed-text context is ~8K tokens; truncate to avoid silent latency spikes
 
 
 def embed(text: str) -> list[float] | None:
+    text = text[:MAX_CHARS]
     for attempt in range(_RETRIES):
         try:
             resp = requests.post(
