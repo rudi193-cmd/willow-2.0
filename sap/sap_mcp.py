@@ -2268,6 +2268,9 @@ def _hot_reload(target: str = "all") -> dict:
 
     if target in ("all", "postgres"):
         try:
+            _sap_root = str(Path(__file__).parent.parent)
+            if _sap_root not in sys.path:
+                sys.path.insert(0, _sap_root)
             sys.modules.pop("core.pg_bridge", None)
             import core.pg_bridge as _pgmod
             importlib.reload(_pgmod)
