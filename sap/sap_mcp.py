@@ -105,7 +105,7 @@ from willow_store import WillowStore
 
 # ── Postgres bridge ───────────────────────────────────────────────────────────
 try:
-    from pg_bridge import try_connect, PgBridge, init_schema
+    from core.pg_bridge import try_connect, PgBridge, init_schema
     pg = PgBridge()
     init_schema(pg.conn)
 except Exception as _pg_init_err:
@@ -1263,7 +1263,7 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
         elif name == "willow_health":
             import time as _time
             try:
-                from pg_bridge import cb_state as _cb_state, _pool as _pg_pool, _pool_maxconn as _pmx
+                from core.pg_bridge import cb_state as _cb_state, _pool as _pg_pool, _pool_maxconn as _pmx
                 cb = _cb_state()
                 pool_used = len(_pg_pool._used) if _pg_pool else 0
                 pool_info = {"used": pool_used, "max": _pmx, "pct": round(pool_used / _pmx * 100)}
@@ -2239,7 +2239,7 @@ def _hot_reload(target: str = "all") -> dict:
 
     if target in ("all", "postgres"):
         try:
-            import pg_bridge as _pgmod
+            import core.pg_bridge as _pgmod
             importlib.reload(_pgmod)
             pg = _pgmod.PgBridge()
             reloaded.append("postgres: connected")
