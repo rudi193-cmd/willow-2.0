@@ -36,7 +36,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run test suite
-        run: python3 -m pytest --ignore=tests/adversarial/e2e -q
+        run: python3 -m pytest --ignore=tests/adversarial/e2e -q --timeout=60
         env:
           WILLOW_PG_DB: willow_19_test
           WILLOW_PG_USER: postgres
