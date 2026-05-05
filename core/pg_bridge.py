@@ -442,6 +442,9 @@ class PgBridge:
     def __init__(self):
         self._local = threading.local()
         self._last_ingest_error = None
+        # Eagerly initialize for the calling thread so init_schema(pg.conn)
+        # and other startup callers get a real connection immediately.
+        self._local.conn = get_connection()
 
     # Thread-local conn: each thread in the MCP executor gets its own
     # connection from the pool, preventing concurrent-access corruption.
