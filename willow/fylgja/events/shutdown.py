@@ -284,6 +284,12 @@ def main():
         close_session(session_id)
         run_ingot(session_id)
 
+    try:
+        from core.run_ledger import close_run
+        close_run(status="completed")
+    except Exception:
+        pass
+
     sys.exit(0)
 
 

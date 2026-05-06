@@ -27,6 +27,12 @@ _SIGNIFICANT = {
     "mcp__willow__willow_knowledge_at",
 }
 
+_RUN_LEDGER_TOOLS = {
+    "Edit", "Write",
+    "mcp__willow__willow_knowledge_ingest",
+    "mcp__grove__grove_send_message",
+}
+
 _AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
 
 
@@ -142,6 +148,17 @@ def main():
 
     if tool_name in _SIGNIFICANT:
         _write_trace(session_id, tool_name, tool_input)
+
+    if tool_name in _RUN_LEDGER_TOOLS:
+        try:
+            from core.run_ledger import log_event
+            target = _target_from_input(tool_name, tool_input)
+            if tool_name == "mcp__grove__grove_send_message":
+                ch = tool_input.get("channel_name", "?")
+                target = f"grove:#{ch}"
+            log_event(event_type=tool_name, ref=target)
+        except Exception:
+            pass
 
     # Hook timing log
     _dur_ms = int((_time.monotonic() - _t0) * 1000)
