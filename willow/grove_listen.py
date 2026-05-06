@@ -55,13 +55,15 @@ def main():
         sys.exit(1)
 
     ch_map = load_channels(cur)
-    cursors = {}
-    for ch_id in ch_map:
+    cursors = {ch_id: 0 for ch_id in ch_map}
+    if ch_map:
         cur.execute(
-            "SELECT COALESCE(MAX(id),0) FROM grove.messages WHERE channel_id = %s",
-            (ch_id,),
+            "SELECT channel_id, COALESCE(MAX(id), 0) FROM grove.messages"
+            " WHERE channel_id = ANY(%s) GROUP BY channel_id",
+            (list(ch_map.keys()),)
         )
-        cursors[ch_id] = cur.fetchone()[0]
+        for row in cur.fetchall():
+            cursors[row[0]] = row[1]
 
     cur.execute("LISTEN grove_channel")
 
@@ -114,16 +116,32 @@ def main():
                         cursors[ch_id] = row[0]
                         msg_id, sender, content = row[0], row[1], str(row[2])
                         if is_mention(content, AGENT) and sender.lower() != AGENT.lower():
-                            print(
-                                f"[MENTION] [#{ch_name}:{msg_id}] {sender}: {content[:400]}",
-                                flush=True,
+                            tag = next(
+                                (a for a in ALIASES.get(AGENT, [f"@{AGENT}"])
+                                 if a in content.lower()),
+                                f"@{AGENT}",
                             )
+                            preview = content.strip()[:80]
+                            line = f"[MENTION:{tag}] #{ch_name} id={msg_id} {sender}"
+                            if preview:
+                                line += f": {preview}"
+                            print(line, flush=True)
         except Exception as e:
             print(f"[grove-listen-error] {e}", flush=True)
             try:
                 conn = connect()
                 cur = conn.cursor()
                 ch_map = load_channels(cur)
+                # Re-seed cursors so we don't replay or miss messages after reconnect
+                cursors = {ch_id: 0 for ch_id in ch_map}
+                if ch_map:
+                    cur.execute(
+                        "SELECT channel_id, COALESCE(MAX(id), 0) FROM grove.messages"
+                        " WHERE channel_id = ANY(%s) GROUP BY channel_id",
+                        (list(ch_map.keys()),)
+                    )
+                    for row in cur.fetchall():
+                        cursors[row[0]] = row[1]
                 cur.execute("LISTEN grove_channel")
             except Exception:
                 time.sleep(5)
