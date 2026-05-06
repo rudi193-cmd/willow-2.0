@@ -17,6 +17,7 @@ import select
 import sys
 import time
 import fcntl
+from functools import lru_cache
 from pathlib import Path
 
 AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
@@ -125,7 +126,6 @@ def load_channels(cur):
 ALIASES = {
     "hanuman": ["@hanuman", "@hanu"],
     "vishwakarma": ["@vishwakarma", "@vish", "@karma"],
-    "Auto": ["@auto"],
     "auto": ["@auto"],
 }
 
@@ -133,11 +133,9 @@ ALIASES = {
 _BROADCAST_RE = re.compile(r"(?:^|[^a-z0-9_])@all(?:[^a-z0-9_]|$)", re.IGNORECASE)
 
 
+@lru_cache(maxsize=64)
 def _alias_regex(alias: str) -> re.Pattern:
-    """
-    Match @handles with simple token boundaries to reduce false positives.
-    `alias` should look like '@name'.
-    """
+    """Compile once per alias string; cached for the process lifetime."""
     handle = alias.lstrip("@")
     return re.compile(rf"(?:^|[^a-z0-9_])@{re.escape(handle)}(?:[^a-z0-9_]|$)", re.IGNORECASE)
 
@@ -147,7 +145,7 @@ def is_broadcast_mention(content: str) -> bool:
 
 
 def is_direct_mention(content: str, agent: str) -> bool:
-    for alias in ALIASES.get(agent, [f"@{agent}"]):
+    for alias in ALIASES.get(agent.lower(), [f"@{agent}"]):
         if _alias_regex(alias).search(content or ""):
             return True
     return False
