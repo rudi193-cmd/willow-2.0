@@ -3,17 +3,19 @@ events/session_start.py — SessionStart hook handler.
 Hardware state, willow_status, JELES registration.
 Outputs additionalContext JSON.
 """
+import concurrent.futures as _cf
 import json
 import os
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from willow.fylgja._mcp import call
 from willow.fylgja._grove import call as _grove_call
 
 AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+# Expected layout per startup.md step 3: ~/agents/{AGENT}/index/haumana_handoffs/
 INDEX_DIR = Path.home() / "agents" / AGENT / "index"
 THREAD_FILE = Path("/tmp/willow-context-thread.json")
 
@@ -210,6 +212,7 @@ def _run_silent_startup() -> dict:
         "open_flags": 0, "top_flags": [],
         "postgres": "unknown",
         "recent_traces": [], "next_bite": "",
+        "mcp_errors": [],
     }
 
     # 1. Latest handoff — timestamp boundary only
@@ -218,27 +221,36 @@ def _run_silent_startup() -> dict:
         h = call("willow_handoff_latest", {"app_id": AGENT}, timeout=8)
         result["handoff_title"] = h.get("filename", "")
         handoff_date = h.get("session_date", h.get("created", ""))
-    except Exception:
-        pass
+    except Exception as e:
+        result["mcp_errors"].append({"step": "handoff", "error": str(e)[:80]})
 
     # 2. Postgres health
     try:
         s = call("willow_status", {"app_id": AGENT}, timeout=5)
         result["postgres"] = "up" if isinstance(s.get("postgres"), dict) else "unknown"
-    except Exception:
-        pass
+    except Exception as e:
+        result["mcp_errors"].append({"step": "status", "error": str(e)[:80]})
 
-    # 3. Next bite from latest session composite
+    # 3. Next bite from latest session composite — bounded date-key lookup
     try:
-        sessions = call("store_list", {
-            "app_id": AGENT,
-            "collection": f"{AGENT}/sessions/store",
-        }, timeout=5)
-        if sessions:
-            latest = sorted(sessions, key=lambda s: s.get("date", ""), reverse=True)[0]
-            result["next_bite"] = latest.get("next_bite", "")
-    except Exception:
-        pass
+        _today = datetime.now().strftime("%Y%m%d")
+        _yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+        session = None
+        for _date in (_today, _yesterday):
+            try:
+                session = call("store_get", {
+                    "app_id": AGENT,
+                    "collection": f"{AGENT}/sessions/store",
+                    "id": f"session-{_date}",
+                }, timeout=5)
+                if session:
+                    break
+            except Exception:
+                break
+        if session:
+            result["next_bite"] = session.get("next_bite", "")
+    except Exception as e:
+        result["mcp_errors"].append({"step": "session", "error": str(e)[:80]})
 
     # 4. Open flags
     try:
@@ -249,7 +261,8 @@ def _run_silent_startup() -> dict:
         )
         result["open_flags"] = len(open_gaps)
         result["top_flags"] = [g.get("title", "")[:60] for g in open_gaps[:3]]
-    except Exception:
+    except Exception as e:
+        result["mcp_errors"].append({"step": "flags", "error": str(e)[:80]})
         try:
             flags = call("store_list", {"app_id": AGENT, "collection": f"{AGENT}/flags"}, timeout=5)
             open_flags = [f for f in (flags or []) if f.get("flag_state") == "open"]
@@ -265,8 +278,8 @@ def _run_silent_startup() -> dict:
             params["after"] = handoff_date
         traces = call("store_search", params, timeout=5)
         result["recent_traces"] = (traces or [])[:10]
-    except Exception:
-        pass
+    except Exception as e:
+        result["mcp_errors"].append({"step": "traces", "error": str(e)[:80]})
 
     if result["next_bite"]:
         result["handoff_summary"] = result["next_bite"][:200]
@@ -286,6 +299,8 @@ def _run_silent_startup() -> dict:
             "top_flags": result["top_flags"],
             "next_bite": result["next_bite"],
             "trace_count": len(result["recent_traces"]),
+            "mcp_degraded": len(result["mcp_errors"]) > 0,
+            "mcp_last_error": result["mcp_errors"][-1] if result["mcp_errors"] else None,
         }, indent=2))
         state_file.write_text(json.dumps({"prompt_count": 0}))
     except Exception:
@@ -303,17 +318,23 @@ def main():
 
     session_id = data.get("session_id", "")
     _clear_stale_thread()
-    summary, alerts = _scan_hardware()
-    summary.append(_ensure_grove_mcp())
+    grove_status = _ensure_grove_mcp()  # instant local file check
     if session_id:
         _register_jeles(session_id)
-    _send_heartbeat()
-    dispatch_count = _subscribe_dispatch()
+
+    with _cf.ThreadPoolExecutor(max_workers=4) as ex:
+        hw_future = ex.submit(_scan_hardware)
+        startup_future = ex.submit(_run_silent_startup)
+        ex.submit(_send_heartbeat)
+        dispatch_future = ex.submit(_subscribe_dispatch)
+
+    summary, alerts = hw_future.result()
+    summary.append(grove_status)
+    dispatch_count = dispatch_future.result()
     if dispatch_count:
         summary.append(f"dispatch={dispatch_count}")
 
-    # Silent startup — runs always, includes postgres health check
-    startup = _run_silent_startup()
+    startup = startup_future.result()
     summary.append(f"postgres={startup['postgres']}")
 
     lines = ["[INDEX] " + " · ".join(summary)]
@@ -327,11 +348,11 @@ def main():
         lines.append(f"last handoff: {startup['handoff_title']}")
     traces = startup.get("recent_traces", [])
     if traces:
-        trace_summaries = [t.get("summary", t.get("tool", "?"))[:60] for t in traces[:5]]
+        trace_summaries = [t.get("summary", t.get("tool", "?"))[:40] for t in traces[:3]]
         lines.append(f"recent traces ({len(traces)}): " + " · ".join(trace_summaries))
     if startup["open_flags"]:
         lines.append(f"open gaps: {startup['open_flags']}")
-        for flag in startup["top_flags"]:
+        for flag in startup["top_flags"][:2]:
             lines.append(f"  · {flag}")
     if startup.get("next_bite"):
         lines.append(f"NEXT: {startup['next_bite']}")
