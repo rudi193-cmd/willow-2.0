@@ -2066,8 +2066,8 @@ def _fetch_trusted(source_name: str, query: str = "", timeout: int = 10) -> tupl
         try:
             extra = json.loads(Path(sources_file).read_text())
             sources.update(extra)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[jeles] failed to load sources from {sources_file}: {e}", file=sys.stderr, flush=True)
 
     if source_name not in sources:
         available = ", ".join(sorted(sources.keys()))
