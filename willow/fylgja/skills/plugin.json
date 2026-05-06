@@ -1,6 +1,6 @@
 {
   "name": "fylgja",
   "version": "1.9.1",
-  "description": "Willow 1.9 behavioral skills — LLM-agnostic, script-backed",
+  "description": "Willow 1.9 behavioral skills — LLM-agnostic, script-backed. Load using-fylgja-powers first for low-token routing (powers/registry.json).",
   "skills": "."
 }

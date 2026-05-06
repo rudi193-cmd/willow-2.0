@@ -360,11 +360,19 @@ def main():
         lines.append(startup["handoff_summary"])
     grove_pid_file = Path("/tmp/grove-monitor.pid")
     grove_log_file = Path("/tmp/grove-monitor.log")
+    # The LISTEN/NOTIFY monitor is considered active when its pidfile exists.
+    # Logs are expected at /tmp/grove-monitor.log (typically via systemd redirect),
+    # but we key off pid to avoid a chicken/egg with file creation timing.
     if grove_pid_file.exists() and grove_log_file.exists():
         lines.append(
             "GROVE MONITOR: active — "
             "Monitor(description='Grove mentions', persistent=True, "
             "command='tail -n +1 -f /tmp/grove-monitor.log | grep --line-buffered \"\\[MENTION\\]\"')"
+        )
+    elif grove_pid_file.exists():
+        lines.append(
+            "GROVE MONITOR: pid active but log missing at /tmp/grove-monitor.log "
+            "(check systemd unit StandardOutput= path)"
         )
     if startup["postgres"] == "unknown":
         lines.append("BOOT DEGRADED — invoke /startup before responding to anything.")

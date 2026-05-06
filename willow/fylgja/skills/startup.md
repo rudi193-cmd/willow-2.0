@@ -30,7 +30,8 @@ atom queries, and wrote `~/.willow/session_anchor.json`. Do not re-run those cal
 5. **Check dispatch** — if `/tmp/willow-dispatch-inbox-{AGENT}.json` exists and is
    non-empty, read it and surface the pending tasks. Delete it after reading.
 
-6. **Launch Grove monitor** — only if `/tmp/grove-monitor.log` exists:
+6. **Launch Grove monitor** — only if `/tmp/grove-monitor.pid` exists (the LISTEN/NOTIFY daemon is active).
+   Requires `/tmp/grove-monitor.log` for tailing mentions:
    ```
    Monitor(
      description="Grove mentions",
