@@ -18,6 +18,8 @@ Fylgja replaces the ad-hoc collection of hook scripts currently scattered across
 
 ## Package Location
 
+**Fylgja-powers** (low-token router): `willow/fylgja/powers/` + `skills/using-fylgja-powers.md`. All IDE/CLI surface paths are listed in `willow/fylgja/powers/SURFACES.md`.
+
 ```
 willow-1.9/
   willow/

@@ -6,13 +6,103 @@ b17: GRVLS  ΔΣ=42
 Launched by SessionStart hook. Writes one line per new message to stdout
 (redirected to /tmp/grove-monitor.log). Automatically discovers new channels.
 Claude Code tails this log via Monitor(tail -f /tmp/grove-monitor.log).
+
+Mentions logged as [MENTION:BROADCAST] for @all; [MENTION:DIRECT:<identity>] for
+@handles tied to WILLOW_AGENT_NAME, GROVE_MENTION_WATCH extras, or (by default)
+Auto when primary agent is fleet (not Auto).
 """
 import os
+import re
 import select
 import sys
 import time
+import fcntl
+from pathlib import Path
 
 AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+_LOCK_PATH = Path(os.environ.get("GROVE_MONITOR_LOCK", "/tmp/grove-monitor.lock"))
+_PID_PATH = Path(os.environ.get("GROVE_MONITOR_PID", "/tmp/grove-monitor.pid"))
+
+# ── Mention watch list ────────────────────────────────────────────────────────
+# Primary identity: WILLOW_AGENT_NAME (@handles via ALIASES + default @AGENT).
+# Optional GROVE_MENTION_WATCH=comma,separated extras (e.g. Auto,heimdallr).
+# Default when GROVE_MENTION_WATCH unset: also watch Auto if primary is not Auto
+# (“Auto + @all broadcasts” fleet layout without systemd/env churn).
+
+
+def _extra_watch_targets() -> list[str]:
+    raw = os.environ.get("GROVE_MENTION_WATCH")
+    if raw is None:
+        if AGENT.strip().lower() != "auto":
+            return ["Auto"]
+        return []
+    return [x.strip() for x in raw.split(",") if x.strip()]
+
+
+def _watch_identities_ordered() -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for n in [AGENT.strip(), *_extra_watch_targets()]:
+        if not n:
+            continue
+        key = n.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(n)
+    return out
+
+
+def direct_mention_identity(content: str) -> str | None:
+    """Which watched identity (if any) is @mentioned in content."""
+    for name in _watch_identities_ordered():
+        if is_direct_mention(content, name):
+            return name
+    return None
+
+
+class _PidLock:
+    """Best-effort single-instance guard plus pidfile for tooling discovery."""
+
+    def __init__(self, lock_path: Path, pid_path: Path):
+        self.lock_path = lock_path
+        self.pid_path = pid_path
+        self._fh = None
+
+    def __enter__(self):
+        try:
+            self.lock_path.parent.mkdir(parents=True, exist_ok=True)
+            self.pid_path.parent.mkdir(parents=True, exist_ok=True)
+            self._fh = open(self.lock_path, "a+", encoding="utf-8")
+            fcntl.flock(self._fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self._fh.seek(0)
+            self._fh.truncate()
+            self._fh.write(f"{os.getpid()}\n")
+            self._fh.flush()
+            self.pid_path.write_text(str(os.getpid()) + "\n")
+        except BlockingIOError:
+            print("[grove-listen] already running — exiting", flush=True)
+            raise SystemExit(0)
+        except Exception:
+            # If locking fails unexpectedly, proceed — better to have monitoring than silence.
+            try:
+                self.pid_path.write_text(str(os.getpid()) + "\n")
+            except Exception:
+                pass
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            if self._fh:
+                self._fh.close()
+        except Exception:
+            pass
+        try:
+            if self.pid_path.exists() and self.pid_path.read_text().strip() == str(os.getpid()):
+                self.pid_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return False
 
 
 def connect():
@@ -35,18 +125,40 @@ def load_channels(cur):
 ALIASES = {
     "hanuman": ["@hanuman", "@hanu"],
     "vishwakarma": ["@vishwakarma", "@vish", "@karma"],
+    "Auto": ["@auto"],
+    "auto": ["@auto"],
 }
 
 
-def is_mention(content: str, agent: str) -> bool:
-    cl = content.lower()
+_BROADCAST_RE = re.compile(r"(?:^|[^a-z0-9_])@all(?:[^a-z0-9_]|$)", re.IGNORECASE)
+
+
+def _alias_regex(alias: str) -> re.Pattern:
+    """
+    Match @handles with simple token boundaries to reduce false positives.
+    `alias` should look like '@name'.
+    """
+    handle = alias.lstrip("@")
+    return re.compile(rf"(?:^|[^a-z0-9_])@{re.escape(handle)}(?:[^a-z0-9_]|$)", re.IGNORECASE)
+
+
+def is_broadcast_mention(content: str) -> bool:
+    return _BROADCAST_RE.search(content or "") is not None
+
+
+def is_direct_mention(content: str, agent: str) -> bool:
     for alias in ALIASES.get(agent, [f"@{agent}"]):
-        if alias in cl:
+        if _alias_regex(alias).search(content or ""):
             return True
     return False
 
 
 def main():
+    with _PidLock(_LOCK_PATH, _PID_PATH):
+        _run()
+
+
+def _run():
     try:
         conn = connect()
         cur = conn.cursor()
@@ -115,12 +227,15 @@ def main():
                     for row in cur.fetchall():
                         cursors[ch_id] = row[0]
                         msg_id, sender, content = row[0], row[1], str(row[2])
-                        if is_mention(content, AGENT) and sender.lower() != AGENT.lower():
-                            tag = next(
-                                (a for a in ALIASES.get(AGENT, [f"@{AGENT}"])
-                                 if a in content.lower()),
-                                f"@{AGENT}",
-                            )
+                        broadcast = is_broadcast_mention(content)
+                        direct_id = None if broadcast else direct_mention_identity(content)
+                        if broadcast:
+                            tag = "BROADCAST"
+                        elif direct_id and sender.lower() != direct_id.lower():
+                            tag = f"DIRECT:{direct_id}"
+                        else:
+                            tag = ""
+                        if tag:
                             preview = content.strip()[:80]
                             line = f"[MENTION:{tag}] #{ch_name} id={msg_id} {sender}"
                             if preview:
