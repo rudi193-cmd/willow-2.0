@@ -6,6 +6,7 @@ Heavy pipeline (handoff writing) lives in events/shutdown.py — run via /shutdo
 import json
 import os
 import sys
+import time as _time
 from collections import Counter
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -49,9 +50,11 @@ def _compute_affect(session_id: str) -> str:
     if call is None:
         return "neutral"
     try:
-        traces = call("store_list", {
+        traces = call("store_search", {
             "app_id": _AGENT,
             "collection": "hanuman/turns/store",
+            "query": "",
+            "limit": 50,
         }, timeout=5) or []
     except Exception:
         return "neutral"
@@ -193,6 +196,8 @@ def _write_session_composite(session_id: str) -> None:
 
 
 def main():
+    _t0 = _time.monotonic()
+
     try:
         data = json.loads(sys.stdin.read()) if not sys.stdin.isatty() else {}
     except Exception:
@@ -226,9 +231,11 @@ def main():
         affect = _compute_affect(session_id)
         if affect == "friction" and call is not None:
             try:
-                all_traces = call("store_list", {
+                all_traces = call("store_search", {
                     "app_id": _AGENT,
                     "collection": "hanuman/turns/store",
+                    "query": "",
+                    "limit": 50,
                 }, timeout=5) or []
                 session_traces = [t for t in all_traces if t.get("session_id") == session_id]
             except Exception:
@@ -240,6 +247,21 @@ def main():
     # Reflection atom (affect-gated)
     try:
         _write_reflection_atom(session_id, affect, session_traces)
+    except Exception:
+        pass
+
+    # Hook timing log
+    _dur_ms = int((_time.monotonic() - _t0) * 1000)
+    try:
+        _log_dir = Path.home() / ".willow" / "logs"
+        _log_dir.mkdir(parents=True, exist_ok=True)
+        with open(_log_dir / "hook_timing.jsonl", "a") as _f:
+            import json as _json
+            _f.write(_json.dumps({
+                "hook": "stop",
+                "duration_ms": _dur_ms,
+                "ts": datetime.now(timezone.utc).isoformat(),
+            }) + "\n")
     except Exception:
         pass
 

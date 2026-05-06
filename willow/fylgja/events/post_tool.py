@@ -3,10 +3,13 @@ events/post_tool.py — PostToolUse hook handler.
 ToolSearch completion directive + mid-session trace atom writer.
 """
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+_time = time  # alias for timing wrapper
 
 try:
     from willow.fylgja._mcp import call
@@ -120,6 +123,8 @@ def _write_trace(session_id: str, tool_name: str, tool_input: dict) -> None:
 
 
 def main():
+    _t0 = _time.monotonic()
+
     try:
         data = json.load(sys.stdin)
         tool_name = data.get("tool_name", "")
@@ -137,6 +142,21 @@ def main():
 
     if tool_name in _SIGNIFICANT:
         _write_trace(session_id, tool_name, tool_input)
+
+    # Hook timing log
+    _dur_ms = int((_time.monotonic() - _t0) * 1000)
+    try:
+        _log_dir = Path.home() / ".willow" / "logs"
+        _log_dir.mkdir(parents=True, exist_ok=True)
+        with open(_log_dir / "hook_timing.jsonl", "a") as _f:
+            import json as _json
+            _f.write(_json.dumps({
+                "hook": "post_tool",
+                "duration_ms": _dur_ms,
+                "ts": datetime.now(timezone.utc).isoformat(),
+            }) + "\n")
+    except Exception:
+        pass
 
     sys.exit(0)
 
