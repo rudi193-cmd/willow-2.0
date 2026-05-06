@@ -4,6 +4,7 @@ from willow.fylgja.events.pre_tool import (
     check_bash_block,
     check_agent_block,
     check_kb_first,
+    check_channel_enforce,
 )
 
 
@@ -98,3 +99,70 @@ def test_safety_gate_allows_git_bash():
     if out.strip():
         data = json.loads(out)
         assert data.get("decision") != "block"
+
+
+# ── Channel enforcement hooks ─────────────────────────────────────────────────
+
+def test_channel_enforce_warns_on_fleet_over_400_chars():
+    msg = "x" * 450
+    warn = check_channel_enforce(
+        "mcp__grove__grove_send_message",
+        {"channel_name": "fleet", "content": msg}
+    )
+    assert warn is not None
+    data = json.loads(warn)
+    assert data["decision"] == "warn"
+    assert "400" in data["reason"]
+    assert "#fleet" in data["reason"]
+
+
+def test_channel_enforce_allows_fleet_under_400_chars():
+    msg = "x" * 350
+    warn = check_channel_enforce(
+        "mcp__grove__grove_send_message",
+        {"channel_name": "fleet", "content": msg}
+    )
+    assert warn is None
+
+
+def test_channel_enforce_allows_other_channels_over_400_chars():
+    msg = "x" * 500
+    warn = check_channel_enforce(
+        "mcp__grove__grove_send_message",
+        {"channel_name": "general", "content": msg}
+    )
+    assert warn is None
+
+
+def test_channel_enforce_ignores_non_grove_tools():
+    msg = "x" * 500
+    warn = check_channel_enforce(
+        "store_put",
+        {"channel_name": "fleet", "content": msg}
+    )
+    assert warn is None
+
+
+def test_channel_enforce_via_pre_tool_integration():
+    out = _run_pre_tool({
+        "tool_name": "mcp__grove__grove_send_message",
+        "tool_input": {
+            "channel_name": "fleet",
+            "content": "x" * 450
+        },
+        "session_id": "abc123",
+    })
+    assert out.strip(), "Expected warn response for >400 char #fleet message"
+    data = json.loads(out)
+    assert data["decision"] == "warn"
+
+
+def test_channel_enforce_grove_alias():
+    msg = "x" * 450
+    warn = check_channel_enforce(
+        "mcp__claude_ai_Grove__grove_send_message",  # alternate tool name
+        {"channel_name": "fleet", "content": msg}
+    )
+    assert warn is not None
+    data = json.loads(warn)
+    assert data["decision"] == "warn"
