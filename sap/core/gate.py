@@ -24,6 +24,10 @@ import subprocess
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None
 
 SAFE_ROOT = Path(os.environ.get("WILLOW_SAFE_ROOT", "/media/willow/SAFE/Applications"))
 PROFESSOR_ROOT = SAFE_ROOT / "utety-chat" / "professors"
@@ -406,6 +410,84 @@ def permitted(app_id: str, tool_name: str) -> bool:
         return False
 
     return True
+
+
+def _parse_app_id_from_collection(collection: str) -> Optional[str]:
+    """
+    Extract app_id from a collection path.
+
+    Pattern: app-namespace/...
+    Example: story-timeline/atoms/ → story-timeline
+    Returns None if unable to parse.
+    """
+    if not collection or "/" not in collection:
+        return None
+    parts = collection.split("/", 1)
+    app_id = parts[0].strip()
+    return app_id if app_id and _APP_ID_RE.match(app_id) else None
+
+
+def authorized_cross_app(requesting_app_id: str, target_collection: str, access: str = "read") -> bool:
+    """
+    Check if requesting_app_id has an approved connection to target_collection.
+
+    1. If target app is the same as requesting app → allow (own namespace)
+    2. Query sap.app_connections for a matching row
+    3. Verify scope_path_matches(target_collection, scope_path)
+
+    Returns True if authorized, False otherwise.
+    Logs all denials. Handles Postgres unavailability gracefully (deny).
+    """
+    if psycopg2 is None:
+        logger.error("authorized_cross_app(): psycopg2 not available")
+        return False
+
+    try:
+        requesting_app_id = _validate_app_id(requesting_app_id)
+    except ValueError as e:
+        logger.warning("authorized_cross_app(): invalid requesting_app_id: %s", e)
+        return False
+
+    target_app_id = _parse_app_id_from_collection(target_collection)
+    if target_app_id is None:
+        logger.warning("authorized_cross_app(): unable to parse target_app_id from %s", target_collection)
+        return False
+
+    # Own namespace — always allowed
+    if target_app_id == requesting_app_id:
+        return True
+
+    try:
+        user = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", "sean-campbell"))
+        conn = psycopg2.connect(dbname="willow_19", user=user)
+        cur = conn.cursor()
+
+        # Query for a matching connection with scope path matching
+        query = """
+            SELECT id FROM sap.app_connections
+            WHERE from_app_id = %s
+              AND to_app_id = %s
+              AND access = %s
+              AND sap.scope_path_matches(%s, scope_path)
+        """
+        cur.execute(query, (requesting_app_id, target_app_id, access, target_collection))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if row is not None:
+            logger.info("authorized_cross_app: %s → %s granted", requesting_app_id, target_app_id)
+            return True
+
+        logger.warning(
+            "authorized_cross_app: %s → %s denied (no matching connection)",
+            requesting_app_id, target_app_id
+        )
+        return False
+
+    except Exception as e:
+        logger.error("authorized_cross_app(): database error: %s", e)
+        return False
 
 
 def list_authorized() -> list[str]:
