@@ -43,6 +43,9 @@ export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
 # Python path — willow-1.9 first, no legacy paths
 export PYTHONPATH="${WILLOW_ROOT}:${PYTHONPATH:-}"
 
+# Jeles trusted sources registry — 54 sources from Loki audit (atom 44A246FD)
+export JELES_SOURCES_FILE="${HOME}/Desktop/sources.json"
+
 cmd="${1:-start}"
 
 case "$cmd" in
