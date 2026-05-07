@@ -1,6 +1,6 @@
 # PR Status Report
 
-**Generated:** 2026-04-30T12:00:00Z
+**Generated:** 2026-05-07T12:04:18Z
 
 ---
 
@@ -9,7 +9,7 @@
 > The GitHub MCP server in this session is scoped exclusively to
 > `rudi193-cmd/willow-1.9`. No `gh` CLI is available. All three requested PRs
 > are in repositories outside that scope and return ACCESS_DENIED on every
-> fetch attempt. Status is unchanged from the 2026-04-29 run.
+> fetch attempt.
 
 ---
 
@@ -21,7 +21,7 @@
 | **CI checks** | UNKNOWN |
 | **Reviews** | UNKNOWN |
 | **Last commit SHA** | UNKNOWN |
-| **Fetch error** | MCP restricted to rudi193-cmd/willow-1.9 |
+| **Fetch error** | `Access denied: repository "modelcontextprotocol/python-sdk" is not configured for this session` |
 
 ---
 
@@ -33,7 +33,7 @@
 | **CI checks** | UNKNOWN |
 | **Reviews** | UNKNOWN |
 | **Last commit SHA** | UNKNOWN |
-| **Fetch error** | MCP restricted to rudi193-cmd/willow-1.9 |
+| **Fetch error** | `Access denied: repository "punkpeye/awesome-mcp-servers" is not configured for this session` |
 
 ---
 
@@ -45,7 +45,7 @@
 | **CI checks** | UNKNOWN |
 | **Reviews** | UNKNOWN |
 | **Last commit SHA** | UNKNOWN |
-| **Fetch error** | MCP restricted to rudi193-cmd/willow-1.9; willow-1.5 is a separate repository |
+| **Fetch error** | `Access denied: repository "rudi193-cmd/willow-1.5" is not configured for this session` |
 
 ---
 
@@ -53,6 +53,6 @@
 
 To enable cross-repo PR tracking, configure one of:
 
-1. `GITHUB_TOKEN` / `GH_TOKEN` env var with `repo:read` scope, **or**
-2. Expand MCP allow-list to include the three repos above, **or**
+1. `GITHUB_TOKEN` / `GH_TOKEN` env var with `repo:read` scope and expand MCP allow-list, **or**
+2. Expand MCP allow-list in session config to include the three repos above, **or**
 3. Install and authenticate `gh` CLI (`gh auth login`).
