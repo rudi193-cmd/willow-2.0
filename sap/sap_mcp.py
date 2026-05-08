@@ -161,12 +161,9 @@ def _startup_backfill_check() -> None:
             """)
             total_null = _cur.fetchone()[0]
         if total_null > 0:
-            _pb.submit_task(
-                "willow_embed_backfill",
-                submitted_by="sap_startup",
-                agent="kart",
-            )
-            print(f"[startup] {total_null} rows with NULL embedding — willow_embed_backfill queued", file=sys.stderr)
+            # handler not yet built — skip Kart submission until backfill is ready
+            # _pb.submit_task("willow_embed_backfill", submitted_by="sap_startup", agent="kart")
+            print(f"[startup] {total_null} rows with NULL embedding — handler not built, skipping Kart submission", file=sys.stderr)
     except Exception as _e:
         print(f"[startup] backfill check failed: {_e}", file=sys.stderr)
 
