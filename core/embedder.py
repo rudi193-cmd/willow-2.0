@@ -15,11 +15,15 @@ _CJK_RE = re.compile(r"[　-鿿豈-﫿︰-﹏]")
 
 
 def _truncate(text: str) -> str:
-    """Apply tighter char limit for CJK-heavy text to stay within token context."""
-    sample = text[:200]
-    if len(sample) > 0 and len(_CJK_RE.findall(sample)) / len(sample) > 0.25:
+    """Apply tighter char limit for CJK-heavy text to stay within token context.
+
+    Checks the full candidate slice (not just the prefix) — YAML frontmatter
+    at the top would otherwise mask a Chinese body and defeat the threshold.
+    """
+    candidate = text[:MAX_CHARS]
+    if len(candidate) > 0 and len(_CJK_RE.findall(candidate)) / len(candidate) > 0.10:
         return text[:MAX_CHARS_CJK]
-    return text[:MAX_CHARS]
+    return candidate
 
 
 def embed(text: str) -> list[float] | None:
