@@ -235,7 +235,39 @@ def _run_build_continue() -> None:
     )
 
 
+def _check_identity() -> None:
+    """Warn if the running agent doesn't match the anchor written at session start."""
+    if not is_first_turn():
+        return
+    try:
+        if not ANCHOR_CACHE.exists():
+            return
+        anchor = json.loads(ANCHOR_CACHE.read_text())
+        anchor_agent = anchor.get("agent", "")
+        if anchor_agent and anchor_agent != AGENT:
+            print(
+                f"[IDENTITY MISMATCH] anchor={anchor_agent} running={AGENT}\n"
+                f"  CWD: {Path.cwd()}\n"
+                f"  This session's CLAUDE.md may not match the anchor written at boot."
+            )
+    except Exception:
+        pass
+
+
+def _is_isolated_directory() -> bool:
+    """Return True if CWD is a sandbox/isolated directory — skip all fleet hooks."""
+    mcp = Path.cwd() / ".mcp.json"
+    try:
+        data = json.loads(mcp.read_text())
+        return data.get("mcpServers") == {}
+    except Exception:
+        return False
+
+
 def main():
+    if _is_isolated_directory():
+        sys.exit(0)
+
     try:
         raw = sys.stdin.read()
         data = json.loads(raw) if raw.strip() else {}
@@ -245,6 +277,7 @@ def main():
     session_id = data.get("session_id", "unknown")
     prompt = data.get("prompt", "")
 
+    _check_identity()
     _run_source_ring(session_id)
     _run_route(prompt, session_id)
     _run_anchor()
