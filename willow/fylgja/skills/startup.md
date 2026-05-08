@@ -6,11 +6,11 @@ description: Willow 1.9 session boot — read anchor, surface state, launch Grov
 # /startup — Willow 1.9 Boot
 
 The SessionStart hook already ran `willow_status`, `willow_handoff_latest`, flag scan,
-atom queries, and wrote `~/.willow/session_anchor.json`. Do not re-run those calls.
+atom queries, and wrote `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. Do not re-run those calls.
 
 ## Sequence
 
-1. **Read anchor** — `Read ~/.willow/session_anchor.json`. This is the authoritative boot
+1. **Read anchor** — `Read ~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. This is the authoritative boot
    state. If the file is missing or `written_at` is more than 10 minutes old, then and
    only then call `willow_status` + `willow_handoff_latest` in parallel to rebuild it.
 

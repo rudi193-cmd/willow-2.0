@@ -17,8 +17,8 @@ from willow.fylgja._state import (
 )
 
 ANCHOR_INTERVAL = 25
-ANCHOR_CACHE = Path.home() / ".willow" / "session_anchor.json"
-STATE_FILE = Path.home() / ".willow" / "anchor_state.json"
+ANCHOR_CACHE = Path.home() / ".willow" / f"session_anchor_{AGENT}.json"
+STATE_FILE = Path.home() / ".willow" / f"anchor_state_{AGENT}.json"
 TURNS_FILE = Path.home() / "agents" / AGENT / "cache" / "turns.txt"
 ACTIVE_BUILD_FILE = Path("/tmp/hanuman-active-build.json")
 DISPATCH_INBOX = Path(f"/tmp/willow-dispatch-inbox-{AGENT}.json")
@@ -248,7 +248,7 @@ def _check_identity() -> None:
             print(
                 f"[IDENTITY MISMATCH] anchor={anchor_agent} running={AGENT}\n"
                 f"  CWD: {Path.cwd()}\n"
-                f"  Re-run /startup to reset the anchor, or delete ~/.willow/session_anchor.json."
+                f"  Re-run /startup to reset the anchor, or delete ~/.willow/session_anchor_{AGENT}.json."
             )
             sys.exit(1)
     except Exception:

@@ -247,8 +247,8 @@ def _run_silent_startup() -> dict:
     Removed: fork_create, skill_load, knowledge_search, atoms/store, skills/store.
     """
     anchor_dir = Path.home() / ".willow"
-    anchor_file = anchor_dir / "session_anchor.json"
-    state_file = anchor_dir / "anchor_state.json"
+    anchor_file = anchor_dir / f"session_anchor_{AGENT}.json"
+    state_file = anchor_dir / f"anchor_state_{AGENT}.json"
 
     result = {
         "handoff_title": "", "handoff_summary": "",
@@ -352,7 +352,58 @@ def _run_silent_startup() -> dict:
     return result
 
 
+def _query_preference_atoms(atoms: list) -> list:
+    """
+    Filter atoms for preference-loaded context.
+    Excludes traces and invalid atoms. Limits to 10. Orders worst-first.
+    """
+    filtered = [
+        a for a in atoms
+        if a.get("type") != "trace" and not a.get("invalid_at")
+    ]
+    scored = sorted(
+        filtered,
+        key=lambda a: (a.get("importance", 0), a.get("weight", 0), a.get("stability", 0))
+    )
+    return scored[:10]
+
+
+def _query_world_state_atoms(atoms: list) -> list:
+    """
+    Filter atoms for world state context.
+    Include only insight and chunk types. Exclude invalid atoms.
+    """
+    filtered = [
+        a for a in atoms
+        if a.get("type") in ("insight", "chunk") and not a.get("invalid_at")
+    ]
+    return filtered
+
+
+def _position_order(atoms: list) -> list:
+    """
+    Order atoms worst-first (lowest importance) to best-last (highest importance).
+    """
+    return sorted(
+        atoms,
+        key=lambda a: (a.get("importance", 0), a.get("weight", 0), a.get("stability", 0))
+    )
+
+
+def _is_isolated_directory() -> bool:
+    """Return True if CWD is a sandbox/isolated directory — skip all fleet hooks."""
+    mcp = Path.cwd() / ".mcp.json"
+    try:
+        data = json.loads(mcp.read_text())
+        return data.get("mcpServers") == {}
+    except Exception:
+        return False
+
+
 def main():
+    if _is_isolated_directory():
+        sys.exit(0)
+
     try:
         raw = sys.stdin.read()
         data = json.loads(raw) if raw.strip() else {}
