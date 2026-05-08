@@ -73,6 +73,7 @@ def _backfill_table(pg: PgBridge, store: WillowStore, table: str, text_expr: str
     No connection is held open during Ollama calls.
     """
     processed = 0
+    skipped_ids: set = set()  # avoid re-querying atoms that failed this run
     where = "embedding IS NULL"
     if extra_filter:
         where += f" AND {extra_filter}"
@@ -81,9 +82,10 @@ def _backfill_table(pg: PgBridge, store: WillowStore, table: str, text_expr: str
         # Phase 1: fetch IDs only, commit immediately to release the read tx.
         pg._ensure_conn()
         with pg.conn.cursor() as cur:
+            skip_clause = f" AND id != ALL(%s)" if skipped_ids else ""
             cur.execute(
-                f"SELECT id FROM {table} WHERE {where} ORDER BY created_at DESC LIMIT %s",
-                (BATCH_SIZE,),
+                f"SELECT id FROM {table} WHERE {where}{skip_clause} ORDER BY created_at DESC LIMIT %s",
+                ([list(skipped_ids), BATCH_SIZE] if skipped_ids else [BATCH_SIZE]),
             )
             ids = [r[0] for r in cur.fetchall()]
         pg.conn.commit()
@@ -121,6 +123,7 @@ def _backfill_table(pg: PgBridge, store: WillowStore, table: str, text_expr: str
                 time.sleep(5)
             if vec is None:
                 print(f"  [{table}] {row_id}: embed failed after 3 attempts — skipping", flush=True)
+                skipped_ids.add(row_id)
                 processed += 1  # count as processed so progress doesn't stall
                 batch_done += 1
                 continue
