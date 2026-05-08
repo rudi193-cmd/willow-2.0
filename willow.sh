@@ -40,6 +40,10 @@ export WILLOW_PG_DB="${WILLOW_PG_DB:-willow_19}"
 export WILLOW_PG_USER="${WILLOW_PG_USER:-$(whoami)}"
 export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
 
+# ── LLM provider keys — uncomment whichever is active ────────────────────────
+# export ANTHROPIC_API_KEY=""
+# export GROQ_API_KEY=""
+
 # Python path — willow-1.9 first, no legacy paths
 export PYTHONPATH="${WILLOW_ROOT}:${PYTHONPATH:-}"
 
