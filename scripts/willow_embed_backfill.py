@@ -25,7 +25,7 @@ from core.willow_store import WillowStore
 
 BATCH_SIZE = 100
 SLEEP_S = 0.05
-MAX_EMBED_CHARS = 6000  # nomic-embed-text context limit (~8192 tokens)
+MAX_EMBED_CHARS = 4000  # conservative — progress-bar/tokenizer content tokenizes at 0.5 chars/token
 PROGRESS_COLLECTION = "hanuman/tasks"
 PROGRESS_ID = "embed_backfill_progress"
 

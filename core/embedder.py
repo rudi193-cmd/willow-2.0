@@ -8,21 +8,30 @@ MODEL = "nomic-embed-text"
 TIMEOUT_S = 60
 _RETRIES = 3
 _RETRY_DELAY_S = 5
-MAX_CHARS = 6_000      # safe for ASCII/Latin (~1500 tokens at 4 chars/token)
+MAX_CHARS = 4_000      # conservative limit — progress-bar/tokenizer content can hit 0.5 chars/token
 MAX_CHARS_CJK = 1_500  # safe for CJK (~1500 tokens at 1 char/token)
+MAX_BYTES = 16_000     # nomic-embed-text hard byte limit (conservative)
 
-_CJK_RE = re.compile(r"[　-鿿豈-﫿︰-﹏]")
+_CJK_RE = re.compile(
+    "[　-鿿豈-﫿︰-﹏]"
+)
 
 
 def _truncate(text: str) -> str:
-    """Apply tighter char limit for CJK-heavy text to stay within token context.
+    """Apply tighter char limit for high-Unicode text to stay within token context.
 
-    Checks the full candidate slice (not just the prefix) — YAML frontmatter
-    at the top would otherwise mask a Chinese body and defeat the threshold.
+    CJK and box-drawing/progress-bar Unicode are 3 bytes each in UTF-8.
+    6000 chars of those = 18KB, which exceeds nomic-embed-text's context.
+    Two guards:
+      1. CJK density > 10% -> apply CJK char limit
+      2. Encoded byte length > MAX_BYTES -> truncate by bytes
     """
     candidate = text[:MAX_CHARS]
     if len(candidate) > 0 and len(_CJK_RE.findall(candidate)) / len(candidate) > 0.10:
         return text[:MAX_CHARS_CJK]
+    encoded = candidate.encode("utf-8")
+    if len(encoded) > MAX_BYTES:
+        return encoded[:MAX_BYTES].decode("utf-8", errors="ignore")
     return candidate
 
 
