@@ -28,6 +28,11 @@ try:
 except ImportError:
     _routing_oracle = None
 
+try:
+    from core.notice import notice as _notice
+except ImportError:
+    _notice = None
+
 TRUST_LEVELS = {0: "OBSERVER", 1: "WORKER", 2: "OPERATOR", 3: "ENGINEER", 4: "ARCHITECT"}
 PERMISSION_LEVELS = {
     "local_llm": 1, "cloud_llm_free": 1, "conversation_storage": 1,
@@ -150,6 +155,17 @@ def _run_feedback(prompt: str, session_id: str) -> None:
             }, timeout=5)
         except Exception:
             pass
+
+
+def _run_notice(prompt: str, session_id: str) -> str:
+    """Scan prompt for PII. Returns redacted text (or original if no matches/error)."""
+    if not _notice or not prompt:
+        return prompt
+    try:
+        result = _notice(prompt, surface="prompt", session_id=session_id)
+        return result.redacted
+    except Exception:
+        return prompt
 
 
 def _log_turn(prompt: str, session_id: str) -> None:
@@ -284,6 +300,7 @@ def main():
     _run_anchor()
     _inject_dispatch_inbox()
     _run_feedback(prompt, session_id)
+    prompt = _run_notice(prompt, session_id)
     _log_turn(prompt, session_id)
     _run_build_continue()
 
