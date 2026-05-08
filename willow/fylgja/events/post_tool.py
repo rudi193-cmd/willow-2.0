@@ -25,6 +25,7 @@ _SIGNIFICANT = {
     "mcp__willow__store_add_edge",
     "mcp__willow__willow_knowledge_ingest",
     "mcp__willow__willow_knowledge_at",
+    "mcp__willow__willow_task_submit",
 }
 
 _AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
@@ -41,6 +42,8 @@ def _target_from_input(tool_name: str, tool_input: dict) -> str:
         return tool_input.get("title", "")[:80]
     if tool_name == "mcp__willow__willow_knowledge_at":
         return tool_input.get("at_time", tool_input.get("query", ""))[:80]
+    if tool_name == "mcp__willow__willow_task_submit":
+        return tool_input.get("task", tool_input.get("command", ""))[:80]
     return ""
 
 
@@ -53,6 +56,7 @@ def _summary_from(tool_name: str, target: str) -> str:
         "mcp__willow__store_add_edge": "added edge",
         "mcp__willow__willow_knowledge_ingest": "ingested KB atom",
         "mcp__willow__willow_knowledge_at": "replayed KB at",
+        "mcp__willow__willow_task_submit": "submitted task",
     }
     verb = verbs.get(tool_name, tool_name)
     return f"{verb} {target}".strip()
@@ -91,6 +95,34 @@ def _record_rate(key: str) -> None:
         pass
 
 
+def _run_ledger_write(tool_name: str, target: str, session_id: str) -> None:
+    """Best-effort Run Ledger event. Skipped silently if no active run exists."""
+    try:
+        import psycopg2
+        db = os.environ.get("WILLOW_PG_DB", "willow_19")
+        user = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
+        conn = psycopg2.connect(dbname=db, user=user)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM willow.runs WHERE initiator = %s AND status = 'running'"
+                " ORDER BY started_at DESC LIMIT 1",
+                (_AGENT,),
+            )
+            row = cur.fetchone()
+            if not row:
+                return
+            run_id = row[0]
+            cur.execute(
+                "INSERT INTO willow.run_events (run_id, agent, event_type, ref) VALUES (%s, %s, %s, %s)",
+                (run_id, _AGENT, "tool_use",
+                 json.dumps({"tool": tool_name, "target": target, "session_id": session_id[:8]})),
+            )
+        conn.close()
+    except Exception:
+        pass
+
+
 def _write_trace(session_id: str, tool_name: str, tool_input: dict) -> None:
     try:
         target = _target_from_input(tool_name, tool_input)
@@ -113,6 +145,7 @@ def _write_trace(session_id: str, tool_name: str, tool_input: dict) -> None:
             "collection": f"{_AGENT}/turns/store",
             "record": record,
         }, timeout=3)
+        _run_ledger_write(tool_name, target, session_id or "")
         _record_rate(key)
     except Exception as e:
         try:
@@ -122,7 +155,20 @@ def _write_trace(session_id: str, tool_name: str, tool_input: dict) -> None:
             pass
 
 
+def _is_isolated_directory() -> bool:
+    """Return True if CWD is a sandbox/isolated directory — skip all fleet hooks."""
+    mcp = Path.cwd() / ".mcp.json"
+    try:
+        data = __import__("json").loads(mcp.read_text())
+        return data.get("mcpServers") == {}
+    except Exception:
+        return False
+
+
 def main():
+    if _is_isolated_directory():
+        import sys as _sys; _sys.exit(0)
+
     _t0 = _time.monotonic()
 
     try:
