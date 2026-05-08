@@ -329,6 +329,9 @@ def _run_silent_startup() -> dict:
     elif result["top_flags"]:
         result["handoff_summary"] = "Open: " + "; ".join(result["top_flags"])
 
+    # Open Run Ledger row — enables PMEM1 trace writes for this session.
+    run_id = _open_run()
+
     # Write anchor cache
     try:
         anchor_dir.mkdir(parents=True, exist_ok=True)
@@ -344,12 +347,40 @@ def _run_silent_startup() -> dict:
             "trace_count": len(result["recent_traces"]),
             "mcp_degraded": len(result["mcp_errors"]) > 0,
             "mcp_last_error": result["mcp_errors"][-1] if result["mcp_errors"] else None,
+            "run_id": run_id,
         }, indent=2))
         state_file.write_text(json.dumps({"prompt_count": 0}))
     except Exception:
         pass
 
     return result
+
+
+def _open_run() -> str | None:
+    """Open a Run Ledger row for this session. Returns run_id or None on failure."""
+    try:
+        import psycopg2
+        db = os.environ.get("WILLOW_PG_DB", "willow_19")
+        user = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
+        conn = psycopg2.connect(dbname=db, user=user)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            # Close any stale running rows for this agent first (crash recovery)
+            cur.execute(
+                "UPDATE willow.runs SET status='abandoned', ended_at=now()"
+                " WHERE initiator=%s AND status='running'",
+                (AGENT,),
+            )
+            cur.execute(
+                "INSERT INTO willow.runs (initiator, purpose, status)"
+                " VALUES (%s, %s, 'running') RETURNING id",
+                (AGENT, f"{AGENT} session"),
+            )
+            run_id = str(cur.fetchone()[0])
+        conn.close()
+        return run_id
+    except Exception:
+        return None
 
 
 def _query_preference_atoms(atoms: list) -> list:
