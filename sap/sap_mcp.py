@@ -161,9 +161,15 @@ def _startup_backfill_check() -> None:
             """)
             total_null = _cur.fetchone()[0]
         if total_null > 0:
-            # handler not yet built — skip Kart submission until backfill is ready
-            # _pb.submit_task("willow_embed_backfill", submitted_by="sap_startup", agent="kart")
-            print(f"[startup] {total_null} rows with NULL embedding — handler not built, skipping Kart submission", file=sys.stderr)
+            # Guard: only submit if no backfill task is already pending/running
+            with _pb.conn.cursor() as _cur:
+                _cur.execute("SELECT 1 FROM public.tasks WHERE task LIKE '%willow_embed_backfill%' AND status IN ('pending','running') LIMIT 1")
+                _existing = _cur.fetchone()
+            if not _existing:
+                _pb.submit_task("python3 /home/sean-campbell/github/willow-1.9/scripts/willow_embed_backfill.py", submitted_by="sap_startup", agent="kart")
+                print(f"[startup] {total_null} rows with NULL embedding — backfill task queued", file=sys.stderr)
+            else:
+                print(f"[startup] {total_null} rows with NULL embedding — backfill already queued", file=sys.stderr)
     except Exception as _e:
         print(f"[startup] backfill check failed: {_e}", file=sys.stderr)
 
