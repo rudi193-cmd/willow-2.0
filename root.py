@@ -116,10 +116,10 @@ def _write_fingerprint(fp: str) -> None:
 def step_4_vault() -> Path:
     """Create Fernet vault using the canonical core/vault.py implementation."""
     sys.path.insert(0, str(WILLOW_ROOT))
-    from core.vault import Vault, _DEFAULT_VAULT
+    from core.vault import Vault
     v = Vault()
     v.init()
-    return _DEFAULT_VAULT
+    return v._vault
 
 
 def _load_pg_bridge():

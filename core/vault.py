@@ -15,8 +15,8 @@ class Vault:
         vault_path: Path | None = None,
         key_path: Path | None = None,
     ):
-        self._vault = Path(vault_path or _DEFAULT_VAULT)
-        self._key_path = Path(key_path or _DEFAULT_KEY)
+        self._vault = Path(vault_path) if vault_path is not None else Path.home() / ".willow" / "vault.db"
+        self._key_path = Path(key_path) if key_path is not None else Path.home() / ".willow" / "vault.key"
         self._fernet: Fernet | None = None
 
     def init(self) -> None:
@@ -82,7 +82,7 @@ class Vault:
 def default_vault() -> Vault:
     """Return a Vault instance pointing at ~/.willow/vault.db, initialized."""
     v = Vault()
-    if _DEFAULT_VAULT.exists():
+    if (Path.home() / ".willow" / "vault.db").exists():
         return v
     v.init()
     return v
