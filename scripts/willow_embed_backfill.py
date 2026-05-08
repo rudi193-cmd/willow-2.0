@@ -120,8 +120,10 @@ def _backfill_table(pg: PgBridge, store: WillowStore, table: str, text_expr: str
                 print(f"  [{table}] {row_id}: Ollama unavailable (attempt {attempt+1}/3) — retrying in 5s", flush=True)
                 time.sleep(5)
             if vec is None:
-                print(f"  [{table}] {row_id}: Ollama unavailable after 3 attempts — stopping", flush=True)
-                return processed
+                print(f"  [{table}] {row_id}: embed failed after 3 attempts — skipping", flush=True)
+                processed += 1  # count as processed so progress doesn't stall
+                batch_done += 1
+                continue
 
             # Phase 4: single-row UPDATE, commit immediately.
             vec_str = str(vec)
