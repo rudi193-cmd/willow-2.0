@@ -67,30 +67,51 @@ def _write_progress(store: WillowStore, table: str, done: int, total: int, start
 def _backfill_table(pg: PgBridge, store: WillowStore, table: str, text_expr: str,
                     dry_run: bool, limit: int, total_offset: int, grand_total: int,
                     started_at: float, extra_filter: str | None = None) -> int:
-    """Backfill NULL embeddings for one table. Returns count of rows processed."""
+    """Backfill NULL embeddings for one table. Returns count of rows processed.
+
+    Lock discipline: read tx commits before embed(); UPDATE is a single-row tx.
+    No connection is held open during Ollama calls.
+    """
     processed = 0
     where = "embedding IS NULL"
     if extra_filter:
         where += f" AND {extra_filter}"
+
     while True:
+        # Phase 1: fetch IDs only, commit immediately to release the read tx.
         pg._ensure_conn()
         with pg.conn.cursor() as cur:
             cur.execute(
-                f"SELECT id, {text_expr} AS text FROM {table}"
-                f" WHERE {where} ORDER BY created_at DESC LIMIT %s",
+                f"SELECT id FROM {table} WHERE {where} ORDER BY created_at DESC LIMIT %s",
                 (BATCH_SIZE,),
             )
-            rows = cur.fetchall()
+            ids = [r[0] for r in cur.fetchall()]
+        pg.conn.commit()
 
-        if not rows:
+        if not ids:
             break
 
-        for row_id, text in rows:
+        batch_done = 0
+        for row_id in ids:
             if limit and processed >= limit:
                 return processed
             if dry_run:
                 processed += 1
+                batch_done += 1
                 continue
+
+            # Phase 2: fetch text in a short read tx, commit immediately.
+            pg._ensure_conn()
+            with pg.conn.cursor() as cur:
+                cur.execute(f"SELECT {text_expr} FROM {table} WHERE id = %s", (row_id,))
+                row = cur.fetchone()
+            pg.conn.commit()
+
+            if not row:
+                continue
+            text = row[0]
+
+            # Phase 3: embed with no connection held.
             vec = None
             for attempt in range(3):
                 vec = embed((text or "")[:MAX_EMBED_CHARS])
@@ -101,6 +122,8 @@ def _backfill_table(pg: PgBridge, store: WillowStore, table: str, text_expr: str
             if vec is None:
                 print(f"  [{table}] {row_id}: Ollama unavailable after 3 attempts — stopping", flush=True)
                 return processed
+
+            # Phase 4: single-row UPDATE, commit immediately.
             vec_str = str(vec)
             pg._ensure_conn()
             with pg.conn.cursor() as cur:
@@ -110,8 +133,9 @@ def _backfill_table(pg: PgBridge, store: WillowStore, table: str, text_expr: str
                 )
             pg.conn.commit()
             processed += 1
+            batch_done += 1
 
-        print(f"  [{table}] +{len(rows)} embedded (total {processed})", flush=True)
+        print(f"  [{table}] +{batch_done} embedded (total {processed})", flush=True)
         _write_progress(store, table, total_offset + processed, grand_total, started_at)
         time.sleep(SLEEP_S)
 
