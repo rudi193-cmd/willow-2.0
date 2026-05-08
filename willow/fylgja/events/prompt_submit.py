@@ -248,8 +248,9 @@ def _check_identity() -> None:
             print(
                 f"[IDENTITY MISMATCH] anchor={anchor_agent} running={AGENT}\n"
                 f"  CWD: {Path.cwd()}\n"
-                f"  This session's CLAUDE.md may not match the anchor written at boot."
+                f"  Re-run /startup to reset the anchor, or delete ~/.willow/session_anchor.json."
             )
+            sys.exit(1)
     except Exception:
         pass
 
