@@ -14,6 +14,13 @@ from pathlib import Path
 from willow.fylgja._mcp import call
 from willow.fylgja._grove import call as _grove_call
 
+try:
+    from willow.context.dedup import reset_session as _dedup_reset
+    from willow.context.ledger import build_resume_context as _ledger_resume_context
+    _CONTEXT_AVAILABLE = True
+except Exception:
+    _CONTEXT_AVAILABLE = False
+
 AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
 # Expected layout per startup.md step 3: ~/agents/{AGENT}/index/haumana_handoffs/
 INDEX_DIR = Path.home() / "agents" / AGENT / "index"
@@ -442,6 +449,15 @@ def main():
         data = {}
 
     session_id = data.get("session_id", "")
+    session_source = data.get("source", "startup")  # startup | resume | clear | compact
+
+    # Reset dedup tracker for the new session
+    if _CONTEXT_AVAILABLE:
+        try:
+            _dedup_reset()
+        except Exception:
+            pass
+
     _clear_stale_thread()
     grove_status = _ensure_grove_mcp()  # instant local file check
     if session_id:
@@ -501,6 +517,16 @@ def main():
         )
     if startup["postgres"] == "unknown":
         lines.append("BOOT DEGRADED — invoke /startup before responding to anything.")
+
+    # Ledger resume context — inject on compact/resume so decisions survive compaction
+    if _CONTEXT_AVAILABLE and session_source in ("compact", "resume", "clear"):
+        try:
+            ledger_ctx = _ledger_resume_context()
+            if ledger_ctx:
+                lines.append("")
+                lines.append(ledger_ctx)
+        except Exception:
+            pass
 
     print(json.dumps({
         "hookSpecificOutput": {

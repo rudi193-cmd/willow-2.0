@@ -11,6 +11,12 @@ from pathlib import Path
 
 from willow.fylgja._mcp import call
 from willow.fylgja.safety.platform import check_all as _safety_check_all
+
+try:
+    from willow.context.ledger import log_block as _ledger_block
+    _LEDGER_AVAILABLE = True
+except Exception:
+    _LEDGER_AVAILABLE = False
 from willow.fylgja.safety.session import get_session_user_id, get_session_role, get_training_consent
 from willow.fylgja.safety.security_scan import (
     scan_bash as _scan_bash,
@@ -219,6 +225,12 @@ def main():
     # Safety gate — runs before all other checks
     block = _run_safety_gate(tool_name, tool_input, session_id)
     if block:
+        if _LEDGER_AVAILABLE:
+            try:
+                reason = json.loads(block).get("reason", block)[:300]
+                _ledger_block(tool_name, reason, session_id=session_id)
+            except Exception:
+                pass
         print(block)
         sys.exit(0)
 
@@ -246,6 +258,11 @@ def main():
         # Willow workflow guard first
         reason = check_bash_block(command) if command else None
         if reason:
+            if _LEDGER_AVAILABLE:
+                try:
+                    _ledger_block("Bash", reason[:300], session_id=session_id)
+                except Exception:
+                    pass
             print(json.dumps({"decision": "block", "reason": reason}))
             sys.exit(0)
         # Security scan — exfiltration, credential theft, destructive, obfuscation
