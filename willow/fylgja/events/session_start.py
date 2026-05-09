@@ -459,7 +459,7 @@ def main():
             pass
 
     _clear_stale_thread()
-    _open_run(session_id)
+    _open_run()
     grove_status = _ensure_grove_mcp()  # instant local file check
     if session_id:
         _register_jeles(session_id)
