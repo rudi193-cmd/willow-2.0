@@ -14,6 +14,10 @@ Use when something non-obvious was discovered: a workaround, a subtle invariant,
 - Task state or in-progress work from this session
 - Anything already in CLAUDE.md
 
+## Before you learn
+
+Before extracting a pattern, run `/health memory` to check for existing learned patterns that might already cover this insight. This prevents redundant learning and flags contradictions if the new insight conflicts with what's already known. If `/health memory` returns REDUNDANT or CONTRADICTION, resolve that first — do not /learn over it.
+
 ## Steps
 
 1. **Name the pattern** — one short title. Examples:
