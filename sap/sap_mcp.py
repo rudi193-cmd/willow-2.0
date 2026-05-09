@@ -60,6 +60,10 @@ except ImportError:
 try:
     from mcp.server import Server
     from mcp.server.stdio import stdio_server
+    try:
+        from mcp.server.sse import sse_server
+    except ImportError:
+        sse_server = None
     import mcp.types as types
 except ImportError:
     print("MCP SDK not installed. Run: pip install mcp", file=sys.stderr)
@@ -2323,11 +2327,60 @@ def _hot_reload(target: str = "all") -> dict:
     }
 
 
+# ── HTTP transport (SSE) ──────────────────────────────────────────────────────
+
+def _create_sse_app(srv):
+    """Create Starlette app with SSE endpoint for MCP."""
+    try:
+        from starlette.applications import Starlette
+        from starlette.responses import StreamingResponse
+        from starlette.routing import Route
+    except ImportError:
+        return None
+
+    async def sse_handler(request):
+        async with sse_server(srv) as (read, write):
+            return StreamingResponse(
+                _sse_event_stream(read, write, srv),
+                media_type="text/event-stream"
+            )
+
+    async def _sse_event_stream(read, write, srv):
+        await srv.run(read, write, srv.create_initialization_options())
+
+    return Starlette(routes=[Route("/sse", sse_handler)])
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 async def main():
-    async with stdio_server() as (read, write):
-        await server.run(read, write, server.create_initialization_options())
+    import argparse
+    parser = argparse.ArgumentParser(description="SAP MCP Server")
+    parser.add_argument("--http", action="store_true", help="Run HTTP (SSE) server instead of stdio")
+    parser.add_argument("--port", type=int, default=6274, help="Port for HTTP server (default: 6274)")
+    parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP server (default: 127.0.0.1)")
+    args = parser.parse_args()
+
+    if args.http:
+        if sse_server is None:
+            print("SSE transport not available. Ensure MCP SDK >= 0.5. Install: pip install --upgrade mcp", file=sys.stderr)
+            sys.exit(1)
+        try:
+            import uvicorn
+        except ImportError:
+            print("uvicorn not installed. Install: pip install uvicorn starlette", file=sys.stderr)
+            sys.exit(1)
+
+        app = _create_sse_app(server)
+        if app is None:
+            print("Failed to create SSE app. Check dependencies.", file=sys.stderr)
+            sys.exit(1)
+
+        print(f"[MCP] Starting SSE server on http://{args.host}:{args.port}/sse", file=sys.stderr)
+        uvicorn.run(app, host=args.host, port=args.port, log_level="critical")
+    else:
+        async with stdio_server() as (read, write):
+            await server.run(read, write, server.create_initialization_options())
 
 
 if __name__ == "__main__":
