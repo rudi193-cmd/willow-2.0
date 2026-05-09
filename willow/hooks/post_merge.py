@@ -9,17 +9,17 @@ Extracts feature-level atom and writes to KB.
 import sys
 import os
 import subprocess
+import re
 from pathlib import Path
 
-# Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from core.atom_extractor import extract_merge_atom
-from core.pg_bridge import PgBridge
+from willow.hooks.kb_writer import write_atom_to_kb
 
 
 def get_merge_branch_name() -> str:
-    """Try to extract branch name from merge commit message."""
+    """Extract branch name from merge commit message."""
     try:
         result = subprocess.run(
             ["git", "log", "-1", "--pretty=%B", "HEAD"],
@@ -27,10 +27,7 @@ def get_merge_branch_name() -> str:
             text=True,
             timeout=2
         )
-        msg = result.stdout.strip()
-        # Format: "Merge branch 'branch-name' ..."
-        import re
-        match = re.search(r"Merge branch '([^']+)'", msg)
+        match = re.search(r"Merge branch '([^']+)'", result.stdout)
         if match:
             return match.group(1)
     except Exception:
@@ -40,13 +37,10 @@ def get_merge_branch_name() -> str:
 
 def main():
     """Extract and store atom from merge commit."""
-    import json
-
     if not os.environ.get("WILLOW_ATOM_EXTRACTION"):
-        return  # Disabled
+        return
 
     try:
-        # Get HEAD commit hash (should be merge commit)
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             capture_output=True,
@@ -64,35 +58,12 @@ def main():
         if not atom:
             return
 
-        # Write to KB
-        try:
-            bridge = PgBridge()
-            cur = bridge.conn.cursor()
-            cur.execute("""
-                INSERT INTO knowledge
-                (id, title, summary, category, source_type, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (
-                atom.id,
-                atom.title,
-                atom.summary,
-                atom.category,
-                atom.source_type,
-                atom.created_at,
-            ))
-            bridge.conn.commit()
-            bridge.conn.close()
-
-            if os.environ.get("WILLOW_ATOM_VERBOSE"):
-                print(f"[atom-merge] {branch_name}: {atom.title}")
-
-        except Exception as e:
-            if os.environ.get("WILLOW_ATOM_VERBOSE"):
-                print(f"[atom-merge] Error writing to KB: {e}", file=sys.stderr)
+        # Write to KB with dedup check
+        write_atom_to_kb(atom, dedup_key=commit_hash)
 
     except Exception as e:
         if os.environ.get("WILLOW_ATOM_VERBOSE"):
-            print(f"[atom-merge] Error: {e}", file=sys.stderr)
+            print(f"[post-merge] Error: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":

@@ -158,39 +158,36 @@ def link_atoms_for_session() -> dict:
         }
 
         # Find recent merge atoms and link to their commits
+        import json
         cur = linker.bridge.conn.cursor()
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
 
         cur.execute("""
             SELECT id, content FROM knowledge
             WHERE source_type = 'merge'
-            AND created_at > %s
+            AND created_at > %s AND content IS NOT NULL
         """, (cutoff,))
 
         for merge_id, content_str in cur.fetchall():
-            if not content_str:
-                continue
-
             try:
-                import json
                 content = json.loads(content_str) if isinstance(content_str, str) else content_str
                 commits = content.get("commits_in_branch", [])
-                if commits:
-                    # Find IDs of commit atoms (by commit hash from content)
-                    commit_ids = []
-                    for commit_hash in commits:
-                        cur2 = linker.bridge.conn.cursor()
-                        cur2.execute(
-                            "SELECT id FROM knowledge WHERE source_type = 'commit' AND content LIKE %s LIMIT 1",
-                            (f'%{commit_hash[:7]}%',)
-                        )
-                        row = cur2.fetchone()
-                        if row:
-                            commit_ids.append(row[0])
+                if not commits:
+                    continue
 
-                    if commit_ids:
-                        count = linker.link_merge_to_commits(merge_id, commit_ids)
-                        summary["merge_to_commits"] += count
+                # Batch lookup: find all commit atoms matching any commit in branch
+                cur2 = linker.bridge.conn.cursor()
+                placeholders = ",".join(["%s"] * len(commits))
+                cur2.execute(f"""
+                    SELECT id, content->>'commit' FROM knowledge
+                    WHERE source_type = 'commit'
+                    AND content->>'commit' = ANY(ARRAY[{",".join(["%s"]*len(commits))}])
+                """, commits)
+
+                commit_ids = [row[0] for row in cur2.fetchall()]
+                if commit_ids:
+                    count = linker.link_merge_to_commits(merge_id, commit_ids)
+                    summary["merge_to_commits"] += count
             except Exception:
                 pass
 

@@ -179,36 +179,15 @@ def write_atoms_to_kb(atoms: list[Atom]) -> int:
     if not atoms:
         return 0
 
-    try:
-        bridge = PgBridge()
-        cur = bridge.conn.cursor()
+    from willow.hooks.kb_writer import write_atom_to_kb
 
-        for atom in atoms:
-            cur.execute("""
-                INSERT INTO knowledge
-                (id, title, summary, category, source_type, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (
-                atom.id,
-                atom.title,
-                atom.summary,
-                atom.category,
-                atom.source_type,
-                atom.created_at,
-            ))
+    count = 0
+    for atom in atoms:
+        # Test events use title as dedup key
+        if write_atom_to_kb(atom, dedup_key=atom.title):
+            count += 1
 
-        bridge.conn.commit()
-        bridge.conn.close()
-        return len(atoms)
-
-    except Exception as e:
-        if Path(Path.home() / ".willow").exists():
-            # Queue to file if KB unavailable
-            pending_path = Path(Path.home() / ".willow" / "pending_test_atoms.jsonl")
-            with open(pending_path, "a") as f:
-                for atom in atoms:
-                    f.write(json.dumps(atom.to_dict()) + "\n")
-        return 0
+    return count
 
 
 def main():

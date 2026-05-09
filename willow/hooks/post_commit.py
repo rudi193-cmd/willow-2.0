@@ -8,27 +8,22 @@ Extracts atom and writes to KB.
 
 import sys
 import os
+import subprocess
 from pathlib import Path
 
-# Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from core.atom_extractor import extract_commit_atom
-from core.pg_bridge import PgBridge
-
-STATE_FILE = Path.home() / ".willow" / "atom_extraction_state.json"
+from willow.hooks.kb_writer import write_atom_to_kb
 
 
 def main():
     """Extract and store atom from HEAD commit."""
-    import json
-
     if not os.environ.get("WILLOW_ATOM_EXTRACTION"):
-        return  # Disabled
+        return
 
     try:
         # Get HEAD commit hash
-        import subprocess
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             capture_output=True,
@@ -40,57 +35,17 @@ def main():
 
         commit_hash = result.stdout.strip()
 
-        # Extract atom
+        # Extract atom (skips merge/WIP commits)
         atom = extract_commit_atom(commit_hash)
         if not atom:
-            return  # No atom (probably merge commit or WIP)
+            return
 
-        # Check if already extracted
-        state = {}
-        if STATE_FILE.exists():
-            try:
-                state = json.loads(STATE_FILE.read_text())
-            except Exception:
-                pass
-
-        if state.get("extracted_atoms", {}).get(commit_hash):
-            return  # Already extracted
-
-        # Write to KB
-        try:
-            bridge = PgBridge()
-            cur = bridge.conn.cursor()
-            cur.execute("""
-                INSERT INTO knowledge
-                (id, title, summary, category, source_type, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (
-                atom.id,
-                atom.title,
-                atom.summary,
-                atom.category,
-                atom.source_type,
-                atom.created_at,
-            ))
-            bridge.conn.commit()
-            bridge.conn.close()
-
-            # Update state
-            state.setdefault("extracted_atoms", {})[commit_hash] = commit_hash[:7]
-            state["last_extracted_commit"] = commit_hash
-            STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-            STATE_FILE.write_text(json.dumps(state, indent=2))
-
-            if os.environ.get("WILLOW_ATOM_VERBOSE"):
-                print(f"[atom-extract] {commit_hash[:7]}: {atom.title}")
-
-        except Exception as e:
-            if os.environ.get("WILLOW_ATOM_VERBOSE"):
-                print(f"[atom-extract] Error writing to KB: {e}", file=sys.stderr)
+        # Write to KB with dedup check
+        write_atom_to_kb(atom, dedup_key=commit_hash)
 
     except Exception as e:
         if os.environ.get("WILLOW_ATOM_VERBOSE"):
-            print(f"[atom-extract] Error: {e}", file=sys.stderr)
+            print(f"[post-commit] Error: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":
