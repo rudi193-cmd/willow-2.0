@@ -265,6 +265,29 @@ def run_grove_ingest() -> None:
             pass
 
 
+def run_edge_linking() -> None:
+    """Phase 4: Edge linking — connect atoms into knowledge graph.
+
+    Creates relationships between atoms so they form a connected graph.
+    Links merge atoms to commits, creates cross-references, etc.
+    """
+    if not os.environ.get("WILLOW_ATOM_EXTRACTION"):
+        return
+
+    try:
+        from willow.hooks.edge_linking import link_atoms_for_session
+        summary = link_atoms_for_session()
+        if summary and os.environ.get("WILLOW_ATOM_VERBOSE"):
+            call("grove_send_message", {
+                "channel_name": "hanuman",
+                "content": f"Phase 4: linked {summary.get('merge_to_commits', 0)} merge→commit edges, "
+                           f"{summary.get('cross_references', 0)} cross-references",
+                "sender": "hanuman",
+            }, timeout=5)
+    except Exception:
+        pass
+
+
 def run_atom_synthesis() -> None:
     """Phase 3: Session synthesis — extract atoms from commits since last session.
 
@@ -374,7 +397,8 @@ def main():
     mark_session_clean()
     run_grove_ingest()
     run_compost()
-    run_atom_synthesis()  # Phase 3: catch atoms missed by hooks
+    run_atom_synthesis()     # Phase 3: catch atoms missed by hooks
+    run_edge_linking()       # Phase 4: connect atoms into graph
     run_feedback_pipeline()
     run_handoff_rebuild()
 
