@@ -46,6 +46,12 @@ if _core_str not in sys.path:
     sys.path.insert(1, _core_str)
 
 try:
+    from core.run_ledger import log_event as _rl_log_event
+except Exception:
+    def _rl_log_event(event_type: str, ref: str = "", **_kw) -> None:  # type: ignore[misc]
+        pass
+
+try:
     from core.memory_sanitizer import scan_struct, log_flags as _sanitizer_log
 except ImportError:
     import importlib.util as _ilu
@@ -1629,6 +1635,7 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
             _task_cmd  = arguments["task"]
             _task_id   = _uuid2.uuid4().hex[:8].upper()
             _started   = _time.time()
+            _rl_log_event("task_submit", ref=_task_id)
             try:
                 _proc = _sp.run(
                     _shlex.split(_task_cmd),
@@ -1638,17 +1645,21 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                     timeout=120,
                 )
                 _elapsed = round(_time.time() - _started, 2)
+                _status  = "completed" if _proc.returncode == 0 else "failed"
+                _rl_log_event(f"task_{_status}", ref=_task_id)
                 result = {
                     "task_id":    _task_id,
-                    "status":     "completed" if _proc.returncode == 0 else "failed",
+                    "status":     _status,
                     "returncode": _proc.returncode,
                     "stdout":     _proc.stdout.strip()[-2000:] if _proc.stdout else "",
                     "stderr":     _proc.stderr.strip()[-500:]  if _proc.stderr else "",
                     "elapsed_s":  _elapsed,
                 }
             except _sp.TimeoutExpired:
+                _rl_log_event("task_timeout", ref=_task_id)
                 result = {"task_id": _task_id, "status": "timeout", "error": "exceeded 120s"}
             except Exception as _te:
+                _rl_log_event("task_error", ref=_task_id)
                 result = {"task_id": _task_id, "status": "error", "error": str(_te)}
 
         elif name == "willow_task_status":
