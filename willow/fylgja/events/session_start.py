@@ -234,18 +234,6 @@ def _send_heartbeat() -> None:
         pass
 
 
-def _open_run(session_id: str) -> None:
-    """Open a Run Ledger record for this session. Best-effort."""
-    try:
-        from core.run_ledger import open_run
-        open_run(
-            purpose=f"session:{session_id[:8] if session_id else 'unknown'}",
-            repo_roots=[str(Path.home() / "github" / "willow-1.9")],
-        )
-    except Exception:
-        pass
-
-
 def _ensure_grove_mcp() -> str:
     """Check grove monitor is running via PID file. Returns status string."""
     pid_file = Path("/tmp/grove-monitor.pid")
