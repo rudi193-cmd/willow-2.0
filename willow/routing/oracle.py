@@ -1,7 +1,18 @@
 """
 routing/oracle.py — willow_route oracle.
-Hybrid: rule-based fast path (SOIL store) + Yggdrasil LLM fallback.
+Hybrid: intent fast path → rule-based SOIL store → Yggdrasil LLM fallback.
 b17: ROUT1  ΔΣ=42
+
+Routing priority (lowest latency first):
+  1. Intent classifier (willow.routing.intent.classify_intent) — sub-ms, no I/O
+     Maps intent → preferred agent when confidence >= INTENT_CONFIDENCE_THRESHOLD.
+  2. SOIL rule store — pattern-matched rules, cached per session.
+  3. Yggdrasil LLM fallback — local Ollama call, ~1-3s.
+
+The intent classifier is a rule-based steal from monologg/JointBERT: it covers
+the same 7-intent taxonomy (debug, explain, refactor, review, test, integrate,
+navigate) using weighted token scoring instead of BERT inference, so it runs
+without torch/transformers and at oracle latency.
 """
 import json
 import os
@@ -11,6 +22,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from willow.fylgja._mcp import call as mcp_call
+from willow.routing.intent import classify_intent
 
 AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
 DEFAULT_AGENT = "willow"
@@ -30,6 +42,20 @@ _AGENT_ROSTER = [
     {"name": "ada",      "role": "Systems admin — continuity, infrastructure admin"},
     {"name": "pigeon",   "role": "Carrier — cross-system coordination and delivery"},
 ]
+
+# Intent → preferred agent mapping (JointBERT steal: intent taxonomy routed to fleet agents)
+# Confidence must be >= this threshold to use the intent fast path
+INTENT_CONFIDENCE_THRESHOLD = float(os.environ.get("WILLOW_INTENT_THRESHOLD", "0.35"))
+
+_INTENT_AGENT_MAP: dict[str, str] = {
+    "debug":     "ganesha",   # Diagnostics — debugging, error analysis
+    "explain":   "willow",    # Primary interface — explanations and KB queries
+    "refactor":  "hanz",      # Code — implementation, refactoring
+    "review":    "hanz",      # Code — review and audit
+    "test":      "hanz",      # Code — test writing
+    "integrate": "kart",      # Infrastructure — wiring, integration work
+    "navigate":  "jeles",     # Librarian — search, find, locate
+}
 
 _rules_cache: Optional[list] = None
 _cache_session: Optional[str] = None
@@ -134,8 +160,36 @@ def _write_decision(decision: dict) -> None:
 
 
 def route(prompt: str, session_id: str = "") -> dict:
+    """Route a prompt to the best agent.
+
+    Priority chain:
+      1. classify_intent() — sub-ms rule-based intent → agent mapping
+         (JointBERT taxonomy steal; fires when confidence >= INTENT_CONFIDENCE_THRESHOLD)
+      2. SOIL rule store match (pattern-based, explicit rules)
+      3. Yggdrasil LLM fallback (local Ollama)
+    """
     t0 = time.monotonic()
     snippet = prompt.strip()[:40]
+
+    # --- Fast path: intent classification (no I/O) ---
+    intent, intent_conf = classify_intent(prompt)
+    if intent_conf >= INTENT_CONFIDENCE_THRESHOLD:
+        preferred_agent = _INTENT_AGENT_MAP.get(intent, DEFAULT_AGENT)
+        latency = round((time.monotonic() - t0) * 1000)
+        decision = {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "session_id": session_id,
+            "prompt_snippet": snippet,
+            "routed_to": preferred_agent,
+            "rule_matched": f"intent:{intent}",
+            "confidence": round(intent_conf, 3),
+            "latency_ms": latency,
+            "intent": intent,
+        }
+        _write_decision(decision)
+        return decision
+
+    # --- Rule store match ---
     rules = load_rules(session_id)
     matched = match_rules(prompt, rules)
 
@@ -149,8 +203,10 @@ def route(prompt: str, session_id: str = "") -> dict:
             "rule_matched": matched["id"],
             "confidence": 1.0,
             "latency_ms": latency,
+            "intent": intent,  # carry intent for diagnostics even on rule match
         }
     else:
+        # --- LLM fallback ---
         llm = _llm_route(prompt)
         latency = round((time.monotonic() - t0) * 1000)
         decision = {
@@ -161,6 +217,7 @@ def route(prompt: str, session_id: str = "") -> dict:
             "rule_matched": "llm-fallback",
             "confidence": llm["confidence"] if llm else 0.5,
             "latency_ms": latency,
+            "intent": intent,
         }
 
     _write_decision(decision)
