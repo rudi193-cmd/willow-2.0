@@ -22,6 +22,12 @@ try:
 except Exception:
     _SCAN_AVAILABLE = False
 
+try:
+    from willow.context.dedup import check_and_record as _dedup_check
+    _DEDUP_AVAILABLE = True
+except Exception:
+    _DEDUP_AVAILABLE = False
+
 _RATE_FILE = Path("/tmp/willow-post-tool-rate.json")
 _RATE_WINDOW = 60  # seconds
 
@@ -192,6 +198,16 @@ def main():
         tool_name = ""
         tool_input = {}
         session_id = ""
+
+    # File read deduplication — emit [DEDUP] advisory if file already in context
+    if tool_name == "Read" and _DEDUP_AVAILABLE:
+        file_path = tool_input.get("file_path", "")
+        offset = int(tool_input.get("offset") or 0)
+        limit = int(tool_input.get("limit") or 0)
+        if file_path:
+            advisory = _dedup_check(file_path, offset=offset, limit=limit)
+            if advisory:
+                print(advisory)
 
     if tool_name == "ToolSearch":
         print("[TOOL-SEARCH-COMPLETE] Schema loaded. Call the fetched tool NOW "

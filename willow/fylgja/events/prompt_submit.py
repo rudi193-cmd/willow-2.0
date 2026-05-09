@@ -33,6 +33,12 @@ try:
 except ImportError:
     _notice = None
 
+try:
+    from willow.context.ledger import log_observation as _ledger_observe
+    _LEDGER_AVAILABLE = True
+except Exception:
+    _LEDGER_AVAILABLE = False
+
 TRUST_LEVELS = {0: "OBSERVER", 1: "WORKER", 2: "OPERATOR", 3: "ENGINEER", 4: "ARCHITECT"}
 PERMISSION_LEVELS = {
     "local_llm": 1, "cloud_llm_free": 1, "conversation_storage": 1,
@@ -302,6 +308,9 @@ def main():
     _run_feedback(prompt, session_id)
     prompt = _run_notice(prompt, session_id)
     _log_turn(prompt, session_id)
+    # Ledger: record human turn as observation (survives context compression)
+    if _LEDGER_AVAILABLE and prompt:
+        _ledger_observe(prompt[:300], session_id=session_id)
     _run_build_continue()
 
     sys.exit(0)
