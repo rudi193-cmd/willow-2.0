@@ -265,6 +265,90 @@ def run_grove_ingest() -> None:
             pass
 
 
+def run_atom_synthesis() -> None:
+    """Phase 3: Session synthesis — extract atoms from commits since last session.
+
+    Safety net for commits that didn't get atoms via post-commit hook.
+    Only runs if WILLOW_ATOM_EXTRACTION is enabled.
+    """
+    if not os.environ.get("WILLOW_ATOM_EXTRACTION"):
+        return
+
+    try:
+        import subprocess
+        from core.atom_extractor import extract_commit_atom
+        from core.pg_bridge import PgBridge
+
+        # Get last session marker
+        state_file = Path.home() / ".willow" / "atom_extraction_state.json"
+        last_commit = None
+        if state_file.exists():
+            try:
+                state = json.loads(state_file.read_text())
+                last_commit = state.get("last_extracted_commit")
+            except Exception:
+                pass
+
+        if not last_commit:
+            last_commit = "HEAD~20"  # Fallback: last 20 commits
+
+        # Get commits since last extraction
+        result = subprocess.run(
+            ["git", "log", "--format=%H", f"{last_commit}..HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=Path(__file__).parent.parent.parent.parent,  # willow-1.9 root
+        )
+
+        if result.returncode != 0:
+            return
+
+        commits = [h for h in result.stdout.strip().split("\n") if h]
+        if not commits:
+            return
+
+        # Extract atoms for commits without atoms
+        bridge = PgBridge()
+        extracted = 0
+
+        for commit_hash in commits:
+            atom = extract_commit_atom(commit_hash)
+            if not atom:
+                continue
+
+            try:
+                cur = bridge.conn.cursor()
+                cur.execute("""
+                    INSERT INTO knowledge
+                    (title, summary, category, source_type, b17, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (
+                    atom.title,
+                    atom.summary,
+                    atom.category,
+                    atom.source_type,
+                    atom.b17,
+                    atom.created_at,
+                ))
+                bridge.conn.commit()
+                extracted += 1
+            except Exception:
+                pass
+
+        if extracted > 0 and os.environ.get("WILLOW_ATOM_VERBOSE"):
+            call("grove_send_message", {
+                "channel_name": "hanuman",
+                "content": f"Session synthesis: extracted {extracted} atoms from recent commits (Phase 3 safety net)",
+                "sender": "hanuman",
+            }, timeout=5)
+
+        bridge.conn.close()
+
+    except Exception:
+        pass
+
+
 def _is_isolated_directory() -> bool:
     """Return True if CWD is a sandbox/isolated directory — skip all fleet hooks."""
     mcp = Path.cwd() / ".mcp.json"
@@ -290,6 +374,7 @@ def main():
     mark_session_clean()
     run_grove_ingest()
     run_compost()
+    run_atom_synthesis()  # Phase 3: catch atoms missed by hooks
     run_feedback_pipeline()
     run_handoff_rebuild()
 
