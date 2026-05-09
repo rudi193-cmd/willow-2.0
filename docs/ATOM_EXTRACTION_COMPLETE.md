@@ -210,11 +210,11 @@ cat ~/.willow/atom_extraction_state.json
 
 ```json
 {
+  "id": "a1b2c3d4e5f6",
   "title": "feat: add run-ledger tests",
   "summary": "Feature: added 12 unit tests for run-ledger module\n\nFiles: core/run_ledger.py, tests/test_run_ledger.py",
   "category": "test",
   "source_type": "commit",
-  "b17": "d0bc397",
   "content": {
     "commit": "d0bc397...",
     "files_changed": ["core/run_ledger.py", "tests/test_run_ledger.py"],
@@ -227,11 +227,11 @@ cat ~/.willow/atom_extraction_state.json
 
 ```json
 {
+  "id": "m1m2m3m4m5m6",
   "title": "Merge: feat/run-ledger",
   "summary": "Feature: run-ledger wire into willow_task_submit\n\nMerged branch: feat/run-ledger\nCommits: 3",
   "category": "feature",
   "source_type": "merge",
-  "b17": "run-ledger_3c20441",
   "content": {
     "branch": "feat/run-ledger",
     "commit": "3c20441...",
@@ -245,11 +245,11 @@ cat ~/.willow/atom_extraction_state.json
 
 ```json
 {
+  "id": "t1t2t3t4t5t6",
   "title": "Tests: 5 newly passing",
   "summary": "5 test(s) newly passing.\n\nFixed:\n  • tests/test_pii_detect.py::test_redact_replaces_secret\n  • tests/test_pii_detect.py::test_redact_replaces_ssn",
   "category": "test",
   "source_type": "test_event",
-  "b17": "TEST_PASS_5",
   "content": {
     "newly_passing": 5,
     "test_count": 5
