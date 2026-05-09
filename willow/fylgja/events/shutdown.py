@@ -344,14 +344,14 @@ def run_atom_synthesis() -> None:
                 cur = bridge.conn.cursor()
                 cur.execute("""
                     INSERT INTO knowledge
-                    (title, summary, category, source_type, b17, created_at)
+                    (id, title, summary, category, source_type, created_at)
                     VALUES (%s, %s, %s, %s, %s, %s)
                 """, (
+                    atom.id,
                     atom.title,
                     atom.summary,
                     atom.category,
                     atom.source_type,
-                    atom.b17,
                     atom.created_at,
                 ))
                 bridge.conn.commit()

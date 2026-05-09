@@ -27,39 +27,25 @@ class EdgeLinker:
 
     def link_atoms(
         self,
-        from_b17: str,
-        to_b17: str,
+        from_id: int,
+        to_id: int,
         relation: str,
         context: Optional[str] = None
     ) -> bool:
         """Create an edge between two atoms.
 
         Args:
-            from_b17: Source atom's b17 identifier
-            to_b17: Target atom's b17 identifier
+            from_id: Source atom's ID
+            to_id: Target atom's ID
             relation: Relationship type (contains, relates_to, fixes, depends_on, etc)
             context: Optional explanation of the relationship
 
         Returns:
-            True if edge was created, False if not found
+            True if edge was created, False on error
         """
         try:
-            # Find source and target atoms by b17
-            cur = self.bridge.conn.cursor()
-            cur.execute("SELECT id FROM knowledge WHERE b17 = %s", (from_b17,))
-            from_id = cur.fetchone()
-            if not from_id:
-                return False
-
-            cur.execute("SELECT id FROM knowledge WHERE b17 = %s", (to_b17,))
-            to_id = cur.fetchone()
-            if not to_id:
-                return False
-
-            from_id = from_id[0]
-            to_id = to_id[0]
-
             # Create edge
+            cur = self.bridge.conn.cursor()
             cur.execute("""
                 INSERT INTO edges (from_id, to_id, relation, context)
                 VALUES (%s, %s, %s, %s)
@@ -72,38 +58,38 @@ class EdgeLinker:
         except Exception:
             return False
 
-    def link_merge_to_commits(self, merge_b17: str, commit_b17_list: list[str]) -> int:
+    def link_merge_to_commits(self, merge_id: int, commit_ids: list[int]) -> int:
         """Link a merge atom to all its commit atoms."""
         count = 0
-        for commit_b17 in commit_b17_list:
+        for commit_id in commit_ids:
             if self.link_atoms(
-                merge_b17,
-                commit_b17,
+                merge_id,
+                commit_id,
                 "contains",
                 "Commit in this merge"
             ):
                 count += 1
         return count
 
-    def link_fix_to_commit(self, fix_b17: str, commit_b17: str) -> bool:
+    def link_fix_to_commit(self, fix_id: int, commit_id: int) -> bool:
         """Link a test_fix atom to the commit that fixed it."""
         return self.link_atoms(
-            fix_b17,
-            commit_b17,
+            fix_id,
+            commit_id,
             "fixed_by",
             "This fix was introduced in this commit"
         )
 
-    def link_feature_to_architecture(self, feature_b17: str, arch_b17: str) -> bool:
+    def link_feature_to_architecture(self, feature_id: int, arch_id: int) -> bool:
         """Link a feature atom to related architecture atoms."""
         return self.link_atoms(
-            feature_b17,
-            arch_b17,
+            feature_id,
+            arch_id,
             "implements",
             "Feature implements this design"
         )
 
-    def cross_reference_by_keyword(self, from_b17: str, keyword: str, max_links: int = 3) -> int:
+    def cross_reference_by_keyword(self, from_id: int, keyword: str, max_links: int = 3) -> int:
         """Find atoms mentioning a keyword and link to them.
 
         Useful for connecting new work to related existing work.
@@ -111,20 +97,9 @@ class EdgeLinker:
         try:
             cur = self.bridge.conn.cursor()
 
-            # Find source atom
-            cur.execute(
-                "SELECT id, title FROM knowledge WHERE b17 = %s",
-                (from_b17,)
-            )
-            from_row = cur.fetchone()
-            if not from_row:
-                return 0
-
-            from_id, from_title = from_row
-
             # Find related atoms (exclude self)
             cur.execute("""
-                SELECT id, b17, title FROM knowledge
+                SELECT id, title FROM knowledge
                 WHERE (title ILIKE %s OR summary ILIKE %s)
                 AND id != %s
                 AND invalid_at IS NULL
@@ -132,7 +107,7 @@ class EdgeLinker:
             """, (f'%{keyword}%', f'%{keyword}%', from_id, max_links))
 
             count = 0
-            for to_id, to_b17, to_title in cur.fetchall():
+            for to_id, to_title in cur.fetchall():
                 try:
                     cur.execute("""
                         INSERT INTO edges (from_id, to_id, relation, context)
@@ -187,12 +162,12 @@ def link_atoms_for_session() -> dict:
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
 
         cur.execute("""
-            SELECT b17, content FROM knowledge
+            SELECT id, content FROM knowledge
             WHERE source_type = 'merge'
             AND created_at > %s
         """, (cutoff,))
 
-        for b17, content_str in cur.fetchall():
+        for merge_id, content_str in cur.fetchall():
             if not content_str:
                 continue
 
@@ -201,29 +176,39 @@ def link_atoms_for_session() -> dict:
                 content = json.loads(content_str) if isinstance(content_str, str) else content_str
                 commits = content.get("commits_in_branch", [])
                 if commits:
-                    count = linker.link_merge_to_commits(
-                        b17,
-                        [c[:7] for c in commits]  # Use short hashes
-                    )
-                    summary["merge_to_commits"] += count
+                    # Find IDs of commit atoms (by commit hash from content)
+                    commit_ids = []
+                    for commit_hash in commits:
+                        cur2 = linker.bridge.conn.cursor()
+                        cur2.execute(
+                            "SELECT id FROM knowledge WHERE source_type = 'commit' AND content LIKE %s LIMIT 1",
+                            (f'%{commit_hash[:7]}%',)
+                        )
+                        row = cur2.fetchone()
+                        if row:
+                            commit_ids.append(row[0])
+
+                    if commit_ids:
+                        count = linker.link_merge_to_commits(merge_id, commit_ids)
+                        summary["merge_to_commits"] += count
             except Exception:
                 pass
 
         # Cross-reference new atoms with existing ones by keyword
         cur.execute("""
-            SELECT b17, title FROM knowledge
+            SELECT id, title FROM knowledge
             WHERE source_type IN ('commit', 'test_event')
             AND created_at > %s
         """, (cutoff,))
 
-        for b17, title in cur.fetchall():
+        for atom_id, title in cur.fetchall():
             # Extract keywords from title
             keywords = [
                 w for w in title.lower().split()
                 if len(w) > 4 and not w.startswith("#")
             ]
             for kw in keywords[:2]:  # Limit keywords per atom
-                count = linker.cross_reference_by_keyword(b17, kw, max_links=2)
+                count = linker.cross_reference_by_keyword(atom_id, kw, max_links=2)
                 summary["cross_references"] += count
 
         linker.close()

@@ -13,7 +13,8 @@ Entry points:
 
 import re
 import subprocess
-from dataclasses import dataclass, asdict
+import uuid
+from dataclasses import dataclass, asdict, field
 from datetime import datetime, timezone
 from typing import Optional, Callable
 
@@ -25,8 +26,8 @@ class Atom:
     summary: str
     category: str  # feature|bugfix|refactor|test|docs|infra|session_summary
     source_type: str  # commit|merge|test_event|session_event
-    b17: str
     content: dict
+    id: str = field(default_factory=lambda: str(uuid.uuid4())[:12])
     created_at: Optional[str] = None
 
     def __post_init__(self):
@@ -177,7 +178,6 @@ def extract_commit_atom(commit_hash: str) -> Optional[Atom]:
         summary=summary,
         category=category,
         source_type="commit",
-        b17=commit_hash[:7],
         content={
             "commit": commit_hash,
             "files_changed": files,
@@ -250,7 +250,6 @@ def extract_merge_atom(merge_commit: str, branch_name: str) -> Optional[Atom]:
         summary=summary,
         category=category,
         source_type="merge",
-        b17=f"{branch_name[:10]}_{merge_commit[:7]}".replace("/", "_"),
         content={
             "branch": branch_name,
             "commit": merge_commit,
@@ -274,7 +273,6 @@ def extract_test_atoms(before_results: dict, after_results: dict) -> list[Atom]:
             summary=f"{newly_passing} test(s) now passing. Fixes verified.",
             category="test",
             source_type="test_event",
-            b17=f"TEST_{newly_passing}P",
             content={"newly_passing": newly_passing}
         ))
 
@@ -286,7 +284,6 @@ def extract_test_atoms(before_results: dict, after_results: dict) -> list[Atom]:
             summary=f"{regressions} test(s) regressed. Needs investigation.",
             category="test",
             source_type="test_event",
-            b17=f"TEST_{regressions}F",
             content={"regressions": regressions}
         ))
 

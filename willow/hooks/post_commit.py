@@ -62,27 +62,27 @@ def main():
             cur = bridge.conn.cursor()
             cur.execute("""
                 INSERT INTO knowledge
-                (title, summary, category, source_type, b17, created_at)
+                (id, title, summary, category, source_type, created_at)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """, (
+                atom.id,
                 atom.title,
                 atom.summary,
                 atom.category,
                 atom.source_type,
-                atom.b17,
                 atom.created_at,
             ))
             bridge.conn.commit()
             bridge.conn.close()
 
             # Update state
-            state.setdefault("extracted_atoms", {})[commit_hash] = atom.b17
+            state.setdefault("extracted_atoms", {})[commit_hash] = commit_hash[:7]
             state["last_extracted_commit"] = commit_hash
             STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
             STATE_FILE.write_text(json.dumps(state, indent=2))
 
             if os.environ.get("WILLOW_ATOM_VERBOSE"):
-                print(f"[atom-extract] {atom.b17}: {atom.title}")
+                print(f"[atom-extract] {commit_hash[:7]}: {atom.title}")
 
         except Exception as e:
             if os.environ.get("WILLOW_ATOM_VERBOSE"):

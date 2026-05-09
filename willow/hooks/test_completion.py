@@ -128,7 +128,6 @@ def extract_test_atoms(
             summary=summary,
             category="test",
             source_type="test_event",
-            b17=f"TEST_PASS_{newly_passing}",
             content={
                 "newly_passing": newly_passing,
                 "test_count": len(tests_list),
@@ -148,7 +147,6 @@ def extract_test_atoms(
             summary=summary,
             category="test",
             source_type="test_event",
-            b17=f"TEST_FAIL_{regressions}",
             content={
                 "regressions": regressions,
                 "run_id": test_run_id,
@@ -165,7 +163,6 @@ def extract_test_atoms(
             summary=f"Test coverage improved by {new_tests} new test(s).",
             category="test",
             source_type="test_event",
-            b17=f"TEST_NEW_{new_tests}",
             content={
                 "new_tests": new_tests,
                 "total_before": before["total"],
@@ -189,14 +186,14 @@ def write_atoms_to_kb(atoms: list[Atom]) -> int:
         for atom in atoms:
             cur.execute("""
                 INSERT INTO knowledge
-                (title, summary, category, source_type, b17, created_at)
+                (id, title, summary, category, source_type, created_at)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """, (
+                atom.id,
                 atom.title,
                 atom.summary,
                 atom.category,
                 atom.source_type,
-                atom.b17,
                 atom.created_at,
             ))
 
