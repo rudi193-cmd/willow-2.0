@@ -49,6 +49,28 @@ F5_PROSE_TOOLS = {
     "mcp__willow__willow_knowledge_ingest": "content",
 }
 
+FLEET_CHANNEL_MAX_CHARS = 400
+
+
+def check_channel_enforce(tool_name: str, tool_input: dict) -> str | None:
+    """Warn if grove_send_message exceeds #fleet char limit."""
+    if tool_name not in ("mcp__grove__grove_send_message", "mcp__claude_ai_Grove__grove_send_message"):
+        return None
+
+    channel_name = tool_input.get("channel_name", "")
+    content = tool_input.get("content", "")
+
+    if channel_name == "fleet" and len(content) > FLEET_CHANNEL_MAX_CHARS:
+        return json.dumps({
+            "decision": "warn",
+            "reason": (
+                f"#fleet is short-form (max {FLEET_CHANNEL_MAX_CHARS} chars). "
+                f"Your message is {len(content)} chars. Consider: (1) move to #general or topic channel, "
+                f"or (2) write to file and post path."
+            ),
+        })
+    return None
+
 
 def check_bash_block(command: str) -> str | None:
     if AGENT in _AUDIT_AGENTS:
@@ -284,6 +306,12 @@ def main():
             f5 = check_f5_canon(tool_name, tool_input)
             if f5:
                 print(json.dumps({"decision": "block", "reason": f5}))
+        sys.exit(0)
+
+    # Channel enforcement — warn on #fleet exceeding char limit
+    warn = check_channel_enforce(tool_name, tool_input)
+    if warn:
+        print(warn)
         sys.exit(0)
 
     sys.exit(0)
