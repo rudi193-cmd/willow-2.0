@@ -61,4 +61,4 @@ Listed on [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers)
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+PolyForm Noncommercial 1.0.0. See [LICENSE](LICENSE).

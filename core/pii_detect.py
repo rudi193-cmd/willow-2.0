@@ -187,15 +187,66 @@ def detect_all(text: str) -> list[PIIMatch]:
     return results
 
 
-def redact_all(text: str, matches: list[PIIMatch] | None = None) -> str:
+def redact_all(
+    text: str,
+    matches: list[PIIMatch] | None = None,
+    *,
+    mapping: dict[str, str] | None = None,
+) -> tuple[str, dict[str, str]]:
     """Replace all detected PII spans with their redacted forms.
+
+    Returns (redacted_text, mapping) where mapping is {redacted → raw}.
+    Pass the mapping to restore_all() to reverse the redaction later.
+
+    Stolen pattern from zeroc00I/DontFeedTheAI (MIT): the vault maps
+    surrogate → original so that API responses can be de-anonymized
+    before being shown to the user.  Willow uses a plain dict instead
+    of a SQLite vault because redaction is per-message, not per-engagement.
 
     If matches is provided, uses those. Otherwise runs detect_all() first.
     Processes longest matches first to avoid nested replacement errors.
+
+    Args:
+        text:    Input text that may contain PII.
+        matches: Pre-computed matches (optional — runs detect_all if None).
+        mapping: Existing mapping dict to extend (optional). Allows building
+                 a single mapping across multiple redact_all() calls.
+
+    Returns:
+        (redacted_text, mapping)
     """
     if matches is None:
         matches = detect_all(text)
+    if mapping is None:
+        mapping = {}
     # Sort by raw length descending so longer spans replace first
     for match in sorted(matches, key=lambda m: len(m.raw), reverse=True):
         text = text.replace(match.raw, match.redacted, 1)
+        # Only store the first occurrence to avoid duplicate keys if the same
+        # redacted form was already produced (e.g. same email seen twice).
+        if match.redacted not in mapping:
+            mapping[match.redacted] = match.raw
+    return text, mapping
+
+
+def restore_all(text: str, mapping: dict[str, str]) -> str:
+    """Reverse a previous redact_all() call using its returned mapping.
+
+    Replaces all redacted placeholders with the original PII values.
+    Processes longest keys first (matching redact_all sort order) to
+    avoid partial-match replacement errors.
+
+    Stolen pattern from zeroc00I/DontFeedTheAI (MIT): their vault
+    de-anonymizes LLM output before returning it to the caller.
+
+    Args:
+        text:    Redacted text (e.g. an LLM response that echoed back
+                 the redacted placeholders).
+        mapping: The {redacted → raw} dict returned by redact_all().
+
+    Returns:
+        Text with all redacted placeholders replaced by original values.
+    """
+    for redacted, original in sorted(mapping.items(), key=lambda kv: len(kv[0]), reverse=True):
+        text = text.replace(redacted, original)
     return text

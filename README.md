@@ -1,4 +1,4 @@
-**Willow 1.9** · Local-First AI Stack · MIT License
+**Willow 1.9** · Local-First AI Stack · Local-first by default
 
 ---
 
@@ -39,6 +39,8 @@ Willow is a local-first AI stack. Not a wrapper. Not a client. A stack — with 
 ---
 
 ## Quick Start
+
+New here? Start with [`docs/FIRST_5_MINUTES.md`](docs/FIRST_5_MINUTES.md).
 
 ### Linux / macOS
 
@@ -149,6 +151,7 @@ Cloud providers are optional: `willow providers enable anthropic YOUR_KEY`
 
 ## Docs
 
+- [FIRST_5_MINUTES.md](docs/FIRST_5_MINUTES.md) — Non-dev onboarding (copy/paste path)
 - [QUICKSTART.md](docs/QUICKSTART.md) — First five minutes
 - [TECHNICAL_SPEC.md](docs/TECHNICAL_SPEC.md) — Full architecture reference
 - [CONCEPT.md](docs/CONCEPT.md) — The case for local-first AI
@@ -157,6 +160,6 @@ Cloud providers are optional: `willow providers enable anthropic YOUR_KEY`
 
 ## License
 
-MIT · Copyright 2026 Sean Campbell · Commercial use requires written consent (rudi193@gmail.com)
+PolyForm Noncommercial 1.0.0 · See [`LICENSE`](LICENSE)
 
 **Plant the tree. Tend the roots. Name the ones you love. Let nothing be lost.**

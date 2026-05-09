@@ -2,6 +2,8 @@
 
 Local-first AI stack. Your hardware. Your data. No API key required to start.
 
+Want the simplest copy/paste onboarding? Start here: [`FIRST_5_MINUTES.md`](FIRST_5_MINUTES.md).
+
 ---
 
 ## What You Get
@@ -47,23 +49,22 @@ SQLite is used instead of Postgres. Everything else is identical.
 ## First Five Minutes
 
 ```bash
-willow status-all          # check that all components came up
-willow health              # run boot diagnostics
-willow providers list      # see what's active (Ollama is on by default)
+./willow.sh status         # check core health
+./willow.sh verify         # verify SAFE manifests (auth layer)
+./willow.sh ledger         # verify FRANK ledger chain + show recent entries
 ```
 
 Add a cloud key when you want one:
 
 ```bash
-willow providers enable anthropic YOUR_API_KEY
-willow providers enable openai YOUR_API_KEY
-willow providers enable gemini YOUR_API_KEY
+./willow.sh providers enable anthropic --key YOUR_API_KEY
+# (Other providers supported; see docs/TECHNICAL_SPEC.md for the full surface.)
 ```
 
 Start the LAN server:
 
 ```bash
-willow serve
+./willow.sh serve
 ```
 
 Expected output:
@@ -80,8 +81,8 @@ Expected output:
 On the desktop, generate a pairing token:
 
 ```bash
-willow serve          # if not already running
-willow grove pair     # prints the token
+./willow.sh serve          # if not already running
+./willow.sh grove pair     # prints the token
 ```
 
 On the phone (Termux):
@@ -133,6 +134,7 @@ The agent uses MCP tools (`willow_knowledge_search`, `willow_knowledge_ingest`) 
 - Browse skills: [https://clawhub.ai](https://clawhub.ai)
 - Technical spec: `docs/TECHNICAL_SPEC.md`
 - Community: Discord — **LLM Physics**
+- Docs index: `docs/INDEX.md`
 
 ---
 

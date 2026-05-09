@@ -42,7 +42,7 @@ export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
 
 # ── LLM provider keys — uncomment whichever is active ────────────────────────
 # export ANTHROPIC_API_KEY=""
-# export GROQ_API_KEY=""
+# export GROQ_API_KEY=""  # set in local env, not committed
 
 # Python path — willow-1.9 first, no legacy paths
 export PYTHONPATH="${WILLOW_ROOT}:${PYTHONPATH:-}"

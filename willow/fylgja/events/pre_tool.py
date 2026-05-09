@@ -12,6 +12,12 @@ from pathlib import Path
 from willow.fylgja._mcp import call
 from willow.fylgja.safety.platform import check_all as _safety_check_all
 from willow.fylgja.safety.session import get_session_user_id, get_session_role, get_training_consent
+from willow.fylgja.safety.security_scan import (
+    scan_bash as _scan_bash,
+    scan_write as _scan_write,
+    worst as _scan_worst,
+    SEV_HIGH,
+)
 
 AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
 MAX_DEPTH = int(os.environ.get("WILLOW_AGENT_MAX_DEPTH", "3"))
@@ -237,16 +243,47 @@ def main():
     # Bash tool
     if tool_name == "Bash":
         command = tool_input.get("command", "")
+        # Willow workflow guard first
         reason = check_bash_block(command) if command else None
         if reason:
             print(json.dumps({"decision": "block", "reason": reason}))
+            sys.exit(0)
+        # Security scan — exfiltration, credential theft, destructive, obfuscation
+        if command:
+            issues = _scan_bash(command)
+            bad = _scan_worst(issues)
+            if bad and bad.severity >= SEV_HIGH:
+                print(json.dumps({
+                    "decision": "block",
+                    "reason": (
+                        f"[SECURITY] {bad.message} "
+                        f"(category: {bad.category}, severity: {bad.severity})"
+                    ),
+                }))
         sys.exit(0)
 
-    # Write tools — F5 canon guard
-    if tool_name in F5_PROSE_TOOLS:
-        f5 = check_f5_canon(tool_name, tool_input)
-        if f5:
-            print(json.dumps({"decision": "block", "reason": f5}))
+    # Write/Edit tools — security path check + content injection + F5 canon guard
+    if tool_name in ("Write", "Edit") or tool_name in F5_PROSE_TOOLS:
+        file_path = tool_input.get("file_path", "")
+        content = tool_input.get("content", tool_input.get("new_string", ""))
+        # Security scan — protected paths + code injection
+        if file_path or content:
+            issues = _scan_write(file_path, content or "")
+            bad = _scan_worst(issues)
+            if bad and bad.severity >= SEV_HIGH:
+                print(json.dumps({
+                    "decision": "block",
+                    "reason": (
+                        f"[SECURITY] {bad.message} "
+                        f"(category: {bad.category}, path: {file_path[:80]})"
+                    ),
+                }))
+                sys.exit(0)
+        # F5 canon guard (MCP write tools only)
+        if tool_name in F5_PROSE_TOOLS:
+            f5 = check_f5_canon(tool_name, tool_input)
+            if f5:
+                print(json.dumps({"decision": "block", "reason": f5}))
         sys.exit(0)
 
     sys.exit(0)

@@ -265,7 +265,20 @@ def run_grove_ingest() -> None:
             pass
 
 
+def _is_isolated_directory() -> bool:
+    """Return True if CWD is a sandbox/isolated directory — skip all fleet hooks."""
+    mcp = Path.cwd() / ".mcp.json"
+    try:
+        data = __import__("json").loads(mcp.read_text())
+        return data.get("mcpServers") == {}
+    except Exception:
+        return False
+
+
 def main():
+    if _is_isolated_directory():
+        import sys as _sys; _sys.exit(0)
+
     try:
         raw = sys.stdin.read()
         data = json.loads(raw) if raw.strip() else {}

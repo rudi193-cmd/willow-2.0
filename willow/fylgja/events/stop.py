@@ -195,7 +195,20 @@ def _write_session_composite(session_id: str) -> None:
         pass
 
 
+def _is_isolated_directory() -> bool:
+    """Return True if CWD is a sandbox/isolated directory — skip all fleet hooks."""
+    mcp = Path.cwd() / ".mcp.json"
+    try:
+        data = __import__("json").loads(mcp.read_text())
+        return data.get("mcpServers") == {}
+    except Exception:
+        return False
+
+
 def main():
+    if _is_isolated_directory():
+        import sys as _sys; _sys.exit(0)
+
     _t0 = _time.monotonic()
 
     try:
