@@ -9,6 +9,8 @@ description: Graceful Willow 1.9 session close — audit KB, write handoff, run 
 
 1. **KB close audit** — for every task completed or closed this session, verify its KB atom reflects the resolution. Search with `willow_knowledge_search` for each task name. If the atom says the task is open or unsolved, update it with `willow_knowledge_ingest` (new atom) marking it resolved and citing the commit or output. This step exists because atoms written at task-open never get updated on close — that's what causes rediscovery loops in future sessions.
 
+   Also check: did this session discover new patterns (workarounds, constraints, integration techniques)? These should have been created as KB atoms via `/learn` with edges to related atoms. If patterns were extracted but edges are missing, add them now with `store_add_edge` before closing the session.
+
 2. **Memory audit** — run `/health memory` to check for STALE/DEAD/REDUNDANT/DARK records. Archive or fix before handing off.
 
 3. **Write final handoff** — invoke `/handoff` skill. This produces the session summary and Q17.

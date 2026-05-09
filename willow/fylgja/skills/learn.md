@@ -1,49 +1,73 @@
 ---
 name: learn
-description: Extract a reusable pattern from this session and ingest it into Willow KB
+description: Extract a reusable pattern and weave it into the knowledge graph via edges
 ---
 
-# /learn — Extract and Ingest
+# /learn — Extract and Edge
 
-Use when something non-obvious was discovered: a workaround, a subtle invariant, a constraint not visible in the code.
+Use when something non-obvious was discovered: a workaround, a subtle invariant, a constraint that affects future work.
+
+Learned patterns live as edges in the knowledge graph, not as orphaned files. They are discovered by traversing relationships, not by searching.
+
+## What to learn
+
+- Operational constraints discovered during work
+- Workarounds for library/API quirks
+- Version-specific fixes or incompatibilities
+- Architecture patterns or gotchas
+- Integration patterns that save time
+- Performance characteristics not obvious from code
 
 ## What NOT to learn
 
 - Code patterns derivable by reading the repo
 - Git history (use `git log`)
 - Task state or in-progress work from this session
-- Anything already in CLAUDE.md
-
-## Before you learn
-
-Before extracting a pattern, run `/health memory` to check for existing learned patterns that might already cover this insight. This prevents redundant learning and flags contradictions if the new insight conflicts with what's already known. If `/health memory` returns REDUNDANT or CONTRADICTION, resolve that first — do not /learn over it.
+- Anything already in CLAUDE.md or documented code
 
 ## Steps
 
 1. **Name the pattern** — one short title. Examples:
+   - "WillowStore auto-embeds on __init__ when _VEC_AVAILABLE"
+   - "Skills consolidation by mode reduces duplication"
    - "Gleipnir rate window resets per app_id independently"
-   - "knowledge_put ON CONFLICT does not preserve invalid_at"
 
-2. **Write the atom content to a file** — F5 canon: content goes in a file, the KB stores the path.
-   ```
-   Write to: ~/agents/hanuman/learned/<slug>.md
-   Content: full explanation, constraint, or workaround
-   ```
+2. **Search existing atoms** — `willow_knowledge_search` for the pattern name and related keywords. If an identical pattern atom exists, update its edges instead of creating a duplicate.
 
-3. **Ingest the file path** — call `willow_knowledge_ingest`:
+3. **Identify related atoms** — list 2-4 atoms this pattern connects to:
+   - Problem it solves
+   - Module/system it affects
+   - Similar patterns or constraints
+   - Use cases that trigger it
+
+4. **Create the pattern atom** — `willow_knowledge_ingest`:
    ```json
    {
      "app_id": "hanuman",
      "title": "<pattern name>",
-     "summary": "/home/sean-campbell/agents/hanuman/learned/<slug>.md",
-     "source_type": "learned",
+     "summary": "<one-sentence constraint or insight>",
+     "source_type": "discovered_pattern",
      "category": "pattern",
      "domain": "hanuman"
    }
    ```
 
-4. **Confirm** — report the atom title and the file path stored.
+5. **Create edges** — for each related atom, call `store_add_edge`:
+   ```json
+   {
+     "from_id": "<pattern_atom_id>",
+     "to_id": "<related_atom_id>",
+     "relation": "relates_to|solves|affects|contradicts|implements",
+     "context": "<why this edge matters>"
+   }
+   ```
 
-## Rule
+6. **Confirm** — report the pattern atom ID and edge count.
 
-The KB stores the path. Never pass prose as `summary` or `content`. The file IS the content.
+## Rules
+
+- No files. The pattern is the atom; edges are the connections.
+- One pattern per atom. Keep it focused.
+- Edges are what make learned patterns discoverable. Create at least 2 edges.
+- If a pattern already exists, add edges instead of duplicating.
+- Learned patterns are active citizens in the graph, not passive references.
