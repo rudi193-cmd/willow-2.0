@@ -147,24 +147,26 @@ class TestPhoneDetection:
 class TestRedactAll:
     def test_redact_replaces_secret(self):
         text = "key: gsk_sBZoR7eWy8U2ClfmhGFFWGdyb3FYtest"
-        result = redact_all(text)
-        assert "gsk_sBZoR7eWy8U2ClfmhGFFWGdyb3FYtest" not in result
-        assert "…" in result
+        redacted_text, mapping = redact_all(text)
+        assert "gsk_sBZoR7eWy8U2ClfmhGFFWGdyb3FYtest" not in redacted_text
+        assert "…" in redacted_text
 
     def test_redact_replaces_ssn(self):
         text = "my ssn is 123-45-6789 thanks"
-        result = redact_all(text)
-        assert "123-45-6789" not in result
+        redacted_text, mapping = redact_all(text)
+        assert "123-45-6789" not in redacted_text
 
     def test_redact_clean_input_unchanged(self):
         text = "nothing sensitive here"
-        assert redact_all(text) == text
+        redacted_text, mapping = redact_all(text)
+        assert redacted_text == text
+        assert mapping == {}
 
     def test_redact_multiple_hits(self):
         text = "email test@example.com and ssn 123-45-6789"
-        result = redact_all(text)
-        assert "test@example.com" not in result
-        assert "123-45-6789" not in result
+        redacted_text, mapping = redact_all(text)
+        assert "test@example.com" not in redacted_text
+        assert "123-45-6789" not in redacted_text
 
 
 # ── secret_prefixes standalone ────────────────────────────────────────────────
