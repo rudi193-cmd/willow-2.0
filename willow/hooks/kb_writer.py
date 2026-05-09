@@ -54,7 +54,7 @@ def write_atom_to_kb(atom: Atom, dedup_key: Optional[str] = None) -> bool:
                 )
 
             if cur.fetchone():
-                bridge.conn.close()
+                bridge.close()
                 return False  # Already exists
 
         # Insert with content field
@@ -72,7 +72,7 @@ def write_atom_to_kb(atom: Atom, dedup_key: Optional[str] = None) -> bool:
             json.dumps(atom.content),
         ))
         bridge.conn.commit()
-        bridge.conn.close()
+        bridge.close()
 
         if os.environ.get("WILLOW_ATOM_VERBOSE"):
             source_tag = atom.source_type.replace("_", "-")

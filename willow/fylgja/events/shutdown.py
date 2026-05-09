@@ -372,6 +372,31 @@ def run_atom_synthesis() -> None:
         pass
 
 
+def run_hook_pipeline(run_id: str = "") -> None:
+    """Phase 5: Run registered hooks with isolation, tracking, approval gates."""
+    if not os.environ.get("WILLOW_ATOM_EXTRACTION"):
+        return
+
+    try:
+        from willow.hooks.runner import run_pipeline
+        from willow.hooks.registry import seed_builtin_hooks
+
+        # Register all built-in hooks (idempotent)
+        seed_builtin_hooks()
+
+        # Run all active hooks with isolation and tracking
+        summary = run_pipeline(run_id=run_id)
+
+        if os.environ.get("WILLOW_ATOM_VERBOSE"):
+            print(f"[hook-pipeline] Phase 5: {summary['executed']} executed, "
+                  f"{summary['stalled']} stalled, {summary['errors']} errors, "
+                  f"{summary['total_ms']}ms")
+
+    except Exception as e:
+        if os.environ.get("WILLOW_ATOM_VERBOSE"):
+            print(f"[hook-pipeline] Error: {e}", file=sys.stderr)
+
+
 def _is_isolated_directory() -> bool:
     """Return True if CWD is a sandbox/isolated directory — skip all fleet hooks."""
     mcp = Path.cwd() / ".mcp.json"
@@ -399,6 +424,7 @@ def main():
     run_compost()
     run_atom_synthesis()     # Phase 3: catch atoms missed by hooks
     run_edge_linking()       # Phase 4: connect atoms into graph
+    run_hook_pipeline(run_id=session_id)  # Phase 5: run registered hooks with isolation
     run_feedback_pipeline()
     run_handoff_rebuild()
 
