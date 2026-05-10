@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 willow/coordinator.py — Willow local coordinator.
+b17: 0BF5F  ΔΣ=42
 Watches Grove, routes tasks, feeds Kart. Runs on yggdrasil:v9.
 
 Run: python3 -m willow.coordinator
