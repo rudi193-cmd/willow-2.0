@@ -56,3 +56,35 @@ def init_pg_schema():
         conn.close()
     except Exception as e:
         print(f"  pg schema init warning: {e}")
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Hook: after test session completes, trigger atom extraction."""
+    if not os.environ.get("WILLOW_ATOM_EXTRACTION"):
+        return
+
+    try:
+        # Generate pytest JSON report
+        report_path = Path(REPO_ROOT) / ".pytest_results.json"
+        results = {
+            "total": session.testsfailed + session.testspassed + session.testswarned,
+            "passed": session.testspassed,
+            "failed": session.testsfailed,
+            "skipped": session.testswarned,
+            "duration": session.duration or 0,
+            "tests": [],  # Stub; full extraction would parse test items
+        }
+
+        # Write report
+        with open(report_path, "w") as f:
+            import json
+            json.dump(results, f)
+
+        # Trigger atom extraction
+        from willow.hooks.test_completion import main as test_completion_main
+        os.environ["PYTEST_REPORT"] = str(report_path)
+        test_completion_main()
+
+    except Exception as e:
+        if os.environ.get("WILLOW_ATOM_VERBOSE"):
+            print(f"[conftest] test_completion error: {e}")

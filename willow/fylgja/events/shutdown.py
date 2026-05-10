@@ -265,6 +265,138 @@ def run_grove_ingest() -> None:
             pass
 
 
+def run_edge_linking() -> None:
+    """Phase 4: Edge linking — connect atoms into knowledge graph.
+
+    Creates relationships between atoms so they form a connected graph.
+    Links merge atoms to commits, creates cross-references, etc.
+    """
+    if not os.environ.get("WILLOW_ATOM_EXTRACTION"):
+        return
+
+    try:
+        from willow.hooks.edge_linking import link_atoms_for_session
+        summary = link_atoms_for_session()
+        if summary and os.environ.get("WILLOW_ATOM_VERBOSE"):
+            call("grove_send_message", {
+                "channel_name": "hanuman",
+                "content": f"Phase 4: linked {summary.get('merge_to_commits', 0)} merge→commit edges, "
+                           f"{summary.get('cross_references', 0)} cross-references",
+                "sender": "hanuman",
+            }, timeout=5)
+    except Exception:
+        pass
+
+
+def run_atom_synthesis() -> None:
+    """Phase 3: Session synthesis — extract atoms from commits since last session.
+
+    Safety net for commits that didn't get atoms via post-commit hook.
+    Only runs if WILLOW_ATOM_EXTRACTION is enabled.
+    """
+    if not os.environ.get("WILLOW_ATOM_EXTRACTION"):
+        return
+
+    try:
+        import subprocess
+        from core.atom_extractor import extract_commit_atom
+        from core.pg_bridge import PgBridge
+
+        # Get last session marker
+        state_file = Path.home() / ".willow" / "atom_extraction_state.json"
+        last_commit = None
+        if state_file.exists():
+            try:
+                state = json.loads(state_file.read_text())
+                last_commit = state.get("last_extracted_commit")
+            except Exception:
+                pass
+
+        if not last_commit:
+            last_commit = "HEAD~20"  # Fallback: last 20 commits
+
+        # Get commits since last extraction
+        result = subprocess.run(
+            ["git", "log", "--format=%H", f"{last_commit}..HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=Path(__file__).parent.parent.parent.parent,  # willow-1.9 root
+        )
+
+        if result.returncode != 0:
+            return
+
+        commits = [h for h in result.stdout.strip().split("\n") if h]
+        if not commits:
+            return
+
+        # Extract atoms for commits without atoms
+        bridge = PgBridge()
+        extracted = 0
+
+        for commit_hash in commits:
+            atom = extract_commit_atom(commit_hash)
+            if not atom:
+                continue
+
+            try:
+                cur = bridge.conn.cursor()
+                cur.execute("""
+                    INSERT INTO knowledge
+                    (id, title, summary, category, source_type, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (
+                    atom.id,
+                    atom.title,
+                    atom.summary,
+                    atom.category,
+                    atom.source_type,
+                    atom.created_at,
+                ))
+                bridge.conn.commit()
+                extracted += 1
+            except Exception:
+                pass
+
+        if extracted > 0 and os.environ.get("WILLOW_ATOM_VERBOSE"):
+            call("grove_send_message", {
+                "channel_name": "hanuman",
+                "content": f"Session synthesis: extracted {extracted} atoms from recent commits (Phase 3 safety net)",
+                "sender": "hanuman",
+            }, timeout=5)
+
+        bridge.conn.close()
+
+    except Exception:
+        pass
+
+
+def run_hook_pipeline(run_id: str = "") -> None:
+    """Phase 5: Run registered hooks with isolation, tracking, approval gates."""
+    if not os.environ.get("WILLOW_ATOM_EXTRACTION"):
+        return
+
+    try:
+        from willow.hooks.runner import run_pipeline
+        from willow.hooks.registry import seed_builtin_hooks
+
+        # Register all built-in hooks (idempotent)
+        seed_builtin_hooks()
+
+        # Run all active hooks with isolation and tracking
+        summary = run_pipeline(run_id=run_id)
+
+        if os.environ.get("WILLOW_ATOM_VERBOSE"):
+            print(f"[hook-pipeline] Phase 5: {summary['executed']} executed, "
+                  f"{summary['stalled']} stalled, {summary['errors']} errors, "
+                  f"{summary['total_ms']}ms")
+
+    except Exception as e:
+        if os.environ.get("WILLOW_ATOM_VERBOSE"):
+            print(f"[hook-pipeline] Error: {e}", file=sys.stderr)
+
+
 def _is_isolated_directory() -> bool:
     """Return True if CWD is a sandbox/isolated directory — skip all fleet hooks."""
     mcp = Path.cwd() / ".mcp.json"
@@ -290,10 +422,18 @@ def main():
     mark_session_clean()
     run_grove_ingest()
     run_compost()
+    run_atom_synthesis()     # Phase 3: catch atoms missed by hooks
+    run_edge_linking()       # Phase 4: connect atoms into graph
+    run_hook_pipeline(run_id=session_id)  # Phase 5: run registered hooks with isolation
     run_feedback_pipeline()
     run_handoff_rebuild()
 
     if session_id:
+        try:
+            from willow.fylgja.handoff_flat import write_flat_handoff
+            write_flat_handoff(session_id, AGENT)
+        except Exception:
+            pass
         close_session(session_id)
         run_ingot(session_id)
 

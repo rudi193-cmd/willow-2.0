@@ -206,6 +206,41 @@ CREATE TABLE IF NOT EXISTS forks (
     deleted_at   TIMESTAMPTZ,
     outcome_note TEXT
 );
+
+CREATE TABLE IF NOT EXISTS edges (
+    id          SERIAL PRIMARY KEY,
+    from_id     TEXT NOT NULL,
+    to_id       TEXT NOT NULL,
+    relation    TEXT NOT NULL,
+    context     TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(from_id, to_id, relation)
+);
+
+CREATE TABLE IF NOT EXISTS hook_registry (
+    name               TEXT PRIMARY KEY,
+    category           TEXT NOT NULL,
+    handler_path       TEXT NOT NULL,
+    destructive        BOOLEAN NOT NULL DEFAULT FALSE,
+    approval_required  BOOLEAN NOT NULL DEFAULT FALSE,
+    test_path          TEXT,
+    active             BOOLEAN NOT NULL DEFAULT TRUE,
+    priority           INTEGER NOT NULL DEFAULT 50,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS hook_executions (
+    id           SERIAL PRIMARY KEY,
+    hook_name    TEXT NOT NULL,
+    run_id       TEXT,
+    started_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ended_at     TIMESTAMPTZ,
+    input_hash   TEXT,
+    output_hash  TEXT,
+    changed      BOOLEAN,
+    status       TEXT NOT NULL DEFAULT 'pending',
+    error        TEXT
+);
 """
 
 # Columns added after initial deployment — safe to run repeatedly.

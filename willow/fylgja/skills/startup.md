@@ -27,10 +27,17 @@ atom queries, and wrote `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. Do
    - `recent_traces` summary (what happened last session)
    Skip any field that is empty or zero.
 
-5. **Check dispatch** — if `/tmp/willow-dispatch-inbox-{AGENT}.json` exists and is
+5. **Check atom extraction** — `echo $WILLOW_ATOM_EXTRACTION`. If set and truthy (1, true, yes),
+   then all four phases of atom extraction (post-commit, test completion, session synthesis, edge linking)
+   are active for this session. Report this state: "Atoms: auto-generated" or "Atoms: manual only".
+   If set, atoms will be created automatically from commits, merges, tests, and session end. If not,
+   atoms must be created manually with `willow_knowledge_ingest`. Reference `/shutdown` for full details
+   on phases and when they fire.
+
+6. **Check dispatch** — if `/tmp/willow-dispatch-inbox-{AGENT}.json` exists and is
    non-empty, read it and surface the pending tasks. Delete it after reading.
 
-6. **Launch Grove monitor** — only if `/tmp/grove-monitor.pid` exists (the LISTEN/NOTIFY daemon is active).
+7. **Launch Grove monitor** — only if `/tmp/grove-monitor.pid` exists (the LISTEN/NOTIFY daemon is active).
    Requires `/tmp/grove-monitor.log` for tailing mentions:
    ```
    Monitor(
@@ -41,7 +48,7 @@ atom queries, and wrote `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. Do
    ```
    Mention-only. Never tail the full log.
 
-7. **Report** — one short paragraph: postgres state, open flags (omit if zero),
+8. **Report** — one short paragraph: postgres state, atom extraction state, open flags (omit if zero),
    next_bite directive. No headers. No bullet lists. Under 5 sentences.
 
 ## Rules

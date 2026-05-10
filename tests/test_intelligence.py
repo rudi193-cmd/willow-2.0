@@ -312,6 +312,7 @@ def test_mirror_skips_when_too_few_nodes():
     from core.intelligence import mirror_pass
     bridge = _bridge()
     with bridge.conn.cursor() as cur:
+        cur.execute("DELETE FROM knowledge WHERE source_type = 'community_detection'")
         cur.execute("DELETE FROM knowledge WHERE project = 'mirror'")
     bridge.conn.commit()
 
@@ -327,7 +328,8 @@ def test_mirror_skips_when_too_few_nodes():
     assert count == 0
 
     with bridge.conn.cursor() as cur:
-        cur.execute("DELETE FROM knowledge WHERE project LIKE 'test_mr_few%'")
+        cur.execute("DELETE FROM knowledge WHERE source_type = 'community_detection'")
+        cur.execute("DELETE FROM knowledge WHERE project = 'mirror'")
     bridge.conn.commit()
 
 
