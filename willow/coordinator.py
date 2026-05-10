@@ -39,7 +39,7 @@ COORDINATOR_SENDER = "willow"
 FLEET_SENDERS      = frozenset({"hanuman", "heimdallr", "vishwakarma", "loki"})
 SEAN_SENDER        = "sean-campbell"
 
-API_URL        = os.environ.get("WILLOW_COORDINATOR_API_URL",        "http://localhost:11434/v1/chat/completions")
+API_URL        = os.environ.get("WILLOW_COORDINATOR_API_URL",        "http://localhost:11434/api/chat")
 MODEL          = os.environ.get("WILLOW_COORDINATOR_MODEL",          "yggdrasil:v9")
 SILENCE_SECS   = int(os.environ.get("WILLOW_COORDINATOR_SILENCE_SECS",    "600"))
 HEARTBEAT_SECS = int(os.environ.get("WILLOW_COORDINATOR_HEARTBEAT_SECS",  "300"))
@@ -147,13 +147,14 @@ def _kart_pending_count() -> int:
 
 
 def _kart_submit(cmd: str, agent: str = "kart") -> None:
+    import uuid as _uuid
     try:
         conn = psycopg2.connect(_dsn())
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO public.tasks (task, status, submitted_by, agent)"
-                " VALUES (%s, 'pending', %s, %s)",
-                (cmd, COORDINATOR_SENDER, agent),
+                "INSERT INTO public.tasks (id, task, status, submitted_by, agent)"
+                " VALUES (%s, %s, 'pending', %s, %s)",
+                (str(_uuid.uuid4()), cmd, COORDINATOR_SENDER, agent),
             )
         conn.commit()
         conn.close()
@@ -203,7 +204,8 @@ def _llm_call(signal: Signal, msg: dict, kb_ctx: str) -> Optional[str]:
             {"role": "system",  "content": _SYSTEM_PROMPT},
             {"role": "user",    "content": user_msg},
         ],
-        "stream": False,
+        "stream":       False,
+        "num_predict":  100,   # cap output — 3B models can run long under load
     }).encode()
 
     try:
@@ -211,7 +213,7 @@ def _llm_call(signal: Signal, msg: dict, kb_ctx: str) -> Optional[str]:
             API_URL, data=payload,
             headers={"Content-Type": "application/json"}, method="POST",
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=45) as resp:
             raw = json.loads(resp.read())
             # Support both Ollama and OpenAI response shapes
             return (
@@ -232,11 +234,14 @@ def _handle(signal: Signal, msg: dict) -> None:
 
     channel = msg.get("channel", "general")
 
-    if "KART:" in reply:
-        grove_part, kart_part = reply.split("KART:", 1)
-        kart_cmd = kart_part.strip().splitlines()[0].strip()
-        if grove_part.strip():
-            _grove_post(grove_part.strip(), channel)
+    # Case-insensitive KART: detection — 3B models may not hold exact casing
+    import re as _re
+    kart_match = _re.search(r'KART\s*:', reply, _re.IGNORECASE)
+    if kart_match:
+        grove_part = reply[:kart_match.start()].strip()
+        kart_cmd   = reply[kart_match.end():].strip().splitlines()[0].strip()
+        if grove_part:
+            _grove_post(grove_part, channel)
         _kart_submit(kart_cmd)
     else:
         _grove_post(reply, channel)
