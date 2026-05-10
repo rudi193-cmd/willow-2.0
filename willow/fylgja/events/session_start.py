@@ -234,6 +234,22 @@ def _send_heartbeat() -> None:
         pass
 
 
+def _run_boot_projects_check() -> str:
+    """Run boot_projects_check.py in dry-run mode. Returns compact summary string."""
+    try:
+        script = Path.home() / "agents" / "hanuman" / "bin" / "boot_projects_check.py"
+        if not script.exists():
+            return ""
+        import subprocess as _sp
+        r = _sp.run(
+            [sys.executable, str(script), "--dry-run"],
+            capture_output=True, text=True, timeout=10,
+        )
+        return r.stdout.strip()[:600] if r.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
 def _ensure_grove_mcp() -> str:
     """Check grove monitor is running via PID file. Returns status string."""
     pid_file = Path("/tmp/grove-monitor.pid")
@@ -336,6 +352,19 @@ def _run_silent_startup() -> dict:
     elif result["top_flags"]:
         result["handoff_summary"] = "Open: " + "; ".join(result["top_flags"])
 
+    # Flat handoff — read most recent file and verify anchor against JSONL
+    flat: dict = {}
+    try:
+        from willow.fylgja.handoff_flat import read_flat_handoff, verify_anchor
+        flat = read_flat_handoff(AGENT)
+        if flat.get("anchor") and flat.get("jsonl_path"):
+            flat["verified"] = verify_anchor(flat["anchor"], flat["jsonl_path"])
+        else:
+            flat["verified"] = False
+    except Exception:
+        flat = {}
+    result["flat_handoff"] = flat
+
     # Open Run Ledger row — enables PMEM1 trace writes for this session.
     run_id = _open_run()
 
@@ -355,6 +384,7 @@ def _run_silent_startup() -> dict:
             "mcp_degraded": len(result["mcp_errors"]) > 0,
             "mcp_last_error": result["mcp_errors"][-1] if result["mcp_errors"] else None,
             "run_id": run_id,
+            "flat_handoff_verified": flat.get("verified", False),
         }, indent=2))
         state_file.write_text(json.dumps({"prompt_count": 0}))
     except Exception:
@@ -464,11 +494,12 @@ def main():
     if session_id:
         _register_jeles(session_id)
 
-    with _cf.ThreadPoolExecutor(max_workers=4) as ex:
+    with _cf.ThreadPoolExecutor(max_workers=5) as ex:
         hw_future = ex.submit(_scan_hardware)
         startup_future = ex.submit(_run_silent_startup)
         ex.submit(_send_heartbeat)
         dispatch_future = ex.submit(_subscribe_dispatch)
+        projects_future = ex.submit(_run_boot_projects_check)
 
     summary, alerts = hw_future.result()
     summary.append(grove_status)
@@ -477,6 +508,7 @@ def main():
         summary.append(f"dispatch={dispatch_count}")
 
     startup = startup_future.result()
+    projects_summary = projects_future.result()
     summary.append(f"postgres={startup['postgres']}")
 
     lines = ["[INDEX] " + " · ".join(summary)]
@@ -486,8 +518,22 @@ def main():
     # Anchor context — always injected
     lines.append("[ANCHOR]")
     lines.append(f"agent={AGENT}  postgres={startup['postgres']}")
-    if startup["handoff_title"]:
+
+    # Flat handoff — verified ground truth takes priority over MCP handoff prose
+    flat = startup.get("flat_handoff", {})
+    if flat.get("written_at"):
+        verified = flat.get("verified", False)
+        status = "verified" if verified else "UNVERIFIED"
+        lines.append(f"flat handoff: {flat['written_at'][:10]} [{status}]")
+        if not verified and flat.get("anchor"):
+            lines.append("  ⚠ anchor not found in JSONL — handoff may be stale or fabricated")
+        if flat.get("open_gates"):
+            lines.append(f"open gates: {len(flat['open_gates'])}")
+            for g in flat["open_gates"][:3]:
+                lines.append(f"  · {g}")
+    elif startup["handoff_title"]:
         lines.append(f"last handoff: {startup['handoff_title']}")
+
     traces = startup.get("recent_traces", [])
     if traces:
         trace_summaries = [t.get("summary", t.get("tool", "?"))[:40] for t in traces[:3]]
@@ -500,6 +546,11 @@ def main():
         lines.append(f"NEXT: {startup['next_bite']}")
     elif startup["handoff_summary"]:
         lines.append(startup["handoff_summary"])
+
+    if projects_summary:
+        lines.append("")
+        lines.append("[PROJECTS]")
+        lines.append(projects_summary)
     grove_pid_file = Path("/tmp/grove-monitor.pid")
     grove_log_file = Path("/tmp/grove-monitor.log")
     # The LISTEN/NOTIFY monitor is considered active when its pidfile exists.

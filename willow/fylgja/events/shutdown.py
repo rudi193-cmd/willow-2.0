@@ -429,6 +429,11 @@ def main():
     run_handoff_rebuild()
 
     if session_id:
+        try:
+            from willow.fylgja.handoff_flat import write_flat_handoff
+            write_flat_handoff(session_id, AGENT)
+        except Exception:
+            pass
         close_session(session_id)
         run_ingot(session_id)
 
