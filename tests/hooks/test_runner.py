@@ -79,8 +79,9 @@ class TestSubprocessIsolation(unittest.TestCase):
         self.assertEqual(result['returncode'], 1)
         self.assertIn('not found', result['stderr'].lower())
 
+    @patch('os.path.exists', return_value=True)
     @patch('subprocess.run')
-    def test_timeout_handling(self, mock_run):
+    def test_timeout_handling(self, mock_run, mock_exists):
         """Hook timeout is caught and reported."""
         import subprocess
         mock_run.side_effect = subprocess.TimeoutExpired('cmd', 30)
@@ -88,7 +89,7 @@ class TestSubprocessIsolation(unittest.TestCase):
         result = run_hook_isolated("dummy/hook.py", timeout=30)
         self.assertEqual(result['returncode'], 124)  # Standard timeout code
         self.assertTrue(result['timed_out'])
-        self.assertIn('timeout', result['stderr'].lower())
+        self.assertIn('timed out', result['stderr'].lower())
 
 
 class TestIterationLogging(unittest.TestCase):
