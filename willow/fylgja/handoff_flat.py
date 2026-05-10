@@ -1,6 +1,6 @@
 """
 fylgja/handoff_flat.py — Flat file handoff writer and reader.
-b17: WGRV1  ΔΣ=42
+b17: 932BE  ΔΣ=42
 
 Writes a verifiable flat file at session end. Read and verified at session start.
 The file is ground truth the next session can cross-check — not trusted prose.
