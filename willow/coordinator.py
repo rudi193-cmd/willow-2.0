@@ -163,13 +163,13 @@ def _kart_submit(cmd: str, agent: str = "kart") -> None:
 
 
 def _kb_context(limit: int = 8) -> str:
-    """Pull recent atoms from HumanLearning / WillowLearning for LLM context injection."""
+    """Pull recent learning atoms for LLM context injection."""
     try:
         conn = psycopg2.connect(_dsn())
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT title, summary FROM knowledge
-                 WHERE domain IN ('HumanLearning', 'WillowLearning', 'hanuman')
+                 WHERE source_type IN ('learned', 'discovered_pattern', 'correction', 'behavioral_pattern')
                    AND invalid_at IS NULL
                  ORDER BY created_at DESC LIMIT %s
             """, (limit,))
@@ -242,8 +242,40 @@ def _handle(signal: Signal, msg: dict) -> None:
         _grove_post(reply, channel)
 
 
+def _kart_next_pending() -> Optional[str]:
+    """Return the task text of the oldest pending Kart task, or None."""
+    try:
+        conn = psycopg2.connect(_dsn())
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, task FROM public.tasks WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1"
+            )
+            row = cur.fetchone()
+        conn.close()
+        return (row[0], row[1]) if row else None
+    except Exception:
+        return None
+
+
 def _handle_silence_feed(pending: int) -> None:
-    _grove_post(f"Queue has {pending} pending — feeding next task.", "general")
+    next_task = _kart_next_pending()
+    if next_task:
+        task_id, task_text = next_task
+        _grove_post(f"Queue has {pending} pending — activating next task: {task_text[:80]}", "general")
+        # Mark the task as running so Kart picks it up
+        try:
+            conn = psycopg2.connect(_dsn())
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE public.tasks SET status = 'running' WHERE id = %s AND status = 'pending'",
+                    (task_id,)
+                )
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            log.error("silence_feed: failed to activate task %s: %s", task_id, e)
+    else:
+        _grove_post("Queue has pending tasks but couldn't fetch next — check Kart.", "general")
 
 
 def _heartbeat(signal_counts: dict, last_signal: Optional[str]) -> None:
