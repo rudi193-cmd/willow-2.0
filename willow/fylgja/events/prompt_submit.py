@@ -17,6 +17,7 @@ from willow.fylgja._state import (
 )
 
 ANCHOR_INTERVAL = 25
+FLAT_HANDOFF_INTERVAL = 10  # write flat handoff every N prompts
 ANCHOR_CACHE = Path.home() / ".willow" / f"session_anchor_{AGENT}.json"
 STATE_FILE = Path.home() / ".willow" / f"anchor_state_{AGENT}.json"
 TURNS_FILE = Path.home() / "agents" / AGENT / "cache" / "turns.txt"
@@ -246,6 +247,19 @@ def _inject_dispatch_inbox() -> None:
         pass
 
 
+def _run_flat_handoff_checkpoint(session_id: str) -> None:
+    """Write flat handoff every FLAT_HANDOFF_INTERVAL prompts — crash-safe checkpoint."""
+    try:
+        state = json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {"prompt_count": 0}
+        count = state.get("prompt_count", 0)
+        if count % FLAT_HANDOFF_INTERVAL != 0:
+            return
+        from willow.fylgja.handoff_flat import write_flat_handoff
+        write_flat_handoff(session_id, AGENT)
+    except Exception:
+        pass
+
+
 def _run_build_continue() -> None:
     task = get_active_task()
     if not task:
@@ -304,6 +318,7 @@ def main():
     _run_source_ring(session_id)
     _run_route(prompt, session_id)
     _run_anchor()
+    _run_flat_handoff_checkpoint(session_id)
     _inject_dispatch_inbox()
     _run_feedback(prompt, session_id)
     prompt = _run_notice(prompt, session_id)
