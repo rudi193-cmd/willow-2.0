@@ -352,6 +352,23 @@ def _run_silent_startup() -> dict:
     elif result["top_flags"]:
         result["handoff_summary"] = "Open: " + "; ".join(result["top_flags"])
 
+    # 6. Corpus identity — seed + corrections + preferences (direct SOIL read)
+    try:
+        from core.willow_store import WillowStore as _WS
+        _store = _WS()
+        _seed_rec = _store.get("corpus/seed", "seed") or {}
+        _corrs = _store.all("corpus/corrections") or []
+        _prefs = _store.all("corpus/preferences") or []
+        _corrs.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+        _prefs.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+        result["corpus"] = {
+            "seed": _seed_rec.get("content", ""),
+            "corrections": [r.get("content", "") for r in _corrs[:10] if r.get("content")],
+            "preferences": [r.get("content", "") for r in _prefs[:10] if r.get("content")],
+        }
+    except Exception:
+        result["corpus"] = {"seed": "", "preferences": [], "corrections": []}
+
     # Flat handoff — read most recent file and verify anchor against JSONL
     flat: dict = {}
     try:
@@ -542,6 +559,18 @@ def main():
         lines.append(f"open gaps: {startup['open_flags']}")
         for flag in startup["top_flags"][:2]:
             lines.append(f"  · {flag}")
+    corpus = startup.get("corpus", {})
+    if corpus.get("seed"):
+        lines.append(f"why: {corpus['seed'][:120]}")
+    if corpus.get("corrections"):
+        lines.append(f"corrections ({len(corpus['corrections'])}):")
+        for c in corpus["corrections"]:
+            lines.append(f"  · {c[:100]}")
+    if corpus.get("preferences"):
+        lines.append(f"preferences ({len(corpus['preferences'])}):")
+        for p in corpus["preferences"]:
+            lines.append(f"  · {p[:100]}")
+
     if startup.get("next_bite"):
         lines.append(f"NEXT: {startup['next_bite']}")
     elif startup["handoff_summary"]:
