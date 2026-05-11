@@ -6,54 +6,45 @@ description: Willow 1.9 session boot — read anchor, surface state, launch Grov
 # /startup — Willow 1.9 Boot
 
 The SessionStart hook already ran `willow_status`, `willow_handoff_latest`, flag scan,
-atom queries, and wrote `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. Do not re-run those calls.
+and wrote `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. Do not re-run those calls
+unless the anchor is missing or older than 2 hours.
 
 ## Sequence
 
-1. **Read anchor** — `Read ~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. This is the authoritative boot
-   state. If the file is missing or `written_at` is more than 10 minutes old, then and
-   only then call `willow_status` + `willow_handoff_latest` in parallel to rebuild it.
+1. **Read anchor** — `Read ~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. This is the
+   authoritative boot state written by the hook. If missing or `written_at` is more than
+   2 hours old, call `willow_status` + `willow_handoff_latest` in parallel to rebuild it.
+   Otherwise use the anchor as-is — do not re-query what the hook already fetched.
 
-2. **Check Postgres** — if `anchor.postgres != "up"`, surface degraded state and stop.
+2. **Check Postgres** — if `anchor.postgres != "up"`, post to Grove `#general` and stop.
 
-3. **Verify handoff identity** — `anchor.handoff_title` must contain `$WILLOW_AGENT_NAME`.
-   If it doesn't, scan `~/agents/{AGENT}/index/haumana_handoffs/` for the newest matching
-   file and read the first 60 lines only. If it does match, use `anchor.handoff_summary`
-   — do not read the full file.
+3. **Pull own channel** — `grove_get_history(channel='{AGENT}', limit=20)`. This is the
+   inbox. Scan for Loki handoffs, urgent flags, or directed tasks posted since
+   `anchor.written_at`. This is the only mandatory Grove pull at boot — general, architecture,
+   and handoffs channels are on-demand, not boot.
 
-4. **Surface open items** — report from anchor fields only:
-   - `open_flags` count and `top_flags` list
-   - `next_bite` directive (this is the first thing to act on)
-   - `recent_traces` summary (what happened last session)
-   Skip any field that is empty or zero.
+4. **Check dispatch** — if `/tmp/willow-dispatch-inbox-{AGENT}.json` exists and is non-empty,
+   read and surface the tasks. Delete after reading.
 
-5. **Check atom extraction** — `echo $WILLOW_ATOM_EXTRACTION`. If set and truthy (1, true, yes),
-   then all four phases of atom extraction (post-commit, test completion, session synthesis, edge linking)
-   are active for this session. Report this state: "Atoms: auto-generated" or "Atoms: manual only".
-   If set, atoms will be created automatically from commits, merges, tests, and session end. If not,
-   atoms must be created manually with `willow_knowledge_ingest`. Reference `/shutdown` for full details
-   on phases and when they fire.
+5. **Launch Grove monitor** — use the LISTEN/NOTIFY pattern from `grove-persistent-monitor.md`.
+   Name-filter variant only: fires on all messages in own channel, and on `@{agent}` mentions
+   elsewhere. Do not launch a monitor that fires on every message fleet-wide.
 
-6. **Check dispatch** — if `/tmp/willow-dispatch-inbox-{AGENT}.json` exists and is
-   non-empty, read it and surface the pending tasks. Delete it after reading.
+6. **Reconcile process flags from prior JSONL** — read the `## JSONL` path from the flat
+   handoff file at `~/.willow/handoffs/{AGENT}-{today}.md`. Tail the last 200 lines. Scan for
+   process completion signals (`[backfill] total:`, `ALL PASSES COMPLETE`, `done:`, `finished`,
+   `nohup` exit). Cross-reference against any open flag in `hanuman/flags` with `flag_state`
+   of `running` or `awaiting authorization`. If the JSONL shows clean exit, close the flag
+   with `store_put` before surfacing the report. Skip if no `## JSONL` pointer exists.
 
-7. **Launch Grove monitor** — only if `/tmp/grove-monitor.pid` exists (the LISTEN/NOTIFY daemon is active).
-   Requires `/tmp/grove-monitor.log` for tailing mentions:
-   ```
-   Monitor(
-     description="Grove mentions",
-     persistent=True,
-     command='tail -n +1 -f /tmp/grove-monitor.log | grep --line-buffered "\\[MENTION\\]"'
-   )
-   ```
-   Mention-only. Never tail the full log.
-
-8. **Report** — one short paragraph: postgres state, atom extraction state, open flags (omit if zero),
-   next_bite directive. No headers. No bullet lists. Under 5 sentences.
+7. **Report** — one short paragraph: postgres state, open flags count (omit if zero), top
+   flags, next_bite from anchor. Under 5 sentences. No headers.
 
 ## Rules
 
-- Never call `grove_get_history` during boot. Channel pulls are on-demand, not automatic.
-- Never read a full handoff .md file unless anchor identity check fails.
-- Never call `willow_status` or `willow_handoff_latest` unless anchor is missing or stale.
+- Anchor TTL is 2 hours, not 10 minutes. The hook did the work — trust it.
+- `#general`, `#architecture`, `#handoffs` are on-demand. Never pull them at boot.
+- `frank_ledger` and personal layer KB search are sit-down prep, not boot. Pull them when
+  Sean opens a sit-down, not on every session start.
+- Never read a full handoff `.md` file at boot. The anchor summary is enough.
 - If Postgres is down, stop. Do not build on a broken foundation.

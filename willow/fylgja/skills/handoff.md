@@ -7,7 +7,11 @@ description: Write a Willow 1.9 session handoff — 17 questions, rebuild DB, wr
 
 ## Sequence
 
-1. **Load current state** — call `willow_handoff_latest` to see prior open threads.
+1. **Load current state** — call `willow_handoff_latest` to see prior open threads. Then call
+   `store_list(hanuman/flags)` and filter for `flag_state` of `running` or `open` with `id`
+   starting with `process-`. These are long-running processes — their current state must appear
+   accurately in the handoff. Do not rely on memory for this; read SOIL.
+
 2. **Draft handoff** using this format:
 
 ```
@@ -26,6 +30,7 @@ Q17: "What is the next single bite?"
 
 ## Risks / Open Gates
 <anything that could break the next session>
+<for each process- flag still running: name, state, log path, and estimated completion if known>
 ```
 
 3. **Write the file** to `~/Ashokoa/agents/{AGENT}/index/haumana_handoffs/SESSION_HANDOFF_<YYYYMMDD>_{AGENT}_<letter>.md` where `{AGENT}` = `$WILLOW_AGENT_NAME` (default: `hanuman`).
