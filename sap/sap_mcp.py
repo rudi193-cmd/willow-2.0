@@ -1676,8 +1676,12 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                                 ),
                             )
                     pg.conn.commit()
-                except Exception:
-                    pass
+                except Exception as _re:
+                    import logging as _rlog
+                    _rlog.getLogger(__name__).warning(
+                        "willow_route: routing_decisions persist failed: %s: %s",
+                        type(_re).__name__, str(_re)[:120],
+                    )
 
         # ── Task Executor (inline — submit = execute, no queue, no daemon) ──────
         elif name == "willow_task_submit":

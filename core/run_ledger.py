@@ -28,8 +28,16 @@ def open_run(
     purpose: str = "",
     repo_roots: list[str] | None = None,
     parent_run_id: str | None = None,
+    *,
+    write_tmp: bool = True,
 ) -> str:
-    """Create a run record, write run_id to /tmp, return run_id."""
+    """Create a run record. When ``write_tmp`` is True (default), persist current run_id to
+    ``/tmp/willow-run-{AGENT}.json`` for hooks in the same OS process.
+
+    Callers that open a **nested** run (e.g. Kart child) must pass ``write_tmp=False`` so they
+    do not clobber the parent session's tmp pointer; they must close via explicit ``run_id``.
+    Returns '' on DB failure — never a phantom UUID.
+    """
     run_id = str(uuid.uuid4())
     try:
         conn = _connect()
@@ -48,9 +56,11 @@ def open_run(
             (run_id, _AGENT),
         )
         conn.close()
-        _write_run_file(run_id)
+        if write_tmp:
+            _write_run_file(run_id)
     except Exception as e:
         _err(f"open_run: {e}")
+        return ""
     return run_id
 
 

@@ -129,6 +129,24 @@ def test_open_run_tmp_file_contains_run_id():
     assert data.get("run_id") == run_id
 
 
+def test_open_run_write_tmp_false_no_tmp_but_db_row():
+    """Nested runs (e.g. Kart) must not clobber the session tmp pointer."""
+    import json
+    parent = _rl_mod.open_run(purpose="parent")
+    tmp = Path("/tmp/willow-run-test_agent.json")
+    assert tmp.exists() and json.loads(tmp.read_text()).get("run_id") == parent
+
+    child = _rl_mod.open_run(purpose="child", write_tmp=False)
+    assert child and len(child) == 36
+    assert json.loads(tmp.read_text()).get("run_id") == parent  # unchanged
+
+    conn = _connect()
+    with conn.cursor() as cur:
+        cur.execute("SELECT 1 FROM willow.runs WHERE id = %s", (child,))
+        assert cur.fetchone() is not None
+    conn.close()
+
+
 # ── current_run_id ─────────────────────────────────────────────────────────
 
 def test_current_run_id_returns_none_without_tmp():
