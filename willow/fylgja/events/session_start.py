@@ -437,44 +437,6 @@ def _open_run() -> str | None:
         return None
 
 
-def _query_preference_atoms(atoms: list) -> list:
-    """
-    Filter atoms for preference-loaded context.
-    Excludes traces and invalid atoms. Limits to 10. Orders worst-first.
-    """
-    filtered = [
-        a for a in atoms
-        if a.get("type") != "trace" and not a.get("invalid_at")
-    ]
-    scored = sorted(
-        filtered,
-        key=lambda a: (a.get("importance", 0), a.get("weight", 0), a.get("stability", 0))
-    )
-    return scored[:10]
-
-
-def _query_world_state_atoms(atoms: list) -> list:
-    """
-    Filter atoms for world state context.
-    Include only insight and chunk types. Exclude invalid atoms.
-    """
-    filtered = [
-        a for a in atoms
-        if a.get("type") in ("insight", "chunk") and not a.get("invalid_at")
-    ]
-    return filtered
-
-
-def _position_order(atoms: list) -> list:
-    """
-    Order atoms worst-first (lowest importance) to best-last (highest importance).
-    """
-    return sorted(
-        atoms,
-        key=lambda a: (a.get("importance", 0), a.get("weight", 0), a.get("stability", 0))
-    )
-
-
 def _is_isolated_directory() -> bool:
     """Return True if CWD is a sandbox/isolated directory — skip all fleet hooks."""
     mcp = Path.cwd() / ".mcp.json"
@@ -506,7 +468,6 @@ def main():
             pass
 
     _clear_stale_thread()
-    _open_run()
     grove_status = _ensure_grove_mcp()  # instant local file check
     if session_id:
         _register_jeles(session_id)

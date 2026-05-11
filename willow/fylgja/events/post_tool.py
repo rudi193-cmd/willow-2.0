@@ -163,7 +163,6 @@ def _write_trace(session_id: str, tool_name: str, tool_input: dict) -> None:
             "collection": f"{_AGENT}/turns/store",
             "record": record,
         }, timeout=3)
-        _run_ledger_write(tool_name, target, session_id or "")
         _record_rate(key)
     except Exception as e:
         try:

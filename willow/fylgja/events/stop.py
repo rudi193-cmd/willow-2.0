@@ -45,10 +45,10 @@ def read_turns_since(cursor: str, turns_file: Path) -> list[str]:
     return lines
 
 
-def _compute_affect(session_id: str) -> str:
-    """Derive affect from trace atoms. No LLM — pattern matching only."""
+def _compute_affect(session_id: str) -> tuple[str, list]:
+    """Derive affect from trace atoms. Returns (affect, session_traces)."""
     if call is None:
-        return "neutral"
+        return "neutral", []
     try:
         traces = call("store_search", {
             "app_id": _AGENT,
@@ -57,15 +57,16 @@ def _compute_affect(session_id: str) -> str:
             "limit": 50,
         }, timeout=5) or []
     except Exception:
-        return "neutral"
+        return "neutral", []
 
     session_traces = [t for t in traces if t.get("session_id") == session_id]
     if not session_traces:
-        return "neutral"
+        return "neutral", []
 
     pairs = Counter((t.get("tool", ""), t.get("target", "")) for t in session_traces)
     repeated = sum(1 for count in pairs.values() if count > 1)
-    return "friction" if repeated >= 1 else "clean"
+    affect = "friction" if repeated >= 1 else "clean"
+    return affect, session_traces
 
 
 def _write_failure_atom(session_id: str, traces: list) -> None:
@@ -241,18 +242,8 @@ def main():
     affect = "neutral"
     session_traces: list = []
     try:
-        affect = _compute_affect(session_id)
-        if affect == "friction" and call is not None:
-            try:
-                all_traces = call("store_search", {
-                    "app_id": _AGENT,
-                    "collection": "hanuman/turns/store",
-                    "query": "",
-                    "limit": 50,
-                }, timeout=5) or []
-                session_traces = [t for t in all_traces if t.get("session_id") == session_id]
-            except Exception:
-                session_traces = []
+        affect, session_traces = _compute_affect(session_id)
+        if affect == "friction":
             _write_failure_atom(session_id, session_traces)
     except Exception:
         pass
