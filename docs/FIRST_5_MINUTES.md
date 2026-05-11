@@ -106,6 +106,36 @@ bash ~/willow-1.9/willow.sh grove send <COMPUTER_IP>:7777 status-all
 
 ---
 
+## Optional: connect Grove to claude.ai (external tunnel)
+
+By default Grove MCP runs on `localhost:8765` — Claude Code sessions on this machine connect automatically. To reach it from claude.ai or any external client, you need a tunnel.
+
+**Step 1** — Start an ngrok tunnel:
+```bash
+ngrok http 8765
+# → https://your-id.ngrok-free.app
+```
+
+**Step 2** — Tell the Grove MCP service about the tunnel URL (persists across reboots):
+```bash
+systemctl --user edit grove-mcp
+```
+Add:
+```ini
+[Service]
+Environment=GROVE_MCP_URL=https://your-id.ngrok-free.app
+```
+Then: `systemctl --user restart grove-mcp`
+
+**Step 3** — In claude.ai → Settings → Integrations → MCP servers, add:
+```
+https://your-id.ngrok-free.app/mcp
+```
+
+Each user sets their own tunnel URL. No shared hardcoded value — the service file is the only place it lives.
+
+---
+
 ## Optional: enable a cloud model key
 
 Willow works without cloud keys. If you *want* to add one:

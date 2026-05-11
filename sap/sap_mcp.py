@@ -1605,26 +1605,49 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
         elif name == "willow_route":
             _msg = arguments.get("message", "")
             _sid = arguments.get("session_id", "")
+            _oracle_ran_ok = False
             try:
                 from willow.routing.oracle import route as _routing_oracle
                 result = _routing_oracle(_msg, session_id=_sid) if _msg else {
                     "routed_to": "willow", "rule_matched": "no-message", "confidence": 0.5, "latency_ms": 0,
                 }
+                _oracle_ran_ok = bool(_msg)
             except Exception as _re:
                 result = {
                     "routed_to": "willow", "rule_matched": "oracle-unavailable",
                     "confidence": 0.5, "latency_ms": 0, "error": str(_re),
                 }
-            if pg and _msg:
+                _oracle_ran_ok = False
+            if pg:
                 try:
                     import hashlib as _hl, uuid as _uuid_r
-                    _ph  = _hl.sha256(_msg.encode()).hexdigest()[:16]
-                    _rid = _uuid_r.uuid4().hex[:12]
                     with pg.conn.cursor() as _rc:
-                        _rc.execute(
-                            "INSERT INTO routing_decisions (id, prompt_hash, session_id, decision) VALUES (%s,%s,%s,%s)",
-                            (_rid, _ph, _sid, _json.dumps(result))
-                        )
+                        if _msg:
+                            _ph = _hl.sha256(_msg.encode()).hexdigest()[:16]
+                            _rid = _uuid_r.uuid4().hex[:12]
+                            _rc.execute(
+                                "INSERT INTO routing_decisions (id, prompt_hash, session_id, decision) VALUES (%s,%s,%s,%s)",
+                                (_rid, _ph, _sid, _json.dumps(result)),
+                            )
+                        # Dashboard Routing pane reads willow.routing_decisions (oracle-shaped rows).
+                        # Oracle writes there on success; mirror here for no-message / oracle exceptions /
+                        # empty prompts so the feed isn't silently empty.
+                        if not _oracle_ran_ok:
+                            _rc.execute(
+                                """
+                                INSERT INTO willow.routing_decisions
+                                    (session_id, prompt_snippet, routed_to, rule_matched, confidence, latency_ms)
+                                VALUES (%s, %s, %s, %s, %s, %s)
+                                """,
+                                (
+                                    _sid or "",
+                                    (_msg or "")[:500],
+                                    result.get("routed_to") or "willow",
+                                    result.get("rule_matched") or "—",
+                                    float(result.get("confidence") or 0.0),
+                                    int(result.get("latency_ms") or 0),
+                                ),
+                            )
                     pg.conn.commit()
                 except Exception:
                     pass
@@ -2133,78 +2156,115 @@ def _fetch_trusted(source_name: str, query: str = "", timeout: int = 10) -> tupl
     return text[:8000], url
 
 
-def _load_fleet_key() -> tuple[str, str] | tuple[None, None]:
-    """Load best available API key from ~/.willow/secrets/credentials.json.
-    Returns (provider, key) — prefers Anthropic, falls back to Groq."""
+def _load_all_fleet_keys() -> list[tuple[str, str]]:
+    """Return all available (provider, key) pairs. Groq-first, Anthropic-last."""
     creds_path = Path.home() / ".willow" / "secrets" / "credentials.json"
+    groq_keys: list[tuple[str, str]] = []
+    anthropic_key: tuple[str, str] | None = None
     try:
         creds = json.loads(creds_path.read_text())
         for k in ("GROQ_API_KEY", "GROQ_API_KEY_2", "GROQ_API_KEY_3"):
             if creds.get(k):
-                return ("groq", creds[k])
+                groq_keys.append(("groq", creds[k]))
         if creds.get("ANTHROPIC_API_KEY"):
-            return ("anthropic", creds["ANTHROPIC_API_KEY"])
+            anthropic_key = ("anthropic", creds["ANTHROPIC_API_KEY"])
     except Exception:
         pass
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        return ("anthropic", os.environ["ANTHROPIC_API_KEY"])
-    if os.environ.get("GROQ_API_KEY"):
-        return ("groq", os.environ["GROQ_API_KEY"])
-    return (None, None)
+    if not groq_keys and os.environ.get("GROQ_API_KEY"):
+        groq_keys.append(("groq", os.environ["GROQ_API_KEY"]))
+    if anthropic_key is None and os.environ.get("ANTHROPIC_API_KEY"):
+        anthropic_key = ("anthropic", os.environ["ANTHROPIC_API_KEY"])
+    return groq_keys + ([anthropic_key] if anthropic_key else [])
+
+
+def _load_fleet_key() -> tuple[str, str] | tuple[None, None]:
+    """Load best available API key. Groq-first, Anthropic fallback."""
+    keys = _load_all_fleet_keys()
+    return keys[0] if keys else (None, None)
 
 
 def _jeles_curate(raw_content: str, question: str, source_desc: str) -> str:
-    """Pass content through Jeles for curation. Calls Anthropic Haiku directly."""
+    """Pass content through Jeles for curation. Tier order: Groq → Ollama → Anthropic."""
     import urllib.request as _urllib
-    provider, key = _load_fleet_key()
-    if not key:
-        return "FLAGS: No API key available.\nSUMMARY: Could not process.\nDESCRIPTOR: error"
-    try:
-        prompt = f"SOURCE: {source_desc}\nQUESTION: {question}\n\nCONTENT:\n{raw_content[:6000]}"
-        _UA = "Mozilla/5.0 (compatible; Willow/1.7; +https://github.com/rudi193-cmd/willow-1.7)"
-        if provider == "anthropic":
-            payload = json.dumps({
-                "model": "claude-haiku-4-5-20251001",
-                "max_tokens": 1024,
-                "system": _JELES_WEB_SYSTEM,
-                "messages": [{"role": "user", "content": prompt}],
-            }).encode()
-            req = _urllib.Request(
-                "https://api.anthropic.com/v1/messages",
-                data=payload,
-                headers={
-                    "x-api-key": key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                    "user-agent": _UA,
-                },
-            )
-            with _urllib.urlopen(req, timeout=15) as resp:
-                data = json.loads(resp.read())
-            return data["content"][0]["text"].strip()
-        else:
-            payload = json.dumps({
-                "model": "llama-3.1-8b-instant",
-                "messages": [
-                    {"role": "system", "content": _JELES_WEB_SYSTEM},
-                    {"role": "user", "content": prompt},
-                ],
-                "max_tokens": 1024,
-            }).encode()
-            req = _urllib.Request(
-                "https://api.groq.com/openai/v1/chat/completions",
-                data=payload,
-                headers={
-                    "Authorization": f"Bearer {key}",
-                    "Content-Type": "application/json",
-                    "User-Agent": _UA,
-                },
-            )
-            with _urllib.urlopen(req, timeout=15) as resp:
-                data = json.loads(resp.read())
-            return data["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        return f"FLAGS: Jeles curation failed: {e}\nSUMMARY: Could not process.\nDESCRIPTOR: error"
+    import urllib.error as _urlerr
+    # Build provider list: Groq keys, then Ollama (no key), then Anthropic
+    groq_and_anthropic = _load_all_fleet_keys()
+    groq_keys = [(p, k) for p, k in groq_and_anthropic if p == "groq"]
+    anthropic_keys = [(p, k) for p, k in groq_and_anthropic if p == "anthropic"]
+    providers = groq_keys + [("ollama", "")] + anthropic_keys
+    prompt = f"SOURCE: {source_desc}\nQUESTION: {question}\n\nCONTENT:\n{raw_content[:6000]}"
+    _UA = "Mozilla/5.0 (compatible; Willow/1.7; +https://github.com/rudi193-cmd/willow-1.7)"
+    last_err = None
+    for provider, key in providers:
+        try:
+            if provider == "ollama":
+                ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434") + "/api/chat"
+                payload = json.dumps({
+                    "model": "qwen2.5:3b",
+                    "messages": [
+                        {"role": "system", "content": _JELES_WEB_SYSTEM},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "stream": False,
+                }).encode()
+                req = _urllib.Request(ollama_url, data=payload, headers={"Content-Type": "application/json"})
+                with _urllib.urlopen(req, timeout=30) as resp:
+                    data = json.loads(resp.read())
+                return data["message"]["content"].strip()
+            elif provider == "anthropic":
+                payload = json.dumps({
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 1024,
+                    "system": _JELES_WEB_SYSTEM,
+                    "messages": [{"role": "user", "content": prompt}],
+                }).encode()
+                req = _urllib.Request(
+                    "https://api.anthropic.com/v1/messages",
+                    data=payload,
+                    headers={
+                        "x-api-key": key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                        "user-agent": _UA,
+                    },
+                )
+                with _urllib.urlopen(req, timeout=15) as resp:
+                    data = json.loads(resp.read())
+                return data["content"][0]["text"].strip()
+            else:
+                payload = json.dumps({
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [
+                        {"role": "system", "content": _JELES_WEB_SYSTEM},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "max_tokens": 1024,
+                }).encode()
+                req = _urllib.Request(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    data=payload,
+                    headers={
+                        "Authorization": f"Bearer {key}",
+                        "Content-Type": "application/json",
+                        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+                    },
+                )
+                with _urllib.urlopen(req, timeout=15) as resp:
+                    data = json.loads(resp.read())
+                return data["choices"][0]["message"]["content"].strip()
+        except _urlerr.HTTPError as e:
+            last_err = e
+            if e.code in (401, 403):
+                print(f"[jeles] {provider} key rejected ({e.code}) — trying next provider", file=sys.stderr, flush=True)
+                continue
+            return f"FLAGS: Jeles curation failed: {e}\nSUMMARY: Could not process.\nDESCRIPTOR: error"
+        except Exception as e:
+            if provider == "ollama":
+                print(f"[jeles] ollama unavailable ({e}) — trying next provider", file=sys.stderr, flush=True)
+                last_err = e
+                continue
+            return f"FLAGS: Jeles curation failed: {e}\nSUMMARY: Could not process.\nDESCRIPTOR: error"
+    return f"FLAGS: All providers exhausted (last: {last_err}).\nSUMMARY: Could not process.\nDESCRIPTOR: error"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

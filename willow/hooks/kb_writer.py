@@ -72,6 +72,25 @@ def write_atom_to_kb(atom: Atom, dedup_key: Optional[str] = None) -> bool:
             json.dumps(atom.content),
         ))
         bridge.conn.commit()
+
+        # Generate embedding via nomic-embed-text so the atom is visible to semantic search
+        try:
+            import urllib.request as _urllib
+            import json as _json
+            text_for_embed = f"{atom.title}. {atom.summary}"[:2000]
+            ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434") + "/api/embeddings"
+            payload = _json.dumps({"model": "nomic-embed-text", "prompt": text_for_embed}).encode()
+            req = _urllib.Request(ollama_url, data=payload, headers={"Content-Type": "application/json"})
+            with _urllib.urlopen(req, timeout=10) as resp:
+                embedding = _json.loads(resp.read())["embedding"]
+            cur.execute(
+                "UPDATE knowledge SET embedding = %s WHERE id = %s",
+                (_json.dumps(embedding), atom.id),
+            )
+            bridge.conn.commit()
+        except Exception:
+            pass  # Embedding is best-effort; atom is already written
+
         bridge.close()
 
         if os.environ.get("WILLOW_ATOM_VERBOSE"):
