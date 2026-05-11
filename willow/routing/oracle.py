@@ -155,8 +155,11 @@ def _write_decision(decision: dict) -> None:
             """)
         pg.conn.commit()
         pg.conn.close()
-    except Exception:
-        pass
+    except Exception as exc:
+        import logging as _log
+        _log.getLogger(__name__).warning(
+            "_write_decision failed: %s: %s", type(exc).__name__, str(exc)[:120]
+        )
 
 
 def route(prompt: str, session_id: str = "") -> dict:
