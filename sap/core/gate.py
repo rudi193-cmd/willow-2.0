@@ -29,7 +29,13 @@ try:
 except ImportError:
     psycopg2 = None
 
-SAFE_ROOT = Path(os.environ.get("WILLOW_SAFE_ROOT", "/media/willow/SAFE/Applications"))
+_safe_root_env = os.environ.get("WILLOW_SAFE_ROOT")
+if not _safe_root_env:
+    raise RuntimeError(
+        "WILLOW_SAFE_ROOT is not set — gate cannot initialize. "
+        "Set it to the SAFE/Applications directory (e.g. /home/sean-campbell/SAFE/Applications)."
+    )
+SAFE_ROOT = Path(_safe_root_env)
 PROFESSOR_ROOT = SAFE_ROOT / "utety-chat" / "professors"
 LOG_DIR = Path(__file__).parent.parent / "log"
 
