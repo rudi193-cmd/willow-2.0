@@ -267,6 +267,33 @@ def _sanitize_result(result, source_label: str):
     return result
 
 
+def _normalize_local_paths(text: str) -> str:
+    """
+    Reduce accidental PII leakage from local filesystem paths.
+
+    Today the most common leak is the user's home path (e.g. /home/sean-campbell/...).
+    We normalize it to `~` so atoms can be shared/reviewed without embedding a username.
+    """
+    try:
+        if not isinstance(text, str) or not text:
+            return text
+
+        # 1) Exact home path → "~"
+        home = str(Path.home())
+        if home and home in text:
+            text = text.replace(home, "~")
+
+        # 2) Generic Linux/macOS user home paths → "~" (best-effort, avoids username leakage)
+        # Examples: /home/alice/..., /Users/bob/...
+        import re
+        text = re.sub(r"(?<!\\w)/home/[^/\\s]+", "~", text)
+        text = re.sub(r"(?<!\\w)/Users/[^/\\s]+", "~", text)
+
+        return text
+    except Exception:
+        return text
+
+
 # ── Tool registry ─────────────────────────────────────────────────────────────
 
 @server.list_tools()
@@ -1299,16 +1326,19 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
             if not pg:
                 result = {"error": "not_available", "reason": "Postgres not connected"}
             else:
-                _ingest_payload = {"title": arguments["title"], "summary": arguments["summary"]}
+                _title = arguments["title"]
+                _summary = _normalize_local_paths(arguments["summary"])
+                _source_id = _normalize_local_paths(arguments.get("source_id", ""))
+                _ingest_payload = {"title": _title, "summary": _summary}
                 _write_err = _sanitize_write_input(_ingest_payload, "willow_knowledge_ingest")
                 if _write_err:
                     result = {"error": _write_err}
                 else:
                     atom_id = pg.ingest_atom(
-                        title=arguments["title"],
-                        summary=arguments["summary"],
+                        title=_title,
+                        summary=_summary,
                         source_type=arguments.get("source_type", "mcp"),
-                        source_id=arguments.get("source_id", ""),
+                        source_id=_source_id,
                         category=arguments.get("category", "general"),
                         domain=arguments.get("domain"),
                     )
