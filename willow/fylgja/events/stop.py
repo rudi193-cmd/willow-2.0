@@ -45,7 +45,7 @@ def read_turns_since(cursor: str, turns_file: Path) -> list[str]:
     return lines
 
 
-def _compute_affect(session_id: str) -> tuple[str, list]:
+def _compute_affect_with_traces(session_id: str) -> tuple[str, list]:
     """Derive affect from trace atoms. Returns (affect, session_traces)."""
     if call is None:
         return "neutral", []
@@ -67,6 +67,12 @@ def _compute_affect(session_id: str) -> tuple[str, list]:
     repeated = sum(1 for count in pairs.values() if count > 1)
     affect = "friction" if repeated >= 1 else "clean"
     return affect, session_traces
+
+
+def _compute_affect(session_id: str) -> str:
+    """Derive affect from trace atoms. Returns affect only (neutral|clean|friction)."""
+    affect, _traces = _compute_affect_with_traces(session_id)
+    return affect
 
 
 def _write_failure_atom(session_id: str, traces: list) -> None:
@@ -242,7 +248,7 @@ def main():
     affect = "neutral"
     session_traces: list = []
     try:
-        affect, session_traces = _compute_affect(session_id)
+        affect, session_traces = _compute_affect_with_traces(session_id)
         if affect == "friction":
             _write_failure_atom(session_id, session_traces)
     except Exception:
