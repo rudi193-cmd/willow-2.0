@@ -24,6 +24,11 @@
       "file": "execute.md"
     },
     {
+      "id": "overseer",
+      "description": "Bounded initiative — worktree first, plan inside branch, verify, KB+memory trail; no default-branch drift until Sean ratifies merge.",
+      "file": "overseer.md"
+    },
+    {
       "id": "debug",
       "description": "Failure or wrong behavior — evidence before fix; smallest repro; surgical diff.",
       "file": "debug.md"

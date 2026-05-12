@@ -14,6 +14,7 @@ Override path: env **`WILLOW_FYLGJA_ROOT`** → must contain `powers/` and `skil
 | **Cursor rule (willow-1.9)** | `willow-1.9/.cursor/rules/fylgja-powers.mdc` |
 | **Cursor rule (Grove app)** | `safe-app-willow-grove/.cursor/rules/fylgja-powers.mdc` |
 | **Cursor command `/power`** | `.cursor/commands/power.md` in both repos above |
+| **Cursor command `/overseer`** | `willow-1.9/.cursor/commands/overseer.md` — pinned **overseer** power (scoped initiative) |
 | **Claude Code `/power`** | `.claude/commands/power.md` in both repos + `~/.claude/commands/power.md` |
 | **Hanuman home identity** | `~/CLAUDE.md` — Skill Mandate points here |
 | **Fleet root (Loki)** | `~/github/CLAUDE.md` — pointer for builders |

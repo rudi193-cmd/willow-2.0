@@ -14,6 +14,6 @@ Low-token behavioral router (same model as MCP `tools/list` → `tools/call` and
 3. Else match task to the best `description`; then `Read` that **one** `powers/*.md`.
 4. Follow that file; do not load other powers unless instructed.
 
-Registry ids: `brainstorm`, `plan`, `execute`, `debug`, `tdd`, `verify`, `worktree`, `review-in`, `review-out`.
+Registry ids: `brainstorm`, `plan`, `execute`, `overseer`, `debug`, `tdd`, `verify`, `worktree`, `review-in`, `review-out`.
 
 See also: `{ROOT}/skills/using-fylgja-powers.md`, `{ROOT}/powers/SURFACES.md`.

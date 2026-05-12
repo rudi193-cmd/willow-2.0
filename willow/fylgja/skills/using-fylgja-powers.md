@@ -24,6 +24,8 @@ b17: FYLPR · ΔΣ=42
 
 If the turn touches **Willow MCP, KB, Grove, or SOIL** and no narrower power clearly fits (`debug`, `tdd`, `plan`, …), load **`agent-rails`** — session discipline (parallel cold reads, external knowledge, write gates, coordination). See `powers/agent-rails.md`.
 
+If Sean is spinning a **bounded initiative** that must not land on default branch until ratified merge, load **`overseer`** — worktree-first + evidence trail. See `powers/overseer.md`.
+
 ## Flow
 
 1. Open `registry.json`; pick the single best `id` by `description`.
