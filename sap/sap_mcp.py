@@ -2600,7 +2600,7 @@ _ASPECT_TO_WH = {
 
 def _imagine_imagen4(prompt: str, output_path: str | None, aspect_ratio: str = "1:1") -> dict:
     try:
-        import urllib.request as _ur, datetime, time
+        import urllib.request as _ur, datetime, time, pathlib
         api_key = _load_credential("NOVITA_API_KEY")
         if not api_key:
             return {"error": "NOVITA_API_KEY not found in credentials"}
