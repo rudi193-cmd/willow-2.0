@@ -1482,14 +1482,11 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
             message = arguments["message"]
             if agent in _CLOUD_AGENTS:
                 response = _chat_groq(agent, message)
-            elif agent in _CODEX_AGENTS:
-                response = _chat_codex(agent, message)
             else:
-                response = _chat_ollama(agent, message)
-                if not response:
-                    response = _chat_fleet(agent, message)
+                # All other agents — including ganas4 and default — route through Anthropic
+                response = _chat_codex(agent, message)
             if not response:
-                response = f"[{agent}] Inference unavailable. Ollama down, fleet exhausted."
+                response = f"[{agent}] Inference unavailable."
             result = {"agent": agent, "response": response}
 
         elif name == "willow_imagine":
@@ -2488,14 +2485,22 @@ def _chat_codex(agent: str, message: str) -> str | None:
         api_key = _load_credential("ANTHROPIC_API_KEY")
         if not api_key:
             return None
-        data = json.dumps({
-            "model": _CODEX_MODEL,
-            "max_tokens": 1024,
-            "system": (
+        if agent in _CODEX_AGENTS:
+            system = (
                 f"You are {agent}, a code-focused AI agent in Sean Campbell's fleet. "
                 f"You have deep knowledge of the willow-nest repo at {_CODEX_REPO}. "
                 "You write clean, minimal Python. No fluff, no over-engineering."
-            ),
+            )
+        else:
+            system = (
+                f"You are {agent}, an AI agent in Sean Campbell's sovereign fleet. "
+                "You are the general coordinator — direct, honest, minimal. "
+                "Answer clearly and concisely."
+            )
+        data = json.dumps({
+            "model": _CODEX_MODEL,
+            "max_tokens": 1024,
+            "system": system,
             "messages": [{"role": "user", "content": message}],
         }).encode()
         req = _ur.Request(
