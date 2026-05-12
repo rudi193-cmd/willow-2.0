@@ -1480,7 +1480,7 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
         elif name == "willow_chat":
             agent = arguments.get("agent", "willow")
             message = arguments["message"]
-            if agent in _GROQ_AGENTS:
+            if agent in _CLOUD_AGENTS:
                 response = _chat_groq(agent, message)
             else:
                 response = _chat_ollama(agent, message)
@@ -2410,9 +2410,9 @@ def _check_ollama() -> dict:
         return {"running": False}
 
 
-_GROQ_AGENTS: set[str] = {"ganas2"}
-_GROQ_MODEL = "llama-3.1-8b-instant"
-_GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
+_CLOUD_AGENTS: set[str] = {"ganas2"}
+_CLOUD_MODEL = "meta-llama/llama-3.1-8b-instruct"
+_CLOUD_URL   = "https://api.novita.ai/v3/openai/chat/completions"
 
 
 def _load_credential(key: str) -> str | None:
@@ -2446,11 +2446,11 @@ def _load_credential(key: str) -> str | None:
 def _chat_groq(agent: str, message: str) -> str | None:
     try:
         import urllib.request
-        api_key = _load_credential("GROQ_API_KEY")
+        api_key = _load_credential("NOVITA_API_KEY")
         if not api_key:
             return None
         data = json.dumps({
-            "model": _GROQ_MODEL,
+            "model": _CLOUD_MODEL,
             "messages": [
                 {"role": "system", "content": (
                     f"You are {agent}, a fast cloud AI agent in Sean Campbell's fleet. "
@@ -2461,7 +2461,7 @@ def _chat_groq(agent: str, message: str) -> str | None:
             "temperature": 0.7,
         }).encode()
         req = urllib.request.Request(
-            _GROQ_URL,
+            _CLOUD_URL,
             data=data,
             headers={
                 "Content-Type": "application/json",
