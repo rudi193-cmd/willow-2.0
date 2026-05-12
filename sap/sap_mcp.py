@@ -1352,7 +1352,7 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                     if not _force:
                         try:
                             from sap.core.memory_gate import check_candidate
-                            _domain = arguments.get("domain", "hanuman")
+                            _domain = arguments.get("domain") or os.environ.get("WILLOW_AGENT_NAME", "hanuman")
                             _gate = check_candidate(
                                 title=_title,
                                 summary=_summary,

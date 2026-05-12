@@ -28,7 +28,7 @@ Usage:
 
     from willow.memory.generation import GenerationStore
 
-    gs = GenerationStore(agent="hanuman", mcp_call=call)
+    gs = GenerationStore(agent=os.environ.get("WILLOW_AGENT_NAME", "hanuman"), mcp_call=call)
 
     # Write a new fact
     fact_id = gs.put_fact({
@@ -55,6 +55,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
