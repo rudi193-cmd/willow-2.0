@@ -1482,6 +1482,8 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
             message = arguments["message"]
             if agent in _CLOUD_AGENTS:
                 response = _chat_groq(agent, message)
+            elif agent in _CODEX_AGENTS:
+                response = _chat_codex(agent, message)
             else:
                 response = _chat_ollama(agent, message)
                 if not response:
@@ -2414,6 +2416,11 @@ _CLOUD_AGENTS: set[str] = {"ganas2"}
 _CLOUD_MODEL = "meta-llama/llama-3.1-8b-instruct"
 _CLOUD_URL   = "https://api.novita.ai/v3/openai/chat/completions"
 
+_CODEX_AGENTS: set[str] = {"ganas4"}
+_CODEX_MODEL  = "claude-haiku-4-5-20251001"
+_CODEX_URL    = "https://api.anthropic.com/v1/messages"
+_CODEX_REPO   = "/home/sean-campbell/github/willow-nest"
+
 
 def _load_credential(key: str) -> str | None:
     # Primary: Fernet vault (encrypted SQLite)
@@ -2471,6 +2478,37 @@ def _chat_groq(agent: str, message: str) -> str | None:
         with urllib.request.urlopen(req, timeout=30) as resp:
             result = json.loads(resp.read())
             return result["choices"][0]["message"]["content"]
+    except Exception:
+        return None
+
+
+def _chat_codex(agent: str, message: str) -> str | None:
+    try:
+        import urllib.request as _ur
+        api_key = _load_credential("ANTHROPIC_API_KEY")
+        if not api_key:
+            return None
+        data = json.dumps({
+            "model": _CODEX_MODEL,
+            "max_tokens": 1024,
+            "system": (
+                f"You are {agent}, a code-focused AI agent in Sean Campbell's fleet. "
+                f"You have deep knowledge of the willow-nest repo at {_CODEX_REPO}. "
+                "You write clean, minimal Python. No fluff, no over-engineering."
+            ),
+            "messages": [{"role": "user", "content": message}],
+        }).encode()
+        req = _ur.Request(
+            _CODEX_URL, data=data,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+        )
+        with _ur.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read())
+            return result["content"][0]["text"]
     except Exception:
         return None
 
