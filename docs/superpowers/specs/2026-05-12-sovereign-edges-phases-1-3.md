@@ -11,7 +11,9 @@
 
 ## 0. Phase 0 — prior art (before planning)
 
-**Rule:** Before treating a phased program as novel, run **discovery** in this order; record **one paragraph** in Grove or a KB atom (`hanuman`) with links and the **build vs adopt** decision.
+**Rule:** Before treating a phased program as novel, run **discovery** in this order.
+
+**Human gate (non-negotiable):** In the **same session** as discovery, post a **short report to Sean in chat** *before* the findings exist only in a spec or KB. The report must be skimmable: what was searched, what succeeded/failed, what already exists **on disk**, 2–5 bullets on external analogs, and **one explicit question** if a fork-in-the-road appears. **Purpose:** Sean can say what he **likes / dislikes / wants adopted** before planning hardens. Only **after** that conversation (or Sean says “no discussion, file it”) may a single summary paragraph move to Grove/KB/spec.
 
 ### 0.1 Jeles (trusted GitHub + HN)
 
@@ -38,7 +40,9 @@
 
 **Session note (2026-05-12):** Jeles `github-repo` for `sean-campbell/*` returned **404**; public `github-repo` + HN calls **timed out**; KB semantic search did not surface a duplicate of this umbrella; **local** `safe-app-grove` already documents **KNOCK**, **`#u2u-inbox`**, and **`python -m u2u send`** (beta) — Phase 2C must **extend or reconcile** with that, not pretend green field.
 
-**Exit:** Phase 0 paragraph written; plan/spec may proceed.
+**Exit:** Sean has seen the **in-chat** Phase 0 report; optional Grove/KB paragraph filed with **build vs adopt**; plan/spec may proceed.
+
+**Anti-pattern:** Prior art results **only** in markdown where Sean does not routinely read them — that skips the feedback loop this phase exists for.
 
 ---
 
