@@ -32,3 +32,5 @@ b17: FYLAR · ΔΣ=42
 - Post to Grove or ingest KB “to be helpful” without a pull-first check when another agent may have already decided.
 
 **Escalate:** Task is purely code review → `review-in` / `review-out`; red/green logic → `tdd`; production bug → `debug`; ratified multi-step → `plan` / `execute`.
+
+**Canonical shape:** Fleet-wide **Issue → PR → Checks → Review → Merge → Archive** mapping lives in `docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md` — new features must declare which transition they add (see §4 gate there).
