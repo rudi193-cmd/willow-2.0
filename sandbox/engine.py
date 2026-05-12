@@ -1,6 +1,7 @@
 """Transition engine — illegal skips raise GitShapedError. b17: GSSM3 · ΔΣ=42"""
 from __future__ import annotations
 
+import copy
 from datetime import datetime, timezone
 
 from .model import ChangeRecord, ShapeState, Transition, allowed_targets
@@ -37,4 +38,17 @@ def advance(
     )
     change.state = to_state
     change.history.append(tr)
+    change.updated_at = tr.at
     return change
+
+
+def preview_advance(
+    change: ChangeRecord,
+    to_state: ShapeState,
+    *,
+    actor: str,
+    note: str = "",
+) -> ChangeRecord:
+    """Return the record **after** a transition without mutating the original."""
+    dup = copy.deepcopy(change)
+    return advance(dup, to_state, actor=actor, note=note)

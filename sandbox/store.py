@@ -36,3 +36,14 @@ class JsonStore:
             if r.id == change_id:
                 return r
         return None
+
+    def delete(self, change_id: str) -> bool:
+        rows = self.load_all()
+        kept = [r for r in rows if r.id != change_id]
+        if len(kept) == len(rows):
+            return False
+        self.save_all(kept)
+        return True
+
+    def clear(self) -> None:
+        self.save_all([])

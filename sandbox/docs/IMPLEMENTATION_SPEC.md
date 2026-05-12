@@ -25,8 +25,9 @@ Future work: **bind** this model to real Willow (SOIL collection, MCP tools, Gro
 | Module | Responsibility |
 |--------|----------------|
 | `sandbox/model.py` | `ShapeState`, `ChangeRecord`, `Transition`, `allowed_targets`, `create_issue` |
-| `sandbox/engine.py` | `advance()`, `GitShapedError`, timestamps on transitions |
-| `sandbox/store.py` | `JsonStore` — load/save list of `ChangeRecord` |
+| `sandbox/engine.py` | `advance()`, `preview_advance()`, `GitShapedError`; updates `updated_at` |
+| `sandbox/store.py` | `JsonStore` — load/save, `delete`, `clear` |
+| `sandbox/reporting.py` | `markdown_table`, `allowed_line`, `json_lines` |
 | `sandbox/gate_form.py` | `NewFeatureGate` + `validate()` / `ok()` |
 | `sandbox/cli.py` | `python -m sandbox` subcommands |
 | `sandbox/__main__.py` | Entry shim |
@@ -51,6 +52,8 @@ Terminal: **`archived`**. No outbound edges.
 | `id` | string | `gs-` + 12 hex chars |
 | `title` | string | PR-title analogue |
 | `state` | string enum | `issue` … `archived` |
+| `created_at` | string (ISO8601) | set on `issue-create` |
+| `updated_at` | string (ISO8601) | updated on each `advance` |
 | `subject` | string | optional human scope |
 | `grove_channel` | string | reserved for fleet binding |
 | `kb_seed_hint` | string | reserved (atom id or title) |
@@ -64,10 +67,15 @@ Terminal: **`archived`**. No outbound edges.
 
 | Command | Behavior |
 |---------|----------|
-| `issue-create` | New record at `issue`, upsert to store |
-| `advance` | One legal transition; persists |
+| `init` | Ensure `data/` + empty JSON store |
+| `issue-create` | New record at `issue`; optional `--grove`, `--kb-hint`, `--fork` |
+| `advance` | One legal transition; `--dry-run` prints JSON preview, no write |
 | `show` | Pretty JSON |
-| `list` | TSV `id state title` |
+| `list` | TSV; `--long` timestamps + hints; `--json` full array |
+| `allowed` | Human-readable next states + one per line |
+| `report` | Markdown table for Grove / handoffs |
+| `delete` | Drop one id |
+| `reset --yes` | Clear store (flag required) |
 | `gate-check` | Validates §4 four strings; exit 1 if any empty |
 
 Global: `--data PATH` (default `sandbox/data/changes.json`).
@@ -100,7 +108,10 @@ Global: `--data PATH` (default `sandbox/data/changes.json`).
 - Repair arc `checks→open`
 - Illegal skip `draft→merged`
 - Gate validation
-- JSON roundtrip
+- JSON roundtrip + `created_at` / `updated_at`
+- `preview_advance` immutability on original
+- `delete` / `clear`
+- Markdown report
 
 ---
 

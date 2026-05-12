@@ -5,9 +5,14 @@ b17: GSSM0 · ΔΣ=42
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
+from datetime import datetime, timezone
 from enum import Enum
 import uuid
 from typing import Any
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 class ShapeState(str, Enum):
@@ -64,6 +69,8 @@ class ChangeRecord:
     id: str
     title: str
     state: ShapeState
+    created_at: str = ""
+    updated_at: str = ""
     subject: str = ""
     grove_channel: str = ""
     kb_seed_hint: str = ""
@@ -99,10 +106,18 @@ class ChangeRecord:
                     note=h.get("note") or "",
                 )
             )
+        created = d.get("created_at") or ""
+        updated = d.get("updated_at") or ""
+        if not created and hist:
+            created = hist[0].at
+        if not updated and hist:
+            updated = hist[-1].at
         return cls(
             id=d["id"],
             title=d["title"],
             state=ShapeState(d["state"]),
+            created_at=created,
+            updated_at=updated,
             subject=d.get("subject") or "",
             grove_channel=d.get("grove_channel") or "",
             kb_seed_hint=d.get("kb_seed_hint") or "",
@@ -112,13 +127,27 @@ class ChangeRecord:
         )
 
 
-def create_issue(title: str, *, subject: str = "", flag_id: str = "") -> ChangeRecord:
+def create_issue(
+    title: str,
+    *,
+    subject: str = "",
+    flag_id: str = "",
+    grove_channel: str = "",
+    kb_seed_hint: str = "",
+    fork_id: str = "",
+) -> ChangeRecord:
     """Create a change at state **issue**."""
+    now = _utc_now()
     return ChangeRecord(
         id=new_change_id(),
         title=title,
         state=ShapeState.issue,
+        created_at=now,
+        updated_at=now,
         subject=subject,
+        grove_channel=grove_channel,
+        kb_seed_hint=kb_seed_hint,
+        fork_id=fork_id,
         flag_id=flag_id,
         history=[],
     )
