@@ -6,7 +6,7 @@
 **Branch discipline:** This process spec and the **`overseer`** power live on **`wt/overseer`** in worktree **`willow-1.9-wt-overseer`** until ratified merge to **`master`**. The primary **`master`** checkout does not contain these files until then.
 
 **Owner:** sean + hanuman  
-**Refs:** `willow/fylgja/powers/overseer.md`, `willow/fylgja/powers/worktree.md`, `willow/fylgja/powers/plan.md`, `willow/fylgja/powers/verify.md`, `docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md`
+**Refs:** `willow/fylgja/powers/overseer.md`, `willow/fylgja/powers/worktree.md`, `willow/fylgja/powers/plan.md`, `willow/fylgja/powers/verify.md`, `scripts/run_overseer.py` (Phase 0 conductor: run log under `.overseer/`, digest template, MCP checklist, human gate, worktree scaffold), `docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md`, `docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` (Phase 0 prior-art pattern, branch `wt/sovereign-edges-phase1`)
 
 ---
 
@@ -23,7 +23,7 @@ This is intentionally **boring governance** — the opposite of Architect Mode.
 ## 2. Prior art — report to Sean (mandatory when claiming novelty)
 
 1. **Trigger:** New phased program, “nothing like this exists,” or any initiative that could duplicate fleet or public prior art.
-2. **Run:** Jeles (`jeles_sources` / `jeles_fetch`), `willow_knowledge_search`, local `Grep`/`Glob` (and authenticated `gh` when Jeles cannot see private repos). Someone else may operate Jeles — the overseer still **coordinates** that the pass happened.
+2. **Run:** Jeles (`jeles_sources` / `jeles_fetch`), `willow_knowledge_search`, local `Grep`/`Glob` (and authenticated `gh` when Jeles cannot see private repos). Someone else may operate Jeles — the overseer still **coordinates** that the pass happened. **Optional machine slice:** from repo root, `python3 scripts/run_overseer.py --slug <slug> --goal "…"` (`--help`) materializes a run directory (digest + MCP checklist + local hits), enforces the human gate, and adds the `wt/<slug>` worktree; it does **not** call MCP inside Python — same-session Jeles/KB still apply.
 3. **Report (same session, in chat to Sean):** short, skimmable — what was queried, what succeeded/failed, what exists on disk with **paths**, 2–5 bullets on external analogs, **one explicit fork question** if a decision is needed. **Purpose:** Sean can say what he **likes / dislikes / wants adopted** before the plan is locked.
 4. **After:** optional Grove/KB/spec summary — never **only** the file without the chat step unless Sean waives.
 
@@ -67,6 +67,7 @@ Every overseen initiative should leave behind:
 | **Optional spec** under `docs/superpowers/specs/*.md` | Human contract (may live only on task branch until merge). |
 | **KB atom** (`willow_knowledge_ingest`, domain `hanuman` unless overridden) | Fleet-resumable pointer: branch, path, merge gate. |
 | **Cursor memory** (`memory/*.md` + `MEMORY.md` index) | IDE-resumable pointer + KB id. |
+| **`.overseer/runs/…`** (when using `scripts/run_overseer.py`) | Timestamped run log: `PHASE0_DIGEST.md`, `MCP_CHECKLIST.md`, `CLOSEOUT.md` — gitignored; not a substitute for KB/Grove. |
 
 ---
 
