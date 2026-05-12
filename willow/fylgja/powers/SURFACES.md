@@ -9,7 +9,7 @@ Override path: env **`WILLOW_FYLGJA_ROOT`** → must contain `powers/` and `skil
 | Surface | Path |
 |--------|------|
 | **Powers registry** | `willow/fylgja/powers/registry.json` |
-| **Power bodies** | `willow/fylgja/powers/*.md` |
+| **Power bodies** | `willow/fylgja/powers/*.md` (Willow MCP/KB/Grove/SOIL discipline → `agent-rails.md`) |
 | **Entry skill (Claude Code plugin)** | `willow/fylgja/skills/using-fylgja-powers.md` |
 | **Cursor rule (willow-1.9)** | `willow-1.9/.cursor/rules/fylgja-powers.mdc` |
 | **Cursor rule (Grove app)** | `safe-app-willow-grove/.cursor/rules/fylgja-powers.mdc` |

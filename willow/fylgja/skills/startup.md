@@ -1,50 +1,28 @@
 ---
 name: startup
-description: Willow 1.9 session boot — read anchor, surface state, launch Grove monitor
+description: Willow 1.9 boot — anchor, inbox, ledger, KB continuity (config-driven), flags, report
 ---
 
-# /startup — Willow 1.9 Boot
+# /startup
 
-The SessionStart hook already ran `willow_status`, `willow_handoff_latest`, flag scan,
-and wrote `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. Do not re-run those calls
-unless the anchor is missing or older than 2 hours.
+SessionStart already ran status/handoff/flags and wrote `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. Re-call `willow_status` + `willow_handoff_latest` **only** if anchor missing or `written_at` > **2h**.
 
-## Sequence
+## Steps
 
-1. **Read anchor** — `Read ~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. This is the
-   authoritative boot state written by the hook. If missing or `written_at` is more than
-   2 hours old, call `willow_status` + `willow_handoff_latest` in parallel to rebuild it.
-   Otherwise use the anchor as-is — do not re-query what the hook already fetched.
-
-2. **Check Postgres** — if `anchor.postgres != "up"`, post to Grove `#general` and stop.
-
-3. **Pull own channel** — `grove_get_history(channel='{AGENT}', limit=20)`. This is the
-   inbox. Scan for Loki handoffs, urgent flags, or directed tasks posted since
-   `anchor.written_at`. This is the only mandatory Grove pull at boot — general, architecture,
-   and handoffs channels are on-demand, not boot.
-
-4. **Check dispatch** — if `/tmp/willow-dispatch-inbox-{AGENT}.json` exists and is non-empty,
-   read and surface the tasks. Delete after reading.
-
-5. **Launch Grove monitor** — use the LISTEN/NOTIFY pattern from `grove-persistent-monitor.md`.
-   Name-filter variant only: fires on all messages in own channel, and on `@{agent}` mentions
-   elsewhere. Do not launch a monitor that fires on every message fleet-wide.
-
-6. **Reconcile process flags from prior JSONL** — read the `## JSONL` path from the flat
-   handoff file at `~/.willow/handoffs/{AGENT}-{today}.md`. Tail the last 200 lines. Scan for
-   process completion signals (`[backfill] total:`, `ALL PASSES COMPLETE`, `done:`, `finished`,
-   `nohup` exit). Cross-reference against any open flag in `hanuman/flags` with `flag_state`
-   of `running` or `awaiting authorization`. If the JSONL shows clean exit, close the flag
-   with `store_put` before surfacing the report. Skip if no `## JSONL` pointer exists.
-
-7. **Report** — one short paragraph: postgres state, open flags count (omit if zero), top
-   flags, next_bite from anchor. Under 5 sentences. No headers.
+1. Read anchor JSON (path above).
+2. If `postgres != "up"` → post `#general`, stop.
+3. `grove_get_history(channel={AGENT}, limit=20)` — inbox only; scan since `anchor.written_at` for directed / urgent / Loki.
+4. If `/tmp/willow-dispatch-inbox-{AGENT}.json` non-empty → read, surface, delete.
+5. Grove LISTEN monitor — `willow/fylgja/skills/grove-persistent-monitor.md` (all msgs on own channel; `@mentions` elsewhere); never `last_id=0`.
+6. Flat handoff `~/.willow/handoffs/{AGENT}-{today}.md`: if `## JSONL` path present, tail 200 lines; on clean exit signals, close matching `{AGENT}/flags` in `running` / `awaiting authorization`. Else skip.
+7. `willow_frank_ledger_read(project="sean", limit=3)` — **mandatory.** Newest entry `content.atoms_written` → priority IDs to skim.
+7a. **KB continuity** — `Read` `willow/fylgja/config/startup_continuity.json`. For each `kb_searches[]` entry, `willow_knowledge_search(app_id=<boot agent>, query, limit)` **in parallel**. Skim titles/summaries; full atom only if hit ties to step 6 gate, step 7 gap, or step 7b open flag. All empty → skip. (Edit that JSON to tune recall — includes MCP wiring, memory_gate/restart-server, and `agent-rails` fleet discipline.)
+8. `store_list({AGENT}/flags)` — empty → skip. **>75 records:** B+D only. **Else** A+B+C+D: **close** A dup open vs closed same `subject`; B open+`resolution`; D open+orphan `assigned_to` (fleet from `store_get({AGENT}/agents,inactive)` else `{Heimdallr}`). **Prompt:** C — open + single-line `fix_path` ≤150c, max 5, wait for Sean. Closes: `resolution=auto-closed at boot — …`
+9. Report: one paragraph, **≤6 sentences**, no headers — postgres, flags (count + top), latest ledger line, `next_bite`; if 7a reprioritizes work, one extra clause (titles/IDs only).
 
 ## Rules
 
-- Anchor TTL is 2 hours, not 10 minutes. The hook did the work — trust it.
-- `#general`, `#architecture`, `#handoffs` are on-demand. Never pull them at boot.
-- `frank_ledger` and personal layer KB search are sit-down prep, not boot. Pull them when
-  Sean opens a sit-down, not on every session start.
-- Never read a full handoff `.md` file at boot. The anchor summary is enough.
-- If Postgres is down, stop. Do not build on a broken foundation.
+- No `#general` / `#architecture` / `#handoffs` pulls at boot (on-demand).
+- Do not read full handoff `.md` — anchor is enough.
+- **Tune KB recall vs tokens** by editing `willow/fylgja/config/startup_continuity.json`, not this file.
+- **Path discipline:** `/startup` Cursor/Claude command stubs resolve **FYLGJA** via `WILLOW_FYLGJA_ROOT` or relative `willow/fylgja` / `willow-1.9/willow/fylgja` — never embed machine-local absolute paths in those stubs.

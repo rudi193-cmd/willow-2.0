@@ -20,6 +20,10 @@ b17: FYLPR · ΔΣ=42
 - **No** “invoke every skill at 1% probability.” Match task → **one** power; escalate only if the power says so.
 - **Priority:** Sean’s explicit instructions → one loaded power → defaults.
 
+## Willow fleet default
+
+If the turn touches **Willow MCP, KB, Grove, or SOIL** and no narrower power clearly fits (`debug`, `tdd`, `plan`, …), load **`agent-rails`** — session discipline (parallel cold reads, external knowledge, write gates, coordination). See `powers/agent-rails.md`.
+
 ## Flow
 
 1. Open `registry.json`; pick the single best `id` by `description`.

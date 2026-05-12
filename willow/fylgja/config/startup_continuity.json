@@ -1,0 +1,8 @@
+{
+  "b17": "STCN0",
+  "kb_searches": [
+    {"query": "mcp.json willow grove openclaw", "limit": 8},
+    {"query": "willow_memory_check SessionStart restart-server", "limit": 8},
+    {"query": "agent-rails fylgja Willow MCP KB Grove SOIL", "limit": 8}
+  ]
+}

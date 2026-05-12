@@ -4,6 +4,11 @@
   "model": "Think MCP tools/list + Grove notify: this registry is the hot path; each power file is a cold pull — load at most one per turn unless user asks for more.",
   "powers": [
     {
+      "id": "agent-rails",
+      "description": "Willow stack (MCP/KB/Grove/SOIL) — parallel status+handoff, KB before design, memory_check before ingest, Grove history before posts, one power per turn, Kart for heavy shell.",
+      "file": "agent-rails.md"
+    },
+    {
       "id": "brainstorm",
       "description": "New feature or behavior change — KB/atoms first, three approaches, Sean ratifies before code.",
       "file": "brainstorm.md"

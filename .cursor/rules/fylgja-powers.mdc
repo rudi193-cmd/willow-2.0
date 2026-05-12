@@ -8,7 +8,7 @@ alwaysApply: true
 **Roots:** `WILLOW_FYLGJA_ROOT` if set, else `~/github/willow-1.9/willow/fylgja`.
 
 1. `Read` `{ROOT}/powers/registry.json` (catalog only).
-2. Pick the single best `powers[].id` by `description` for the user task.
+2. Pick the single best `powers[].id` by `description` for the user task. Willow MCP/KB/Grove/SOIL work with no tighter fit → prefer **`agent-rails`**.
 3. `Read` `{ROOT}/powers/{file}` for that entry — **one** power body per turn unless the user asks for more.
 4. If that power points you at longer prose, `Read` `{ROOT}/skills/<name>.md` **only then**.
 
