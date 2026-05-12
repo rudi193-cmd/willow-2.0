@@ -406,6 +406,7 @@ def _run_install(win, name_str: str, email: str, passphrase: str) -> str:
         ("Metabolic",      _step_socket),
         ("CMB atom",       _step_cmb),
         ("KB seed",        _step_kb_seed),
+        ("Embeddings",     _step_embed_seed),
         ("Dashboard",      _step_dashboard),
         ("Launcher",       _step_launcher),
         ("Grove identity", _step_grove_identity),
@@ -580,6 +581,18 @@ def _step_ollama() -> None:
     r = subprocess.run(["ollama", "list"], capture_output=True, text=True)
     if "nomic-embed-text" not in r.stdout:
         raise RuntimeError("nomic-embed-text not present — preflight incomplete")
+
+
+def _step_embed_seed() -> None:
+    """Embed seed KB atoms so semantic search works on first boot."""
+    backfill = WILLOW_ROOT / "scripts" / "willow_embed_backfill.py"
+    if not backfill.exists():
+        return
+    subprocess.run(
+        [sys.executable, str(backfill), "--project", "willow", "--limit", "200"],
+        capture_output=True,
+        timeout=120,
+    )
 
 
 def _step_socket() -> None:
