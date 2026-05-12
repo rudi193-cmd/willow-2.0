@@ -29,7 +29,8 @@ agents/hanuman/kb-atoms/
 .venv/
 venv/
 
-# Local databases
-*.db
+# Local overseer run logs (scripts/run_overseer.py)
+.overseer/
+
 *.sqlite
 *.sqlite3

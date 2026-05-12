@@ -18,7 +18,7 @@ description: Fylgja-powers — registry + one power body (low-token router); opt
 
 ## Ids
 
-`brainstorm` · `plan` · `execute` · `debug` · `tdd` · `verify` · `worktree` · `review-in` · `review-out`
+`brainstorm` · `plan` · `execute` · `overseer` · `debug` · `tdd` · `verify` · `worktree` · `review-in` · `review-out`
 
 ## Surfaces
 
