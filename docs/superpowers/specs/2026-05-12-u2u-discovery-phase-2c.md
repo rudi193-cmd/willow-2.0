@@ -3,7 +3,7 @@
 **b17:** U2U2C · ΔΣ=42  
 **Status:** Draft  
 **Owner:** sean + hanuman  
-**Refs:** `safe-app-grove/u2u/`, KB `DD0808D1` (U2U Core v0.1.0 handoff — Plan B specced, not built), `docs/superpowers/specs/2026-05-12-sovereign-edges-phase-1.md` (G4 loopback proof prerequisite)
+**Refs:** `safe-app-grove/u2u/`, KB `DD0808D1` (U2U Core v0.1.0 handoff — Plan B specced, not built), `docs/superpowers/specs/2026-05-12-sovereign-edges-phase-1.md` (G4 loopback proof prerequisite), **parent umbrella** `docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` on branch **`wt/sovereign-edges-phase1`**.
 
 **Branch discipline:** This spec and **all** Phase 2C implementation live only on **`wt/u2u-phase-2c`** in worktree **`willow-1.9-wt-u2u-phase-2c`**. Do **not** merge to **`master`** until Sean ratifies.
 
