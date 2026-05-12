@@ -15,10 +15,27 @@ from pathlib import Path
 HANDOFF_DIR = Path.home() / ".willow" / "handoffs"
 
 
-def _find_jsonl(session_id: str) -> Path | None:
-    projects_dir = Path.home() / ".claude" / "projects"
-    files = list(projects_dir.rglob(f"{session_id}.jsonl"))
-    return files[0] if files else None
+def _find_jsonl(session_id: str) -> tuple[Path | None, str]:
+    """
+    Return (path, runtime_label) for the session JSONL if found.
+
+    Claude Code CLI sessions typically live under ~/.claude/projects.
+    Cursor sessions typically live under ~/.cursor/projects/*/agent-transcripts.
+    """
+    candidates: list[tuple[Path, str]] = [
+        (Path.home() / ".claude" / "projects", "claude-code"),
+        (Path.home() / ".cursor" / "projects", "cursor"),
+    ]
+    for root, runtime in candidates:
+        try:
+            if not root.exists():
+                continue
+            files = list(root.rglob(f"{session_id}.jsonl"))
+            if files:
+                return files[0], runtime
+        except Exception:
+            continue
+    return None, "unknown"
 
 
 def _extract_last_user_message(jsonl_path: Path) -> str:
@@ -71,13 +88,14 @@ def write_flat_handoff(session_id: str, agent: str) -> Path | None:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         path = HANDOFF_DIR / f"{agent}-{today}.md"
 
-        jsonl_path = _find_jsonl(session_id)
+        jsonl_path, runtime = _find_jsonl(session_id)
         anchor = _extract_last_user_message(jsonl_path) if jsonl_path else ""
         gates = _get_open_gates(agent)
 
         lines = [
             f"# Handoff — {agent} — {today}",
             f"written_at: {datetime.now(timezone.utc).isoformat()}",
+            f"runtime: {runtime}",
             "",
         ]
 
@@ -112,7 +130,7 @@ def read_flat_handoff(agent: str) -> dict:
     """Read most recent flat handoff for agent. Returns parsed dict."""
     result: dict = {
         "anchor": "", "jsonl_path": "", "open_gates": [],
-        "written_at": "", "path": "",
+        "written_at": "", "runtime": "", "path": "",
     }
     try:
         files = sorted(HANDOFF_DIR.glob(f"{agent}-*.md"), reverse=True)
@@ -125,6 +143,8 @@ def read_flat_handoff(agent: str) -> dict:
         for i, line in enumerate(lines):
             if line.startswith("written_at:"):
                 result["written_at"] = line.split(":", 1)[1].strip()
+            elif line.startswith("runtime:"):
+                result["runtime"] = line.split(":", 1)[1].strip()
             elif line == "## Last real message" and i + 1 < len(lines):
                 result["anchor"] = lines[i + 1].strip().strip('"')
             elif line == "## JSONL" and i + 1 < len(lines):
