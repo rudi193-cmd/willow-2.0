@@ -34,11 +34,13 @@ Q17: "What is the next single bite?"
 ```
 
 3. **Write the file** to `~/Ashokoa/agents/{AGENT}/index/haumana_handoffs/SESSION_HANDOFF_<YYYYMMDD>_{AGENT}_<letter>.md` where `{AGENT}` = `$WILLOW_AGENT_NAME` (default: `hanuman`).
-4. **Rebuild DB** — call `willow_handoff_rebuild`.
-5. **Confirm** — report filename and Q17.
+4. **Write frank_ledger entry** — `willow_frank_ledger_write(project="sean", event_type="check_in")` with `summary`, `shipped`, `open_decisions`, **`atoms_written`** (every `willow_knowledge_ingest` ID this session — required if any), `gaps_flagged`, `next_bite` (Q17 verbatim). Next `/startup` reads the ledger (step 7) plus `willow/fylgja/config/startup_continuity.json` searches (7a); missing IDs = rediscovery by luck.
+5. **Rebuild DB** — call `willow_handoff_rebuild`.
+6. **Confirm** — report filename and Q17.
 
 ## Rules
 
 - What I Now Understand = architectural truth, not a task list.
 - Q17 must be a single concrete next bite, not a project description.
 - Never skip the DB rebuild — the next session reads from that index.
+- Never skip the frank_ledger write — startup reads it at boot. A missing entry means the next session starts blind.

@@ -93,7 +93,7 @@ Agents use `grove_get_history` to pull recent messages before acting:
 grove_get_history(channel_name="general", limit=20, since_id=last_seen_id)
 ```
 
-The persistent Grove monitor (launched at session start) watches for `@{agent}` mentions and fires only when addressed. This is step 8 of `/startup` — mandatory.
+The persistent Grove monitor (launched at session start) watches for `@{agent}` mentions and fires only when addressed. This is step 5 of `/startup` — mandatory.
 
 ---
 
