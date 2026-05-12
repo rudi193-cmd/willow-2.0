@@ -3,7 +3,7 @@
 **b17:** EDGE1 · ΔΣ=42  
 **Status:** Draft (Phase 1 only — no ingress or hosting migration)  
 **Owner:** sean + hanuman  
-**Refs:** KB atoms `61B8FD6B` (Grove MCP nginx/VPS sketch), `932B35B3` (ngrok as authorized scaffolding), `013CDE08` (deployment-layer sovereignty tension), `P4E55FF3` / `DD0808D1` (u2u stack pointers)
+**Refs:** KB atoms `61B8FD6B` (Grove MCP nginx/VPS sketch), `932B35B3` (ngrok as authorized scaffolding), `013CDE08` (deployment-layer sovereignty tension), `P4E55FF3` / `DD0808D1` (u2u stack pointers). **Full program (Phases 1–3):** `docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` (same branch).
 
 **Branch discipline (mandatory):** This spec and **all** Phase 1 artifacts (docs, code, tests) live only on git branch **`wt/sovereign-edges-phase1`** in worktree **`willow-1.9-wt-sovereign-edges-phase1`** (sibling of `willow-1.9`). Do **not** commit Phase 1 work to **`master`** until Sean ratifies merge. `master` carries no Phase 1 files until then.
 
