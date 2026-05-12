@@ -2416,12 +2416,31 @@ _GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
 
 
 def _load_credential(key: str) -> str | None:
+    # Primary: Fernet vault (encrypted SQLite)
+    try:
+        from cryptography.fernet import Fernet
+        import sqlite3 as _sqlite3
+        _mk = pathlib.Path("~/.willow/secrets/.willow_master.key").expanduser().read_bytes().strip()
+        _f  = Fernet(_mk)
+        _db = _sqlite3.connect(str(pathlib.Path("~/.willow/secrets/.willow_creds.db").expanduser()))
+        row = _db.execute("SELECT value_enc FROM credentials WHERE env_key=?", (key,)).fetchone()
+        _db.close()
+        if row:
+            val = _f.decrypt(row[0]).decode()
+            if val and "HERE" not in val:
+                return val
+    except Exception:
+        pass
+    # Fallback: credentials.json (plaintext)
     try:
         creds_path = os.path.expanduser("~/.willow/secrets/credentials.json")
-        with open(creds_path) as f:
-            return json.load(f).get(key)
+        with open(creds_path) as fh:
+            val = json.load(fh).get(key)
+            if val:
+                return val
     except Exception:
-        return os.environ.get(key)
+        pass
+    return os.environ.get(key)
 
 
 def _chat_groq(agent: str, message: str) -> str | None:
