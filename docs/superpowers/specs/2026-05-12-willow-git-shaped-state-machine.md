@@ -95,4 +95,14 @@ Explicit **states**, **one trunk**, **visible diffs**, **recoverable history** r
 
 ---
 
+## 7. Reference implementation
+
+Runnable **state machine + JSON store + CLI + tests** live under **`sandbox/`** in `willow-1.9`:
+
+- Policy binding and rollout: `sandbox/docs/IMPLEMENTATION_SPEC.md`
+- Operator README: `sandbox/README.md`
+- Tests: `tests/test_sandbox/test_git_shaped.py`
+
+---
+
 *When this doc and reality diverge, update the doc or fix the fleet — silent drift is the only failure mode that matters.*
