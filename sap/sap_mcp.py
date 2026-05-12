@@ -461,7 +461,7 @@ async def list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="willow_knowledge_ingest",
-            description="Add a knowledge atom to Willow's Postgres KB. Writes to the knowledge table. Call willow_memory_check first to avoid duplicates.",
+            description="Add a knowledge atom to Willow's Postgres KB. Gates on REDUNDANT/CONTRADICTION — returns {blocked:true} if a duplicate or conflict is detected. Pass force=true to override the gate and write anyway.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -471,6 +471,7 @@ async def list_tools() -> list[types.Tool]:
                     "source_id": {"type": "string", "description": "Identifier of the source (e.g. session ID, file path)"},
                     "category": {"type": "string", "default": "general", "description": "Broad category: 'general', 'code', 'decision', 'reference'"},
                     "domain": {"type": "string", "description": "Domain namespace, e.g. 'hanuman', 'opus', 'archived'"},
+                    "force": {"type": "boolean", "default": False, "description": "Override REDUNDANT/CONTRADICTION gate. Required if memory_check flagged the candidate."},
                 },
                 "required": ["title", "summary"],
             },
@@ -1347,19 +1348,46 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                 if _write_err:
                     result = {"error": _write_err}
                 else:
-                    atom_id = pg.ingest_atom(
-                        title=_title,
-                        summary=_summary,
-                        source_type=arguments.get("source_type", "mcp"),
-                        source_id=_source_id,
-                        category=arguments.get("category", "general"),
-                        domain=arguments.get("domain"),
-                    )
-                    result = {
-                        "id": atom_id,
-                        "status": "ingested" if atom_id else "failed",
-                        "error": getattr(pg, "_last_ingest_error", None) if not atom_id else None,
-                    }
+                    _force = arguments.get("force", False)
+                    if not _force:
+                        try:
+                            from sap.core.memory_gate import check_candidate
+                            _gate = check_candidate(
+                                title=_title,
+                                summary=_summary,
+                                domain=arguments.get("domain"),
+                                store=store,
+                                pg=pg,
+                            )
+                            _hard_flags = {"REDUNDANT", "CONTRADICTION"}
+                            _triggered = _hard_flags & set(_gate.get("flags", []))
+                            if _triggered:
+                                result = {
+                                    "blocked": True,
+                                    "flags": _gate["flags"],
+                                    "recommendation": _gate["recommendation"],
+                                    "evidence": _gate["evidence"],
+                                    "hint": "Pass force=true to override and write anyway.",
+                                }
+                                _force = None  # sentinel: skip ingest below
+                        except Exception:
+                            pass  # gate failure is non-blocking
+                    if _force is not None:
+                        atom_id = pg.ingest_atom(
+                            title=_title,
+                            summary=_summary,
+                            source_type=arguments.get("source_type", "mcp"),
+                            source_id=_source_id,
+                            category=arguments.get("category", "general"),
+                            domain=arguments.get("domain"),
+                        )
+                        result = {
+                            "id": atom_id,
+                            "status": "ingested" if atom_id else "failed",
+                            "error": getattr(pg, "_last_ingest_error", None) if not atom_id else None,
+                        }
+                        if _force is True:
+                            result["forced"] = True
 
         elif name == "willow_knowledge_at":
             if not pg:
