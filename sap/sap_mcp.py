@@ -412,8 +412,24 @@ async def list_tools() -> list[types.Tool]:
                     "query": {"type": "string", "description": "Search query — plain text, matched against title and summary"},
                     "limit": {"type": "integer", "default": 20, "description": "Maximum results to return across atoms, entities, and ganesha (default 20)"},
                     "semantic": {"type": "boolean", "default": False, "description": "Use hybrid ANN+ILIKE semantic search via pgvector (falls back to ILIKE if Ollama unavailable)"},
+                    "include_embedding": {"type": "boolean", "default": False, "description": "Include embedding vectors in results (default false to keep payloads small)"},
+                    "fields": {"type": "array", "items": {"type": "string"}, "description": "Optional field allowlist for atoms (e.g. ['id','title','summary']). 'id' is always included."},
                 },
                 "required": ["query"],
+            },
+        ),
+        types.Tool(
+            name="willow_knowledge_get",
+            description="Fetch a single knowledge atom by id. Defaults to omitting embedding vectors to keep payloads small.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "Knowledge atom id"},
+                    "include_embedding": {"type": "boolean", "default": False, "description": "Include embedding vectors in the result (default false)"},
+                    "fields": {"type": "array", "items": {"type": "string"}, "description": "Optional field allowlist for the atom (e.g. ['id','title','summary']). 'id' is always included."},
+                    "include_invalid": {"type": "boolean", "default": False, "description": "If true, allow returning atoms with invalid_at set"},
+                },
+                "required": ["id"],
             },
         ),
         types.Tool(
@@ -454,6 +470,8 @@ async def list_tools() -> list[types.Tool]:
                 "properties": {
                     "query": {"type": "string", "description": "Search query — plain text, matched against title and summary"},
                     "limit": {"type": "integer", "default": 20, "description": "Maximum results to return (default 20)"},
+                    "include_embedding": {"type": "boolean", "default": False, "description": "Include embedding vectors in results (default false to keep payloads small)"},
+                    "fields": {"type": "array", "items": {"type": "string"}, "description": "Optional field allowlist for atoms (e.g. ['id','title','summary']). 'id' is always included."},
                 },
                 "required": ["query"],
             },
@@ -1219,22 +1237,49 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
             )
 
         # ── Postgres-backed tools ─────────────────────────────────────────────
+        elif name == "willow_knowledge_get":
+            if not pg:
+                result = {"error": "not_available", "reason": "Postgres not connected"}
+            else:
+                atom = pg.knowledge_get(
+                    arguments["id"],
+                    include_invalid=arguments.get("include_invalid", False),
+                    include_embedding=arguments.get("include_embedding", False),
+                    fields=arguments.get("fields"),
+                )
+                result = {"atom": atom, "found": bool(atom)}
+                _sanitize_result(result, "willow_knowledge_get")
+
         elif name in ("willow_knowledge_search", "willow_query"):
             if not pg:
                 result = {"error": "not_available", "reason": "Postgres not connected"}
             else:
                 query = arguments["query"]
                 limit = arguments.get("limit", 20)
+                include_embedding = arguments.get("include_embedding", False)
+                fields = arguments.get("fields")
                 if arguments.get("semantic"):
                     pg19 = _get_pg19()
                     if pg19:
-                        knowledge = pg19.knowledge_search_semantic(query, limit=limit)
+                        knowledge = pg19.knowledge_search_semantic(
+                            query, limit=limit,
+                            include_embedding=include_embedding,
+                            fields=fields,
+                        )
                         search_mode = "semantic"
                     else:
-                        knowledge = pg.knowledge_search(query, limit=limit)
+                        knowledge = pg.knowledge_search(
+                            query, limit=limit,
+                            include_embedding=include_embedding,
+                            fields=fields,
+                        )
                         search_mode = "degraded"
                 else:
-                    knowledge = pg.knowledge_search(query, limit=limit)
+                    knowledge = pg.knowledge_search(
+                        query, limit=limit,
+                        include_embedding=include_embedding,
+                        fields=fields,
+                    )
                     search_mode = "keyword"
                 result = {
                     "knowledge": knowledge,

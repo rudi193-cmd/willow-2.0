@@ -31,8 +31,21 @@ class DegradedBridge:
         self._store.put("knowledge/fallback", record)
         return record_id
 
+    def knowledge_get(self, atom_id: str, include_invalid: bool = False,
+                      include_embedding: bool = False,
+                      fields: Optional[list] = None) -> Optional[dict]:
+        # degraded mode: best-effort lookup by id from fallback store
+        results = self._store.search("knowledge/fallback", atom_id)
+        for r in results:
+            rid = r.get("id") or r.get("_id")
+            if rid == atom_id:
+                return r
+        return None
+
     def knowledge_search(self, query: str, project: Optional[str] = None,
-                         include_invalid: bool = False, limit: int = 20) -> list:
+                         include_invalid: bool = False, limit: int = 20,
+                         include_embedding: bool = False,
+                         fields: Optional[list] = None) -> list:
         results = self._store.search("knowledge/fallback", query)
         if project:
             results = [r for r in results if r.get("project") == project]
