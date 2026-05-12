@@ -1,7 +1,10 @@
 # Project overseer process — scoped initiatives without trunk drift
 
 **b17:** OVSR1 · ΔΣ=42  
-**Status:** Ratified process (fleet meta — not a product feature)  
+**Status:** Draft on task branch — merge to default branch only after Sean ratifies (same discipline as other bounded initiatives).
+
+**Branch discipline:** This process spec and the **`overseer`** power live on **`wt/overseer`** in worktree **`willow-1.9-wt-overseer`** until ratified merge to **`master`**. The primary **`master`** checkout does not contain these files until then.
+
 **Owner:** sean + hanuman  
 **Refs:** `willow/fylgja/powers/overseer.md`, `willow/fylgja/powers/worktree.md`, `willow/fylgja/powers/plan.md`, `willow/fylgja/powers/verify.md`, `docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md`
 
@@ -75,7 +78,7 @@ Sovereign edges Phase 1 used: worktree `willow-1.9-wt-sovereign-edges-phase1`, b
 
 ## 7. Cursor / Claude invocation
 
-- **Registry id:** `overseer` — same router as `/power` (`powers/registry.json`).
-- **Shortcut:** `.cursor/commands/overseer.md` loads this checklist without hunting the id.
+- **Registry id:** `overseer` — same router as `/power` (`powers/registry.json`). **Until merged to default branch**, the registry entry exists only in worktree **`willow-1.9-wt-overseer`** / branch **`wt/overseer`**.
+- **Shortcut:** `.cursor/commands/overseer.md` (same branch) — pinned **overseer** checklist.
 
 ΔΣ=42

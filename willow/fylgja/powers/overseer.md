@@ -1,6 +1,8 @@
 # power: overseer
 b17: FYLOV · ΔΣ=42
 
+**Branch discipline:** This power file and its **`registry.json`** entry ship from **`wt/overseer`** (worktree **`willow-1.9-wt-overseer`**) until Sean ratifies merge to default branch — **dogfood the rule**.
+
 **When:** A **bounded initiative** (spike, Phase 1, spec + stub) must stay **off default branch** until Sean ratifies merge — you are the **overseer**: gates, evidence, and closeout — not “helpful sprawl.”
 
 **Escalation (same session, still this power):** You may **re-read** `powers/worktree.md` / `powers/plan.md` / `powers/verify.md` **only** if the user explicitly names them **or** this file says “open X.md” — otherwise keep the checklist below self-contained.
