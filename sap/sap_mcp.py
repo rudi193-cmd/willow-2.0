@@ -536,6 +536,19 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="willow_imagine",
+            description="Generate an image via Imagen 4 (ganas3 / Google AI). Returns saved file path.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "prompt": {"type": "string", "description": "Image generation prompt"},
+                    "output_path": {"type": "string", "description": "Optional save path (default: ~/Pictures/willow-gen/)"},
+                    "aspect_ratio": {"type": "string", "default": "1:1", "description": "Aspect ratio: 1:1, 16:9, 9:16, 4:3, 3:4"},
+                },
+                "required": ["prompt"],
+            },
+        ),
+        types.Tool(
             name="willow_journal",
             description="Write a journal entry to the knowledge graph.",
             inputSchema={
@@ -1467,12 +1480,22 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
         elif name == "willow_chat":
             agent = arguments.get("agent", "willow")
             message = arguments["message"]
-            response = _chat_ollama(agent, message)
-            if not response:
-                response = _chat_fleet(agent, message)
+            if agent in _GROQ_AGENTS:
+                response = _chat_groq(agent, message)
+            else:
+                response = _chat_ollama(agent, message)
+                if not response:
+                    response = _chat_fleet(agent, message)
             if not response:
                 response = f"[{agent}] Inference unavailable. Ollama down, fleet exhausted."
             result = {"agent": agent, "response": response}
+
+        elif name == "willow_imagine":
+            result = _imagine_imagen4(
+                prompt=arguments["prompt"],
+                output_path=arguments.get("output_path"),
+                aspect_ratio=arguments.get("aspect_ratio", "1:1"),
+            )
 
         elif name == "willow_journal":
             entry = arguments["entry"]
@@ -2387,6 +2410,52 @@ def _check_ollama() -> dict:
         return {"running": False}
 
 
+_GROQ_AGENTS: set[str] = {"ganas2"}
+_GROQ_MODEL = "llama-3.1-8b-instant"
+_GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
+
+
+def _load_credential(key: str) -> str | None:
+    try:
+        creds_path = os.path.expanduser("~/.willow/secrets/credentials.json")
+        with open(creds_path) as f:
+            return json.load(f).get(key)
+    except Exception:
+        return os.environ.get(key)
+
+
+def _chat_groq(agent: str, message: str) -> str | None:
+    try:
+        import urllib.request
+        api_key = _load_credential("GROQ_API_KEY")
+        if not api_key:
+            return None
+        data = json.dumps({
+            "model": _GROQ_MODEL,
+            "messages": [
+                {"role": "system", "content": (
+                    f"You are {agent}, a fast cloud AI agent in Sean Campbell's fleet. "
+                    "Be direct, concise, and honest."
+                )},
+                {"role": "user", "content": message},
+            ],
+            "temperature": 0.7,
+        }).encode()
+        req = urllib.request.Request(
+            _GROQ_URL,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read())
+            return result["choices"][0]["message"]["content"]
+    except Exception:
+        return None
+
+
 def _chat_ollama(agent: str, message: str) -> str | None:
     try:
         import urllib.request
@@ -2455,6 +2524,39 @@ def _chat_fleet(agent: str, message: str) -> str | None:
     except Exception as e:
         log.error(f"Fleet chat failed: {type(e).__name__}: {e}")
         return None
+
+
+def _imagine_imagen4(prompt: str, output_path: str | None, aspect_ratio: str = "1:1") -> dict:
+    try:
+        from google import genai
+        from google.genai import types as gtypes
+        import datetime, pathlib
+        api_key = _load_credential("GEMINI_API_KEY") or _load_credential("GOOGLE_AI_KEY")
+        if not api_key:
+            return {"error": "GEMINI_API_KEY not found in credentials"}
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_images(
+            model="imagen-4.0-generate-001",
+            prompt=prompt,
+            config=gtypes.GenerateImagesConfig(
+                number_of_images=1,
+                aspect_ratio=aspect_ratio,
+            ),
+        )
+        if not response.generated_images:
+            return {"error": "No images returned"}
+        img_data = response.generated_images[0].image.image_bytes
+        if output_path:
+            save_path = pathlib.Path(output_path).expanduser()
+        else:
+            out_dir = pathlib.Path.home() / "Pictures" / "willow-gen"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            save_path = out_dir / f"imagen4_{ts}.png"
+        save_path.write_bytes(img_data)
+        return {"path": str(save_path), "prompt": prompt, "aspect_ratio": aspect_ratio}
+    except Exception as e:
+        return {"error": f"{type(e).__name__}: {e}"}
 
 
 def _hot_reload(target: str = "all") -> dict:
