@@ -98,8 +98,9 @@ def grove_send(channel: str, content: str, sender: str | None = None) -> bool:
     """
     import os
     import subprocess
+    from core.agent_identity import require_agent_name as _require_agent_name
     if not sender:
-        sender = os.environ.get("GROVE_SENDER") or os.environ.get("WILLOW_AGENT_NAME") or "hanuman"
+        sender = os.environ.get("GROVE_SENDER") or _require_agent_name()
     grove_mcp = os.environ.get(
         "GROVE_MCP_BIN",
         str(Path.home() / ".local" / "bin" / "grove-mcp")

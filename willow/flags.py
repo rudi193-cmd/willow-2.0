@@ -2,7 +2,7 @@
 willow/flags.py — Live gap flagging.
 b17: FLAG1  ΔΣ=42
 
-Write flags to hanuman/flags without going through MCP.
+Write flags to {agent}/flags without going through MCP (agent from WILLOW_AGENT_NAME).
 Importable from hooks, shutdown, anywhere in the system.
 
 Usage:
@@ -17,13 +17,16 @@ Usage:
     clear_flag("BOOT-SHOOT-IMPORTS")
 """
 import math
+import os
+from core.agent_identity import require_agent_name
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.willow_store import WillowStore
 
-_COLLECTION = "hanuman/flags"
+_AGENT      = require_agent_name()
+_COLLECTION = f"{_AGENT}/flags"
 
 _SEVERITY_DEVIATION = {
     "routine":     0.0,

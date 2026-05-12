@@ -6,7 +6,9 @@ import json
 import os
 from pathlib import Path
 
-AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+from core.agent_identity import require_agent_name
+
+AGENT = require_agent_name()
 SESSION_FILE = Path(f"/tmp/willow-session-{AGENT}.json")
 TRUST_STATE = Path.home() / "agents" / AGENT / "cache" / "trust-state.json"
 

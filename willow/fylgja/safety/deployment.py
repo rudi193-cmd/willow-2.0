@@ -5,9 +5,10 @@ Config is loaded from SOIL store once per session and cached in _cache.
 import os
 from typing import Optional
 
+from core.agent_identity import require_agent_name
 from willow.fylgja._mcp import call
 
-AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+AGENT = require_agent_name()
 
 DEFAULT_CONFIG: dict = {
     "deployment_id": "sean-personal",

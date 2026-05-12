@@ -9,6 +9,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from core.agent_identity import require_agent_name
 from willow.fylgja._mcp import call
 from willow.fylgja.safety.platform import check_all as _safety_check_all
 
@@ -25,7 +26,7 @@ from willow.fylgja.safety.security_scan import (
     SEV_HIGH,
 )
 
-AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+AGENT = require_agent_name()
 MAX_DEPTH = int(os.environ.get("WILLOW_AGENT_MAX_DEPTH", "3"))
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
 
@@ -125,7 +126,7 @@ def _mcp_store_search(query: str) -> list:
     try:
         result = call("store_search", {
             "app_id": AGENT,
-            "collection": "hanuman/file-index",
+            "collection": f"{AGENT}/file-index",
             "query": query,
         }, timeout=3)
         return result if isinstance(result, list) else []
@@ -145,7 +146,7 @@ def check_kb_first(path: str) -> str | None:
         return None
     hit = results[0]
     return (
-        f"[KB-FIRST] '{filename}' is indexed (collection: {hit.get('collection', 'hanuman/file-index')}, "
+        f"[KB-FIRST] '{filename}' is indexed (collection: {hit.get('collection', f'{AGENT}/file-index')}, "
         f"id: {hit.get('id', '?')}). Consider reading from KB before disk."
     )
 

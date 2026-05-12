@@ -8,10 +8,11 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from core.agent_identity import require_agent_name
 from willow.fylgja._mcp import call
 from willow.fylgja.safety.deployment import get_user_role
 
-AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+AGENT = require_agent_name()
 SESSION_FILE = Path(f"/tmp/willow-session-{AGENT}.json")
 VALID_STREAMS = frozenset({"relationships", "images", "bookmarks", "dating"})
 

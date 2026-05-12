@@ -34,9 +34,12 @@ Usage:
 import hashlib
 import json
 import os
+from core.agent_identity import require_agent_name
 import re
 from datetime import datetime, timezone
 from typing import Optional
+
+_AGENT = require_agent_name()
 
 # ---------------------------------------------------------------------------
 # Concern taxonomy (stolen from claude-deep-review dimension list)
@@ -159,10 +162,10 @@ def _persist_findings_to_store(
             key_hash = hashlib.sha1(
                 json.dumps(_dedup_key(f), sort_keys=True).encode()
             ).hexdigest()[:12]
-            collection = f"hanuman/review/{session_sha}"
+            collection = f"{_AGENT}/review/{session_sha}"
             record_id = f"{f.get('concern', 'unknown')}/{key_hash}"
             mcp_call("store_put", {
-                "app_id": "hanuman",
+                "app_id": _AGENT,
                 "collection": collection,
                 "id": record_id,
                 "data": {
@@ -180,8 +183,8 @@ def _load_prior_findings(session_sha: str) -> list[dict]:
     try:
         from willow.fylgja._mcp import call as mcp_call
         result = mcp_call("store_list", {
-            "app_id": "hanuman",
-            "collection": f"hanuman/review/{session_sha}",
+            "app_id": _AGENT,
+            "collection": f"{_AGENT}/review/{session_sha}",
         }, timeout=2)
         if isinstance(result, list):
             return [r.get("data", {}).get("finding", {}) for r in result]

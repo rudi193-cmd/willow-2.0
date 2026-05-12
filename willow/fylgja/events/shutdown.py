@@ -114,7 +114,7 @@ def run_feedback_pipeline() -> None:
             }, timeout=10)
             call("store_update", {
                 "app_id": AGENT,
-                "collection": "hanuman/feedback",
+                "collection": f"{AGENT}/feedback",
                 "record_id": record.get("id", ""),
                 "record": {**record, "status": "processed"},
             }, timeout=5)

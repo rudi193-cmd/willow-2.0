@@ -12,6 +12,7 @@ Usage:
 """
 import argparse
 import collections
+import os
 import signal
 import sys
 import time
@@ -20,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from core.agent_identity import require_agent_name
 from core.embedder import embed
 from core.pg_bridge import PgBridge
 from core.willow_store import WillowStore
@@ -28,7 +30,7 @@ BATCH_SIZE = 100
 MAX_EMBED_CHARS = 4000
 MIN_TEXT_LEN = 20       # skip atoms shorter than this — garbage vectors
 MAX_SKIPPED = 1000      # bail on a table if this many atoms fail — Ollama likely down
-PROGRESS_COLLECTION = "hanuman/tasks"
+PROGRESS_COLLECTION = f"{require_agent_name()}/tasks"
 PROGRESS_ID = "embed_backfill_progress"
 
 # Projects to exclude from knowledge table backfill.

@@ -6,6 +6,7 @@ Weekly temp. Run to rebuild from scratch.
 """
 
 import os
+from core.agent_identity import require_agent_name
 import re
 import sqlite3
 import json
@@ -15,9 +16,10 @@ from pathlib import Path
 _DEFAULT_FOLDER = Path(__file__).parent
 DB_PATH = Path(os.environ.get("WILLOW_HANDOFF_DB", str(_DEFAULT_FOLDER / "handoffs.db")))
 
+_TOOL_AGENT = require_agent_name()
 _DEFAULT_DIRS = ":".join([
     str(_DEFAULT_FOLDER),
-    str(Path.home() / ".willow" / "Nest" / "hanuman"),
+    str(Path.home() / ".willow" / "Nest" / _TOOL_AGENT),
 ])
 _HANDOFF_DIRS_RAW = os.environ.get("WILLOW_HANDOFF_DIRS", _DEFAULT_DIRS)
 

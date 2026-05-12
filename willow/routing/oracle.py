@@ -16,6 +16,7 @@ without torch/transformers and at oracle latency.
 """
 import json
 import os
+from core.agent_identity import require_agent_name
 import re
 import time
 from datetime import datetime, timezone
@@ -24,7 +25,7 @@ from typing import Optional
 from willow.fylgja._mcp import call as mcp_call
 from willow.routing.intent import classify_intent
 
-AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+AGENT = require_agent_name()
 DEFAULT_AGENT = "willow"
 RULES_COLLECTION = "willow/routing/rules"
 OLLAMA_MODEL = os.environ.get("WILLOW_ROUTE_MODEL", "hf.co/Rudi193/yggdrasil-v9:Q4_K_M")

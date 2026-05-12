@@ -33,10 +33,11 @@ from __future__ import annotations
 
 import json
 import os
+from core.agent_identity import require_agent_name
 from datetime import datetime, timezone
 from pathlib import Path
 
-_AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+_AGENT = require_agent_name()
 _WILLOW_HOME = Path.home() / ".willow"
 
 # How many recent entries to surface on context resume

@@ -5,10 +5,11 @@ b17: ROUT1  ΔΣ=42
 """
 import argparse
 import os
+from core.agent_identity import require_agent_name
 
 from willow.fylgja._mcp import call as mcp_call
 
-AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+AGENT = require_agent_name()
 COLLECTION = "willow/routing/rules"
 
 DEFAULT_RULES = [

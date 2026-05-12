@@ -24,6 +24,7 @@ import concurrent.futures
 import functools
 import json
 import os
+from core.agent_identity import require_agent_name
 import sys
 import sqlite3 as _sqlite3
 from datetime import datetime
@@ -207,14 +208,14 @@ def _get_pg19():
 
 # ── Config ────────────────────────────────────────────────────────────────────
 STORE_ROOT = os.environ.get("WILLOW_STORE_ROOT", str(_SAP_ROOT / "store"))
+_MCP_AGENT = require_agent_name()
 HANDOFF_DB = os.environ.get(
     "WILLOW_HANDOFF_DB",
-    str(Path.home() / "Ashokoa" / "agents" / "hanuman" / "index" / "haumana_handoffs" / "handoffs.db"),
+    str(Path.home() / "Ashokoa" / "agents" / _MCP_AGENT / "index" / "haumana_handoffs" / "handoffs.db"),
 )
 _DEFAULT_HANDOFF_DIRS = ":".join([
-    str(Path.home() / "Ashokoa" / "agents" / "heimdallr" / "index" / "haumana_handoffs"),
-    str(Path.home() / "Ashokoa" / "agents" / "hanuman" / "index" / "haumana_handoffs"),
-    str(Path.home() / ".willow" / "Nest" / "hanuman"),
+    str(Path.home() / "Ashokoa" / "agents" / _MCP_AGENT / "index" / "haumana_handoffs"),
+    str(Path.home() / ".willow" / "Nest" / _MCP_AGENT),
     str(Path.home() / "Ashokoa" / "Filed" / "reference" / "willow-artifacts" / "documents"),
     str(Path.home() / "Ashokoa" / "Filed" / "reference" / "handoffs"),
     str(Path.home() / "Ashokoa" / "Filed" / "narrative" / "session-log"),
@@ -461,7 +462,7 @@ async def list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="willow_knowledge_ingest",
-            description="Add a knowledge atom to Willow's Postgres KB. Writes to the knowledge table. Call willow_memory_check first to avoid duplicates.",
+            description="Add a knowledge atom to Willow's Postgres KB. Gates on REDUNDANT/CONTRADICTION — returns {blocked:true} if a duplicate or conflict is detected. Pass force=true to override the gate and write anyway.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -471,6 +472,7 @@ async def list_tools() -> list[types.Tool]:
                     "source_id": {"type": "string", "description": "Identifier of the source (e.g. session ID, file path)"},
                     "category": {"type": "string", "default": "general", "description": "Broad category: 'general', 'code', 'decision', 'reference'"},
                     "domain": {"type": "string", "description": "Domain namespace, e.g. 'hanuman', 'opus', 'archived'"},
+                    "force": {"type": "boolean", "default": False, "description": "Override REDUNDANT/CONTRADICTION gate. Required if memory_check flagged the candidate."},
                 },
                 "required": ["title", "summary"],
             },
@@ -484,7 +486,7 @@ async def list_tools() -> list[types.Tool]:
                     "title":      {"type": "string", "description": "Proposed atom title"},
                     "summary":    {"type": "string", "description": "Proposed atom summary"},
                     "domain":     {"type": "string", "description": "Proposed domain (optional)"},
-                    "collection": {"type": "string", "description": "SOIL collection to check (default: hanuman/atoms)"},
+                    "collection": {"type": "string", "description": "SOIL collection to check (default: {agent}/atoms from WILLOW_AGENT_NAME)"},
                 },
                 "required": ["title", "summary"],
             },
@@ -1347,19 +1349,48 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                 if _write_err:
                     result = {"error": _write_err}
                 else:
-                    atom_id = pg.ingest_atom(
-                        title=_title,
-                        summary=_summary,
-                        source_type=arguments.get("source_type", "mcp"),
-                        source_id=_source_id,
-                        category=arguments.get("category", "general"),
-                        domain=arguments.get("domain"),
-                    )
-                    result = {
-                        "id": atom_id,
-                        "status": "ingested" if atom_id else "failed",
-                        "error": getattr(pg, "_last_ingest_error", None) if not atom_id else None,
-                    }
+                    _force = arguments.get("force", False)
+                    if not _force:
+                        try:
+                            from sap.core.memory_gate import check_candidate
+                            _domain = arguments.get("domain") or require_agent_name()
+                            _gate = check_candidate(
+                                title=_title,
+                                summary=_summary,
+                                domain=_domain,
+                                store=store,
+                                pg=pg,
+                                collection=f"{_domain}/atoms",
+                            )
+                            _hard_flags = {"REDUNDANT", "CONTRADICTION"}
+                            _triggered = _hard_flags & set(_gate.get("flags", []))
+                            if _triggered:
+                                result = {
+                                    "blocked": True,
+                                    "flags": _gate["flags"],
+                                    "recommendation": _gate["recommendation"],
+                                    "evidence": _gate["evidence"],
+                                    "hint": "Pass force=true to override and write anyway.",
+                                }
+                                _force = None  # sentinel: skip ingest below
+                        except Exception as _gate_err:
+                            print(f"[memory_gate] WARNING: gate check failed — {_gate_err}", file=sys.stderr)
+                    if _force is not None:
+                        atom_id = pg.ingest_atom(
+                            title=_title,
+                            summary=_summary,
+                            source_type=arguments.get("source_type", "mcp"),
+                            source_id=_source_id,
+                            category=arguments.get("category", "general"),
+                            domain=arguments.get("domain"),
+                        )
+                        result = {
+                            "id": atom_id,
+                            "status": "ingested" if atom_id else "failed",
+                            "error": getattr(pg, "_last_ingest_error", None) if not atom_id else None,
+                        }
+                        if _force is True:
+                            result["forced"] = True
 
         elif name == "willow_knowledge_at":
             if not pg:
@@ -1384,7 +1415,7 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                 domain=arguments.get("domain"),
                 store=store,
                 pg=pg,
-                collection=arguments.get("collection", "hanuman/atoms"),
+                collection=arguments.get("collection") or f"{require_agent_name()}/atoms",
             )
 
         elif name == "willow_agents":

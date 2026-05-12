@@ -12,6 +12,7 @@ Mentions logged as [MENTION:BROADCAST] for @all; [MENTION:DIRECT:<identity>] for
 Auto when primary agent is fleet (not Auto).
 """
 import os
+from core.agent_identity import require_agent_name
 import re
 import select
 import sys
@@ -20,7 +21,7 @@ import fcntl
 from functools import lru_cache
 from pathlib import Path
 
-AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+AGENT = require_agent_name()
 _LOCK_PATH = Path(os.environ.get("GROVE_MONITOR_LOCK", "/tmp/grove-monitor.lock"))
 _PID_PATH = Path(os.environ.get("GROVE_MONITOR_PID", "/tmp/grove-monitor.pid"))
 
