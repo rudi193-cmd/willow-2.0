@@ -1,4 +1,4 @@
-# Sovereign edges — full program (Phases 1–3)
+# Sovereign edges — full program (Phases 0–3)
 
 **b17:** SEDG3 · ΔΣ=42  
 **Status:** Draft (umbrella — binds phased work across worktrees)  
@@ -9,27 +9,61 @@
 
 ---
 
-## 0. Program thesis (one paragraph)
+## 0. Phase 0 — prior art (before planning)
+
+**Rule:** Before treating a phased program as novel, run **discovery** in this order; record **one paragraph** in Grove or a KB atom (`hanuman`) with links and the **build vs adopt** decision.
+
+### 0.1 Jeles (trusted GitHub + HN)
+
+1. `jeles_sources` → confirm **`github-repo`** / **`hackernews-search`** (or future registry entries).
+2. `jeles_fetch` with a **narrow question** (one hypothesis per call).
+   - **Private org repos** often return **404** on unauthenticated GitHub API — expect failure; fall through to §0.3.
+   - **Timeouts** — retry once after `willow_health`; if still failing, note **Jeles unavailable** and continue with §0.2–0.3 (do not skip prior art).
+
+### 0.2 Willow KB
+
+- `willow_knowledge_search` (semantic on) for initiative name, **`u2u`**, **`discovery`**, **`invite`**, **`KNOCK`**, **`ngrok`**, **`Cloudflare Pages`**.
+- Skim titles; open full atoms only for near-duplicate risk.
+
+### 0.3 Local disk + authenticated GitHub (when Jeles cannot see private)
+
+- `Grep` / `Glob` under **`~/github/safe-app-grove`**, **`willow-1.9`**, active worktrees for overlapping modules (`u2u/`, `grove/`, `invite`).
+- If available: **`gh search repos`** / **`gh search code`** with auth for **your** org — same prior-art intent.
+
+### 0.4 Public analogs (orientation — not vendor picks)
+
+- **magic-wormhole** family — PAKE + short code; great vocabulary for **one-time transfer**, different semantics than long-lived **u2u contacts**.
+- **Briar**-class — mesh + consent UX references.
+- **Tailscale** — coordination plane anti-example; not a drop-in for u2u consent store.
+
+**Session note (2026-05-12):** Jeles `github-repo` for `sean-campbell/*` returned **404**; public `github-repo` + HN calls **timed out**; KB semantic search did not surface a duplicate of this umbrella; **local** `safe-app-grove` already documents **KNOCK**, **`#u2u-inbox`**, and **`python -m u2u send`** (beta) — Phase 2C must **extend or reconcile** with that, not pretend green field.
+
+**Exit:** Phase 0 paragraph written; plan/spec may proceed.
+
+---
+
+## 1. Program thesis (one paragraph)
 
 **Cloudflare-shaped** and **ngrok-shaped** dependencies are **different jobs** than **u2u trust** and **operator-owned configuration**. This program sequences work so **Phase 1** makes truth **explicit and local** (no baked tunnel hosts, env contract, loopback u2u proof), **Phase 2** replaces **exactly one external edge** chosen by Sean (**inbound TLS**, **static hosting**, or **u2u discovery** — not all three at once), and **Phase 3** makes the chosen replacement **boring under failure** (renewal, abuse, revocation, runbooks) before opening the next edge.
 
 ---
 
-## 1. Phase map (at a glance)
+## 2. Phase map (at a glance)
 
 | Phase | Name | Outcome | Typical owner worktree |
 |-------|------|---------|-------------------------|
+| **0** | **Prior art (Jeles + KB + disk)** | One paragraph: duplicates, analogs, **build vs adopt**; Jeles/KB/disk steps run or explicitly waived. | Same worktree as the spec author / initiative owner |
 | **1** | **Configuration + local proof** | No surprise hosts in source; **`GROVE_MCP_URL`** required where URLs are emitted; operator env table; **loopback u2u** smoke. | `willow-1.9-wt-sovereign-edges-phase1` · `wt/sovereign-edges-phase1` |
 | **2** | **One sovereign edge** (pick **A** or **B** or **C**) | **One** vendor-shaped dependency removed or replaced with **your** runbook + DNS + TLS story **or** **u2u discovery** v1. | `2A` / `2B` / `2C` each may use its own `wt/…` branch |
 | **3** | **Harden + second ring** | Renewal, rotation, rate limits / allowlists, incident doc; **then** start the **next** Phase-2-class edge if still required. | Same as Phase 2 winner until split |
 
 ---
 
-## 2. Phase 1 — full specification (binding)
+## 3. Phase 1 — full specification (binding)
 
 **Canonical doc:** `docs/superpowers/specs/2026-05-12-sovereign-edges-phase-1.md` (this worktree).
 
-### 2.1 Goals (recap)
+### 3.1 Goals (recap)
 
 | ID | Goal |
 |----|------|
@@ -38,19 +72,19 @@
 | **G3** | Single operator env contract documented. |
 | **G4** | Loopback **u2u** smoke: listener + one signed send; no ngrok / Postgres / claude.ai dependency for the procedure. |
 
-### 2.2 Non-goals (Phase 1)
+### 3.2 Non-goals (Phase 1)
 
 - Replacing **ngrok** with VPS/nginx (**Phase 2A**).
 - Moving **UTETY** off **Cloudflare Pages** (**Phase 2B**).
 - Global peer discovery (**Phase 2C**).
 
-### 2.3 Exit criteria
+### 3.3 Exit criteria
 
 All checklist items in Phase 1 doc **§8** are satisfied; evidence (tests / logs) captured in repo or Grove note.
 
 ---
 
-## 3. Phase 2 — three mutually exclusive *first* migrations
+## 4. Phase 2 — three mutually exclusive *first* migrations
 
 **Rule:** After Phase 1 is green, Sean picks **one** of **2A / 2B / 2C** for the **first** Phase 2 execution. Parallel Phase-2 tracks without extra staffing historically ship none.
 
@@ -99,37 +133,38 @@ All checklist items in Phase 1 doc **§8** are satisfied; evidence (tests / logs
 
 ---
 
-## 4. Phase 3 — hardening and the second ring
+## 5. Phase 3 — hardening and the second ring
 
 Phase 3 starts **after** the chosen Phase-2 track has been **live** long enough to trust: renewals, monitoring, and one simulated failure drill.
 
-### 4.1 If Phase 2 was **2A**
+### 5.1 If Phase 2 was **2A**
 
 - Certificate renewal runbook + alert; backup ingress path; rate limits / IP allowlists at **your** edge; optional second VPS or cold standby.
 
-### 4.2 If Phase 2 was **2B**
+### 5.2 If Phase 2 was **2B**
 
 - Unified static deploy pipeline for sibling sites; staging vs prod hostnames; cache/TTL policy; CI log hygiene.
 
-### 4.3 If Phase 2 was **2C**
+### 5.3 If Phase 2 was **2C**
 
 - Revocation / contact rotation UX; replay handling beyond v1; optional **self-hosted relay** for symmetric NAT; **automated C1** (mailbox) only with explicit vendor boundary doc.
 
-### 4.4 Cross-cutting (any Phase-2 winner)
+### 5.4 Cross-cutting (any Phase-2 winner)
 
 - **Single “public surfaces” inventory**: MCP ingress, static sites, relays — **one renewal calendar**, **one incident owner**, **one rollback paragraph** each.
 
 ---
 
-## 5. Sequencing rules (anti-spiral)
+## 6. Sequencing rules (anti-spiral)
 
-1. **No Phase 2** until Phase 1 **§8** is closed (or Sean signs a written waiver in KB/Grove).
-2. **No second Phase-2 track** until Phase 3 **§4.4** inventory exists for the first track **and** Sean names the next priority.
-3. **No trunk landings** for program artifacts until per-branch ratification (see **`B81FE312`** and branch discipline paragraphs in child specs).
+1. **No Phase 1 planning hardening** until Phase **0** exit is satisfied (§0 **Exit**), or Sean signs a written waiver in KB/Grove.
+2. **No Phase 2** until Phase 1 **§8** (canonical Phase 1 doc) is closed (or Sean signs a written waiver in KB/Grove).
+3. **No second Phase-2 track** until Phase 3 **§5.4** inventory exists for the first track **and** Sean names the next priority.
+4. **No trunk landings** for program artifacts until per-branch ratification (see **`B81FE312`** and branch discipline paragraphs in child specs).
 
 ---
 
-## 6. Worktree index (living document)
+## 7. Worktree index (living document)
 
 Update this table when branches move.
 
@@ -141,7 +176,7 @@ Update this table when branches move.
 
 ---
 
-## 7. References (KB)
+## 8. References (KB)
 
 - `013CDE08` — deployment-layer sovereignty tension (UTETY + inbound).
 - `932B35B3` — ngrok as authorized scaffolding until sovereign inbound.
