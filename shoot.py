@@ -19,6 +19,8 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+from core.agent_identity import require_agent_name
+
 sys.path.insert(0, str(Path(__file__).parent))
 
 # ── Boot config ───────────────────────────────────────────────────────────────
@@ -1863,7 +1865,7 @@ def run_boot(stdscr):
             "pgp_fingerprint": fingerprint,
             "agreed_license":  True,
             "agreed_covenant": True,
-            "agent_name":     os.environ.get("WILLOW_AGENT_NAME", "hanuman"),
+            "agent_name":     require_agent_name(),
         }
         _save_boot_config(cfg)
         _blog("run_boot: config saved")
@@ -1873,8 +1875,7 @@ def run_boot(stdscr):
 
     else:
         fingerprint = cfg.get("pgp_fingerprint", "")
-        agent_name  = cfg.get("agent_name",
-                              os.environ.get("WILLOW_AGENT_NAME", "hanuman"))
+        agent_name  = cfg.get("agent_name") or require_agent_name()
         _blog(f"run_boot: returning user={agent_name}")
 
         if fingerprint:

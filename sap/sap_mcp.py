@@ -24,6 +24,7 @@ import concurrent.futures
 import functools
 import json
 import os
+from core.agent_identity import require_agent_name
 import sys
 import sqlite3 as _sqlite3
 from datetime import datetime
@@ -207,7 +208,7 @@ def _get_pg19():
 
 # ── Config ────────────────────────────────────────────────────────────────────
 STORE_ROOT = os.environ.get("WILLOW_STORE_ROOT", str(_SAP_ROOT / "store"))
-_MCP_AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+_MCP_AGENT = require_agent_name()
 HANDOFF_DB = os.environ.get(
     "WILLOW_HANDOFF_DB",
     str(Path.home() / "Ashokoa" / "agents" / _MCP_AGENT / "index" / "haumana_handoffs" / "handoffs.db"),
@@ -1352,7 +1353,7 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                     if not _force:
                         try:
                             from sap.core.memory_gate import check_candidate
-                            _domain = arguments.get("domain") or os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+                            _domain = arguments.get("domain") or require_agent_name()
                             _gate = check_candidate(
                                 title=_title,
                                 summary=_summary,
@@ -1414,7 +1415,7 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                 domain=arguments.get("domain"),
                 store=store,
                 pg=pg,
-                collection=arguments.get("collection") or f"{os.environ.get('WILLOW_AGENT_NAME', 'hanuman')}/atoms",
+                collection=arguments.get("collection") or f"{require_agent_name()}/atoms",
             )
 
         elif name == "willow_agents":

@@ -80,8 +80,8 @@ def check_candidate(
     Returns flags (subset of REDUNDANT, STALE, DARK, CONTRADICTION),
     human recommendation, and compact evidence for debugging.
     """
-    import os as _os
-    _agent = _os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+    from core.agent_identity import require_agent_name
+    _agent = require_agent_name()
     _collection = collection or (f"{domain}/atoms" if domain else f"{_agent}/atoms")
     flags: list[str] = []
     evidence: dict[str, Any] = {}

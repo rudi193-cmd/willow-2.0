@@ -14,6 +14,7 @@ State file: ~/.willow/openclaw_ingest_cursor.json
 import argparse
 import json
 import os
+from core.agent_identity import require_agent_name
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -135,7 +136,7 @@ def _ingest_message(pg, msg: dict, dry_run: bool = False) -> bool:
         source_type="channel_message",
         source_id=source_id,
         category="inbound",
-        domain=os.environ.get("WILLOW_AGENT_NAME", "hanuman"),
+        domain=require_agent_name(),
     )
     if atom_id:
         print(f"ingested: {title!r} | atom={atom_id}")

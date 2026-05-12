@@ -18,13 +18,14 @@ Usage:
 """
 import math
 import os
+from core.agent_identity import require_agent_name
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.willow_store import WillowStore
 
-_AGENT      = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+_AGENT      = require_agent_name()
 _COLLECTION = f"{_AGENT}/flags"
 
 _SEVERITY_DEVIATION = {

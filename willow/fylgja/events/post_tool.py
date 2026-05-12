@@ -11,6 +11,8 @@ from pathlib import Path
 
 _time = time  # alias for timing wrapper
 
+from core.agent_identity import require_agent_name
+
 try:
     from willow.fylgja._mcp import call
 except Exception:
@@ -46,7 +48,7 @@ _RUN_LEDGER_TOOLS = {
     "mcp__grove__grove_send_message",
 }
 
-_AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+_AGENT = require_agent_name()
 
 
 def _target_from_input(tool_name: str, tool_input: dict) -> str:

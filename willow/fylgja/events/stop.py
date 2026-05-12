@@ -11,6 +11,7 @@ from collections import Counter
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+from core.agent_identity import require_agent_name
 from willow.fylgja._state import get_trust_state, save_trust_state
 
 try:
@@ -26,7 +27,7 @@ except Exception:
 
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
 THREAD_FILE = Path("/tmp/willow-context-thread.json")
-_AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+_AGENT = require_agent_name()
 
 
 def read_turns_since(cursor: str, turns_file: Path) -> list[str]:

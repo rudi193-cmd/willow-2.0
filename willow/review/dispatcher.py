@@ -34,11 +34,12 @@ Usage:
 import hashlib
 import json
 import os
+from core.agent_identity import require_agent_name
 import re
 from datetime import datetime, timezone
 from typing import Optional
 
-_AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+_AGENT = require_agent_name()
 
 # ---------------------------------------------------------------------------
 # Concern taxonomy (stolen from claude-deep-review dimension list)

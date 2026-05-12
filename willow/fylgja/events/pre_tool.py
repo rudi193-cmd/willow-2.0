@@ -9,6 +9,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from core.agent_identity import require_agent_name
 from willow.fylgja._mcp import call
 from willow.fylgja.safety.platform import check_all as _safety_check_all
 
@@ -25,7 +26,7 @@ from willow.fylgja.safety.security_scan import (
     SEV_HIGH,
 )
 
-AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+AGENT = require_agent_name()
 MAX_DEPTH = int(os.environ.get("WILLOW_AGENT_MAX_DEPTH", "3"))
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
 

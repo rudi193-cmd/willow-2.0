@@ -309,7 +309,8 @@ class WillowStore:
     def _increment_edge_weight(self, source_id: str, target_id: str, ns: str | None = None) -> None:
         """Increment weight and co_activations on edge between source and target."""
         import os as _os
-        _ns = ns or _os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+        from core.agent_identity import require_agent_name as _ran
+        _ns = ns or _ran()
         edges_coll = f"{_ns}/atoms/edges"
         try:
             edges = self.list(edges_coll) or []

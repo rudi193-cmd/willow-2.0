@@ -7,11 +7,12 @@ hooks in the same session share a single run_id without a DB query.
 """
 import json
 import os
+from core.agent_identity import require_agent_name
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-_AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+_AGENT = require_agent_name()
 _DB = os.environ.get("WILLOW_PG_DB", "willow_19")
 _USER = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
 

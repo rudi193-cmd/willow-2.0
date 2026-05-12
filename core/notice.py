@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+from core.agent_identity import require_agent_name
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,7 +25,7 @@ from typing import NamedTuple
 
 from core.pii_detect import PIIMatch, detect_all, redact_all
 
-_AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+_AGENT = require_agent_name()
 _NOTICES_LOG = Path.home() / ".willow" / f"notices_{_AGENT}.jsonl"
 
 

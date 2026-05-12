@@ -11,6 +11,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from core.agent_identity import require_agent_name
 from willow.fylgja._mcp import call
 from willow.fylgja._grove import call as _grove_call
 
@@ -21,7 +22,7 @@ try:
 except Exception:
     _CONTEXT_AVAILABLE = False
 
-AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+AGENT = require_agent_name()
 # Expected layout per startup.md step 3: ~/agents/{AGENT}/index/haumana_handoffs/
 INDEX_DIR = Path.home() / "agents" / AGENT / "index"
 THREAD_FILE = Path("/tmp/willow-context-thread.json")

@@ -12,6 +12,7 @@ W19MC: Mycorrhizal — sparse KB feeding from adjacent projects
 PMEM2: Insight pass + Chunk synthesis
 """
 import os
+from core.agent_identity import require_agent_name
 import psycopg2.extras
 import uuid as _uuid
 from collections import Counter
@@ -23,7 +24,7 @@ except Exception:
     def _ygg_structured(prompt: str, timeout: int = 30) -> dict:  # type: ignore
         return {"summary": None, "importance": 0}
 
-_AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+_AGENT = require_agent_name()
 
 
 _SYSTEM_SOURCE_TYPES = frozenset({
