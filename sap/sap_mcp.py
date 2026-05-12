@@ -213,7 +213,6 @@ HANDOFF_DB = os.environ.get(
     str(Path.home() / "Ashokoa" / "agents" / _MCP_AGENT / "index" / "haumana_handoffs" / "handoffs.db"),
 )
 _DEFAULT_HANDOFF_DIRS = ":".join([
-    str(Path.home() / "Ashokoa" / "agents" / "heimdallr" / "index" / "haumana_handoffs"),
     str(Path.home() / "Ashokoa" / "agents" / _MCP_AGENT / "index" / "haumana_handoffs"),
     str(Path.home() / ".willow" / "Nest" / _MCP_AGENT),
     str(Path.home() / "Ashokoa" / "Filed" / "reference" / "willow-artifacts" / "documents"),

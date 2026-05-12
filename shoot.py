@@ -1863,7 +1863,7 @@ def run_boot(stdscr):
             "pgp_fingerprint": fingerprint,
             "agreed_license":  True,
             "agreed_covenant": True,
-            "agent_name":     os.environ.get("WILLOW_AGENT_NAME", "heimdallr"),
+            "agent_name":     os.environ.get("WILLOW_AGENT_NAME", "hanuman"),
         }
         _save_boot_config(cfg)
         _blog("run_boot: config saved")
@@ -1874,7 +1874,7 @@ def run_boot(stdscr):
     else:
         fingerprint = cfg.get("pgp_fingerprint", "")
         agent_name  = cfg.get("agent_name",
-                              os.environ.get("WILLOW_AGENT_NAME", "heimdallr"))
+                              os.environ.get("WILLOW_AGENT_NAME", "hanuman"))
         _blog(f"run_boot: returning user={agent_name}")
 
         if fingerprint:

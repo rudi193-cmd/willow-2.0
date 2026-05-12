@@ -12,6 +12,7 @@ Usage:
 """
 import argparse
 import collections
+import os
 import signal
 import sys
 import time
@@ -28,7 +29,7 @@ BATCH_SIZE = 100
 MAX_EMBED_CHARS = 4000
 MIN_TEXT_LEN = 20       # skip atoms shorter than this — garbage vectors
 MAX_SKIPPED = 1000      # bail on a table if this many atoms fail — Ollama likely down
-PROGRESS_COLLECTION = "hanuman/tasks"
+PROGRESS_COLLECTION = f"{os.environ.get('WILLOW_AGENT_NAME', 'hanuman')}/tasks"
 PROGRESS_ID = "embed_backfill_progress"
 
 # Projects to exclude from knowledge table backfill.
