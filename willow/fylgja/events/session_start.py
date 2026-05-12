@@ -237,7 +237,7 @@ def _send_heartbeat() -> None:
 def _run_boot_projects_check() -> str:
     """Run boot_projects_check.py in dry-run mode. Returns compact summary string."""
     try:
-        script = Path.home() / "agents" / "hanuman" / "bin" / "boot_projects_check.py"
+        script = Path.home() / "agents" / AGENT / "bin" / "boot_projects_check.py"
         if not script.exists():
             return ""
         import subprocess as _sp

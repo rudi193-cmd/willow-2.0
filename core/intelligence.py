@@ -11,6 +11,7 @@ W19MR: Mirror — meta-community detection
 W19MC: Mycorrhizal — sparse KB feeding from adjacent projects
 PMEM2: Insight pass + Chunk synthesis
 """
+import os
 import psycopg2.extras
 import uuid as _uuid
 from collections import Counter
@@ -22,7 +23,7 @@ except Exception:
     def _ygg_structured(prompt: str, timeout: int = 30) -> dict:  # type: ignore
         return {"summary": None, "importance": 0}
 
-_AGENT = "hanuman"
+_AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
 
 
 _SYSTEM_SOURCE_TYPES = frozenset({
@@ -376,7 +377,7 @@ def insight_pass(store_call) -> dict:
     try:
         result = store_call("store_list", {
             "app_id": _AGENT,
-            "collection": "hanuman/atoms/store",
+            "collection": f"{_AGENT}/atoms/store",
         }, timeout=8)
         all_atoms = result if isinstance(result, list) else []
     except Exception:
@@ -413,7 +414,7 @@ def insight_pass(store_call) -> dict:
                 try:
                     store_call("store_update", {
                         "app_id": _AGENT,
-                        "collection": "hanuman/atoms/store",
+                        "collection": f"{_AGENT}/atoms/store",
                         "record_id": r["id"],
                         "record": {**r, "insight_skip": True},
                     }, timeout=4)
@@ -427,7 +428,7 @@ def insight_pass(store_call) -> dict:
         try:
             store_call("store_put", {
                 "app_id": _AGENT,
-                "collection": "hanuman/atoms/store",
+                "collection": f"{_AGENT}/atoms/store",
                 "record": {
                     "id": insight_id,
                     "type": "insight",
@@ -452,7 +453,7 @@ def insight_pass(store_call) -> dict:
             try:
                 store_call("store_update", {
                     "app_id": _AGENT,
-                    "collection": "hanuman/atoms/store",
+                    "collection": f"{_AGENT}/atoms/store",
                     "record_id": r["id"],
                     "record": {**r, "invalid_at": now.isoformat(), "superseded_by": insight_id},
                 }, timeout=4)
@@ -477,8 +478,8 @@ def chunk_pass(store_call) -> dict:
     Returns {"chunks_written": int}.
     """
     try:
-        r1 = store_call("store_list", {"app_id": _AGENT, "collection": "hanuman/atoms/store"}, timeout=8)
-        r2 = store_call("store_list", {"app_id": _AGENT, "collection": "hanuman/skills/store"}, timeout=5)
+        r1 = store_call("store_list", {"app_id": _AGENT, "collection": f"{_AGENT}/atoms/store"}, timeout=8)
+        r2 = store_call("store_list", {"app_id": _AGENT, "collection": f"{_AGENT}/skills/store"}, timeout=5)
         all_atoms = r1 if isinstance(r1, list) else []
         existing_skills = r2 if isinstance(r2, list) else []
     except Exception:
@@ -520,7 +521,7 @@ def chunk_pass(store_call) -> dict:
         try:
             store_call("store_put", {
                 "app_id": _AGENT,
-                "collection": "hanuman/skills/store",
+                "collection": f"{_AGENT}/skills/store",
                 "record": {
                     "id": chunk_id,
                     "type": "chunk",

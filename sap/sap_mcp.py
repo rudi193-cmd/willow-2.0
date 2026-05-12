@@ -485,7 +485,7 @@ async def list_tools() -> list[types.Tool]:
                     "title":      {"type": "string", "description": "Proposed atom title"},
                     "summary":    {"type": "string", "description": "Proposed atom summary"},
                     "domain":     {"type": "string", "description": "Proposed domain (optional)"},
-                    "collection": {"type": "string", "description": "SOIL collection to check (default: hanuman/atoms)"},
+                    "collection": {"type": "string", "description": "SOIL collection to check (default: {agent}/atoms from WILLOW_AGENT_NAME)"},
                 },
                 "required": ["title", "summary"],
             },
@@ -1414,7 +1414,7 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                 domain=arguments.get("domain"),
                 store=store,
                 pg=pg,
-                collection=arguments.get("collection", "hanuman/atoms"),
+                collection=arguments.get("collection") or f"{os.environ.get('WILLOW_AGENT_NAME', 'hanuman')}/atoms",
             )
 
         elif name == "willow_agents":

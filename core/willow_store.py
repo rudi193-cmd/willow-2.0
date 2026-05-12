@@ -266,9 +266,9 @@ class WillowStore:
         """Auto-write domain-based edges when a new atom is stored.
 
         Links new atom to up to 3 existing atoms with same domain in same collection.
-        Only fires for hanuman/atoms/store and hanuman/skills/store.
+        Fires for any {agent}/atoms/store or {agent}/skills/store collection.
         """
-        if collection not in ("hanuman/atoms/store", "hanuman/skills/store"):
+        if not (collection.endswith("/atoms/store") or collection.endswith("/skills/store")):
             return
         domain = new_record.get("domain")
         if not domain:
@@ -289,11 +289,13 @@ class WillowStore:
             and a.get("invalid_at") is None
         ][:3]
 
+        ns = collection.rsplit("/", 2)[0]  # "agent/atoms/store" → "agent"
+        edges_coll = f"{ns}/atoms/edges"
         now = datetime.now().isoformat()
         for peer in peers:
             edge_id = f"edge-{str(new_id)[:8]}-{str(peer['id'])[:8]}"
             try:
-                self.put("hanuman/atoms/edges", {
+                self.put(edges_coll, {
                     "id": edge_id,
                     "source_id": new_id,
                     "target_id": peer["id"],
@@ -304,10 +306,11 @@ class WillowStore:
             except Exception:
                 pass
 
-    def _increment_edge_weight(self, source_id: str, target_id: str) -> None:
+    def _increment_edge_weight(self, source_id: str, target_id: str, ns: str = "hanuman") -> None:
         """Increment weight and co_activations on edge between source and target."""
+        edges_coll = f"{ns}/atoms/edges"
         try:
-            edges = self.list("hanuman/atoms/edges") or []
+            edges = self.list(edges_coll) or []
         except Exception:
             return
         for edge in edges:
@@ -317,7 +320,7 @@ class WillowStore:
                 edge["co_activations"] = int(edge.get("co_activations", 0)) + 1
                 edge["last_activated"] = datetime.now().isoformat()
                 try:
-                    self.update("hanuman/atoms/edges", edge["id"], edge)
+                    self.update(edges_coll, edge["id"], edge)
                 except Exception:
                     pass
                 return

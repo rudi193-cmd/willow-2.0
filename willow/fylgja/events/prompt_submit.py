@@ -21,7 +21,7 @@ FLAT_HANDOFF_INTERVAL = 10  # write flat handoff every N prompts
 ANCHOR_CACHE = Path.home() / ".willow" / f"session_anchor_{AGENT}.json"
 STATE_FILE = Path.home() / ".willow" / f"anchor_state_{AGENT}.json"
 TURNS_FILE = Path.home() / "agents" / AGENT / "cache" / "turns.txt"
-ACTIVE_BUILD_FILE = Path("/tmp/hanuman-active-build.json")
+ACTIVE_BUILD_FILE = Path(f"/tmp/{AGENT}-active-build.json")
 DISPATCH_INBOX = Path(f"/tmp/willow-dispatch-inbox-{AGENT}.json")
 
 try:

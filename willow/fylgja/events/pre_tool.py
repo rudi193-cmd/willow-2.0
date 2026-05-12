@@ -125,7 +125,7 @@ def _mcp_store_search(query: str) -> list:
     try:
         result = call("store_search", {
             "app_id": AGENT,
-            "collection": "hanuman/file-index",
+            "collection": f"{AGENT}/file-index",
             "query": query,
         }, timeout=3)
         return result if isinstance(result, list) else []
@@ -145,7 +145,7 @@ def check_kb_first(path: str) -> str | None:
         return None
     hit = results[0]
     return (
-        f"[KB-FIRST] '{filename}' is indexed (collection: {hit.get('collection', 'hanuman/file-index')}, "
+        f"[KB-FIRST] '{filename}' is indexed (collection: {hit.get('collection', f'{AGENT}/file-index')}, "
         f"id: {hit.get('id', '?')}). Consider reading from KB before disk."
     )
 

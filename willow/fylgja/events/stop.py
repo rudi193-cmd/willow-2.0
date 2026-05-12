@@ -52,7 +52,7 @@ def _compute_affect_with_traces(session_id: str) -> tuple[str, list]:
     try:
         traces = call("store_search", {
             "app_id": _AGENT,
-            "collection": "hanuman/turns/store",
+            "collection": f"{_AGENT}/turns/store",
             "query": "",
             "limit": 50,
         }, timeout=5) or []
@@ -86,7 +86,7 @@ def _write_failure_atom(session_id: str, traces: list) -> None:
     try:
         call("store_put", {
             "app_id": _AGENT,
-            "collection": "hanuman/atoms/store",
+            "collection": f"{_AGENT}/atoms/store",
             "record": {
                 "id": f"failure-{session_id[:8]}",
                 "type": "failure",
@@ -129,7 +129,7 @@ def _write_reflection_atom(session_id: str, affect: str, traces: list) -> None:
             try:
                 call("store_put", {
                     "app_id": _AGENT,
-                    "collection": "hanuman/atoms/store",
+                    "collection": f"{_AGENT}/atoms/store",
                     "record": {
                         "id": f"reflection-{session_id[:8]}",
                         "type": "reflection",
@@ -154,7 +154,7 @@ def _write_reflection_atom(session_id: str, affect: str, traces: list) -> None:
     try:
         call("store_put", {
             "app_id": _AGENT,
-            "collection": "hanuman/atoms/store",
+            "collection": f"{_AGENT}/atoms/store",
             "record": {
                 "id": f"reflection-pending-{session_id[:8]}",
                 "type": "reflection_pending",
@@ -195,7 +195,7 @@ def _write_session_composite(session_id: str) -> None:
         }
         call("store_put", {
             "app_id": _AGENT,
-            "collection": "hanuman/sessions/store",
+            "collection": f"{_AGENT}/sessions/store",
             "record": record,
         }, timeout=4)
     except Exception:

@@ -80,8 +80,9 @@ def check_candidate(
     Returns flags (subset of REDUNDANT, STALE, DARK, CONTRADICTION),
     human recommendation, and compact evidence for debugging.
     """
-    # Agents must pass domain; omitting it silently scans hanuman/atoms in SOIL.
-    _collection = collection or (f"{domain}/atoms" if domain else "hanuman/atoms")
+    import os as _os
+    _agent = _os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+    _collection = collection or (f"{domain}/atoms" if domain else f"{_agent}/atoms")
     flags: list[str] = []
     evidence: dict[str, Any] = {}
 
