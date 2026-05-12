@@ -10,7 +10,10 @@ Use when looking for context about a topic before reading files or writing code.
 ## Retrieval Ladder (run in order — stop when you have enough)
 
 **Rung 1 — KB search** (broadest, fastest):
-Call `willow_knowledge_search("<topic>")`. Read titles and summaries. If 2+ relevant atoms found, go to Rung 3.
+Call `willow_knowledge_search(query="<topic>", fields=["id","title","summary"])`. Read titles and summaries. If 2+ relevant atoms found, go to Rung 1b.
+
+**Rung 1b — KB get** (precise, low-token):
+If you already have an atom id, call `willow_knowledge_get(id="<ATOM_ID>")` (embeddings are omitted by default).
 
 **Rung 2 — Store search** (collection-scoped):
 Call `store_search(collection="hanuman/atoms", query="<topic>")` or `store_search` on `hanuman/file-index`. Use when KB search returns nothing.

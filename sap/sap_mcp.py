@@ -267,6 +267,33 @@ def _sanitize_result(result, source_label: str):
     return result
 
 
+def _normalize_local_paths(text: str) -> str:
+    """
+    Reduce accidental PII leakage from local filesystem paths.
+
+    Today the most common leak is the user's home path (e.g. /home/sean-campbell/...).
+    We normalize it to `~` so atoms can be shared/reviewed without embedding a username.
+    """
+    try:
+        if not isinstance(text, str) or not text:
+            return text
+
+        # 1) Exact home path → "~"
+        home = str(Path.home())
+        if home and home in text:
+            text = text.replace(home, "~")
+
+        # 2) Generic Linux/macOS user home paths → "~" (best-effort, avoids username leakage)
+        # Examples: /home/alice/..., /Users/bob/...
+        import re
+        text = re.sub(r"(?<!\\w)/home/[^/\\s]+", "~", text)
+        text = re.sub(r"(?<!\\w)/Users/[^/\\s]+", "~", text)
+
+        return text
+    except Exception:
+        return text
+
+
 # ── Tool registry ─────────────────────────────────────────────────────────────
 
 @server.list_tools()
@@ -412,8 +439,24 @@ async def list_tools() -> list[types.Tool]:
                     "query": {"type": "string", "description": "Search query — plain text, matched against title and summary"},
                     "limit": {"type": "integer", "default": 20, "description": "Maximum results to return across atoms, entities, and ganesha (default 20)"},
                     "semantic": {"type": "boolean", "default": False, "description": "Use hybrid ANN+ILIKE semantic search via pgvector (falls back to ILIKE if Ollama unavailable)"},
+                    "include_embedding": {"type": "boolean", "default": False, "description": "Include embedding vectors in results (default false to keep payloads small)"},
+                    "fields": {"type": "array", "items": {"type": "string"}, "description": "Optional field allowlist for atoms (e.g. ['id','title','summary']). 'id' is always included."},
                 },
                 "required": ["query"],
+            },
+        ),
+        types.Tool(
+            name="willow_knowledge_get",
+            description="Fetch a single knowledge atom by id. Defaults to omitting embedding vectors to keep payloads small.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "Knowledge atom id"},
+                    "include_embedding": {"type": "boolean", "default": False, "description": "Include embedding vectors in the result (default false)"},
+                    "fields": {"type": "array", "items": {"type": "string"}, "description": "Optional field allowlist for the atom (e.g. ['id','title','summary']). 'id' is always included."},
+                    "include_invalid": {"type": "boolean", "default": False, "description": "If true, allow returning atoms with invalid_at set"},
+                },
+                "required": ["id"],
             },
         ),
         types.Tool(
@@ -454,6 +497,8 @@ async def list_tools() -> list[types.Tool]:
                 "properties": {
                     "query": {"type": "string", "description": "Search query — plain text, matched against title and summary"},
                     "limit": {"type": "integer", "default": 20, "description": "Maximum results to return (default 20)"},
+                    "include_embedding": {"type": "boolean", "default": False, "description": "Include embedding vectors in results (default false to keep payloads small)"},
+                    "fields": {"type": "array", "items": {"type": "string"}, "description": "Optional field allowlist for atoms (e.g. ['id','title','summary']). 'id' is always included."},
                 },
                 "required": ["query"],
             },
@@ -1219,22 +1264,49 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
             )
 
         # ── Postgres-backed tools ─────────────────────────────────────────────
+        elif name == "willow_knowledge_get":
+            if not pg:
+                result = {"error": "not_available", "reason": "Postgres not connected"}
+            else:
+                atom = pg.knowledge_get(
+                    arguments["id"],
+                    include_invalid=arguments.get("include_invalid", False),
+                    include_embedding=arguments.get("include_embedding", False),
+                    fields=arguments.get("fields"),
+                )
+                result = {"atom": atom, "found": bool(atom)}
+                _sanitize_result(result, "willow_knowledge_get")
+
         elif name in ("willow_knowledge_search", "willow_query"):
             if not pg:
                 result = {"error": "not_available", "reason": "Postgres not connected"}
             else:
                 query = arguments["query"]
                 limit = arguments.get("limit", 20)
+                include_embedding = arguments.get("include_embedding", False)
+                fields = arguments.get("fields")
                 if arguments.get("semantic"):
                     pg19 = _get_pg19()
                     if pg19:
-                        knowledge = pg19.knowledge_search_semantic(query, limit=limit)
+                        knowledge = pg19.knowledge_search_semantic(
+                            query, limit=limit,
+                            include_embedding=include_embedding,
+                            fields=fields,
+                        )
                         search_mode = "semantic"
                     else:
-                        knowledge = pg.knowledge_search(query, limit=limit)
+                        knowledge = pg.knowledge_search(
+                            query, limit=limit,
+                            include_embedding=include_embedding,
+                            fields=fields,
+                        )
                         search_mode = "degraded"
                 else:
-                    knowledge = pg.knowledge_search(query, limit=limit)
+                    knowledge = pg.knowledge_search(
+                        query, limit=limit,
+                        include_embedding=include_embedding,
+                        fields=fields,
+                    )
                     search_mode = "keyword"
                 result = {
                     "knowledge": knowledge,
@@ -1254,16 +1326,19 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
             if not pg:
                 result = {"error": "not_available", "reason": "Postgres not connected"}
             else:
-                _ingest_payload = {"title": arguments["title"], "summary": arguments["summary"]}
+                _title = arguments["title"]
+                _summary = _normalize_local_paths(arguments["summary"])
+                _source_id = _normalize_local_paths(arguments.get("source_id", ""))
+                _ingest_payload = {"title": _title, "summary": _summary}
                 _write_err = _sanitize_write_input(_ingest_payload, "willow_knowledge_ingest")
                 if _write_err:
                     result = {"error": _write_err}
                 else:
                     atom_id = pg.ingest_atom(
-                        title=arguments["title"],
-                        summary=arguments["summary"],
+                        title=_title,
+                        summary=_summary,
                         source_type=arguments.get("source_type", "mcp"),
-                        source_id=arguments.get("source_id", ""),
+                        source_id=_source_id,
                         category=arguments.get("category", "general"),
                         domain=arguments.get("domain"),
                     )

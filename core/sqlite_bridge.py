@@ -398,8 +398,21 @@ class SqliteBridge:
             (new_valid_at.isoformat(), old_id),
         )
 
+    def knowledge_get(self, atom_id: str, include_invalid: bool = False,
+                      include_embedding: bool = False,
+                      fields: Optional[list] = None) -> Optional[dict]:
+        sql = "SELECT * FROM knowledge WHERE id = ?"
+        params: list = [atom_id]
+        if not include_invalid:
+            sql += " AND invalid_at IS NULL"
+        sql += " LIMIT 1"
+        rows = self._query(sql, params)
+        return rows[0] if rows else None
+
     def knowledge_search(self, query: str, project: Optional[str] = None,
-                         include_invalid: bool = False, limit: int = 20) -> list:
+                         include_invalid: bool = False, limit: int = 20,
+                         include_embedding: bool = False,
+                         fields: Optional[list] = None) -> list:
         # Try FTS5 first, fall back to LIKE
         try:
             fts_sql = """

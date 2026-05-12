@@ -706,8 +706,69 @@ class PgBridge:
             """, (new_valid_at, old_id))
         self.conn.commit()
 
+    def _knowledge_select_cols(self, fields: Optional[list] = None,
+                               include_embedding: bool = False,
+                               include_distance: bool = False) -> tuple[str, list]:
+        """
+        Build a safe SELECT list for knowledge queries.
+
+        Default behavior is to return all standard columns EXCEPT `embedding`.
+        This keeps MCP tool payloads small by default while preserving backward
+        compatibility for callers expecting full atoms.
+        """
+        allowed = [
+            "id",
+            "project",
+            "valid_at",
+            "invalid_at",
+            "title",
+            "summary",
+            "content",
+            "source_type",
+            "category",
+            "embedding",
+        ]
+        if fields is None:
+            cols = [c for c in allowed if c != "embedding"]
+            if include_embedding:
+                cols.append("embedding")
+        else:
+            cols = []
+            for f in fields:
+                if f in allowed and f not in cols:
+                    cols.append(f)
+            if "id" not in cols:
+                cols.insert(0, "id")
+            if not include_embedding and "embedding" in cols:
+                cols.remove("embedding")
+            if include_embedding and "embedding" not in cols:
+                cols.append("embedding")
+
+        select_sql = ", ".join(cols)
+        out_cols = list(cols)
+        if include_distance:
+            select_sql = f"{select_sql}, embedding <=> %s::vector AS distance"
+            out_cols.append("distance")
+        return select_sql, out_cols
+
+    def knowledge_get(self, atom_id: str, include_invalid: bool = False,
+                      include_embedding: bool = False,
+                      fields: Optional[list] = None) -> Optional[dict]:
+        self._ensure_conn()
+        select_sql, _ = self._knowledge_select_cols(fields=fields, include_embedding=include_embedding)
+        where = "id = %s"
+        params: list = [atom_id]
+        if not include_invalid:
+            where += " AND invalid_at IS NULL"
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(f"SELECT {select_sql} FROM knowledge WHERE {where} LIMIT 1", params)
+            row = cur.fetchone()
+            return dict(row) if row else None
+
     def knowledge_search(self, query: str, project: Optional[str] = None,
-                         include_invalid: bool = False, limit: int = 20) -> list:
+                         include_invalid: bool = False, limit: int = 20,
+                         include_embedding: bool = False,
+                         fields: Optional[list] = None) -> list:
         self._ensure_conn()
         # Split multi-word queries into AND-ed ILIKE terms so "grove fleet"
         # finds atoms containing both words, not the exact phrase.
@@ -725,14 +786,22 @@ class PgBridge:
             filters.append("invalid_at IS NULL")
         where = " AND ".join(filters)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(f"SELECT * FROM knowledge WHERE {where} LIMIT %s", params + [limit])
+            select_sql, _ = self._knowledge_select_cols(fields=fields, include_embedding=include_embedding)
+            cur.execute(f"SELECT {select_sql} FROM knowledge WHERE {where} LIMIT %s", params + [limit])
             return [dict(r) for r in cur.fetchall()]
 
     def _knowledge_ann(self, vec: list, limit: int,
-                       project: Optional[str] = None) -> list:
+                       project: Optional[str] = None,
+                       include_embedding: bool = False,
+                       fields: Optional[list] = None) -> list:
         self._ensure_conn()  # re-acquire if Ollama embed call staled the connection
         vec_str = str(vec)
         filters = ["embedding IS NOT NULL", "invalid_at IS NULL"]
+        select_sql, _ = self._knowledge_select_cols(
+            fields=fields,
+            include_embedding=include_embedding,
+            include_distance=True,
+        )
         params: list = [vec_str, limit]
         if project:
             filters.insert(1, "project = %s")
@@ -740,7 +809,7 @@ class PgBridge:
         where = " AND ".join(filters)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                f"SELECT *, embedding <=> %s::vector AS distance"
+                f"SELECT {select_sql}"
                 f" FROM knowledge WHERE {where}"
                 f" ORDER BY distance ASC LIMIT %s",
                 params,
@@ -748,12 +817,23 @@ class PgBridge:
             return [dict(r) for r in cur.fetchall()]
 
     def knowledge_search_semantic(self, query: str, limit: int = 20,
-                                   project: Optional[str] = None) -> list:
+                                   project: Optional[str] = None,
+                                   include_embedding: bool = False,
+                                   fields: Optional[list] = None) -> list:
         vec = embed(query)
         if vec is None:
-            return self.knowledge_search(query, limit=limit, project=project)
-        ann = self._knowledge_ann(vec, limit=limit, project=project)
-        ilike = self.knowledge_search(query, limit=limit, project=project)
+            return self.knowledge_search(
+                query, limit=limit, project=project,
+                include_embedding=include_embedding, fields=fields,
+            )
+        ann = self._knowledge_ann(
+            vec, limit=limit, project=project,
+            include_embedding=include_embedding, fields=fields,
+        )
+        ilike = self.knowledge_search(
+            query, limit=limit, project=project,
+            include_embedding=include_embedding, fields=fields,
+        )
         return _rrf_merge(ann, ilike)[:limit]
 
     def search_opus_semantic(self, query: str, limit: int = 20) -> list:
