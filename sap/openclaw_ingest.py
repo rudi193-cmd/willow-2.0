@@ -135,7 +135,7 @@ def _ingest_message(pg, msg: dict, dry_run: bool = False) -> bool:
         source_type="channel_message",
         source_id=source_id,
         category="inbound",
-        domain="hanuman",
+        domain=os.environ.get("WILLOW_AGENT_NAME", "hanuman"),
     )
     if atom_id:
         print(f"ingested: {title!r} | atom={atom_id}")

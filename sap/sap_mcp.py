@@ -207,14 +207,15 @@ def _get_pg19():
 
 # ── Config ────────────────────────────────────────────────────────────────────
 STORE_ROOT = os.environ.get("WILLOW_STORE_ROOT", str(_SAP_ROOT / "store"))
+_MCP_AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
 HANDOFF_DB = os.environ.get(
     "WILLOW_HANDOFF_DB",
-    str(Path.home() / "Ashokoa" / "agents" / "hanuman" / "index" / "haumana_handoffs" / "handoffs.db"),
+    str(Path.home() / "Ashokoa" / "agents" / _MCP_AGENT / "index" / "haumana_handoffs" / "handoffs.db"),
 )
 _DEFAULT_HANDOFF_DIRS = ":".join([
     str(Path.home() / "Ashokoa" / "agents" / "heimdallr" / "index" / "haumana_handoffs"),
-    str(Path.home() / "Ashokoa" / "agents" / "hanuman" / "index" / "haumana_handoffs"),
-    str(Path.home() / ".willow" / "Nest" / "hanuman"),
+    str(Path.home() / "Ashokoa" / "agents" / _MCP_AGENT / "index" / "haumana_handoffs"),
+    str(Path.home() / ".willow" / "Nest" / _MCP_AGENT),
     str(Path.home() / "Ashokoa" / "Filed" / "reference" / "willow-artifacts" / "documents"),
     str(Path.home() / "Ashokoa" / "Filed" / "reference" / "handoffs"),
     str(Path.home() / "Ashokoa" / "Filed" / "narrative" / "session-log"),
