@@ -3,6 +3,10 @@
   "kb_searches": [
     {"query": "mcp.json willow grove openclaw", "limit": 8},
     {"query": "willow_memory_check SessionStart restart-server", "limit": 8},
-    {"query": "agent-rails fylgja Willow MCP KB Grove SOIL", "limit": 8}
+    {"query": "agent-rails fylgja Willow MCP KB Grove SOIL", "limit": 8},
+    {"query": "ganas routing willow_chat inference Novita Haiku", "limit": 6},
+    {"query": "willow_restart_server sap_mcp edit reload", "limit": 5},
+    {"query": "Cloudflare CF IP block proxy Groq Cerebras", "limit": 5},
+    {"query": "new MCP tool gate manifest re-sign checklist", "limit": 5}
   ]
 }
