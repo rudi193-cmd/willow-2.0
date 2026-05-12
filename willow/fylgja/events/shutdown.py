@@ -279,10 +279,10 @@ def run_edge_linking() -> None:
         summary = link_atoms_for_session()
         if summary and os.environ.get("WILLOW_ATOM_VERBOSE"):
             call("grove_send_message", {
-                "channel_name": "hanuman",
+                "channel_name": AGENT,
                 "content": f"Phase 4: linked {summary.get('merge_to_commits', 0)} merge→commit edges, "
                            f"{summary.get('cross_references', 0)} cross-references",
-                "sender": "hanuman",
+                "sender": AGENT,
             }, timeout=5)
     except Exception:
         pass
@@ -361,9 +361,9 @@ def run_atom_synthesis() -> None:
 
         if extracted > 0 and os.environ.get("WILLOW_ATOM_VERBOSE"):
             call("grove_send_message", {
-                "channel_name": "hanuman",
+                "channel_name": AGENT,
                 "content": f"Session synthesis: extracted {extracted} atoms from recent commits (Phase 3 safety net)",
-                "sender": "hanuman",
+                "sender": AGENT,
             }, timeout=5)
 
         bridge.conn.close()

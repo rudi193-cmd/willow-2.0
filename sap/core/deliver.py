@@ -91,13 +91,15 @@ def to_window(ctx: Optional[dict]) -> None:
         print(output)
 
 
-def grove_send(channel: str, content: str, sender: str = "hanuman") -> bool:
+def grove_send(channel: str, content: str, sender: str | None = None) -> bool:
     """
     Send a message to a Grove channel via the grove MCP server subprocess.
     Returns True on success, False on failure. Never raises.
     """
     import os
     import subprocess
+    if not sender:
+        sender = os.environ.get("GROVE_SENDER") or os.environ.get("WILLOW_AGENT_NAME") or "hanuman"
     grove_mcp = os.environ.get(
         "GROVE_MCP_BIN",
         str(Path.home() / ".local" / "bin" / "grove-mcp")
