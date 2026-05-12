@@ -109,6 +109,9 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "willow_base17", "willow_handoff_rebuild", "willow_reload",
         "willow_restart_server",
     }),
+    "image_gen": frozenset({
+        "willow_imagine",
+    }),
     # Combined read: postgres_read + store_read + safe_manifest_read.
     # Used by SAFE partition manifests (e.g. Willow-dashboard).
     "willow_kb_read": frozenset({
