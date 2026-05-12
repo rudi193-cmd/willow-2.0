@@ -16,9 +16,28 @@ ToolSearch query: "select:willow_reload,willow_chat,willow_system_status"
 ## Sequence
 
 1. **Reload Willow** — call `mcp__willow__willow_reload` with target `"all"`
-2. **Restart Grove** — run `systemctl --user restart grove-mcp.service && sleep 2 && systemctl --user is-active grove-mcp.service` via Bash. Grove is a persistent streamable-HTTP server (port 8765) — in-process reload is not possible.
-3. **Report both results** — which Willow modules reloaded, Grove active/failed
-4+5. **Verify in parallel** — call `mcp__willow__willow_chat` (ping) and `mcp__willow__willow_system_status` simultaneously
+2. **Restart Grove** — run Bash below. Grove is a persistent streamable-HTTP server (port 8765) — in-process reload is not possible. **Do not** rely on a single `sleep 2` then `is-active`: systemd can still report **`activating`** (non-active) while the unit binds and loads; polling avoids a false failure and races with follow-on MCP checks.
+
+```bash
+systemctl --user restart grove-mcp.service || exit $?
+deadline=30
+for i in $(seq 1 "$deadline"); do
+  if systemctl --user is-active --quiet grove-mcp.service 2>/dev/null; then
+    echo "grove-mcp: active (${i}s)"
+    break
+  fi
+  echo "grove-mcp: waiting $(systemctl --user is-active grove-mcp.service 2>/dev/null || echo unknown) — ${i}/${deadline}s"
+  sleep 1
+  if [ "$i" -eq "$deadline" ]; then
+    echo "grove-mcp: TIMEOUT after ${deadline}s"
+    systemctl --user status grove-mcp.service --no-pager -l || true
+    exit 1
+  fi
+done
+```
+
+3. **Report both results** — which Willow modules reloaded, Grove active/failed (include how many seconds until active).
+4+5. **Verify in parallel** — call `mcp__willow__willow_chat` (ping) and `mcp__willow__willow_system_status` simultaneously **only after** step 2 shows **active** (or accept transient MCP errors if you verify again after a few seconds).
 6. **Report status** — Willow fleet + Postgres, Grove active. Remind user to run `/mcp` to reconnect Grove tools in this session.
 
 ## Targets (Willow only)
