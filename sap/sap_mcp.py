@@ -2545,35 +2545,67 @@ def _chat_fleet(agent: str, message: str) -> str | None:
         return None
 
 
+_NOVITA_IMG_MODEL = "revAnimated_v122.safetensors"
+_NOVITA_IMG_URL   = "https://api.novita.ai/v3/async/txt2img"
+_NOVITA_POLL_URL  = "https://api.novita.ai/v3/async/task-result"
+
+_ASPECT_TO_WH = {
+    "1:1": (512, 512), "16:9": (768, 432), "9:16": (432, 768),
+    "4:3": (640, 480), "3:4": (480, 640),
+}
+
+
 def _imagine_imagen4(prompt: str, output_path: str | None, aspect_ratio: str = "1:1") -> dict:
     try:
-        from google import genai
-        from google.genai import types as gtypes
-        import datetime, pathlib
-        api_key = _load_credential("GEMINI_API_KEY") or _load_credential("GOOGLE_AI_KEY")
+        import urllib.request as _ur, datetime, time
+        api_key = _load_credential("NOVITA_API_KEY")
         if not api_key:
-            return {"error": "GEMINI_API_KEY not found in credentials"}
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_images(
-            model="imagen-4.0-generate-001",
-            prompt=prompt,
-            config=gtypes.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio=aspect_ratio,
-            ),
+            return {"error": "NOVITA_API_KEY not found in credentials"}
+        w, h = _ASPECT_TO_WH.get(aspect_ratio, (512, 512))
+        data = json.dumps({
+            "extra": {"response_image_type": "png"},
+            "request": {
+                "model_name": _NOVITA_IMG_MODEL,
+                "prompt": prompt,
+                "width": w, "height": h,
+                "image_num": 1, "steps": 20,
+                "guidance_scale": 7.0,
+                "sampler_name": "Euler a",
+            }
+        }).encode()
+        req = _ur.Request(
+            _NOVITA_IMG_URL, data=data,
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
         )
-        if not response.generated_images:
-            return {"error": "No images returned"}
-        img_data = response.generated_images[0].image.image_bytes
-        if output_path:
-            save_path = pathlib.Path(output_path).expanduser()
-        else:
-            out_dir = pathlib.Path.home() / "Pictures" / "willow-gen"
-            out_dir.mkdir(parents=True, exist_ok=True)
-            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            save_path = out_dir / f"imagen4_{ts}.png"
-        save_path.write_bytes(img_data)
-        return {"path": str(save_path), "prompt": prompt, "aspect_ratio": aspect_ratio}
+        with _ur.urlopen(req, timeout=15) as r:
+            task_id = json.loads(r.read()).get("task_id")
+        if not task_id:
+            return {"error": "No task_id returned from Novita"}
+        for _ in range(40):
+            time.sleep(3)
+            poll = _ur.Request(
+                f"{_NOVITA_POLL_URL}?task_id={task_id}",
+                headers={"Authorization": f"Bearer {api_key}"}
+            )
+            with _ur.urlopen(poll, timeout=10) as r:
+                result = json.loads(r.read())
+            status = result.get("task", {}).get("status", "")
+            if "SUCCEED" in status:
+                img_url = result["images"][0]["image_url"]
+                with _ur.urlopen(_ur.Request(img_url), timeout=15) as ir:
+                    img_bytes = ir.read()
+                if output_path:
+                    save_path = pathlib.Path(output_path).expanduser()
+                else:
+                    out_dir = pathlib.Path.home() / "Pictures" / "willow-gen"
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    save_path = out_dir / f"willow_gen_{ts}.png"
+                save_path.write_bytes(img_bytes)
+                return {"path": str(save_path), "prompt": prompt, "aspect_ratio": aspect_ratio}
+            elif "FAILED" in status or "ERROR" in status:
+                return {"error": f"Novita task failed: {status}"}
+        return {"error": "Novita image generation timed out"}
     except Exception as e:
         return {"error": f"{type(e).__name__}: {e}"}
 
