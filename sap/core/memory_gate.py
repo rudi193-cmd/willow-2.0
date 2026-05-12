@@ -1,24 +1,33 @@
 """Pre-ingest duplicate / overlap heuristics for willow_memory_check (MCP).
 b17: 449E3  ΔΣ=42
 
-Conservative v1: exact title match against active Postgres knowledge rows
-and substring token overlap against a SOIL collection. Does not block
-ingest — callers interpret flags + recommendation.
+Checks a candidate atom before write. sap_mcp.py blocks REDUNDANT and
+CONTRADICTION by default; pass force=True to override. STALE and DARK
+remain advisory — sap_mcp.py does not block on them.
 """
 from __future__ import annotations
 
 import re
+import sys
 from typing import Any, Optional
 
 __all__ = ["check_candidate"]
 
 
 def _title_tokens(s: str) -> set[str]:
+    """Tokenise a short title — drops tokens < 2 chars."""
     s = s.casefold().strip()
     if not s:
         return set()
-    parts = re.split(r"[^\w]+", s)
-    return {p for p in parts if len(p) > 1}
+    return {p for p in re.split(r"[^\w]+", s) if len(p) > 1}
+
+
+def _summary_tokens(s: str) -> set[str]:
+    """Tokenise a longer summary — drops tokens < 3 chars for less noise."""
+    s = s.casefold().strip()
+    if not s:
+        return set()
+    return {p for p in re.split(r"[^\w]+", s) if len(p) > 2}
 
 
 def _jaccard(a: set[str], b: set[str]) -> float:
@@ -29,12 +38,7 @@ def _jaccard(a: set[str], b: set[str]) -> float:
     return inter / union if union else 0.0
 
 
-def _kb_scan(
-    pg: Any,
-    *,
-    title: str,
-    domain: Optional[str],
-) -> list[dict[str, Any]]:
+def _kb_scan(pg: Any, *, title: str, domain: Optional[str]) -> list[dict[str, Any]]:
     q = (title or "").strip() or (domain or "").strip()
     if not q:
         return []
@@ -69,22 +73,23 @@ def check_candidate(
     domain: Optional[str],
     store: Any,
     pg: Any,
-    collection: str = "hanuman/atoms",
+    collection: Optional[str] = None,
 ) -> dict[str, Any]:
-    """
-    Score a candidate KB / SOIL write before ingest.
+    """Score a candidate KB/SOIL write before ingest.
 
-    Returns ``flags`` (subset of REDUNDANT, STALE, DARK, CONTRADICTION),
-    human ``recommendation``, and compact ``evidence`` for debugging.
+    Returns flags (subset of REDUNDANT, STALE, DARK, CONTRADICTION),
+    human recommendation, and compact evidence for debugging.
     """
+    # Agents must pass domain; omitting it silently scans hanuman/atoms in SOIL.
+    _collection = collection or (f"{domain}/atoms" if domain else "hanuman/atoms")
     flags: list[str] = []
     evidence: dict[str, Any] = {}
 
-    title_s = (title or "").strip()
+    title_s  = (title or "").strip()
     summary_s = (summary or "").strip()
-    t_norm = title_s.casefold()
+    t_norm   = title_s.casefold()
 
-    # --- Postgres knowledge -------------------------------------------------
+    # ── Postgres knowledge ────────────────────────────────────────────────────
     kb_hits: list[dict[str, Any]] = []
     if pg is not None:
         kb_hits = _kb_scan(pg, title=title_s, domain=domain)
@@ -105,32 +110,47 @@ def check_candidate(
                     evidence["kb_near_title_id"] = row.get("id")
                     break
 
-        # Light contradiction: same normalized title, very different summaries
-        same_title_rows = [r for r in kb_hits if (r.get("title") or "").strip().casefold() == t_norm]
-        if len(same_title_rows) > 1:
-            sums = {(r.get("summary") or "").strip() for r in same_title_rows}
-            if len(sums) > 1 and "CONTRADICTION" not in flags:
-                flags.append("CONTRADICTION")
-                evidence["contradiction_ids"] = [r.get("id") for r in same_title_rows[:5]]
+        # CONTRADICTION: candidate title matches an existing row but their
+        # summaries diverge significantly — candidate vs. existing, not
+        # existing rows vs. each other.
+        same_title_rows = [
+            r for r in kb_hits
+            if (r.get("title") or "").strip().casefold() == t_norm
+        ]
+        if same_title_rows and summary_s:
+            c_tokens = _summary_tokens(summary_s)
+            for row in same_title_rows:
+                exist_sum = (row.get("summary") or "").strip()
+                if len(exist_sum) < 40 or not c_tokens:
+                    continue
+                j = _jaccard(c_tokens, _summary_tokens(exist_sum))
+                if j < 0.3:
+                    if "CONTRADICTION" not in flags:
+                        flags.append("CONTRADICTION")
+                        evidence["contradiction_ids"] = [
+                            r.get("id") for r in same_title_rows[:5]
+                        ]
+                    break
 
-        # STALE: candidate summary largely contained in an existing atom
+        # STALE: candidate summary largely contained in an existing atom.
+        # Uses _summary_tokens for less noisy overlap on longer text.
         if summary_s:
-            s_tokens = _title_tokens(summary_s)
+            c_tokens = _summary_tokens(summary_s)
             for row in kb_hits:
                 exist = (row.get("summary") or "").strip()
                 if len(exist) < 40:
                     continue
-                et = _title_tokens(exist)
-                if s_tokens and et:
-                    j = _jaccard(s_tokens, et)
+                et = _summary_tokens(exist)
+                if c_tokens and et:
+                    j = _jaccard(c_tokens, et)
                     if j >= 0.75 and len(summary_s) < len(exist) * 0.6:
                         if "STALE" not in flags:
                             flags.append("STALE")
                             evidence["stale_vs_id"] = row.get("id")
                         break
 
-    # --- SOIL collection ----------------------------------------------------
-    soil_hits = _soil_scan(store, collection, title_s)
+    # ── SOIL collection ───────────────────────────────────────────────────────
+    soil_hits = _soil_scan(store, _collection, title_s)
     evidence["soil_ids"] = [r.get("id") for r in soil_hits[:8] if isinstance(r, dict)]
 
     for rec in soil_hits:
@@ -142,18 +162,18 @@ def check_candidate(
             evidence["soil_exact_title_id"] = rec.get("id")
             break
 
-    # --- DARK: probable protected / identity-minimal records ----------------
+    # ── DARK: probable protected / identity-minimal records ──────────────────
     dark_markers = ("identity protection", "protected record", "do not name", "initial only")
     blob = f"{title_s} {summary_s}".casefold()
     if any(m in blob for m in dark_markers):
         if "DARK" not in flags:
             flags.append("DARK")
 
-    # --- Recommendation -----------------------------------------------------
+    # ── Recommendation ────────────────────────────────────────────────────────
     if "REDUNDANT" in flags:
         rec = "Likely duplicate of an existing atom or SOIL record; skip ingest or fetch existing id and update/archive explicitly."
     elif "CONTRADICTION" in flags:
-        rec = "Multiple live rows share this title with different bodies; resolve in KB before adding another."
+        rec = "Candidate title matches an existing row but summaries diverge; resolve or force=True to override."
     elif "STALE" in flags:
         rec = "Existing atom appears to supersede this summary; consider updating the prior atom instead of inserting."
     elif "DARK" in flags:

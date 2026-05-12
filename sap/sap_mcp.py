@@ -1352,12 +1352,14 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                     if not _force:
                         try:
                             from sap.core.memory_gate import check_candidate
+                            _domain = arguments.get("domain", "hanuman")
                             _gate = check_candidate(
                                 title=_title,
                                 summary=_summary,
-                                domain=arguments.get("domain"),
+                                domain=_domain,
                                 store=store,
                                 pg=pg,
+                                collection=f"{_domain}/atoms",
                             )
                             _hard_flags = {"REDUNDANT", "CONTRADICTION"}
                             _triggered = _hard_flags & set(_gate.get("flags", []))
@@ -1370,8 +1372,8 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                                     "hint": "Pass force=true to override and write anyway.",
                                 }
                                 _force = None  # sentinel: skip ingest below
-                        except Exception:
-                            pass  # gate failure is non-blocking
+                        except Exception as _gate_err:
+                            print(f"[memory_gate] WARNING: gate check failed — {_gate_err}", file=sys.stderr)
                     if _force is not None:
                         atom_id = pg.ingest_atom(
                             title=_title,
