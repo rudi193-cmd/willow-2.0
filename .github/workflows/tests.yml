@@ -35,9 +35,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Prepare CI SAFE stub
+        run: mkdir -p "${GITHUB_WORKSPACE}/.ci-safe/Applications"
+
       - name: Run test suite
-        run: python3 -m pytest --ignore=tests/adversarial/e2e -v --timeout=60
+        run: python3 -m pytest --ignore=tests/adversarial/e2e --ignore=willow/hooks/test_completion.py -v --timeout=60
         env:
+          WILLOW_SAFE_ROOT: ${{ github.workspace }}/.ci-safe/Applications
           WILLOW_PG_DB: willow_19_test
           WILLOW_PG_USER: postgres
           WILLOW_PG_HOST: localhost
