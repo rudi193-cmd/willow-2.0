@@ -35,7 +35,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 import psycopg2
 import psycopg2.extras
 
-_CREDS_PATH   = pathlib.Path.home() / ".willow" / "secrets" / "credentials.json"
+_VAULT_DB     = pathlib.Path.home() / ".willow" / "secrets" / ".willow_creds.db"
+_VAULT_KEY    = pathlib.Path.home() / ".willow" / "secrets" / ".willow_master.key"
 _GEMINI_BASE  = "https://generativelanguage.googleapis.com/v1beta/models"
 _LOG_DIR      = pathlib.Path("/tmp")
 _SKIP_DOMAINS = (
@@ -69,15 +70,23 @@ def _log(msg: str) -> None:
         f.write(line + "\n")
 
 
-def _load_key() -> str:
+def _load_key(env_name: str = "GEMINI_API_KEY") -> str:
+    """Load API key: vault first, env fallback."""
     try:
-        data = json.loads(_CREDS_PATH.read_text())
-        key = data.get("GEMINI_API_KEY", "")
-        if key and "HERE" not in key:
-            return key
+        from cryptography.fernet import Fernet
+        import sqlite3 as _sq
+        mk = _VAULT_KEY.read_bytes().strip()
+        f  = Fernet(mk)
+        db = _sq.connect(str(_VAULT_DB))
+        row = db.execute("SELECT value_enc FROM credentials WHERE env_key=?", (env_name,)).fetchone()
+        db.close()
+        if row:
+            val = f.decrypt(row[0]).decode()
+            if val and "HERE" not in val:
+                return val
     except Exception:
         pass
-    return os.environ.get("GEMINI_API_KEY", "")
+    return os.environ.get(env_name, "")
 
 
 def _gemini_embed_batch(
@@ -126,8 +135,8 @@ def _pg_connect() -> psycopg2.extensions.connection:
     return conn
 
 
-def _backfill(dry_run: bool, batch_size: int, model: str, shard_mod: int, shard_id: int) -> None:
-    api_key = _load_key()
+def _backfill(dry_run: bool, batch_size: int, model: str, shard_mod: int, shard_id: int, key_name: str = "GEMINI_API_KEY") -> None:
+    api_key = _load_key(key_name)
     if not api_key:
         _log("ERROR: GEMINI_API_KEY not found — aborting")
         sys.exit(1)
@@ -251,6 +260,8 @@ if __name__ == "__main__":
                         help="Total number of shards (1 = no sharding)")
     parser.add_argument("--shard-id",  type=int, default=0,
                         help="This shard's index (0-based)")
+    parser.add_argument("--key-name", default="GEMINI_API_KEY",
+                        help="Vault env_key name to load (e.g. GEMINI_API_KEY_2)")
     args = parser.parse_args()
 
     if args.shard_mod > 1:
@@ -259,7 +270,7 @@ if __name__ == "__main__":
         _log_path = _LOG_DIR / "willow-embed-backfill-api.log"
 
     _log_path.parent.mkdir(parents=True, exist_ok=True)
-    _log(f"starting — model={args.model} batch={args.batch_size} "
+    _log(f"starting — model={args.model} key={args.key_name} batch={args.batch_size} "
          f"shard={args.shard_id}/{args.shard_mod} dry_run={args.dry_run}")
     _backfill(
         dry_run=args.dry_run,
@@ -267,4 +278,5 @@ if __name__ == "__main__":
         model=args.model,
         shard_mod=args.shard_mod,
         shard_id=args.shard_id,
+        key_name=args.key_name,
     )
