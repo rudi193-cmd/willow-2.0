@@ -14,6 +14,7 @@ b17: FYLOV · ΔΣ=42
 1. **Outcome** in one sentence (what “done” proves).
 2. **Default branch** name (usually `master`) — **do not** land initiative work there unless Sean says merge now.
 3. **Startup:** if Sean said “no startup,” skip boot hooks; else follow repo startup / `agent-rails` when MCP/Grove/KB is touched.
+4. **Prior art (when claiming novelty):** Before the **plan slice (§2)** hardens, run Jeles / KB / local disk (umbrella **Phase 0** in `docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` §0). **Same session:** post a **skimmable report to Sean in chat** — searches run, pass/fail, what already exists **on disk** (paths), 2–5 external analog bullets, one fork question if needed. **Do not** file results only in spec/KB before Sean has seen that chat report (unless Sean explicitly waives).
 
 ---
 

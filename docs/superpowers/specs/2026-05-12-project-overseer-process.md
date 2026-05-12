@@ -14,13 +14,24 @@
 
 **Plan** (`powers/plan.md`) orders steps. **Worktree** (`powers/worktree.md`) isolates git shape. **Verify** (`powers/verify.md`) demands evidence.
 
-**Overseer** is the **meta-glue**: the same session (or tight sequence of sessions) that **creates isolation first**, then **plans inside the cage**, then **verifies**, then **writes the resume trail** (KB + operator memory) so the next human or model does not “discover” trunk contamination by accident.
+**Overseer** is the **meta-glue**: the same session (or tight sequence of sessions) that **runs prior art with an in-chat report to Sean**, **creates isolation**, then **plans inside the cage**, then **verifies**, then **writes the resume trail** (KB + operator memory) so the next human or model does not “discover” trunk contamination by accident.
 
 This is intentionally **boring governance** — the opposite of Architect Mode.
 
 ---
 
-## 2. Definitions
+## 2. Prior art — report to Sean (mandatory when claiming novelty)
+
+1. **Trigger:** New phased program, “nothing like this exists,” or any initiative that could duplicate fleet or public prior art.
+2. **Run:** Jeles (`jeles_sources` / `jeles_fetch`), `willow_knowledge_search`, local `Grep`/`Glob` (and authenticated `gh` when Jeles cannot see private repos). Someone else may operate Jeles — the overseer still **coordinates** that the pass happened.
+3. **Report (same session, in chat to Sean):** short, skimmable — what was queried, what succeeded/failed, what exists on disk with **paths**, 2–5 bullets on external analogs, **one explicit fork question** if a decision is needed. **Purpose:** Sean can say what he **likes / dislikes / wants adopted** before the plan is locked.
+4. **After:** optional Grove/KB/spec summary — never **only** the file without the chat step unless Sean waives.
+
+**Anti-pattern:** Long Phase 0 write-up that only lands in `docs/` with no in-session digest for Sean.
+
+---
+
+## 3. Definitions
 
 | Term | Meaning |
 |------|--------|
@@ -32,7 +43,7 @@ This is intentionally **boring governance** — the opposite of Architect Mode.
 
 ---
 
-## 3. WLGSM mapping (organic default)
+## 4. WLGSM mapping (organic default)
 
 | WLGSM state | Overseer meaning |
 |-------------|-------------------|
@@ -46,7 +57,7 @@ Overseer **does not** skip Review because a model “feels done.”
 
 ---
 
-## 4. Artifact contract (minimum)
+## 5. Artifact contract (minimum)
 
 Every overseen initiative should leave behind:
 
@@ -59,7 +70,7 @@ Every overseen initiative should leave behind:
 
 ---
 
-## 5. Failure modes (explicit)
+## 6. Failure modes (explicit)
 
 | Failure | Corrective action |
 |---------|-------------------|
@@ -67,16 +78,17 @@ Every overseen initiative should leave behind:
 | KB ingest fails transiently | `willow_health` + **one** retry; then stop loudly. |
 | Slug collision | Pick new slug; never reuse another agent’s branch name without coordination. |
 | Namespace collision (`python -m X`) | Subfolder or new package name; document in spec README. |
+| Prior art only in spec; Sean never saw chat digest | Violates §2; add in-session report retroactively if still in Draft, or reopen initiative. |
 
 ---
 
-## 6. Example (reference only)
+## 7. Example (reference only)
 
 Sovereign edges Phase 1 used: worktree `willow-1.9-wt-sovereign-edges-phase1`, branch `wt/sovereign-edges-phase1`, KB atom **`B81FE312`**, spec path under that branch — **not** an instruction to merge.
 
 ---
 
-## 7. Cursor / Claude invocation
+## 8. Cursor / Claude invocation
 
 - **Registry id:** `overseer` — same router as `/power` (`powers/registry.json`). **Until merged to default branch**, the registry entry exists only in worktree **`willow-1.9-wt-overseer`** / branch **`wt/overseer`**.
 - **Shortcut:** `.cursor/commands/overseer.md` (same branch) — pinned **overseer** checklist.
