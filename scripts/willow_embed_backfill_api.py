@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
-"""willow_embed_backfill_api.py — Backfill NULL embeddings using Gemini text-embedding-004.
+"""willow_embed_backfill_api.py — Backfill NULL embeddings via Gemini embedding API.
 b17: EMB01  ΔΣ=42
 
-Drop-in replacement for willow_embed_backfill.py when Ollama is unavailable.
-Gemini text-embedding-004 → 768 dimensions, matches nomic-embed-text schema.
+Uses gemini-embedding-001 with outputDimensionality=768, matching nomic-embed-text schema.
 
 Usage:
     python3 scripts/willow_embed_backfill_api.py [--batch-size N] [--dry-run]
+                                                  [--model MODEL]
+                                                  [--shard-mod M --shard-id N]
 
-Rate: Gemini free tier ~1500 req/min; each batch = 1 request. Default batch=50.
+Parallel example (3 shards):
+    for i in 0 1 2; do
+      python3 scripts/willow_embed_backfill_api.py --shard-mod 3 --shard-id $i \\
+        >> /tmp/willow-embed-shard-$i.log 2>&1 &
+    done
+
 Safe to interrupt and restart — re-queries NULL each pass.
 """
 from __future__ import annotations
@@ -22,19 +28,22 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 import psycopg2
 import psycopg2.extras
 
-_CREDS_PATH  = pathlib.Path.home() / ".willow" / "secrets" / "credentials.json"
-_GEMINI_URL  = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents"
-_LOG_PATH    = pathlib.Path("/tmp/willow-embed-backfill-api.log")
-_SKIP_DOMAINS = ("session-turn", "conversation", "file_location",
-                 "die-namic-index", "willow_index", "sessions",
-                 "telemetry", "training")
+_CREDS_PATH   = pathlib.Path.home() / ".willow" / "secrets" / "credentials.json"
+_GEMINI_BASE  = "https://generativelanguage.googleapis.com/v1beta/models"
+_LOG_DIR      = pathlib.Path("/tmp")
+_SKIP_DOMAINS = (
+    "session-turn", "conversation", "file_location",
+    "die-namic-index", "willow_index", "sessions",
+    "telemetry", "training",
+)
+_DIMS         = 768
 MIN_TEXT_LEN  = 20
 MAX_CHARS     = 4000
 
@@ -50,11 +59,13 @@ def _handle_signal(sig, frame):
 signal.signal(signal.SIGINT,  _handle_signal)
 signal.signal(signal.SIGTERM, _handle_signal)
 
+_log_path: pathlib.Path = _LOG_DIR / "willow-embed-backfill-api.log"
+
 
 def _log(msg: str) -> None:
     line = f"[{datetime.now().strftime('%H:%M:%S')}] {msg}"
     print(line, flush=True)
-    with _LOG_PATH.open("a") as f:
+    with _log_path.open("a") as f:
         f.write(line + "\n")
 
 
@@ -69,67 +80,99 @@ def _load_key() -> str:
     return os.environ.get("GEMINI_API_KEY", "")
 
 
-def _gemini_embed_batch(texts: list[str], api_key: str) -> list[list[float] | None]:
-    """Embed up to 100 texts in one Gemini batchEmbedContents call."""
+def _gemini_embed_batch(
+    texts: list[str], api_key: str, model: str
+) -> list[list[float] | None]:
+    url = f"{_GEMINI_BASE}/{model}:batchEmbedContents?key={api_key}"
     payload = json.dumps({
         "requests": [
-            {"model": "models/text-embedding-004", "content": {"parts": [{"text": t[:MAX_CHARS]}]}}
+            {
+                "model": f"models/{model}",
+                "content": {"parts": [{"text": t[:MAX_CHARS]}]},
+                "outputDimensionality": _DIMS,
+            }
             for t in texts
         ]
     }).encode()
-    url = f"{_GEMINI_URL}?key={api_key}"
-    req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(
+        url, data=payload, headers={"Content-Type": "application/json"}
+    )
     try:
         with urllib.request.urlopen(req, timeout=60) as resp:
             body = json.loads(resp.read())
             return [e["values"] for e in body.get("embeddings", [])]
     except urllib.error.HTTPError as e:
-        body = e.read().decode(errors="replace")
-        _log(f"Gemini HTTP {e.code}: {body[:200]}")
+        body_text = e.read().decode(errors="replace")
+        _log(f"Gemini HTTP {e.code}: {body_text[:300]}")
         if e.code == 429:
             _log("rate limit — sleeping 60s")
             time.sleep(60)
         return [None] * len(texts)
-    except Exception as e:
-        _log(f"Gemini error: {e}")
+    except Exception as exc:
+        _log(f"Gemini error: {exc}")
         return [None] * len(texts)
 
 
 def _pg_connect() -> psycopg2.extensions.connection:
-    return psycopg2.connect(
+    conn = psycopg2.connect(
         dbname=os.environ.get("WILLOW_PG_DB", "willow_19"),
         user=os.environ.get("WILLOW_PG_USER", os.environ.get("USER", "")),
+        keepalives=1,
+        keepalives_idle=30,
+        keepalives_interval=10,
+        keepalives_count=5,
     )
+    conn.autocommit = False
+    return conn
 
 
-def _backfill(dry_run: bool, batch_size: int) -> None:
+def _backfill(dry_run: bool, batch_size: int, model: str, shard_mod: int, shard_id: int) -> None:
     api_key = _load_key()
     if not api_key:
         _log("ERROR: GEMINI_API_KEY not found — aborting")
         sys.exit(1)
 
+    skip_clause = " AND ".join(f"project != '{d}'" for d in _SKIP_DOMAINS)
+    # mod() avoids the % operator escaping headache with psycopg2 query templates
+    shard_clause = f" AND mod(abs(hashtext(id)), {shard_mod}) = {shard_id}" if shard_mod > 1 else ""
+
     conn = _pg_connect()
-    conn.autocommit = False
     cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    # Count scope
-    skip_clause = " AND ".join(f"project != '{d}'" for d in _SKIP_DOMAINS)
-    cur.execute(f"SELECT COUNT(*) FROM knowledge WHERE embedding IS NULL AND ({skip_clause})")
+    cur.execute(
+        f"SELECT COUNT(*) FROM knowledge WHERE embedding IS NULL AND ({skip_clause}){shard_clause}"
+    )
     total = cur.fetchone()["count"]
-    _log(f"scope: {total:,} atoms to embed (skipping low-signal domains)")
+    _log(f"scope: {total:,} atoms [model={model} shard={shard_id}/{shard_mod}]")
 
     done = skipped = errors = 0
     started = time.time()
+    # Track too-short IDs to exclude from future queries (avoids infinite re-scan)
+    short_ids: list[str] = []
 
     while not _shutdown:
-        cur.execute(f"""
+        short_excl = " AND id != ALL(%s)" if short_ids else ""
+        query = f"""
             SELECT id, title, summary
             FROM knowledge
-            WHERE embedding IS NULL AND ({skip_clause})
+            WHERE embedding IS NULL AND ({skip_clause}){shard_clause}{short_excl}
             ORDER BY created_at
             LIMIT %s
-        """, (batch_size,))
-        rows = cur.fetchall()
+        """
+        params = (short_ids, batch_size) if short_ids else (batch_size,)
+        try:
+            cur.execute(query, params)
+            rows = cur.fetchall()
+        except psycopg2.OperationalError as exc:
+            _log(f"PG read error, reconnecting: {exc}")
+            try:
+                conn.close()
+            except Exception:
+                pass
+            conn = _pg_connect()
+            cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            continue
+
         if not rows:
             break
 
@@ -138,39 +181,60 @@ def _backfill(dry_run: bool, batch_size: int) -> None:
             text = f"{row['title'] or ''} {row['summary'] or ''}".strip()
             if len(text) < MIN_TEXT_LEN:
                 skipped += 1
-                continue  # leave embedding NULL — too short to embed meaningfully
+                short_ids.append(row["id"])
+                continue
             texts.append(text)
             ids.append(row["id"])
 
-        if texts and not dry_run:
-            vectors = _gemini_embed_batch(texts, api_key)
-            for atom_id, vec in zip(ids, vectors):
-                if vec is not None:
-                    cur.execute(
-                        "UPDATE knowledge SET embedding = %s WHERE id = %s",
-                        ("[" + ",".join(str(v) for v in vec) + "]", atom_id),
-                    )
-                    done += 1
-                else:
-                    errors += 1
-            conn.commit()
-        elif texts and dry_run:
+        if not texts:
+            # All rows in this batch were too short; loop will now exclude them
+            continue
+
+        if not dry_run:
+            vectors = _gemini_embed_batch(texts, api_key, model)
+            try:
+                for atom_id, vec in zip(ids, vectors):
+                    if vec is not None:
+                        cur.execute(
+                            "UPDATE knowledge SET embedding = %s WHERE id = %s",
+                            ("[" + ",".join(str(v) for v in vec) + "]", atom_id),
+                        )
+                        done += 1
+                    else:
+                        errors += 1
+                conn.commit()
+            except psycopg2.OperationalError as exc:
+                _log(f"PG commit error, reconnecting: {exc}")
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                conn = _pg_connect()
+                cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        else:
             done += len(texts)
 
-        elapsed = time.time() - started
-        rate    = done / elapsed if elapsed > 0 else 0
+        elapsed   = time.time() - started
+        rate      = done / elapsed if elapsed > 0 else 0
         remaining = (total - done - skipped) / rate if rate > 0 else 0
-        _log(f"done={done:,} skipped={skipped} errors={errors} "
-             f"rate={rate:.1f}/s eta={int(remaining//60)}m{int(remaining%60)}s")
+        _log(
+            f"done={done:,} skipped={skipped} errors={errors} "
+            f"rate={rate:.1f}/s eta={int(remaining//60)}m{int(remaining%60)}s"
+        )
 
-        # Small sleep to respect rate limits
         time.sleep(0.5)
 
-    cur.close()
-    conn.close()
+    try:
+        cur.close()
+        conn.close()
+    except Exception:
+        pass
+
     elapsed = time.time() - started
-    _log(f"finished: done={done:,} skipped={skipped} errors={errors} "
-         f"elapsed={int(elapsed//60)}m{int(elapsed%60)}s")
+    _log(
+        f"finished: done={done:,} skipped={skipped} errors={errors} "
+        f"elapsed={int(elapsed//60)}m{int(elapsed%60)}s"
+    )
     if dry_run:
         _log("DRY RUN — no writes committed")
 
@@ -179,8 +243,28 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch-size", type=int, default=50)
     parser.add_argument("--dry-run",    action="store_true")
+    parser.add_argument(
+        "--model", default="gemini-embedding-001",
+        help="Gemini model name (e.g. gemini-embedding-001, gemini-embedding-2-preview)",
+    )
+    parser.add_argument("--shard-mod", type=int, default=1,
+                        help="Total number of shards (1 = no sharding)")
+    parser.add_argument("--shard-id",  type=int, default=0,
+                        help="This shard's index (0-based)")
     args = parser.parse_args()
 
-    _LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _log(f"starting — batch={args.batch_size} dry_run={args.dry_run}")
-    _backfill(dry_run=args.dry_run, batch_size=args.batch_size)
+    if args.shard_mod > 1:
+        _log_path = _LOG_DIR / f"willow-embed-backfill-shard{args.shard_id}.log"
+    else:
+        _log_path = _LOG_DIR / "willow-embed-backfill-api.log"
+
+    _log_path.parent.mkdir(parents=True, exist_ok=True)
+    _log(f"starting — model={args.model} batch={args.batch_size} "
+         f"shard={args.shard_id}/{args.shard_mod} dry_run={args.dry_run}")
+    _backfill(
+        dry_run=args.dry_run,
+        batch_size=args.batch_size,
+        model=args.model,
+        shard_mod=args.shard_mod,
+        shard_id=args.shard_id,
+    )
