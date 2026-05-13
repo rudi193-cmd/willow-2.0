@@ -737,6 +737,140 @@ def _windows_username() -> str | None:
         return None
 
 
+# ── Page: age gate ───────────────────────────────────────────────────────────
+def page_age_gate(win) -> dict:
+    """Ask if the user is a minor. If yes, require a guardian PGP key.
+
+    Guardian flow: suspend curses, ask them to drop an armored public key into
+    a temp file, then resume and import it.  Storing the fingerprint in the
+    boot config is the enforcement hook; the guardian's presence at first boot
+    is the social contract.
+
+    Returns {"is_minor": bool, "guardian_pgp_fingerprint": str}.
+    """
+    _fill_bg(win)
+    h, w = win.getmaxyx()
+    amber  = curses.color_pair(_CA_AMBER)  | curses.A_BOLD
+    bright = curses.color_pair(_CA_BRIGHT) | curses.A_BOLD
+    dim    = curses.color_pair(_CA_DIM)
+    green  = curses.color_pair(_CA_GREEN)  | curses.A_BOLD
+    red    = curses.color_pair(_CA_RED)
+
+    intro = [
+        "  Before we build, one question.",
+        "",
+        "  Are you a minor in your country?",
+        "  (Under the age of majority where you live.)",
+        "",
+        "  [ Y ]  Yes    [ N ]  No",
+    ]
+    y = 1
+    _typewrite(win, y, 2, "ᚺᛖᛁᛗᛞᚨᛚᛚᚱ", amber, delay=0.015)
+    y += 1
+    for line in intro:
+        _safe(win, y, 2, line, dim)
+        y += 1
+    win.refresh()
+
+    win.nodelay(False)
+    is_minor = False
+    while True:
+        k = win.getch()
+        if k in (ord('y'), ord('Y')):
+            is_minor = True
+            break
+        elif k in (ord('n'), ord('N')):
+            break
+    win.nodelay(True)
+
+    if not is_minor:
+        return {"is_minor": False, "guardian_pgp_fingerprint": ""}
+
+    # ── Minor path ────────────────────────────────────────────────────────────
+    _fill_bg(win)
+    h, w = win.getmaxyx()
+
+    guardian_intro = [
+        "  Your legal guardian needs to authorize this installation.",
+        "",
+        "  We need their PGP public key. They can export it with:",
+        "",
+        "    gpg --armor --export their@email.com > /tmp/guardian.asc",
+        "",
+        "  When they have done that, press any key to continue.",
+        "  (This window will pause while they work in another terminal.)",
+    ]
+    y = 1
+    _typewrite(win, y, 2, "GUARDIAN AUTHORIZATION REQUIRED", bright, delay=0.01)
+    y += 1
+    _safe(win, y, 2, "─" * min(60, w - 4), dim)
+    y += 1
+    for line in guardian_intro:
+        _safe(win, y, 2, line, dim)
+        y += 1
+    win.refresh()
+    _wait_key(win, "  Press any key once the file is ready...", h - 2)
+
+    # Suspend curses so the guardian can work in the terminal if needed
+    curses.endwin()
+    key_file = Path("/tmp/guardian.asc")
+    print("\n\n  === GUARDIAN: paste your PGP public key below, then save the file ===")
+    print(f"  File path: {key_file}")
+    print("  If the file is already there, just press Enter.")
+    input("  [Enter to continue] ")
+    # Re-enter curses
+    win.refresh()
+    _fill_bg(win)
+
+    if not key_file.exists() or not key_file.read_text().strip():
+        _safe(win, h // 2, 2, "  No key file found at /tmp/guardian.asc.", red)
+        _safe(win, h // 2 + 1, 2, "  Guardian authorization skipped — flagged in config.", dim)
+        win.refresh()
+        time.sleep(2.5)
+        key_file.unlink(missing_ok=True)
+        return {"is_minor": True, "guardian_pgp_fingerprint": ""}
+
+    armored = key_file.read_text()
+    key_file.unlink(missing_ok=True)
+
+    _safe(win, h // 2 - 1, 2, "  Importing guardian key...", dim)
+    win.refresh()
+
+    rc, out, err = _gpg(["--import"], armored)
+    if rc != 0:
+        _safe(win, h // 2, 2, f"  Import failed: {err.strip()[:60]}", red)
+        _safe(win, h // 2 + 1, 2, "  Authorization skipped — flagged in config.", dim)
+        win.refresh()
+        time.sleep(2.5)
+        return {"is_minor": True, "guardian_pgp_fingerprint": ""}
+
+    # Resolve fingerprint from import stderr ("key ABCD1234: ... imported")
+    guardian_fp = ""
+    for line in err.splitlines():
+        parts = line.split()
+        for i, p in enumerate(parts):
+            if p == "key" and i + 1 < len(parts):
+                short_id = parts[i + 1].rstrip(":")
+                rc2, out2, _ = _gpg(["--list-keys", "--with-colons", "--with-fingerprint", short_id])
+                for l2 in out2.splitlines():
+                    if l2.startswith("fpr"):
+                        guardian_fp = l2.split(":")[9]
+                        break
+                if guardian_fp:
+                    break
+        if guardian_fp:
+            break
+
+    if guardian_fp:
+        _safe(win, h // 2, 2, f"  Guardian key on record: ...{guardian_fp[-8:]}", green)
+    else:
+        _safe(win, h // 2, 2, "  Key imported (fingerprint unresolved).", dim)
+    win.refresh()
+    time.sleep(1.8)
+
+    return {"is_minor": True, "guardian_pgp_fingerprint": guardian_fp}
+
+
 # ── Page: Heimdallr gate ──────────────────────────────────────────────────────
 def page_gate(win) -> dict:
     """Heimdallr asks for three things. Returns {name, email, passphrase, provider, api_key}."""
@@ -1167,6 +1301,9 @@ def run_new_user(stdscr) -> None:
     # Gate
     gate = page_gate(stdscr)
 
+    # Age gate — must run before install so guardian key lands in keyring first
+    age  = page_age_gate(stdscr)
+
     # Install
     fingerprint = _run_install(stdscr, gate["name"], gate["email"], gate["passphrase"])
 
@@ -1192,9 +1329,11 @@ def run_new_user(stdscr) -> None:
         "provider":        gate["provider"],
         "grove_handle":    features.get("grove_handle", ""),
         "features":        features,
-        "agreed_license":  True,
-        "agreed_covenant": True,
-        "last_boot_at":    datetime.now().isoformat(),
+        "agreed_license":          True,
+        "agreed_covenant":         True,
+        "is_minor":                age["is_minor"],
+        "guardian_pgp_fingerprint": age["guardian_pgp_fingerprint"],
+        "last_boot_at":            datetime.now().isoformat(),
     }
     _save_cfg(cfg)
 

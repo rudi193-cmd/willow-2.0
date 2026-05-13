@@ -21,9 +21,15 @@ b17: FYLOV · ΔΣ=42
 ## 1) Isolation gate (before files change)
 
 1. Pick **`SLUG`** (`[a-z0-9-]+`). Collision → new slug.
-2. **Worktree** (same pattern as `worktree` power):
+2. **Worktree:**
    - `git worktree add -b wt/<SLUG> ../<repo-basename>-wt-<SLUG> HEAD`
-3. **All initiative edits** happen only in that worktree until ratified merge.
+3. **Seed atom** — ingest via `willow_knowledge_ingest` before touching any file:
+   - Content: the **non-derivable contract** a cold agent needs (wire format, interface shape, key invariant). Not the spec — the one fact that would burn an hour if missed.
+   - Fields: `title=”<SLUG> — seed contract”`, `summary=<2-3 sentences>`, `domain=<agent>`, `project=<repo>`.
+   - Save the returned atom ID.
+4. **Grove post** (first message on the task channel):
+   - `wt-<SLUG> open on wt/<SLUG> (<short HEAD>). Seed atom <ID> — <one-line contract>. Starting: <first file or step>.`
+5. **All initiative edits** happen only in that worktree until ratified merge.
 
 **Don’t:** “Just one commit on master first.” **Don’t:** mix unrelated refactors.
 

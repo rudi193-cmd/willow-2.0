@@ -136,6 +136,30 @@ def write_text(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def _store_overseer_record(
+    *, slug: str, goal: str, branch: str, wt_path: Path, run_id: str, repo: Path
+) -> None:
+    agent = os.environ.get("WILLOW_AGENT_NAME")
+    if not agent:
+        print("[overseer] WILLOW_AGENT_NAME not set — skipping store write")
+        return
+    try:
+        sys.path.insert(0, str(repo))
+        from core.willow_store import WillowStore  # type: ignore
+        store = WillowStore()
+        store.put(f"{agent}/overseer", slug, {
+            "slug": slug,
+            "goal": goal,
+            "branch": branch,
+            "worktree": str(wt_path),
+            "run_id": run_id,
+            "status": "open",
+        })
+        print(f"[overseer] Store record written → {agent}/overseer/{slug}")
+    except Exception as exc:
+        print(f"[overseer] Store write skipped ({exc}) — add manually via store_put")
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Overseer conductor — Phase 0 + worktree gate")
     p.add_argument("--repo", type=Path, default=None, help="Git repo root (default: cwd toplevel)")
@@ -280,6 +304,10 @@ def main() -> None:
 
     head = _run(["git", "-C", str(wt_path), "rev-parse", "--short", "HEAD"])
     short = head.stdout.strip() if head.returncode == 0 else "?"
+
+    _store_overseer_record(slug=slug, goal=args.goal, branch=branch,
+                           wt_path=wt_path, run_id=run_id, repo=repo)
+
     closeout = textwrap.dedent(
         f"""\
         # CLOSEOUT.md

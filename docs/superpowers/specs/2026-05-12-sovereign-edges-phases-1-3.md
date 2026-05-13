@@ -3,7 +3,7 @@
 **b17:** SEDG3 · ΔΣ=42  
 **Status:** Draft (umbrella — binds phased work across worktrees)  
 **Owner:** sean + hanuman  
-**Refs:** KB `013CDE08`, `61B8FD6B`, `932B35B3`, `DD0808D1`, `B81FE312` (worktree-only discipline)
+**Refs:** KB `013CDE08`, `61B8FD6B`, `932B35B3`, `DD0808D1`, `B81FE312` (worktree-only discipline); `docs/superpowers/specs/2026-05-12-github-forge-sovereignty.md` (sibling program — GitHub-shaped forge edge)
 
 **Branch discipline:** This umbrella spec lives on **`wt/sovereign-edges-phase1`** in worktree **`willow-1.9-wt-sovereign-edges-phase1`** until Sean ratifies merge to **`master`**. Child specs on **other** task branches are linked by **filename + branch name**; they are not merged until their own ratification.
 
@@ -137,6 +137,16 @@ All checklist items in Phase 1 doc **§8** are satisfied; evidence (tests / logs
 
 ---
 
+### Sibling program — Git forge (GitHub-shaped)
+
+**Same sovereignty ethos, separate sequencing:** moving **canonical git + MR + CI identity** off **github.com** (or off GitHub-shaped SaaS) is **not** Phase 2A/2B/2C above — it is its own phased program so it does not pretend to be “just another tunnel.”
+
+**Canonical doc:** `docs/superpowers/specs/2026-05-12-github-forge-sovereignty.md` · intended branch **`wt/github-forge-sovereignty`** · worktree **`willow-1.9-wt-github-forge-sovereignty`** (create with overseer / `git worktree add` before trunk merge).
+
+**Coordination:** Do not run **full** GitHub migration in the same calendar window as an active sovereign-edges **Phase 2** track unless Sean explicitly names **both** priorities and owners.
+
+---
+
 ## 5. Phase 3 — hardening and the second ring
 
 Phase 3 starts **after** the chosen Phase-2 track has been **live** long enough to trust: renewals, monitoring, and one simulated failure drill.
@@ -156,6 +166,7 @@ Phase 3 starts **after** the chosen Phase-2 track has been **live** long enough 
 ### 5.4 Cross-cutting (any Phase-2 winner)
 
 - **Single “public surfaces” inventory**: MCP ingress, static sites, relays — **one renewal calendar**, **one incident owner**, **one rollback paragraph** each.
+- **Git forge / canonical `origin`** — when the sibling program `2026-05-12-github-forge-sovereignty` is active, add the forge hostname and TLS renewal to the same inventory (or explicitly mark “not in scope this quarter”).
 
 ---
 
@@ -170,13 +181,14 @@ Phase 3 starts **after** the chosen Phase-2 track has been **live** long enough 
 
 ## 7. Worktree index (living document)
 
-Update this table when branches move.
+Update this table when branches move. **Machine-readable copy (update in lockstep):** `docs/superpowers/sovereignty-programs.json`.
 
 | Artifact | Branch | Worktree path |
 |----------|--------|----------------|
 | Phase 1 spec + discipline | `wt/sovereign-edges-phase1` | `willow-1.9-wt-sovereign-edges-phase1` |
 | Phase 2C u2u discovery | `wt/u2u-phase-2c` | `willow-1.9-wt-u2u-phase-2c` |
 | Phase 2A / 2B | *TBD when started* | *TBD* |
+| Git forge (GitHub-shaped) | `wt/github-forge-sovereignty` | `willow-1.9-wt-github-forge-sovereignty` |
 
 ---
 

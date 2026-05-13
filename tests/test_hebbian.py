@@ -49,8 +49,10 @@ def test_put_no_edge_for_non_atom_collection(tmp_path):
 
 
 def test_increment_edge_weight(tmp_path):
+    import os
+    agent = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
     store = _make_store(tmp_path)
-    store.put("hanuman/atoms/edges", {
+    store.put(f"{agent}/atoms/edges", {
         "id": "edge-a1-a2",
         "source_id": "a1",
         "target_id": "a2",
@@ -58,7 +60,7 @@ def test_increment_edge_weight(tmp_path):
         "co_activations": 0,
     })
     store._increment_edge_weight("a1", "a2")
-    edges = store.list("hanuman/atoms/edges")
+    edges = store.list(f"{agent}/atoms/edges")
     edge = next((e for e in edges if e.get("id") == "edge-a1-a2"), None)
     assert edge is not None
     assert edge["weight"] > 0.1
@@ -66,8 +68,10 @@ def test_increment_edge_weight(tmp_path):
 
 
 def test_increment_edge_weight_bidirectional(tmp_path):
+    import os
+    agent = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
     store = _make_store(tmp_path)
-    store.put("hanuman/atoms/edges", {
+    store.put(f"{agent}/atoms/edges", {
         "id": "edge-b1-b2",
         "source_id": "b1",
         "target_id": "b2",
@@ -76,7 +80,7 @@ def test_increment_edge_weight_bidirectional(tmp_path):
     })
     # Increment with reversed order — should still find the edge
     store._increment_edge_weight("b2", "b1")
-    edges = store.list("hanuman/atoms/edges")
+    edges = store.list(f"{agent}/atoms/edges")
     edge = next((e for e in edges if e.get("id") == "edge-b1-b2"), None)
     assert edge is not None
     assert edge["co_activations"] == 1
