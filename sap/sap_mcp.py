@@ -125,6 +125,7 @@ except ImportError:
 
 # ── WillowStore ───────────────────────────────────────────────────────────────
 from willow_store import WillowStore
+import sap.core.inference as _inf
 
 # ── Postgres bridge ───────────────────────────────────────────────────────────
 try:
@@ -850,7 +851,7 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "target": {"type": "string", "description": "What to reload: 'all', 'fleet', 'postgres', 'store'", "default": "all"},
+                    "target": {"type": "string", "description": "What to reload: 'all', 'inference', 'fleet', 'postgres', 'store'", "default": "all"},
                 },
             },
         ),
@@ -1514,17 +1515,17 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
         elif name == "willow_chat":
             agent = arguments.get("agent", "willow")
             message = arguments["message"]
-            if agent in _CLOUD_AGENTS:
-                response = _chat_groq(agent, message) or _chat_openrouter(agent, message)
+            if agent in _inf.CLOUD_AGENTS:
+                response = _inf.chat_groq(agent, message) or _inf.chat_openrouter(agent, message)
             else:
                 # All other agents — including ganas4 and default — route through Anthropic
-                response = _chat_codex(agent, message)
+                response = _inf.chat_codex(agent, message)
             if not response:
                 response = f"[{agent}] Inference unavailable."
             result = {"agent": agent, "response": response}
 
         elif name == "willow_imagine":
-            result = _imagine_imagen4(
+            result = _inf.imagine_novita(
                 prompt=arguments["prompt"],
                 output_path=arguments.get("output_path"),
                 aspect_ratio=arguments.get("aspect_ratio", "1:1"),
@@ -2443,291 +2444,28 @@ def _check_ollama() -> dict:
         return {"running": False}
 
 
-_CLOUD_AGENTS: set[str] = {"ganas2"}
-_CLOUD_MODEL = "meta-llama/llama-3.1-8b-instruct"
-_CLOUD_URL   = "https://api.novita.ai/v3/openai/chat/completions"
-
-_OPENROUTER_URL   = "https://openrouter.ai/api/v1/chat/completions"
-_OPENROUTER_MODEL = "openai/gpt-4o-mini"
-
-_CODEX_AGENTS: set[str] = {"ganas4"}
-_CODEX_MODEL  = "claude-haiku-4-5-20251001"
-_CODEX_URL    = "https://api.anthropic.com/v1/messages"
-_CODEX_REPO   = "/home/sean-campbell/github/willow-nest"
-
-
 def _load_credential(key: str) -> str | None:
-    # Primary: Fernet vault (encrypted SQLite)
-    try:
-        from cryptography.fernet import Fernet
-        import sqlite3 as _sqlite3
-        _mk = pathlib.Path("~/.willow/secrets/.willow_master.key").expanduser().read_bytes().strip()
-        _f  = Fernet(_mk)
-        _db = _sqlite3.connect(str(pathlib.Path("~/.willow/secrets/.willow_creds.db").expanduser()))
-        row = _db.execute("SELECT value_enc FROM credentials WHERE env_key=?", (key,)).fetchone()
-        _db.close()
-        if row:
-            val = _f.decrypt(row[0]).decode()
-            if val and "HERE" not in val:
-                return val
-    except Exception:
-        pass
-    # Fallback: credentials.json (plaintext)
-    try:
-        creds_path = os.path.expanduser("~/.willow/secrets/credentials.json")
-        with open(creds_path) as fh:
-            val = json.load(fh).get(key)
-            if val:
-                return val
-    except Exception:
-        pass
-    return os.environ.get(key)
+    # Thin shim — delegates to hot-reloadable sap.core.inference
+    return _inf.load_credential(key)
 
 
-def _chat_groq(agent: str, message: str) -> str | None:
-    try:
-        import urllib.request
-        api_key = _load_credential("NOVITA_API_KEY")
-        if not api_key:
-            return None
-        data = json.dumps({
-            "model": _CLOUD_MODEL,
-            "messages": [
-                {"role": "system", "content": (
-                    f"You are {agent}, a fast cloud AI agent in Sean Campbell's fleet. "
-                    "Be direct, concise, and honest."
-                )},
-                {"role": "user", "content": message},
-            ],
-            "temperature": 0.7,
-        }).encode()
-        req = urllib.request.Request(
-            _CLOUD_URL,
-            data=data,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-            },
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read())
-            return result["choices"][0]["message"]["content"]
-    except Exception:
-        return None
-
-
-def _chat_openrouter(agent: str, message: str) -> str | None:
-    try:
-        import urllib.request
-        api_key = _load_credential("OPENROUTER_API_KEY")
-        if not api_key:
-            return None
-        data = json.dumps({
-            "model": _OPENROUTER_MODEL,
-            "messages": [
-                {"role": "system", "content": (
-                    f"You are {agent}, a fast cloud AI agent in Sean Campbell's fleet. "
-                    "Be direct, concise, and honest."
-                )},
-                {"role": "user", "content": message},
-            ],
-            "temperature": 0.7,
-        }).encode()
-        req = urllib.request.Request(
-            _OPENROUTER_URL,
-            data=data,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-                "HTTP-Referer": "https://willow.local",
-            },
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read())
-            return result["choices"][0]["message"]["content"]
-    except Exception:
-        return None
-
-
-def _chat_codex(agent: str, message: str) -> str | None:
-    try:
-        import urllib.request as _ur
-        api_key = _load_credential("ANTHROPIC_API_KEY")
-        if not api_key:
-            return None
-        if agent in _CODEX_AGENTS:
-            system = (
-                f"You are {agent}, a code-focused AI agent in Sean Campbell's fleet. "
-                f"You have deep knowledge of the willow-nest repo at {_CODEX_REPO}. "
-                "You write clean, minimal Python. No fluff, no over-engineering."
-            )
-        else:
-            system = (
-                f"You are {agent}, an AI agent in Sean Campbell's sovereign fleet. "
-                "You are the general coordinator — direct, honest, minimal. "
-                "Answer clearly and concisely."
-            )
-        data = json.dumps({
-            "model": _CODEX_MODEL,
-            "max_tokens": 1024,
-            "system": system,
-            "messages": [{"role": "user", "content": message}],
-        }).encode()
-        req = _ur.Request(
-            _CODEX_URL, data=data,
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-            },
-        )
-        with _ur.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read())
-            return result["content"][0]["text"]
-    except Exception:
-        return None
-
-
-def _chat_ollama(agent: str, message: str) -> str | None:
-    try:
-        import urllib.request
-        data = json.dumps({
-            "model": os.environ.get("WILLOW_OLLAMA_MODEL", "qwen2.5:3b"),
-            "messages": [
-                {"role": "system", "content": (
-                    f"You are {agent}, a local AI coordinator for Sean Campbell's personal fleet. "
-                    "You have access to a knowledge base, task queue, and agent network. "
-                    "Be direct, concise, and honest. You run locally — no cloud, no external services. "
-                    "When you don't know something, say so."
-                )},
-                {"role": "user", "content": message},
-            ],
-            "stream": True,
-        }).encode()
-        url = os.environ.get("OLLAMA_URL", "http://localhost:11434") + "/api/chat"
-        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-        chunks = []
-        # Stream with a per-chunk timeout; CPU inference is ~5s/token so allow 300s total
-        with urllib.request.urlopen(req, timeout=300) as resp:
-            for line in resp:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    chunk = json.loads(line)
-                    token = chunk.get("message", {}).get("content", "")
-                    if token:
-                        chunks.append(token)
-                    if chunk.get("done"):
-                        break
-                except json.JSONDecodeError:
-                    continue
-        return "".join(chunks) if chunks else None
-    except Exception:
-        return None
-
-
-def _chat_fleet(agent: str, message: str) -> str | None:
-    import logging
-    log = logging.getLogger("willow.chat_fleet")
-    try:
-        fleet_root = os.environ.get(
-            "WILLOW_FLEET_PATH",
-            str(Path(__file__).parent.parent.parent / "Willow"),
-        )
-        fleet_core = str(Path(fleet_root) / "core")
-        if fleet_root not in sys.path:
-            sys.path.insert(0, fleet_root)
-        if fleet_core not in sys.path:
-            sys.path.insert(0, fleet_core)
-        import llm_router
-        llm_router.load_keys_from_json()
-        providers = llm_router.get_available_providers()
-        log.info(f"Fleet loaded: {len(providers.get('free', []))} free providers")
-        persona_prompt = f"You are {agent}, a Willow agent. Stay in character. Be concise."
-        agent_profile = _SAP_ROOT / "agents" / agent / "AGENT_PROFILE.md"
-        if agent_profile.exists():
-            persona_prompt = agent_profile.read_text()[:2000]
-        prompt = f"{persona_prompt}\n\nUser: {message}"
-        resp = llm_router.ask(prompt, preferred_tier="free", task_type="chat")
-        if resp and resp.content:
-            return f"[{agent}] {resp.content}"
-        return None
-    except Exception as e:
-        log.error(f"Fleet chat failed: {type(e).__name__}: {e}")
-        return None
-
-
-_NOVITA_IMG_MODEL = "revAnimated_v122.safetensors"
-_NOVITA_IMG_URL   = "https://api.novita.ai/v3/async/txt2img"
-_NOVITA_POLL_URL  = "https://api.novita.ai/v3/async/task-result"
-
-_ASPECT_TO_WH = {
-    "1:1": (512, 512), "16:9": (768, 432), "9:16": (432, 768),
-    "4:3": (640, 480), "3:4": (480, 640),
-}
-
-
-def _imagine_imagen4(prompt: str, output_path: str | None, aspect_ratio: str = "1:1") -> dict:
-    try:
-        import urllib.request as _ur, datetime, time, pathlib
-        api_key = _load_credential("NOVITA_API_KEY")
-        if not api_key:
-            return {"error": "NOVITA_API_KEY not found in credentials"}
-        w, h = _ASPECT_TO_WH.get(aspect_ratio, (512, 512))
-        data = json.dumps({
-            "extra": {"response_image_type": "png"},
-            "request": {
-                "model_name": _NOVITA_IMG_MODEL,
-                "prompt": prompt,
-                "width": w, "height": h,
-                "image_num": 1, "steps": 20,
-                "guidance_scale": 7.0,
-                "sampler_name": "Euler a",
-            }
-        }).encode()
-        req = _ur.Request(
-            _NOVITA_IMG_URL, data=data,
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
-        )
-        with _ur.urlopen(req, timeout=15) as r:
-            task_id = json.loads(r.read()).get("task_id")
-        if not task_id:
-            return {"error": "No task_id returned from Novita"}
-        for _ in range(40):
-            time.sleep(3)
-            poll = _ur.Request(
-                f"{_NOVITA_POLL_URL}?task_id={task_id}",
-                headers={"Authorization": f"Bearer {api_key}"}
-            )
-            with _ur.urlopen(poll, timeout=10) as r:
-                result = json.loads(r.read())
-            status = result.get("task", {}).get("status", "")
-            if "SUCCEED" in status:
-                img_url = result["images"][0]["image_url"]
-                with _ur.urlopen(_ur.Request(img_url), timeout=15) as ir:
-                    img_bytes = ir.read()
-                if output_path:
-                    save_path = pathlib.Path(output_path).expanduser()
-                else:
-                    out_dir = pathlib.Path.home() / "Pictures" / "willow-gen"
-                    out_dir.mkdir(parents=True, exist_ok=True)
-                    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                    save_path = out_dir / f"willow_gen_{ts}.png"
-                save_path.write_bytes(img_bytes)
-                return {"path": str(save_path), "prompt": prompt, "aspect_ratio": aspect_ratio}
-            elif "FAILED" in status or "ERROR" in status:
-                return {"error": f"Novita task failed: {status}"}
-        return {"error": "Novita image generation timed out"}
-    except Exception as e:
-        return {"error": f"{type(e).__name__}: {e}"}
 
 
 def _hot_reload(target: str = "all") -> dict:
-    global pg, store, _pg19, _pg19_error
+    global pg, store, _pg19, _pg19_error, _inf
     import importlib
     reloaded = []
     errors = []
+
+    if target in ("all", "inference"):
+        try:
+            sys.modules.pop("sap.core.inference", None)
+            import sap.core.inference as _inf_new
+            importlib.reload(_inf_new)
+            _inf = _inf_new
+            reloaded.append("inference: reloaded (credentials + chat backends + imagine)")
+        except Exception as e:
+            errors.append(f"inference: {e}")
 
     if target in ("all", "postgres"):
         try:
