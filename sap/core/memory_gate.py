@@ -81,8 +81,7 @@ def check_candidate(
     human recommendation, and compact evidence for debugging.
     """
     from core.agent_identity import require_agent_name
-    _agent = require_agent_name()
-    _collection = collection or (f"{domain}/atoms" if domain else f"{_agent}/atoms")
+    _collection = collection or (f"{domain}/atoms" if domain else f"{require_agent_name()}/atoms")
     flags: list[str] = []
     evidence: dict[str, Any] = {}
 
