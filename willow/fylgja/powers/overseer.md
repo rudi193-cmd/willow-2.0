@@ -27,9 +27,12 @@ b17: FYLOV · ΔΣ=42
    - Content: the **non-derivable contract** a cold agent needs (wire format, interface shape, key invariant). Not the spec — the one fact that would burn an hour if missed.
    - Fields: `title=”<SLUG> — seed contract”`, `summary=<2-3 sentences>`, `domain=<agent>`, `project=<repo>`.
    - Save the returned atom ID.
-4. **Grove post** (first message on the task channel):
+4. **Seed wt_project.db** — if `wt_db.py` exists in the repo root, run it inside the worktree to create the per-worktree issue tracker:
+   - `cd ../<repo-basename>-wt-<SLUG> && python3 wt_db.py` (creates `wt_project.db` with `issues` table).
+   - Add starting issues immediately: one row per known sub-task (id, area, description).
+5. **Grove post** (first message on the task channel):
    - `wt-<SLUG> open on wt/<SLUG> (<short HEAD>). Seed atom <ID> — <one-line contract>. Starting: <first file or step>.`
-5. **All initiative edits** happen only in that worktree until ratified merge.
+6. **All initiative edits** happen only in that worktree until ratified merge.
 
 **Don’t:** “Just one commit on master first.” **Don’t:** mix unrelated refactors.
 
