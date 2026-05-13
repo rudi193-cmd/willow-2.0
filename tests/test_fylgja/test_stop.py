@@ -59,6 +59,8 @@ def _run_stop(stdin_data: dict) -> None:
 
 def test_stop_writes_session_composite():
     """Stop hook should store_put a session composite atom."""
+    import os
+    agent = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
     calls = []
     def fake_call(tool, args, timeout=5):
         calls.append((tool, args))
@@ -68,7 +70,7 @@ def test_stop_writes_session_composite():
     store_calls = [c for c in calls if c[0] == "store_put"]
     # At least 1: session composite; may also write reflection_pending
     assert len(store_calls) >= 1
-    session_puts = [c for c in store_calls if c[1].get("collection") == "hanuman/sessions/store"]
+    session_puts = [c for c in store_calls if c[1].get("collection") == f"{agent}/sessions/store"]
     assert len(session_puts) == 1
     record = session_puts[0][1]["record"]
     assert record["type"] == "session"
