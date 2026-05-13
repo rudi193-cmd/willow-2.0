@@ -1,10 +1,14 @@
 """
 events/stop.py — Stop hook: per-turn cleanup + session composite writer.
+b17: PC001  ΔΣ=42
 Depth stack and thread file cleanup. Session composite written to {agent}/sessions/store.
 Heavy pipeline (handoff writing) lives in events/shutdown.py — run via /shutdown skill.
+Personal signal scanner: scans last user turn for family/health/creative/emotion patterns,
+stages candidates to personal/candidates for Loki review → sean.db write gate.
 """
 import json
 import os
+import re
 import sys
 import time as _time
 from collections import Counter
@@ -203,6 +207,78 @@ def _write_session_composite(session_id: str) -> None:
         pass
 
 
+_PERSONAL_PATTERNS: list[tuple[str, list[str]]] = [
+    ("family",   [r"\b(mom|dad|mother|father|brother|sister|family|wife|husband|partner|son|daughter|parent|child|kids?|grandma|grandpa)\b"]),
+    ("health",   [r"\b(doctor|hospital|surgery|medication|pain|injury|herniated|disc|back|health|diagnosis|prescription|therapy|therapist)\b"]),
+    ("creative", [r"\b(writing|wrote|book|character|story|chapter|novel|manuscript|poem|scene|draft|gerald|oakenscroll|saxophone|books of mann)\b"]),
+    ("emotion",  [r"\b(feel|feeling|stressed|anxious|excited|scared|worried|happy|sad|frustrated|overwhelmed|proud|lonely|hopeful|angry)\b"]),
+    ("finance",  [r"\b(bankruptcy|court|filing|mortgage|debt|loan|rent|bill|money|broke|budget|chapter 7|ch7)\b"]),
+    ("job",      [r"\b(start work|new job|hired|fired|quit|laid off|promotion|interview|employer|coworker|boss)\b"]),
+    ("date_ref", [r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|this week|next week|by [a-z]+ \d|on [a-z]+ \d{1,2})\b"]),
+]
+
+
+def _extract_user_text_from_jsonl(session_id: str) -> str:
+    """Find JSONL for session_id, return last user message text."""
+    claude_dir = Path.home() / ".claude" / "projects"
+    if not claude_dir.exists():
+        return ""
+    for jsonl in claude_dir.rglob(f"{session_id}.jsonl"):
+        try:
+            lines = jsonl.read_text(encoding="utf-8", errors="replace").strip().splitlines()
+            for line in reversed(lines[-50:]):
+                try:
+                    obj = json.loads(line)
+                    role = obj.get("role") or (obj.get("message") or {}).get("role", "")
+                    if role == "user":
+                        content = obj.get("content") or (obj.get("message") or {}).get("content", "")
+                        if isinstance(content, list):
+                            return " ".join(c.get("text", "") for c in content if isinstance(c, dict))
+                        return str(content)
+                except Exception:
+                    continue
+        except Exception:
+            pass
+    return ""
+
+
+def _scan_personal_signal(session_id: str) -> None:
+    """Scan last user turn for personal signal. Stage candidates to personal/candidates."""
+    if call is None:
+        return
+    text = _extract_user_text_from_jsonl(session_id)
+    if not text or len(text) < 20:
+        return
+
+    matches = []
+    for category, patterns in _PERSONAL_PATTERNS:
+        for pattern in patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                matches.append(category)
+                break
+
+    if not matches:
+        return
+
+    try:
+        ts = datetime.now(timezone.utc).isoformat()
+        call("store_put", {
+            "app_id": _AGENT,
+            "collection": "personal/candidates",
+            "record": {
+                "id": f"candidate-{session_id[:8]}-{int(_time.time())}",
+                "session_id": session_id,
+                "categories": matches,
+                "text_excerpt": text[:300],
+                "status": "pending",
+                "created_at": ts,
+                "reviewed_by": None,
+            },
+        }, timeout=4)
+    except Exception:
+        pass
+
+
 def _is_isolated_directory() -> bool:
     """Return True if CWD is a sandbox/isolated directory — skip all fleet hooks."""
     mcp = Path.cwd() / ".mcp.json"
@@ -258,6 +334,12 @@ def main():
     # Reflection atom (affect-gated)
     try:
         _write_reflection_atom(session_id, affect, session_traces)
+    except Exception:
+        pass
+
+    # Personal signal scan → personal/candidates (Loki reviews → sean.db)
+    try:
+        _scan_personal_signal(session_id)
     except Exception:
         pass
 
