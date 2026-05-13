@@ -181,7 +181,7 @@ Phase 3 starts **after** the chosen Phase-2 track has been **live** long enough 
 
 ## 7. Worktree index (living document)
 
-Update this table when branches move.
+Update this table when branches move. **Machine-readable copy (update in lockstep):** `docs/superpowers/sovereignty-programs.json`.
 
 | Artifact | Branch | Worktree path |
 |----------|--------|----------------|
