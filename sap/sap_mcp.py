@@ -126,6 +126,7 @@ except ImportError:
 # ── WillowStore ───────────────────────────────────────────────────────────────
 from willow_store import WillowStore
 import sap.core.inference as _inf
+import sap.core.blast as _blast
 
 # ── Postgres bridge ───────────────────────────────────────────────────────────
 try:
@@ -555,6 +556,16 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="willow_blast",
+            description="Blast-radius scan: map every sensitive file and credential env var an AI agent can read from this machine right now. Returns a score (0-100, higher = cleaner), list of reachable paths with descriptions, and flagged env vars.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "summarize": {"type": "boolean", "default": False, "description": "If true, return a compact network-safe summary (truncated paths, no env key names) instead of the full result."},
+                },
+            },
+        ),
+        types.Tool(
             name="willow_journal",
             description="Write a journal entry to the knowledge graph.",
             inputSchema={
@@ -851,7 +862,7 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "target": {"type": "string", "description": "What to reload: 'all', 'inference', 'fleet', 'postgres', 'store'", "default": "all"},
+                    "target": {"type": "string", "description": "What to reload: 'all', 'blast', 'inference', 'fleet', 'postgres', 'store'", "default": "all"},
                 },
             },
         ),
@@ -1530,6 +1541,13 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                 output_path=arguments.get("output_path"),
                 aspect_ratio=arguments.get("aspect_ratio", "1:1"),
             )
+
+        elif name == "willow_blast":
+            blast_result = _blast.run_blast()
+            if arguments.get("summarize"):
+                result = _blast.summarize_blast(blast_result)
+            else:
+                result = blast_result
 
         elif name == "willow_journal":
             entry = arguments["entry"]
@@ -2452,10 +2470,20 @@ def _load_credential(key: str) -> str | None:
 
 
 def _hot_reload(target: str = "all") -> dict:
-    global pg, store, _pg19, _pg19_error, _inf
+    global pg, store, _pg19, _pg19_error, _inf, _blast
     import importlib
     reloaded = []
     errors = []
+
+    if target in ("all", "blast"):
+        try:
+            sys.modules.pop("sap.core.blast", None)
+            import sap.core.blast as _blast_new
+            importlib.reload(_blast_new)
+            _blast = _blast_new
+            reloaded.append("blast: reloaded (sensitive paths + DLP patterns)")
+        except Exception as e:
+            errors.append(f"blast: {e}")
 
     if target in ("all", "inference"):
         try:
