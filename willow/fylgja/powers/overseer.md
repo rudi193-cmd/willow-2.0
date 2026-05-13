@@ -27,9 +27,10 @@ b17: FYLOV · ΔΣ=42
    - Content: the **non-derivable contract** a cold agent needs (wire format, interface shape, key invariant). Not the spec — the one fact that would burn an hour if missed.
    - Fields: `title=”<SLUG> — seed contract”`, `summary=<2-3 sentences>`, `domain=<agent>`, `project=<repo>`.
    - Save the returned atom ID.
-4. **Seed wt_project.db** — if `wt_db.py` exists in the repo root, run it inside the worktree to create the per-worktree issue tracker:
-   - `cd ../<repo-basename>-wt-<SLUG> && python3 wt_db.py` (creates `wt_project.db` with `issues` table).
-   - Add starting issues immediately: one row per known sub-task (id, area, description).
+4. **Create the worktree via wt_create.py** — use the lifecycle automator instead of bare `git worktree add`:
+   - `python3 ~/github/willow-1.9/scripts/wt_create.py <SLUG> <repo-path> --task "<one-line>" --issue "id:area:desc" [...]`
+   - This runs `git worktree add`, seeds `wt_project.db` (Test 1: auto-init), and is idempotent on re-run (Test 2: resume).
+   - Output includes the Grove post template with a slot for the seed atom ID — fill it after step 3.
 5. **Grove post** (first message on the task channel):
    - `wt-<SLUG> open on wt/<SLUG> (<short HEAD>). Seed atom <ID> — <one-line contract>. Starting: <first file or step>.`
 6. **All initiative edits** happen only in that worktree until ratified merge.
