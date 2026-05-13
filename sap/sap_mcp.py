@@ -24,7 +24,6 @@ import concurrent.futures
 import functools
 import json
 import os
-from core.agent_identity import require_agent_name
 import sys
 import sqlite3 as _sqlite3
 from datetime import datetime
@@ -36,6 +35,8 @@ _WILLOW_CORE = _SAP_ROOT / "core"
 
 # _SAP_ROOT must be first so `from core.X import` resolves correctly.
 # Re-insert unconditionally so PYTHONPATH ordering doesn't push it down.
+# NOTE: sap/core/ shadows core/ at sys.path[0] — path setup must run before
+# any `from core.X` imports to avoid ModuleNotFoundError at startup.
 _sap_str = str(_SAP_ROOT)
 if _sap_str in sys.path:
     sys.path.remove(_sap_str)
@@ -45,6 +46,8 @@ sys.path.insert(0, _sap_str)
 _core_str = str(_WILLOW_CORE)
 if _core_str not in sys.path:
     sys.path.insert(1, _core_str)
+
+from core.agent_identity import require_agent_name
 
 try:
     from core.run_ledger import log_event as _rl_log_event
@@ -1512,7 +1515,7 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
             agent = arguments.get("agent", "willow")
             message = arguments["message"]
             if agent in _CLOUD_AGENTS:
-                response = _chat_groq(agent, message)
+                response = _chat_groq(agent, message) or _chat_openrouter(agent, message)
             else:
                 # All other agents — including ganas4 and default — route through Anthropic
                 response = _chat_codex(agent, message)
@@ -2444,6 +2447,9 @@ _CLOUD_AGENTS: set[str] = {"ganas2"}
 _CLOUD_MODEL = "meta-llama/llama-3.1-8b-instruct"
 _CLOUD_URL   = "https://api.novita.ai/v3/openai/chat/completions"
 
+_OPENROUTER_URL   = "https://openrouter.ai/api/v1/chat/completions"
+_OPENROUTER_MODEL = "openai/gpt-4o-mini"
+
 _CODEX_AGENTS: set[str] = {"ganas4"}
 _CODEX_MODEL  = "claude-haiku-4-5-20251001"
 _CODEX_URL    = "https://api.anthropic.com/v1/messages"
@@ -2501,6 +2507,39 @@ def _chat_groq(agent: str, message: str) -> str | None:
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {api_key}",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read())
+            return result["choices"][0]["message"]["content"]
+    except Exception:
+        return None
+
+
+def _chat_openrouter(agent: str, message: str) -> str | None:
+    try:
+        import urllib.request
+        api_key = _load_credential("OPENROUTER_API_KEY")
+        if not api_key:
+            return None
+        data = json.dumps({
+            "model": _OPENROUTER_MODEL,
+            "messages": [
+                {"role": "system", "content": (
+                    f"You are {agent}, a fast cloud AI agent in Sean Campbell's fleet. "
+                    "Be direct, concise, and honest."
+                )},
+                {"role": "user", "content": message},
+            ],
+            "temperature": 0.7,
+        }).encode()
+        req = urllib.request.Request(
+            _OPENROUTER_URL,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+                "HTTP-Referer": "https://willow.local",
             },
         )
         with urllib.request.urlopen(req, timeout=30) as resp:
