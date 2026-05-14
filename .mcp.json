@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "grove": {
+      "command": "python3",
+      "args": [
+        "-m",
+        "grove.mcp_local"
+      ],
+      "cwd": "/home/sean-campbell/github/willow-1.9",
+      "env": {
+        "WILLOW_PG_DB": "willow_19",
+        "WILLOW_PG_USER": "sean-campbell",
+        "PYTHONPATH": "/home/sean-campbell/github/willow-1.9"
+      }
+    }
+  }
+}

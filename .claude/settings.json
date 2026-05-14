@@ -1,0 +1,35 @@
+{
+  "env": {
+    "WILLOW_20_DB": "/home/sean-campbell/.willow/willow-2.0.db"
+  },
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "ToolSearch",
+      "Agent",
+      "mcp__grove__grove_send_message",
+      "mcp__grove__grove_get_history",
+      "mcp__grove__grove_list_channels",
+      "mcp__grove__grove_search",
+      "mcp__grove__grove_get_thread",
+      "mcp__grove__grove_inbox",
+      "mcp__grove__grove_reply",
+      "mcp__grove__grove_ack",
+      "mcp__grove__grove_flag",
+      "mcp__grove__grove_unflag",
+      "mcp__grove__grove_flagged",
+      "mcp__grove__grove_heartbeat",
+      "mcp__grove__grove_bus_send",
+      "mcp__grove__grove_bus_receive",
+      "mcp__grove__grove_watch",
+      "mcp__grove__grove_watch_all",
+      "mcp__grove__grove_get_identity"
+    ],
+    "defaultMode": "default"
+  }
+}
