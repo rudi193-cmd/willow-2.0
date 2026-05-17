@@ -5,6 +5,8 @@ description: Willow 1.9 boot — anchor, inbox, ledger, KB continuity (config-dr
 
 # /startup
 
+> **MANDATORY — runs before responding to any first message, every session, no exceptions.** Casual openers do not bypass this. If you are reading this skill, run it to completion before you say anything else to Sean.
+
 SessionStart already ran status/handoff/flags and wrote `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. Re-call `willow_status` + `willow_handoff_latest` **only** if anchor missing or `written_at` > **2h**.
 
 ## Steps

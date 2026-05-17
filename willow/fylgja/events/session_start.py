@@ -439,11 +439,11 @@ def _open_run() -> str | None:
 
 
 def _is_isolated_directory() -> bool:
-    """Return True if CWD is a sandbox/isolated directory — skip all fleet hooks."""
+    """Return True if CWD lacks the willow MCP server — skip all fleet hooks."""
     mcp = Path.cwd() / ".mcp.json"
     try:
         data = json.loads(mcp.read_text())
-        return data.get("mcpServers") == {}
+        return "willow" not in data.get("mcpServers", {})
     except Exception:
         return False
 
