@@ -60,7 +60,7 @@ _PG_NUKE_TABLES = [
     "compact_contexts",   # session context
     "knowledge",          # LOAM atoms
     "cmb_atoms",          # ganesha atoms
-    "frank_ledger",       # hash chain from genesis
+    # frank_ledger intentionally excluded — tamper-evident SHA-256 chain; docstring line 13 declares it permanent
     "opus_atoms",         # opus layer
     "feedback",           # feedback records
     "journal",            # journal entries
