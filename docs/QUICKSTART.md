@@ -28,10 +28,10 @@ Cloud providers (Anthropic, OpenAI, Gemini) are optional. Enable them when you w
 ```bash
 git clone https://github.com/rudi193-cmd/willow-1.9
 cd willow-1.9
-python3 root.py
+python3 seed.py
 ```
 
-Sleipnir handles everything from here: dependencies, GPG key, vault setup, Postgres schema, knowledge base seed, PATH.
+The guided installer walks you through every step: dependencies, GPG key, provider selection, vault setup, Postgres schema, knowledge base seed, PATH.
 
 ### Android / Termux
 
@@ -39,7 +39,7 @@ Sleipnir handles everything from here: dependencies, GPG key, vault setup, Postg
 pkg install python postgresql git
 git clone https://github.com/rudi193-cmd/willow-1.9
 cd willow-1.9
-python3 root.py --termux --skip-pg
+python3 seed.py --termux --skip-pg
 ```
 
 SQLite is used instead of Postgres. Everything else is identical.

@@ -26,6 +26,7 @@ from pathlib import Path
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 WILLOW_ROOT   = Path(__file__).parent
+VENV_DIR      = Path.home() / ".willow" / "venv"
 BOOT_CONFIG   = Path.home() / ".willow" / "seed-boot.json"
 BOOT_LOG      = Path("/tmp/willow-seed-debug.log")
 GROVE_DIR      = Path.home() / "github" / "safe-app-willow-grove"
@@ -34,6 +35,18 @@ GROVE_REPO     = "https://github.com/rudi193-cmd/safe-app-willow-grove.git"
 VERSION       = "1.9.0"
 
 sys.path.insert(0, str(WILLOW_ROOT))
+
+
+# ── Venv bootstrap ────────────────────────────────────────────────────────────
+def _ensure_venv() -> None:
+    """On Ubuntu 24.04+ the system python is externally-managed; re-exec under a venv."""
+    if sys.prefix != sys.base_prefix:
+        return  # already inside a venv
+    venv_python = VENV_DIR / "bin" / "python3"
+    if not venv_python.exists():
+        print("  [venv] creating ~/.willow/venv (Ubuntu 24.04 compatibility)...")
+        subprocess.run([sys.executable, "-m", "venv", str(VENV_DIR)], check=True)
+    os.execv(str(venv_python), [str(venv_python)] + sys.argv)
 
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -558,10 +571,18 @@ def _step_vault() -> None:
     _vault_init()
 
 
+def _pg_major_version() -> str:
+    out = subprocess.run(["postgres", "--version"], capture_output=True, text=True).stdout
+    for part in out.split():
+        if part[0].isdigit() and "." in part:
+            return part.split(".")[0]
+    return "16"
+
+
 def _ensure_postgres() -> bool:
     """
-    Pre-curses preflight: install postgres if absent, create willow_19 if missing.
-    Prints to stdout. Returns True if willow_19 is connectable.
+    Pre-curses preflight: install postgres + pgvector if absent, ensure user role,
+    create willow_19 if missing.  Prints to stdout.  Returns True if willow_19 is connectable.
     """
     user = os.environ.get("USER", "")
 
@@ -569,12 +590,32 @@ def _ensure_postgres() -> bool:
         subprocess.run(["sudo", "service", "postgresql", "start"], capture_output=True)
         if subprocess.run(["pg_isready", "-q"], capture_output=True).returncode != 0:
             print("  [postgres] not found — installing (requires sudo)...")
-            subprocess.run(["sudo", "apt-get", "install", "-y", "postgresql"], check=False)
+            subprocess.run(
+                ["sudo", "apt-get", "install", "-y", "postgresql"], check=False
+            )
             subprocess.run(["sudo", "service", "postgresql", "start"], capture_output=True)
 
     if subprocess.run(["pg_isready", "-q"], capture_output=True).returncode != 0:
         print("  [postgres] could not start — fix manually then re-run seed.py")
         return False
+
+    # Install pgvector matching the running postgres major version
+    pg_ver = _pg_major_version()
+    subprocess.run(
+        ["sudo", "apt-get", "install", "-y", f"postgresql-{pg_ver}-pgvector"],
+        capture_output=True,
+    )
+
+    # Ensure current user has a postgres login role with CREATEDB
+    subprocess.run(
+        ["sudo", "-u", "postgres", "psql", "-c",
+         f"DO $$ BEGIN "
+         f"CREATE ROLE {user} WITH LOGIN CREATEDB; "
+         f"EXCEPTION WHEN duplicate_object THEN "
+         f"ALTER ROLE {user} WITH LOGIN CREATEDB; "
+         f"END $$;"],
+        capture_output=True,
+    )
 
     r = subprocess.run(["psql", "-lqt", "-U", user], capture_output=True, text=True)
     if "willow_19" not in r.stdout:
@@ -1558,6 +1599,7 @@ def run_returning(stdscr) -> bool:
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 def main() -> None:
+    _ensure_venv()
     parser = argparse.ArgumentParser(description="Willow — plant this, everything grows from here")
     parser.add_argument("--dev", action="store_true", help="skip boot, open dashboard directly")
     args = parser.parse_args()

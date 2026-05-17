@@ -18,7 +18,7 @@ Copy/paste this whole block:
 ```bash
 git clone https://github.com/rudi193-cmd/willow-1.9
 cd willow-1.9
-python3 root.py
+python3 seed.py
 ```
 
 ### What you should see
