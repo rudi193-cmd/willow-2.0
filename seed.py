@@ -31,9 +31,6 @@ BOOT_LOG      = Path("/tmp/willow-seed-debug.log")
 GROVE_DIR      = Path.home() / "github" / "safe-app-willow-grove"
 GROVE_APP      = GROVE_DIR / "app.py"
 GROVE_REPO     = "https://github.com/rudi193-cmd/safe-app-willow-grove.git"
-DASHBOARD_DIR  = Path.home() / "github" / "willow-dashboard"
-DASHBOARD_SH   = DASHBOARD_DIR / "willow-dashboard.sh"
-DASHBOARD_REPO = "https://github.com/rudi193-cmd/willow-dashboard.git"
 VERSION       = "1.9.0"
 
 sys.path.insert(0, str(WILLOW_ROOT))
@@ -321,24 +318,65 @@ def _vault_has(name: str) -> bool:
 
 # ── API ───────────────────────────────────────────────────────────────────────
 _PROVIDERS = {
-    "groq":      ("https://api.groq.com/openai/v1/chat/completions",        "llama-3.3-70b-versatile",            "GROQ_API_KEY"),
-    "cerebras":  ("https://api.cerebras.ai/v1/chat/completions",             "llama3.1-8b",                        "CEREBRAS_API_KEY"),
-    "sambanova": ("https://api.sambanova.ai/v1/chat/completions",            "Meta-Llama-3.3-70B-Instruct",        "SAMBANOVA_API_KEY"),
+    "ollama": {
+        "test_url": "http://localhost:11434/api/tags",
+        "chat_url": "http://localhost:11434/api/chat",
+        "model":    "yggdrasil:v9",
+        "key_env":  None,
+    },
+    "anthropic": {
+        "test_url": "https://api.anthropic.com/v1/messages",
+        "chat_url": "https://api.anthropic.com/v1/messages",
+        "model":    "claude-haiku-4-5-20251001",
+        "key_env":  "ANTHROPIC_API_KEY",
+    },
+    "openai": {
+        "test_url": "https://api.openai.com/v1/chat/completions",
+        "chat_url": "https://api.openai.com/v1/chat/completions",
+        "model":    "gpt-4o-mini",
+        "key_env":  "OPENAI_API_KEY",
+    },
+    "gemini": {
+        "test_url": None,
+        "chat_url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "model":    "gemini-2.0-flash",
+        "key_env":  "GEMINI_API_KEY",
+    },
 }
 
 
-def _api_test(key: str, provider: str = "groq") -> bool:
-    url, model, _ = _PROVIDERS.get(provider, _PROVIDERS["groq"])
-    try:
-        payload = json.dumps({
-            "model": model,
-            "messages": [{"role": "user", "content": "Hi"}],
-            "max_tokens": 1,
-        }).encode()
-        req = urllib.request.Request(url, data=payload, headers={
+def _api_test(key: str, provider: str = "ollama") -> bool:
+    p = _PROVIDERS.get(provider)
+    if not p:
+        return False
+    if provider == "ollama":
+        try:
+            urllib.request.urlopen(p["test_url"], timeout=3)
+            return True
+        except Exception:
+            return False
+    if provider == "gemini":
+        url = p["chat_url"] + f"?key={key}"
+        payload = json.dumps({"contents": [{"parts": [{"text": "Hi"}]}],
+                              "generationConfig": {"maxOutputTokens": 1}}).encode()
+        req = urllib.request.Request(url, data=payload,
+                                     headers={"Content-Type": "application/json"})
+    elif provider == "anthropic":
+        payload = json.dumps({"model": p["model"], "max_tokens": 1,
+                              "messages": [{"role": "user", "content": "Hi"}]}).encode()
+        req = urllib.request.Request(p["test_url"], data=payload, headers={
+            "Content-Type": "application/json",
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+        })
+    else:  # openai
+        payload = json.dumps({"model": p["model"], "max_tokens": 1,
+                              "messages": [{"role": "user", "content": "Hi"}]}).encode()
+        req = urllib.request.Request(p["chat_url"], data=payload, headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {key}",
         })
+    try:
         with urllib.request.urlopen(req, timeout=12) as r:
             return r.status == 200
     except Exception:
@@ -347,20 +385,56 @@ def _api_test(key: str, provider: str = "groq") -> bool:
 
 def _api_chat(key: str, provider: str, messages: list) -> str:
     """Send a chat request and return the response text."""
-    url, model, _ = _PROVIDERS.get(provider, _PROVIDERS["groq"])
+    p = _PROVIDERS.get(provider)
+    if not p:
+        return ""
     try:
-        payload = json.dumps({
-            "model": model,
-            "messages": messages,
-            "max_tokens": 200,
-        }).encode()
-        req = urllib.request.Request(url, data=payload, headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {key}",
-        })
-        with urllib.request.urlopen(req, timeout=20) as r:
-            data = json.loads(r.read())
-            return data["choices"][0]["message"]["content"].strip()
+        if provider == "ollama":
+            payload = json.dumps({"model": p["model"], "messages": messages,
+                                  "stream": False}).encode()
+            req = urllib.request.Request(p["chat_url"], data=payload,
+                                         headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                return json.loads(r.read()).get("message", {}).get("content", "").strip()
+        elif provider == "anthropic":
+            system = next((m["content"] for m in messages if m["role"] == "system"), "")
+            user_msgs = [m for m in messages if m["role"] != "system"]
+            body = {"model": p["model"], "max_tokens": 200, "messages": user_msgs}
+            if system:
+                body["system"] = system
+            payload = json.dumps(body).encode()
+            req = urllib.request.Request(p["chat_url"], data=payload, headers={
+                "Content-Type": "application/json",
+                "x-api-key": key,
+                "anthropic-version": "2023-06-01",
+            })
+            with urllib.request.urlopen(req, timeout=20) as r:
+                return json.loads(r.read())["content"][0]["text"].strip()
+        elif provider == "gemini":
+            system = next((m["content"] for m in messages if m["role"] == "system"), "")
+            contents = [
+                {"role": "user" if m["role"] == "user" else "model",
+                 "parts": [{"text": m["content"]}]}
+                for m in messages if m["role"] != "system"
+            ]
+            body: dict = {"contents": contents, "generationConfig": {"maxOutputTokens": 200}}
+            if system:
+                body["system_instruction"] = {"parts": [{"text": system}]}
+            payload = json.dumps(body).encode()
+            url = p["chat_url"] + f"?key={key}"
+            req = urllib.request.Request(url, data=payload,
+                                         headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                return json.loads(r.read())["candidates"][0]["content"]["parts"][0]["text"].strip()
+        else:  # openai
+            payload = json.dumps({"model": p["model"], "messages": messages,
+                                  "max_tokens": 200}).encode()
+            req = urllib.request.Request(p["chat_url"], data=payload, headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key}",
+            })
+            with urllib.request.urlopen(req, timeout=20) as r:
+                return json.loads(r.read())["choices"][0]["message"]["content"].strip()
     except Exception:
         return ""
 
@@ -407,7 +481,8 @@ def _run_install(win, name_str: str, email: str, passphrase: str) -> str:
         ("CMB atom",       _step_cmb),
         ("KB seed",        _step_kb_seed),
         ("Embeddings",     _step_embed_seed),
-        ("Dashboard",      _step_dashboard),
+        ("Grove",          _step_grove_clone),
+        ("PATH",           _step_path),
         ("Launcher",       _step_launcher),
         ("Grove identity", _step_grove_identity),
     ]
@@ -600,8 +675,15 @@ def _step_socket() -> None:
     systemd.mkdir(parents=True, exist_ok=True)
     for unit in ("willow-metabolic.socket", "willow-metabolic.service", "grove-mcp.service"):
         src = WILLOW_ROOT / "systemd" / unit
-        if src.exists():
-            shutil.copy2(src, systemd / unit)
+        if not src.exists():
+            continue
+        content = src.read_text()
+        if unit == "grove-mcp.service":
+            # Replace the template grove path with the actual clone location
+            content = content.replace(
+                "%h/github/safe-app-willow-grove", str(GROVE_DIR)
+            )
+        (systemd / unit).write_text(content)
     try:
         subprocess.run(["systemctl", "--user", "daemon-reload"], check=True, capture_output=True)
         subprocess.run(["systemctl", "--user", "enable", "--now", "willow-metabolic.socket"],
@@ -642,15 +724,6 @@ def _step_kb_seed() -> None:
         pass
 
 
-def _step_dashboard() -> None:
-    if DASHBOARD_SH.exists():
-        return
-    (Path.home() / "github").mkdir(parents=True, exist_ok=True)
-    subprocess.run(
-        ["git", "clone", "--depth=1", DASHBOARD_REPO, str(DASHBOARD_DIR)],
-        capture_output=True, text=True,
-    )
-
 
 def _step_launcher() -> None:
     if not _is_wsl():
@@ -667,33 +740,10 @@ def _step_launcher() -> None:
         f"@echo off\ntitle Willow Grove\n"
         f'wsl.exe bash -l -c "\n'
         f'  pg_isready -q 2>/dev/null || sudo service postgresql start 2>/dev/null\n'
-        f'  cd /home/{linux_user}/github/safe-app-willow-grove\n'
+        f'  cd {GROVE_DIR}\n'
         f'  python3 app.py\n"\npause\n'
     )
 
-
-def _clone_grove(win, y: int) -> bool:
-    """Clone safe-app-willow-grove if not present. Shows status in TUI."""
-    dim   = curses.color_pair(_CA_DIM)
-    green = curses.color_pair(_CA_GREEN) | curses.A_BOLD
-    red   = curses.color_pair(_CA_RED)
-    if GROVE_APP.exists():
-        _safe(win, y, 2, "  Grove already present.", green)
-        win.refresh()
-        return True
-    _safe(win, y, 2, "  Cloning Grove...", dim)
-    win.refresh()
-    result = subprocess.run(
-        ["git", "clone", "--depth=1", GROVE_REPO, str(GROVE_DIR)],
-        capture_output=True, text=True,
-    )
-    if result.returncode == 0:
-        _safe(win, y, 2, "  Grove cloned.       ", green)
-        win.refresh()
-        return True
-    _safe(win, y, 2, f"  Clone failed: {result.stderr.strip()[:50]}", red)
-    win.refresh()
-    return False
 
 
 def _write_grove_sender(handle: str) -> None:
@@ -707,6 +757,45 @@ def _write_grove_sender(handle: str) -> None:
                     f.write(line)
 
 
+def _step_path() -> None:
+    bin_dir = Path.home() / ".local" / "bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+
+    for src_name, dst_name in [("willow.sh", "willow"), ("willow-termux.sh", "willow-termux")]:
+        src = WILLOW_ROOT / src_name
+        if not src.exists():
+            continue
+        dst = bin_dir / dst_name
+        if dst.is_symlink() or dst.exists():
+            dst.unlink()
+        dst.symlink_to(src)
+        dst.chmod(0o755)
+
+    for profile in (Path.home() / ".bashrc", Path.home() / ".zshrc"):
+        lines_to_add = []
+        existing = profile.read_text() if profile.exists() else ""
+        if ".local/bin" not in existing:
+            lines_to_add.append('export PATH="$HOME/.local/bin:$PATH"')
+        if "WILLOW_ROOT" not in existing:
+            lines_to_add.append(f'export WILLOW_ROOT="{WILLOW_ROOT}"')
+        if lines_to_add:
+            with profile.open("a") as f:
+                f.write("\n# Willow (added by seed.py)\n")
+                f.write("\n".join(lines_to_add) + "\n")
+
+
+def _step_grove_clone() -> None:
+    if GROVE_APP.exists():
+        return
+    (Path.home() / "github").mkdir(parents=True, exist_ok=True)
+    result = subprocess.run(
+        ["git", "clone", "--depth=1", GROVE_REPO, str(GROVE_DIR)],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Grove clone failed: {result.stderr.strip()[:80]}")
+
+
 def _step_grove_identity() -> None:
     key_path = Path.home() / ".willow" / "identity.key"
     if key_path.exists():
@@ -714,7 +803,21 @@ def _step_grove_identity() -> None:
     try:
         from u2u.identity import Identity
         Identity.generate(key_path)
+        return
     except ImportError:
+        pass
+    # u2u not yet available (Phase 3) — generate a standard Ed25519 key as placeholder
+    try:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from cryptography.hazmat.primitives.serialization import (
+            Encoding, PrivateFormat, NoEncryption,
+        )
+        private_key = Ed25519PrivateKey.generate()
+        key_path.write_bytes(
+            private_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
+        )
+        key_path.chmod(0o600)
+    except Exception:
         pass
 
 
@@ -873,7 +976,7 @@ def page_age_gate(win) -> dict:
 
 # ── Page: Heimdallr gate ──────────────────────────────────────────────────────
 def page_gate(win) -> dict:
-    """Heimdallr asks for three things. Returns {name, email, passphrase, provider, api_key}."""
+    """Heimdallr asks for four things. Returns {name, email, passphrase, provider, api_key}."""
     _fill_bg(win)
     h, w = win.getmaxyx()
     amber  = curses.color_pair(_CA_AMBER)  | curses.A_BOLD
@@ -892,7 +995,7 @@ def page_gate(win) -> dict:
         "  The bridge is real. The way is open.",
         "  Nothing crosses without being known.",
         "",
-        "  Three things.",
+        "  Four things.",
         "",
     ]
     y = 1
@@ -928,36 +1031,108 @@ def page_gate(win) -> dict:
         _safe(win, y + 2, 2, " " * 30, dim)
     y += 3
 
-    # API key
-    _safe(win, y, 2, "One API key. Groq is free — groq.com/keys takes two minutes.", dim)
+    # Provider selection
+    _safe(win, y, 2, "An AI provider. This is what wakes Willow up.", dim)
     y += 1
-    _safe(win, y, 2, "This is what wakes Willow up.", dim)
+    _safe(win, y, 2, "  [ 1 ]  Ollama — free, runs locally (recommended)", dim)
     y += 1
+    _safe(win, y, 2, "  [ 2 ]  Anthropic (Claude)", dim)
+    y += 1
+    _safe(win, y, 2, "  [ 3 ]  OpenAI (GPT)", dim)
+    y += 1
+    _safe(win, y, 2, "  [ 4 ]  Gemini", dim)
+    y += 1
+    _safe(win, y, 2, "  [ 5 ]  Skip — set this up later", dim)
+    y += 1
+    win.refresh()
 
-    provider = "groq"
-    api_key  = ""
-    while True:
-        api_key = _get_input(win, y, "> ")
-        if not api_key:
-            _safe(win, y + 1, 2, "You can add this later from the dashboard.    ", dim)
-            win.refresh()
-            time.sleep(1.5)
-            break
-        _safe(win, y + 1, 2, "Testing...", dim)
+    _provider_map = {"1": "ollama", "2": "anthropic", "3": "openai", "4": "gemini"}
+    _provider_help = {
+        "ollama": {
+            "install": "https://ollama.ai",
+        },
+        "anthropic": {
+            "signup":  "console.anthropic.com  (sign in with Google or GitHub)",
+            "key":     "console.anthropic.com/keys",
+            "docs":    "docs.anthropic.com/en/api/getting-started",
+        },
+        "openai": {
+            "signup":  "platform.openai.com  (sign in with Google, Microsoft, or Apple)",
+            "key":     "platform.openai.com/api-keys",
+            "docs":    "platform.openai.com/docs/quickstart",
+        },
+        "gemini": {
+            "signup":  "aistudio.google.com  (sign in with Google — free tier available)",
+            "key":     "aistudio.google.com/apikey",
+            "docs":    "ai.google.dev/gemini-api/docs/api-key",
+        },
+    }
+    provider = ""
+    win.nodelay(False)
+    while not provider:
+        k = win.getch()
+        if chr(k) in _provider_map:
+            provider = _provider_map[chr(k)]
+        elif chr(k) == "5":
+            provider = "skip"
+    win.nodelay(True)
+
+    y += 1
+    api_key = ""
+    if provider == "ollama":
+        _safe(win, y, 2, "Testing Ollama...", dim)
         win.refresh()
-        if _api_test(api_key, provider):
-            _vault_write("GROQ_API_KEY", "GROQ_API_KEY", api_key)
-            _safe(win, y + 1, 2, "Connected.                    ", green)
-            win.refresh()
-            time.sleep(1.0)
-            break
+        if _api_test("", "ollama"):
+            _safe(win, y, 2, "Ollama connected.              ", green)
         else:
-            _safe(win, y + 1, 2, "That key didn't connect. Try again, or leave blank to skip.", red)
+            _safe(win, y, 2, "Ollama not reachable.", red)
+            y += 1
+            _safe(win, y, 2, f"  Install it first: {_provider_help['ollama']['install']}", dim)
+            y += 1
+            _safe(win, y, 2, "  Then run: ollama pull yggdrasil:v9", dim)
+            y += 1
+            _safe(win, y, 2, "  Re-run seed.py when ready, or press any key to skip.", dim)
             win.refresh()
-            time.sleep(2.0)
-            _safe(win, y + 1, 2, " " * 60, dim)
+            _wait_key(win, y=y + 1)
+            provider = "skip"
+        win.refresh()
+        time.sleep(1.0)
+    elif provider != "skip":
+        p = _PROVIDERS[provider]
+        h = _provider_help[provider]
+        _safe(win, y, 2, f"Paste your {provider.capitalize()} API key.", dim)
+        y += 1
+        _safe(win, y, 2, "  Need help?", bright)
+        y += 1
+        _safe(win, y, 2, f"  1. Create an account:  {h['signup']}", dim)
+        y += 1
+        _safe(win, y, 2, f"  2. Your API key lives: {h['key']}", dim)
+        y += 1
+        _safe(win, y, 2, f"  3. Still stuck?        {h['docs']}", dim)
+        y += 2
+        while True:
+            api_key = _get_input(win, y, "> ", mask=True)
+            if not api_key:
+                _safe(win, y + 1, 2, "Skipped. Add it later from the dashboard.    ", dim)
+                provider = "skip"
+                win.refresh()
+                time.sleep(1.5)
+                break
+            _safe(win, y + 1, 2, "Testing...", dim)
+            win.refresh()
+            if _api_test(api_key, provider):
+                _vault_write(p["key_env"], p["key_env"], api_key)
+                _safe(win, y + 1, 2, "Connected.                    ", green)
+                win.refresh()
+                time.sleep(1.0)
+                break
+            else:
+                _safe(win, y + 1, 2, "That key didn't connect. Try again, or leave blank to skip.", red)
+                win.refresh()
+                time.sleep(2.0)
+                _safe(win, y + 1, 2, " " * 60, dim)
 
-    _safe(win, h - 2, 2, "Three things. Now we build.", dim)
+    _safe(win, h - 2, 2, "Four things. Now we build.", dim)
     win.refresh()
     time.sleep(1.2)
 
@@ -983,7 +1158,8 @@ def page_first_conversation(win, provider: str, api_key: str, name_str: str) -> 
 
     first_name = name_str.split()[0] if name_str else "there"
 
-    if api_key:
+    can_chat = provider not in ("skip", "") and (provider == "ollama" or api_key)
+    if can_chat:
         system_prompt = (
             f"You are Willow, a local AI system. You are meeting {first_name} for the first time. "
             "Be warm, curious, and brief. Ask one open question about what brought them here or what "
@@ -1009,7 +1185,7 @@ def page_first_conversation(win, provider: str, api_key: str, name_str: str) -> 
     user_response = _get_input(win, y, "  ", max_len=120)
     y += 2
 
-    if user_response and api_key:
+    if user_response and can_chat:
         # Willow notices something and asks about storing it
         notice_prompt = (
             "The user just told you something about themselves or their goals. "
@@ -1050,10 +1226,11 @@ def page_features(win) -> dict:
     features = {"grove": False, "grove_handle": "", "jeles": False, "nest": False}
 
     opts = [
-        ("grove", "Grove",
-         "Grove is your dashboard and messaging hub. It lets you talk to other Willow nodes,\n"
-         "  follow threads, and see what your agents are doing in real time.\n"
-         "  You'll pick a handle — the name others see you as.",
+        ("grove", "Grove Network",
+         "Connect your Willow to the Grove network — message other Willow users,\n"
+         "  follow threads, and share what you're working on.\n"
+         "  You'll pick a handle — the name others see you as.\n"
+         "  (The Grove dashboard is already installed either way.)",
          True),
         ("jeles", "Jeles",
          "Jeles reads your documents and extracts knowledge atoms from them automatically.\n"
@@ -1098,7 +1275,6 @@ def page_features(win) -> dict:
                     win.refresh()
                     time.sleep(0.6)
                     _write_grove_sender(features["grove_handle"])
-                    _clone_grove(win, y + 2)
                     win.refresh()
                     time.sleep(1.0)
                 break
@@ -1288,8 +1464,9 @@ def _launch_dashboard(env_extra: dict | None = None) -> None:
     if GROVE_APP.exists():
         os.chdir(str(GROVE_DIR))
         os.execve(sys.executable, [sys.executable, str(GROVE_APP)], env)
-    elif DASHBOARD_SH.exists():
-        os.execve(str(DASHBOARD_SH), [str(DASHBOARD_SH)], env)
+    else:
+        print("\nGrove not found. Re-run seed.py and enable Grove when prompted.")
+        print(f"Expected: {GROVE_APP}")
 
 
 # ── New user flow ─────────────────────────────────────────────────────────────
