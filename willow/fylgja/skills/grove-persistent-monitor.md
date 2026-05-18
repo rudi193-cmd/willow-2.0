@@ -20,7 +20,7 @@ Before launching, look up your channel's numeric ID. It does not change after cr
 
 ```python
 import psycopg2
-conn = psycopg2.connect(dbname="willow_19", user=os.environ.get("USER",""))
+conn = psycopg2.connect(dbname="willow_20", user=os.environ.get("USER",""))
 cur = conn.cursor()
 cur.execute("SELECT id FROM grove.channels WHERE name = %s", ("vishwakarma",))
 print(cur.fetchone()[0])   # e.g. 37
@@ -34,7 +34,7 @@ Or read it from `grove_list_channels` via the MCP tool at session start.
 python3 - << 'PYEOF'
 import psycopg2, select, os
 
-DB           = os.environ.get("WILLOW_PG_DB", "willow_19")
+DB           = os.environ.get("WILLOW_PG_DB", "willow_20")
 USER         = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
 AGENT        = "vishwakarma"           # ← set to this agent's sender name
 MY_CHANNEL_ID = 37                    # ← numeric ID of #vishwakarma (from grove.channels)

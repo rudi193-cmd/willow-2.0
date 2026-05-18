@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 _AGENT = require_agent_name()
-_DB = os.environ.get("WILLOW_PG_DB", "willow_19")
+_DB = os.environ.get("WILLOW_PG_DB", "willow_20")
 _USER = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
 
 _RUN_FILE = Path(f"/tmp/willow-run-{_AGENT}.json")

@@ -1,13 +1,13 @@
 ---
 name: tdd
-description: Test-driven development for Willow 1.9 — willow_19_test schema, real DB, mock MCP
+description: Test-driven development for Willow 1.9 — willow_20_test schema, real DB, mock MCP
 ---
 
 # TDD — Willow 1.9
 
 ## Rules
 
-- Tests run against `willow_19_test` — set via `WILLOW_PG_DB=willow_19_test` in conftest.
+- Tests run against `willow_20_test` — set via `WILLOW_PG_DB=willow_20_test` in conftest.
 - Never mock the database. Tests that need Postgres use the real `bridge` fixture from `tests/conftest.py`.
 - Each behavior function is standalone — test it in isolation with mocked MCP calls.
 - Hook handlers are tested by passing mock stdin and capturing stdout.
@@ -54,4 +54,4 @@ def _run(stdin_data: dict) -> str:
 
 ## Schema Note
 
-Migrations adding columns or tables must be applied to both `willow_19` and `willow_19_test`. The conftest `init_pg_schema` fixture handles this automatically for the test database.
+Migrations adding columns or tables must be applied to both `willow_20` and `willow_20_test`. The conftest `init_pg_schema` fixture handles this automatically for the test database.

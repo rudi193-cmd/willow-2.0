@@ -6,7 +6,7 @@ import os
 import pytest
 from datetime import datetime, timezone, timedelta
 
-os.environ.setdefault("WILLOW_PG_DB", "willow_19")
+os.environ.setdefault("WILLOW_PG_DB", "willow_20")
 
 
 def test_knowledge_at_finds_valid_atom():

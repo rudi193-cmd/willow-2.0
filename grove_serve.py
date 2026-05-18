@@ -286,7 +286,7 @@ _GROVE_POLL_INTERVAL = int(os.environ.get("WILLOW_GROVE_POLL_SECS", "3"))
 _willow_last_seen_id: int = 0
 _willow_last_seen_lock = threading.Lock()
 
-_WILLOW_PG_DB   = os.environ.get("WILLOW_PG_DB", "willow_19")
+_WILLOW_PG_DB   = os.environ.get("WILLOW_PG_DB", "willow_20")
 _WILLOW_PG_USER = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
 
 

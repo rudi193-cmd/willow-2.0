@@ -505,7 +505,7 @@ def authorized_cross_app(requesting_app_id: str, target_collection: str, access:
 
     try:
         user = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", "sean-campbell"))
-        conn = psycopg2.connect(dbname="willow_19", user=user)
+        conn = psycopg2.connect(dbname="willow_20", user=user)
         cur = conn.cursor()
 
         # Query for a matching connection with scope path matching

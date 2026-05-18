@@ -6,7 +6,7 @@ import json
 import tempfile
 from pathlib import Path
 
-os.environ.setdefault("WILLOW_PG_DB", "willow_19")
+os.environ.setdefault("WILLOW_PG_DB", "willow_20")
 
 
 def _bridge():

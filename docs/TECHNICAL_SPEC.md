@@ -42,7 +42,7 @@ Willow is a local-first AI stack. Ollama is the default inference engine. Cloud 
     ┌──────────────┐ ┌──────────┐ ┌──────────────────┐
     │  PgBridge /  │ │  SOIL    │ │  LiteLLM Gateway │
     │ SqliteBridge │ │  Store   │ │  localhost:4000  │
-    │  willow_19   │ │ ~/.willow│ │  (Ollama default)│
+    │  willow_20   │ │ ~/.willow│ │  (Ollama default)│
     │  knowledge   │ │ /store/  │ └────────┬─────────┘
     │  tasks edges │ │ 108+ col │          │
     └──────────────┘ └──────────┘   ┌─────┴──────┐
@@ -89,7 +89,7 @@ Records must carry an `id`, `_id`, or `b17` field. Collections are created on fi
 
 ### Postgres Knowledge Base
 
-**Database:** `willow_19`  
+**Database:** `willow_20`  
 **Source:** `core/pg_bridge.py`  
 **Scale in production:** 70k+ atoms
 
@@ -169,7 +169,7 @@ Selection logic, controlled by `WILLOW_BACKEND` environment variable:
 
 ```
 WILLOW_BACKEND=sqlite   → SqliteBridge (~/.willow/willow.db)
-WILLOW_BACKEND=postgres → PgBridge (willow_19)
+WILLOW_BACKEND=postgres → PgBridge (willow_20)
 unset / auto            → PgBridge, falls back to SqliteBridge if Postgres unreachable
 ```
 
@@ -555,7 +555,7 @@ Architecture atoms seeded:
 | Title | Summary |
 |---|---|
 | SOIL local store | SQLite-backed key/value + FTS, collections at ~/.willow/store/ |
-| Postgres knowledge base | Typed atoms with edges, semantic + FTS search, willow_19 DB |
+| Postgres knowledge base | Typed atoms with edges, semantic + FTS search, willow_20 DB |
 | Kart task queue | Sandboxed task executor for shell commands and Python scripts |
 | SAP authorization | SAFE Authorization Protocol, filesystem-based identity gate |
 | Fylgja skills | LLM-agnostic behavioral skills, script-backed, any API key |
@@ -649,7 +649,7 @@ Idempotent install. Safe to run multiple times. Each step is a named function th
 | 2 | `step_2_deps` | Install Python packages from `requirements.txt` |
 | 3 | `step_3_gpg` | Generate 4096-bit RSA GPG key if none present |
 | 4 | `step_4_vault` | Initialize Fernet vault |
-| 5 | `step_5_postgres` | Create `willow_19` database and schema |
+| 5 | `step_5_postgres` | Create `willow_20` database and schema |
 | 6 | `step_6_metabolic` | Install metabolic socket unit |
 | 7 | `step_7_cmb` | Write CMB (cosmic microwave background) seed atom |
 | 8 | `step_8_seed` | Run `seed_kb.py` |

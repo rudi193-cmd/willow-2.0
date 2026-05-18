@@ -162,7 +162,7 @@ def _kill_stale_instances() -> None:
         # Terminate any Postgres connections left behind by the stale processes.
         try:
             import psycopg2
-            pg_db = os.environ.get("WILLOW_PG_DB", "willow_19")
+            pg_db = os.environ.get("WILLOW_PG_DB", "willow_20")
             gc = psycopg2.connect(dbname=pg_db)
             gc.autocommit = True
             with gc.cursor() as c:
@@ -195,7 +195,7 @@ def _init_pg() -> "PgBridge | None":
             pass
         try:
             import psycopg2
-            gc = psycopg2.connect(dbname=os.environ.get("WILLOW_PG_DB", "willow_19"))
+            gc = psycopg2.connect(dbname=os.environ.get("WILLOW_PG_DB", "willow_20"))
             with gc.cursor() as c:
                 c.execute("SELECT id FROM grove.channels WHERE name='general' LIMIT 1")
                 ch = c.fetchone()

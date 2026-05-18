@@ -394,7 +394,7 @@ _PG_LOCK_TIMEOUT = int(os.environ.get("WILLOW_PG_LOCK_TIMEOUT", "10000"))  # ms
 
 def _pg_kwargs() -> dict:
     return dict(
-        dbname=os.environ.get("WILLOW_PG_DB", "willow_19"),
+        dbname=os.environ.get("WILLOW_PG_DB", "willow_20"),
         user=os.environ.get("WILLOW_PG_USER", os.environ.get("USER", "")),
         host=os.environ.get("WILLOW_PG_HOST") or None,
         port=os.environ.get("WILLOW_PG_PORT") or None,

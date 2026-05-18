@@ -45,7 +45,7 @@ def _pg_notify_thread() -> None:
 
     dsn = os.getenv("WILLOW_DB_URL", "")
     if not dsn:
-        pg_db   = os.getenv("WILLOW_PG_DB", "willow_19")
+        pg_db   = os.getenv("WILLOW_PG_DB", "willow_20")
         pg_user = os.getenv("WILLOW_PG_USER", os.environ.get("USER", ""))
         dsn = f"dbname={pg_db} user={pg_user}"
 

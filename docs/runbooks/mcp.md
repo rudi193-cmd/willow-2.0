@@ -6,5 +6,5 @@ Full Willow MCP tool surface lives in the fleet configuration (Claude Code / IDE
 
 ## When debugging “tools don’t see KB”
 
-- Confirm Postgres connectivity to `willow_19`
+- Confirm Postgres connectivity to `willow_20`
 - Use `willow_knowledge_search` (fleet) — not duplicated here

@@ -29,11 +29,11 @@ def _safe_tar_members(tar: tarfile.TarFile, target_dir: Path):
 def create_backup(
     willow_home: Optional[Path] = None,
     backup_root: Optional[Path] = None,
-    pg_db: str = "willow_19",
+    pg_db: str = "willow_20",
     skip_pg: bool = False,
 ) -> Path:
     """
-    Create a timestamped backup of ~/.willow/ and optionally pg_dump willow_19.
+    Create a timestamped backup of ~/.willow/ and optionally pg_dump willow_20.
     Returns path to the .tar.gz file.
     """
     home = willow_home or (Path.home() / ".willow")
@@ -76,7 +76,7 @@ def create_backup(
 
 
 def restore_backup(backup_path: Path, willow_home: Optional[Path] = None,
-                   pg_db: str = "willow_19") -> None:
+                   pg_db: str = "willow_20") -> None:
     """Restore from a backup directory. Unpacks tar into ~/.willow/."""
     home_parent = (willow_home or (Path.home() / ".willow")).parent
     backup_dir = backup_path if backup_path.is_dir() else backup_path.parent

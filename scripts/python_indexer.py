@@ -19,7 +19,7 @@ try:
 except ImportError:
     raise
 
-DB_PARAMS = {"dbname": "willow_19", "user": "sean-campbell"}
+DB_PARAMS = {"dbname": "willow_20", "user": "sean-campbell"}
 
 ROOTS = [str(p) for p in [
     Path.home() / "github",

@@ -6,7 +6,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-Environment=WILLOW_PG_DB=willow_19
+Environment=WILLOW_PG_DB=willow_20
 Environment=WILLOW_PG_USER=%u
 Environment=WILLOW_ROOT=%h/willow-1.9
 Environment=PYTHONPATH=%h/willow-1.9

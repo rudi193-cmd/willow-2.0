@@ -27,7 +27,7 @@ _ARCH_ATOMS = [
     ),
     (
         "Postgres knowledge base",
-        "Typed atoms with edges, semantic + FTS search, willow_19 DB",
+        "Typed atoms with edges, semantic + FTS search, willow_20 DB",
     ),
     (
         "Kart task queue",

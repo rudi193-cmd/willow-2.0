@@ -1,7 +1,7 @@
 """tests/test_run_ledger.py — Unit tests for core.run_ledger (Run Ledger v0).
 
 Schema is applied here because the migration is not in init_schema yet.
-Uses willow_19_test (from conftest) like every other test in this suite.
+Uses willow_20_test (from conftest) like every other test in this suite.
 """
 import os
 import sys
@@ -12,7 +12,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-_DB   = "willow_19_test"
+_DB   = "willow_20_test"
 _USER = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
 
 

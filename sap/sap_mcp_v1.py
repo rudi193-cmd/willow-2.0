@@ -147,7 +147,7 @@ except Exception as _pg_init_err:
     # Best-effort Grove alert via raw psycopg2 — PgBridge unavailable but Grove DB may still work.
     try:
         import psycopg2 as _psy, os as _os
-        _gc = _psy.connect(dbname=_os.environ.get("WILLOW_PG_DB", "willow_19"))
+        _gc = _psy.connect(dbname=_os.environ.get("WILLOW_PG_DB", "willow_20"))
         with _gc.cursor() as _c:
             _c.execute("SELECT id FROM grove.channels WHERE name='general' LIMIT 1")
             _ch = _c.fetchone()
