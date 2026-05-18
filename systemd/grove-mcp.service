@@ -5,7 +5,7 @@ After=network.target postgresql.service
 
 [Service]
 Type=simple
-Environment=WILLOW_PG_DB=willow_19
+Environment=WILLOW_PG_DB=willow_20
 Environment=WILLOW_PG_USER=%u
 Environment=GROVE_MCP_PORT=8765
 # Set GROVE_MCP_URL to your tunnel URL if exposing Grove externally (e.g. ngrok, Cloudflare Tunnel).

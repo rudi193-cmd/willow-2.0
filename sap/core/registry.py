@@ -24,7 +24,7 @@ logger = logging.getLogger("sap.registry")
 
 def _pg_params() -> dict:
     params = {
-        "dbname": os.environ.get("WILLOW_PG_DB", "willow_19"),
+        "dbname": os.environ.get("WILLOW_PG_DB", "willow_20"),
         "user": os.environ.get("WILLOW_PG_USER", os.environ.get("USER", "example-user")),
     }
     host = os.environ.get("WILLOW_PG_HOST")

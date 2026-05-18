@@ -43,7 +43,7 @@ jobs:
         env:
           WILLOW_AGENT_NAME: ci
           WILLOW_SAFE_ROOT: ${{ github.workspace }}/.ci-safe/Applications
-          WILLOW_PG_DB: willow_19_test
+          WILLOW_PG_DB: willow_20_test
           WILLOW_PG_USER: postgres
           WILLOW_PG_HOST: localhost
           WILLOW_PG_PORT: 5432

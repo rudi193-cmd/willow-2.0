@@ -415,7 +415,7 @@ def _open_run() -> str | None:
     """Open a Run Ledger row for this session. Returns run_id or None on failure."""
     try:
         import psycopg2
-        db = os.environ.get("WILLOW_PG_DB", "willow_19")
+        db = os.environ.get("WILLOW_PG_DB", "willow_20")
         user = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
         conn = psycopg2.connect(dbname=db, user=user)
         conn.autocommit = True

@@ -124,7 +124,7 @@ def _gemini_embed_batch(
 
 def _pg_connect() -> psycopg2.extensions.connection:
     conn = psycopg2.connect(
-        dbname=os.environ.get("WILLOW_PG_DB", "willow_19"),
+        dbname=os.environ.get("WILLOW_PG_DB", "willow_20"),
         user=os.environ.get("WILLOW_PG_USER", os.environ.get("USER", "")),
         keepalives=1,
         keepalives_idle=30,

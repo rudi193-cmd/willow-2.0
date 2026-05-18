@@ -3,7 +3,7 @@
 scripts/test_hybrid_search.py — Live CLI tool for hybrid_search against the real KB.
 b17: RANK1  ΔΣ=42
 
-Runs a query against the real willow_19 Postgres DB and shows ranked results
+Runs a query against the real willow_20 Postgres DB and shows ranked results
 with scores from each retrieval leg (pgvector, BM25, RRF fusion).
 
 Usage:
@@ -14,7 +14,7 @@ Usage:
     python scripts/test_hybrid_search.py "knowledge atom" --compare
 
 Requires:
-    - willow_19 Postgres DB running
+    - willow_20 Postgres DB running
     - Ollama with nomic-embed-text (only for pgvector leg)
     - rank_bm25 installed: pip install rank-bm25
 """

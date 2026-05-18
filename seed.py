@@ -605,7 +605,7 @@ def _pg_major_version() -> str:
 def _ensure_postgres() -> bool:
     """
     Pre-curses preflight: install postgres + pgvector if absent, ensure user role,
-    create willow_19 if missing.  Prints to stdout.  Returns True if willow_19 is connectable.
+    create willow_20 if missing.  Prints to stdout.  Returns True if willow_20 is connectable.
     """
     import glob as _glob
     # Ubuntu installs postgres binaries to a versioned path not on default PATH
@@ -635,10 +635,10 @@ def _ensure_postgres() -> bool:
         ["sudo", "apt-get", "install", "-y", f"postgresql-{pg_ver}-pgvector"],
         capture_output=True,
     )
-    # Enable pgvector in willow_19 — requires superuser (apt installs the SO but doesn't activate it)
+    # Enable pgvector in willow_20 — requires superuser (apt installs the SO but doesn't activate it)
     subprocess.run(
         ["sudo", "-u", "postgres", "psql", "-c",
-         "CREATE EXTENSION IF NOT EXISTS vector;", "willow_19"],
+         "CREATE EXTENSION IF NOT EXISTS vector;", "willow_20"],
         capture_output=True,
     )
 
@@ -654,27 +654,27 @@ def _ensure_postgres() -> bool:
     )
 
     r = subprocess.run(["psql", "-lqt", "-U", user], capture_output=True, text=True)
-    if "willow_19" not in r.stdout:
-        print("  [postgres] creating willow_19...")
-        r2 = subprocess.run(["createdb", "willow_19"], capture_output=True)
+    if "willow_20" not in r.stdout:
+        print("  [postgres] creating willow_20...")
+        r2 = subprocess.run(["createdb", "willow_20"], capture_output=True)
         if r2.returncode != 0:
             subprocess.run(
-                ["sudo", "-u", "postgres", "createdb", "-O", user, "willow_19"],
+                ["sudo", "-u", "postgres", "createdb", "-O", user, "willow_20"],
                 capture_output=True,
             )
             subprocess.run(
                 ["sudo", "-u", "postgres", "psql", "-c",
-                 f"GRANT ALL ON DATABASE willow_19 TO {user}"],
+                 f"GRANT ALL ON DATABASE willow_20 TO {user}"],
                 capture_output=True,
             )
 
     try:
         import psycopg2
-        conn = psycopg2.connect(dbname="willow_19", user=user)
+        conn = psycopg2.connect(dbname="willow_20", user=user)
         conn.close()
         return True
     except Exception as e:
-        print(f"  [postgres] willow_19 not connectable: {e}")
+        print(f"  [postgres] willow_20 not connectable: {e}")
         return False
 
 
@@ -907,7 +907,7 @@ def _step_env_profile(agent_name: str) -> None:
         "WILLOW_AGENT_NAME":  agent_name,
         "WILLOW_SAFE_ROOT":   safe_root,
         "WILLOW_STORE_ROOT":  store_root,
-        "WILLOW_PG_DB":       "willow_19",
+        "WILLOW_PG_DB":       "willow_20",
         "WILLOW_PG_USER":     pg_user,
     }
     for profile in (Path.home() / ".bashrc", Path.home() / ".zshrc"):
@@ -950,7 +950,7 @@ def _step_mcp_config(agent_name: str) -> None:
             pass
 
     pg_user = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
-    pg_db   = os.environ.get("WILLOW_PG_DB", "willow_19")
+    pg_db   = os.environ.get("WILLOW_PG_DB", "willow_20")
     pg_url  = f"postgresql://{pg_user}@localhost/{pg_db}"
 
     # Preserve existing servers (e.g. markdownai) and only set willow entry

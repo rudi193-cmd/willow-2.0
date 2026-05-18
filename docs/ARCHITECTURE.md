@@ -12,7 +12,7 @@ This **CAR** covers the **Willow system layer** in this repo: Postgres public sc
 
 ## Cross-repo bridge
 
-Read [`safe-app-willow-grove/docs/CROSS_REPO_BRIDGE.md`](../../safe-app-willow-grove/docs/CROSS_REPO_BRIDGE.md) for the single-DB `willow_19` split of responsibilities.
+Read [`safe-app-willow-grove/docs/CROSS_REPO_BRIDGE.md`](../../safe-app-willow-grove/docs/CROSS_REPO_BRIDGE.md) for the single-DB `willow_20` split of responsibilities.
 
 ## Receipts
 

@@ -10,7 +10,7 @@ Usage:
 
 Options:
     --sender NAME    sender name (default: sean)
-    --db NAME        Postgres DB name (default: $WILLOW_PG_DB or willow_19)
+    --db NAME        Postgres DB name (default: $WILLOW_PG_DB or willow_20)
 
 Examples:
     grove_msg send hanuman "hey, the db is in ~/Downloads"
@@ -137,7 +137,7 @@ def cmd_history(args):
 
 
 def main():
-    db_default = os.environ.get("WILLOW_PG_DB", "willow_19")
+    db_default = os.environ.get("WILLOW_PG_DB", "willow_20")
     parser = argparse.ArgumentParser(
         description="Direct Grove CLI — send/watch/history without LLM or MCP."
     )

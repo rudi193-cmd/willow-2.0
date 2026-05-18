@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def _conn():
     return psycopg2.connect(
-        dbname=os.environ.get("WILLOW_PG_DB", "willow_19_test"),
+        dbname=os.environ.get("WILLOW_PG_DB", "willow_20_test"),
         user=os.environ.get("WILLOW_PG_USER", os.environ.get("USER", "")),
     )
 

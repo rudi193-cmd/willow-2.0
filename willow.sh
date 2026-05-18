@@ -36,9 +36,9 @@ export WILLOW_STORE_ROOT="${WILLOW_STORE_ROOT:-${HOME}/.willow/store}"
 export WILLOW_VAULT="${WILLOW_VAULT:-${HOME}/.willow/vault.db}"
 export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/SAFE/Applications}"
 
-# Postgres — Unix socket, willow_19 DB (clean break from 1.7)
+# Postgres — Unix socket, willow_20 DB (clean break from 1.7)
 unset WILLOW_PG_HOST WILLOW_PG_PORT WILLOW_PG_PASS
-export WILLOW_PG_DB="${WILLOW_PG_DB:-willow_19}"
+export WILLOW_PG_DB="${WILLOW_PG_DB:-willow_20}"
 export WILLOW_PG_USER="${WILLOW_PG_USER:-$(whoami)}"
 export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
 
@@ -227,9 +227,9 @@ print('  Restore complete.')
         echo "  ║  What will NOT be touched:                               ║"
         echo "  ║    • The software (this repo stays)                      ║"
         echo "  ║    • ~/SAFE/Applications/ (your SAFE folder)             ║"
-        echo "  ║    • The willow_19 Postgres database                     ║"
+        echo "  ║    • The willow_20 Postgres database                     ║"
         echo "  ║      (knowledge, ledger, CMB atom live there)            ║"
-        echo "  ║      To also wipe Postgres: dropdb willow_19             ║"
+        echo "  ║      To also wipe Postgres: dropdb willow_20             ║"
         echo "  ║                                                          ║"
         echo "  ║  There is no undo. There is no recovery.                ║"
         echo "  ║  Run 'willow backup' first if you want a copy.          ║"

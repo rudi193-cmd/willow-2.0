@@ -10,7 +10,7 @@ Source: WILLOW_DECISIONS.md (Desktop), generated 2026-05-03.
 
 ## R1 + R2 — Old `willow` Database ⚠️ HIGHEST PRIORITY
 
-**The situation:** Two Postgres databases are running — `willow` (old) and `willow_19` (current). The old database contains personal data that has NOT been migrated:
+**The situation:** Two Postgres databases are running — `willow` (old) and `willow_20` (current). The old database contains personal data that has NOT been migrated:
 - `legal_gazelle` — legal/document data
 - genealogy data
 - `dating_wellbeing` records
@@ -20,7 +20,7 @@ Source: WILLOW_DECISIONS.md (Desktop), generated 2026-05-03.
 This is family data, not system data. It's the most important thing stranded.
 
 **Sean's choices:**
-- **Migrate and shut down** — fleet migrates the personal data to `willow_19`, then decommissions `willow`
+- **Migrate and shut down** — fleet migrates the personal data to `willow_20`, then decommissions `willow`
 - **Leave running intentionally** — document it as "old DB: active by design," stop flagging as a gap
 
 **Status:** Open. Fleet ready to execute migration on ratification.
@@ -85,7 +85,7 @@ This is family data, not system data. It's the most important thing stranded.
 
 ## R8 — Four Parallel Willow Implementations
 
-**The situation:** Four versions of Willow exist on disk as separate repos. Only `willow_19` is canonical.
+**The situation:** Four versions of Willow exist on disk as separate repos. Only `willow_20` is canonical.
 
 **Sean's choices:**
 - **Formally archive** — mark read-only on GitHub, remove from active consideration

@@ -8,7 +8,7 @@ professors (Gerald, Hanz, Oakenscroll, UTETY), and ingests them as knowledge
 atoms so willow_knowledge_search can find them.
 
 Usage:
-    WILLOW_PG_DB=willow_19 python3 agents/hanuman/bin/extract_jeles_corpus.py
+    WILLOW_PG_DB=willow_20 python3 agents/hanuman/bin/extract_jeles_corpus.py
     python3 agents/hanuman/bin/extract_jeles_corpus.py --dry-run
     python3 agents/hanuman/bin/extract_jeles_corpus.py --limit 20
 """

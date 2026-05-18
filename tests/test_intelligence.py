@@ -6,7 +6,7 @@ import pytest
 import psycopg2.extras
 from datetime import datetime, timezone, timedelta
 
-os.environ.setdefault("WILLOW_PG_DB", "willow_19")
+os.environ.setdefault("WILLOW_PG_DB", "willow_20")
 
 
 def _bridge():

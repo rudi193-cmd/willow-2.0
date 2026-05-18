@@ -1,6 +1,6 @@
 # tests/adversarial/conftest.py
 """Shared adversarial test fixtures.
-Inherits WILLOW_PG_DB=willow_19_test and init_pg_schema from tests/conftest.py.
+Inherits WILLOW_PG_DB=willow_20_test and init_pg_schema from tests/conftest.py.
 """
 import io
 import os

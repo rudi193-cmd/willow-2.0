@@ -19,7 +19,7 @@ GROVE_MCP_CMD = ["python3", "-m", "grove.mcp_local"]
 GROVE_MCP_CWD = str(Path.home() / "github" / "safe-app-willow-grove")
 GROVE_ENV = {
     **__import__("os").environ,
-    "WILLOW_PG_DB": "willow_19",
+    "WILLOW_PG_DB": "willow_20",
     "WILLOW_PG_USER": __import__("os").environ.get("USER", ""),
     "PYTHONPATH": str(Path.home() / "github" / "safe-app-willow-grove"),
 }

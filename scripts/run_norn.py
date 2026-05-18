@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""scripts/run_norn.py — fire norn_pass against production willow_19."""
+"""scripts/run_norn.py — fire norn_pass against production willow_20."""
 import argparse
 import sys
 import json

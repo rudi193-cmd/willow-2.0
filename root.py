@@ -339,7 +339,7 @@ def step_termux_pg() -> None:
     print("  │    pkg install postgresql                              │")
     print("  │    initdb $PREFIX/var/lib/postgresql                  │")
     print("  │    pg_ctl -D $PREFIX/var/lib/postgresql start         │")
-    print("  │    createdb willow_19                                  │")
+    print("  │    createdb willow_20                                  │")
     print("  └───────────────────────────────────────────────────────┘")
     print()
 

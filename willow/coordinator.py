@@ -84,7 +84,7 @@ def classify_message(msg: dict) -> Optional[Signal]:
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
 def _dsn() -> str:
-    db   = os.environ.get("WILLOW_PG_DB",   "willow_19")
+    db   = os.environ.get("WILLOW_PG_DB",   "willow_20")
     user = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
     return f"dbname={db} user={user}"
 

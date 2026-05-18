@@ -39,9 +39,9 @@ All of these threw `AttributeError` and were swallowed by `except Exception: pas
 
 ### Failure 2: Wrong Database Name
 
-`settings.json` had `WILLOW_PG_DB: "willow"`. The `willow` database is owned by the `willow` OS user, not `example-user`. The correct database is `willow_19` (owned by `example-user`). This made `PgBridge()` initialization fail when finally corrected in Failure 1 — the right variable type was pointing at the wrong DB.
+`settings.json` had `WILLOW_PG_DB: "willow"`. The `willow` database is owned by the `willow` OS user, not `example-user`. The correct database is `willow_20` (owned by `example-user`). This made `PgBridge()` initialization fail when finally corrected in Failure 1 — the right variable type was pointing at the wrong DB.
 
-The `.mcp.json` file already had `WILLOW_PG_DB: "willow_19"` correctly set, so the MCP server itself was fine. The `settings.json` env block was the source of the mismatch.
+The `.mcp.json` file already had `WILLOW_PG_DB: "willow_20"` correctly set, so the MCP server itself was fine. The `settings.json` env block was the source of the mismatch.
 
 ### Failure 3: PgBridge Missing All 1.7 Methods
 
@@ -55,7 +55,7 @@ The 1.9 `pg_bridge.py` was rebuilt minimal — only 4 methods: `knowledge_put`, 
 2. **`core/pg_bridge.py`**: Added all missing methods with full schema: `ingest_atom`, `ingest_ganesha_atom`, `submit_task`, `task_status`, `pending_tasks`, `search_opus`, `ingest_opus_atom`, `opus_feedback`, `opus_feedback_write`, `opus_journal_write`, `agent_create`, `jeles_register_jsonl`, `jeles_extract_atom`, `binder_file`, `binder_propose_edge`, `ratify`, `stats`, `gen_id`, `_ensure_conn` (reconnect resilience).
 3. **`core/pg_bridge.py`**: New schema tables added: `tasks`, `opus_atoms`, `feedback`, `journal`, `jeles_sessions`, `jeles_atoms`, `binder_files`, `binder_edges`, `ratifications`.
 4. **`core/willow_store.py`**: Added `stats()` method using `COUNT(*)` (avoids `ORDER BY created` column mismatch on older DBs).
-5. **`settings.json`**: Changed `WILLOW_PG_DB: "willow"` → `"willow_19"`.
+5. **`settings.json`**: Changed `WILLOW_PG_DB: "willow"` → `"willow_20"`.
 6. **`sap_mcp.py`**: `willow_knowledge_search` and `willow_knowledge_at` now use `pg` directly instead of `_get_pg19()` (which was a second failing PgBridge instance).
 
 ---

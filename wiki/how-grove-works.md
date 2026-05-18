@@ -14,7 +14,7 @@ Grove is not a chat app. It's the pheromone layer. Messages are how the fleet ma
 
 ## The Database
 
-Grove messages live in Postgres (`willow_19`), schema `grove`, table `messages`.
+Grove messages live in Postgres (`willow_20`), schema `grove`, table `messages`.
 
 Key columns:
 - `id` — sequential integer, used for polling (poll with `id > last_seen`)

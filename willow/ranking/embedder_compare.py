@@ -88,7 +88,7 @@ def _pgvector_search(
 
         dsn = os.environ.get(
             "WILLOW_PG_DSN",
-            "dbname=willow_19 host=localhost",
+            "dbname=willow_20 host=localhost",
         )
         conn = psycopg2.connect(dsn)
         conn.autocommit = True

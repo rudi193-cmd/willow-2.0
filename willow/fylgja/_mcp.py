@@ -109,7 +109,7 @@ def _dispatch_store(tool_name: str, arguments: dict):
 
 def _grove_connect():
     import psycopg2
-    db = os.environ.get("WILLOW_PG_DB", "willow_19")
+    db = os.environ.get("WILLOW_PG_DB", "willow_20")
     user = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
     conn = psycopg2.connect(dbname=db, user=user)
     conn.autocommit = True
@@ -209,7 +209,7 @@ def _subprocess_call(tool_name: str, arguments: dict, timeout: int) -> dict:
     env = os.environ.copy()
     # Ensure auth-critical vars reach the subprocess
     env.setdefault("WILLOW_SAFE_ROOT", str(Path.home() / "SAFE" / "Applications"))
-    env.setdefault("WILLOW_PG_DB", "willow_19")
+    env.setdefault("WILLOW_PG_DB", "willow_20")
     env.setdefault("WILLOW_PG_USER", os.environ.get("USER", ""))
 
     try:

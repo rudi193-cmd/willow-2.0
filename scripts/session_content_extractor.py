@@ -19,7 +19,7 @@ except ImportError:
     raise
 
 DB_PARAMS = {
-    "dbname": "willow_19",
+    "dbname": "willow_20",
     "user": "example-user",
 }
 

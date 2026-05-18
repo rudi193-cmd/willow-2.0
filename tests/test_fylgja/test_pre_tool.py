@@ -9,7 +9,7 @@ from willow.fylgja.events.pre_tool import (
 
 
 def test_blocks_psql():
-    reason = check_bash_block("psql -U willow willow_19")
+    reason = check_bash_block("psql -U willow willow_20")
     assert reason is not None
     assert "MCP" in reason
 

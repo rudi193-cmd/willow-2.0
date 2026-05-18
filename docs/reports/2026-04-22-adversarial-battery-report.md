@@ -217,7 +217,7 @@ The SAP server handled all malformed inputs without crashing or entering an erro
 
 - **OS:** Linux 6.17.0-22-generic
 - **Python:** 3.x
-- **Database:** PostgreSQL (`willow_19_test` — dedicated test DB, isolated from production)
+- **Database:** PostgreSQL (`willow_20_test` — dedicated test DB, isolated from production)
 - **Test runner:** pytest
 - **SAP server:** `sap/sap_mcp.py` (stdio MCP, single-process asyncio)
 - **Willow version:** 1.9, commit `e7f5d3c`, tag `v1.9.0-adversarial`

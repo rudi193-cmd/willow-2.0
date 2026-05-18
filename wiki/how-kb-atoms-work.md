@@ -6,7 +6,7 @@
 
 ## What the KB Is
 
-The KB (Knowledge Base) is `public.knowledge` in Postgres (`willow_19`). It's the always-on memory wall — the long-lived plasma cells of the immune system analogy. Every fact that needs to survive context window compression, session resets, and agent restarts lives here.
+The KB (Knowledge Base) is `public.knowledge` in Postgres (`willow_20`). It's the always-on memory wall — the long-lived plasma cells of the immune system analogy. Every fact that needs to survive context window compression, session resets, and agent restarts lives here.
 
 The KB is **not** a session log. It's a declarative knowledge store. The distinction matters: "Session started at 21:30" is a log entry. "Loki's mandate is adversarial challenge, not construction" is a KB atom.
 

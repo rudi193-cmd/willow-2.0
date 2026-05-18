@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Session indexer — parses all Claude Code JSONL session files and writes
-per-session metadata to public.session_index in willow_19.
+per-session metadata to public.session_index in willow_20.
 """
 import json
 import os
@@ -18,7 +18,7 @@ except ImportError:
     raise
 
 DB_PARAMS = {
-    "dbname": "willow_19",
+    "dbname": "willow_20",
     "user": "example-user",
 }
 

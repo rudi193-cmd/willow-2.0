@@ -7,7 +7,7 @@ Requires=willow-metabolic.socket
 Type=simple
 Environment=WILLOW_ROOT=%h/willow-1.9
 Environment=WILLOW_STORE_ROOT=%h/.willow/store
-Environment=WILLOW_PG_DB=willow_19
+Environment=WILLOW_PG_DB=willow_20
 ExecStart=/bin/sh -c 'python3 "$WILLOW_ROOT/core/metabolic.py"'
 StandardInput=socket
 Restart=on-failure

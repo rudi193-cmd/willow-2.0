@@ -12,7 +12,7 @@ from core.pg_bridge import PgBridge
 def pg():
     bridge = PgBridge()
     with bridge.conn.cursor() as cur:
-        # Truncate the entire ledger — willow_19 is a dedicated test DB.
+        # Truncate the entire ledger — willow_20 is a dedicated test DB.
         # The ledger uses a global hash chain; partial deletes corrupt it.
         cur.execute("TRUNCATE frank_ledger")
     bridge.conn.commit()

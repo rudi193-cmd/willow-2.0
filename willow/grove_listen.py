@@ -111,7 +111,7 @@ def connect():
     import psycopg2
     dsn = (
         os.environ.get("WILLOW_DB_URL")
-        or f"dbname={os.environ.get('WILLOW_PG_DB', 'willow_19')} "
+        or f"dbname={os.environ.get('WILLOW_PG_DB', 'willow_20')} "
            f"user={os.environ.get('WILLOW_PG_USER', os.environ.get('USER', ''))}"
     )
     c = psycopg2.connect(dsn)

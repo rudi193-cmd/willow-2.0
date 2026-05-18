@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 scripts/ingest_heimdallr.py
-Extract KB atoms from recent Heimdallr handoffs and ingest into willow_19.
+Extract KB atoms from recent Heimdallr handoffs and ingest into willow_20.
 
 Targets: SESSION_HANDOFF_20260420_heimdallr_*.md through 20260422
 Focus: n2n protocol design, willow-bot as test node, u2u tests, Plan 3 intelligence build.

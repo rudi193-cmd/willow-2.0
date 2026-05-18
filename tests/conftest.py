@@ -7,7 +7,7 @@ import pytest
 REPO_ROOT = str(Path(__file__).parent.parent)
 sys.path = [REPO_ROOT] + [p for p in sys.path if "willow-1.7" not in p]
 
-os.environ["WILLOW_PG_DB"] = "willow_19_test"
+os.environ["WILLOW_PG_DB"] = "willow_20_test"
 
 # PGUSER is the standard psycopg2/libpq env var — use it as a fallback so CI
 # workflows that set PGUSER=postgres but not WILLOW_PG_USER still connect correctly.
@@ -22,7 +22,7 @@ print(f"[conftest] pg user={_PG_USER!r} host={_PG_HOST!r} port={_PG_PORT!r}", fl
 
 
 def _ensure_test_db():
-    """Create willow_19_test if it doesn't exist."""
+    """Create willow_20_test if it doesn't exist."""
     try:
         import psycopg2
         conn = psycopg2.connect(
@@ -34,9 +34,9 @@ def _ensure_test_db():
         )
         conn.autocommit = True
         with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM pg_database WHERE datname = 'willow_19_test'")
+            cur.execute("SELECT 1 FROM pg_database WHERE datname = 'willow_20_test'")
             if not cur.fetchone():
-                cur.execute("CREATE DATABASE willow_19_test")
+                cur.execute("CREATE DATABASE willow_20_test")
         conn.close()
     except Exception as e:
         print(f"  test db bootstrap warning: {e}")

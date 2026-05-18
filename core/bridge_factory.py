@@ -3,7 +3,7 @@
 bridge_factory.py — Return the right bridge for this environment. b17: BFCT1 ΔΣ=42
 
     WILLOW_BACKEND=sqlite   → SqliteBridge (~/.willow/willow.db)
-    WILLOW_BACKEND=postgres → PgBridge (willow_19)
+    WILLOW_BACKEND=postgres → PgBridge (willow_20)
     unset                   → PgBridge, auto-fall-back to SqliteBridge if Postgres unreachable
 
 Usage:
