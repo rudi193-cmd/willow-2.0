@@ -1,0 +1,62 @@
+{
+  "b17": "FYLPW",
+  "version": 1,
+  "model": "Think MCP tools/list + Grove notify: this registry is the hot path; each power file is a cold pull — load at most one per turn unless user asks for more.",
+  "powers": [
+    {
+      "id": "agent-rails",
+      "description": "Willow stack (MCP/KB/Grove/SOIL) — parallel status+handoff, KB before design, memory_check before ingest, Grove history before posts, one power per turn, Kart for heavy shell.",
+      "file": "agent-rails.md"
+    },
+    {
+      "id": "brainstorm",
+      "description": "New feature or behavior change — KB/atoms first, three approaches, Sean ratifies before code.",
+      "file": "brainstorm.md"
+    },
+    {
+      "id": "plan",
+      "description": "Multi-step work — write ordered checklist; stop at scope boundaries; no architect sprawl.",
+      "file": "plan.md"
+    },
+    {
+      "id": "execute",
+      "description": "Run an approved plan — next incomplete step only; valid stops: blocker, permission, ambiguity that changes design.",
+      "file": "execute.md"
+    },
+    {
+      "id": "overseer",
+      "description": "Bounded initiative — worktree first, plan inside branch, verify, KB+memory trail; no default-branch drift until Sean ratifies merge.",
+      "file": "overseer.md"
+    },
+    {
+      "id": "debug",
+      "description": "Failure or wrong behavior — evidence before fix; smallest repro; surgical diff.",
+      "file": "debug.md"
+    },
+    {
+      "id": "tdd",
+      "description": "New logic — red test, minimal green, refactor only inside scope.",
+      "file": "tdd.md"
+    },
+    {
+      "id": "verify",
+      "description": "Before done/merged — run the commands you would use to prove it; capture output.",
+      "file": "verify.md"
+    },
+    {
+      "id": "worktree",
+      "description": "Non-trivial repo work — isolated branch in a worktree; no drive-by master edits.",
+      "file": "worktree.md"
+    },
+    {
+      "id": "review-in",
+      "description": "Someone reviewed your code — verify claims, push back on wrong feedback, then implement.",
+      "file": "review-in.md"
+    },
+    {
+      "id": "review-out",
+      "description": "Shippable chunk — request review with risks, test commands, and intent.",
+      "file": "review-out.md"
+    }
+  ]
+}
