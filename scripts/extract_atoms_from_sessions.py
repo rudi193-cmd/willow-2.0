@@ -1,0 +1,371 @@
+#!/usr/bin/env python3
+# b17: A7M20  ΔΣ=42
+"""
+Extract deterministic metadata atoms + semantic candidate atoms from Claude JSONL sessions.
+
+Writes atoms into willow-2.0 SQLite `records` table with idempotent upsert.
+Semantic atoms are always marked `needs_review=true`.
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import hashlib
+import json
+import os
+import re
+import sqlite3
+from collections import Counter
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_SOURCE_DIR = Path.home() / ".claude" / "projects" / str(Path(__file__).parent.resolve()).replace("/", "-").replace(".", "-")
+DEFAULT_DB_PATH = Path(os.environ.get("WILLOW_20_DB", str(Path.home() / ".willow" / "willow-2.0.db")))
+
+
+def _sha(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _atom_id(session_id: str, kind: str, fingerprint: str) -> str:
+    # short deterministic ID; stable across reruns
+    return "atom_" + _sha(f"{session_id}|{kind}|{fingerprint}")[:16]
+
+
+def _now_iso() -> str:
+    return dt.datetime.now(dt.timezone.utc).isoformat()
+
+
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for i, line in enumerate(path.read_text(errors="replace").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line)
+            rec["_line"] = i
+            rec["_parse_error"] = False
+        except Exception:
+            rec = {"_line": i, "_parse_error": True, "_raw": line}
+        rows.append(rec)
+    return rows
+
+
+def _assistant_text(message_obj: dict[str, Any]) -> str:
+    content = message_obj.get("content")
+    if not isinstance(content, list):
+        return ""
+    chunks: list[str] = []
+    for part in content:
+        if isinstance(part, dict) and part.get("type") == "text" and isinstance(part.get("text"), str):
+            chunks.append(part["text"])
+    return "\n".join(chunks).strip()
+
+
+def _extract_metadata_atoms(session_id: str, source_file: Path, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    event_counts: Counter[str] = Counter()
+    attachment_counts: Counter[str] = Counter()
+    model_counts: Counter[str] = Counter()
+    stop_reason_counts: Counter[str] = Counter()
+    tool_counts: Counter[str] = Counter()
+
+    first_ts: str | None = None
+    last_ts: str | None = None
+    tool_calls = 0
+    tool_results = 0
+    hook_error_samples: list[str] = []
+
+    for r in rows:
+        if r.get("_parse_error"):
+            event_counts["parse_error"] += 1
+            continue
+
+        t = r.get("type")
+        if isinstance(t, str):
+            event_counts[t] += 1
+
+        ts = r.get("timestamp")
+        if isinstance(ts, str):
+            first_ts = ts if first_ts is None else min(first_ts, ts)
+            last_ts = ts if last_ts is None else max(last_ts, ts)
+
+        if t == "attachment" and isinstance(r.get("attachment"), dict):
+            att = r["attachment"]
+            att_type = att.get("type")
+            if isinstance(att_type, str):
+                attachment_counts[att_type] += 1
+            if att_type == "hook_non_blocking_error":
+                msg = att.get("message") or att.get("error") or att.get("stderr")
+                if isinstance(msg, str) and len(hook_error_samples) < 8:
+                    hook_error_samples.append(msg[:400])
+
+        msg = r.get("message") if isinstance(r.get("message"), dict) else {}
+        model = msg.get("model")
+        if isinstance(model, str):
+            model_counts[model] += 1
+
+        stop_reason = msg.get("stop_reason")
+        if isinstance(stop_reason, str):
+            stop_reason_counts[stop_reason] += 1
+
+        content = msg.get("content")
+        if isinstance(content, list):
+            for part in content:
+                if not isinstance(part, dict):
+                    continue
+                if part.get("type") == "tool_use":
+                    tool_calls += 1
+                    name = part.get("name")
+                    if isinstance(name, str):
+                        tool_counts[name] += 1
+                elif part.get("type") == "tool_result":
+                    tool_results += 1
+
+    total_events = len(rows)
+    hook_error_count = attachment_counts.get("hook_non_blocking_error", 0)
+
+    metadata_payload = {
+        "atom_kind": "session_metadata",
+        "session_id": session_id,
+        "source_file": str(source_file),
+        "generated_at": _now_iso(),
+        "time_window": {"first_timestamp": first_ts, "last_timestamp": last_ts},
+        "counts": {
+            "raw_records": total_events,
+            "event_types": dict(event_counts),
+            "attachment_types": dict(attachment_counts),
+            "models": dict(model_counts),
+            "stop_reasons": dict(stop_reason_counts),
+            "tool_calls": tool_calls,
+            "tool_results": tool_results,
+            "tool_counts": dict(tool_counts),
+        },
+        "derived_signals": {
+            "tool_link_gap": max(tool_calls - tool_results, 0),
+            "hook_non_blocking_error_count": hook_error_count,
+        },
+    }
+    meta_id = _atom_id(session_id, "session_metadata", "v1")
+
+    atoms: list[dict[str, Any]] = [
+        {
+            "id": meta_id,
+            "collection": "atoms/session_metadata",
+            "title": f"Session {session_id} metadata summary",
+            "summary": (
+                f"Parsed {total_events} records, tool calls/results {tool_calls}/{tool_results}, "
+                f"hook_non_blocking_error={hook_error_count}."
+            ),
+            "confidence": 1.0,
+            "needs_review": False,
+            "data": metadata_payload,
+        }
+    ]
+
+    # Deterministic gap atom only if a hard signal exists.
+    gaps: list[str] = []
+    if tool_calls != tool_results:
+        gaps.append(f"tool_result mismatch: {tool_calls} calls vs {tool_results} results")
+    if hook_error_count > 0:
+        gaps.append(f"hook_non_blocking_error repeated: {hook_error_count}")
+    if gaps:
+        gap_payload = {
+            "atom_kind": "session_gap_signals",
+            "session_id": session_id,
+            "source_file": str(source_file),
+            "generated_at": _now_iso(),
+            "gaps": gaps,
+            "hook_error_samples": hook_error_samples,
+        }
+        gap_id = _atom_id(session_id, "session_gap_signals", "v1")
+        atoms.append(
+            {
+                "id": gap_id,
+                "collection": "atoms/session_gaps",
+                "title": f"Session {session_id} extraction gap signals",
+                "summary": "; ".join(gaps),
+                "confidence": 0.98,
+                "needs_review": False,
+                "data": gap_payload,
+            }
+        )
+
+    return atoms
+
+
+SEMANTIC_PATTERNS = [
+    re.compile(r"\b(built|implemented|created|wrote|added)\b", re.IGNORECASE),
+    re.compile(r"\b(decision|designed|architecture|pattern|pipeline)\b", re.IGNORECASE),
+    re.compile(r"\b(gap|missing|mismatch|error|failed|drift)\b", re.IGNORECASE),
+]
+
+
+def _extract_semantic_candidates(session_id: str, source_file: Path, rows: list[dict[str, Any]], max_candidates: int) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    for r in rows:
+        if r.get("_parse_error") or r.get("type") != "assistant":
+            continue
+        msg = r.get("message") if isinstance(r.get("message"), dict) else {}
+        text = _assistant_text(msg)
+        if not text:
+            continue
+
+        for para in text.split("\n"):
+            sentence = para.strip()
+            if len(sentence) < 30:
+                continue
+            if not any(p.search(sentence) for p in SEMANTIC_PATTERNS):
+                continue
+            # normalize for dedupe
+            key = re.sub(r"\s+", " ", sentence.lower())
+            if key in seen:
+                continue
+            seen.add(key)
+
+            confidence = 0.72
+            if re.search(r"\b(done|built|implemented)\b", sentence, re.IGNORECASE):
+                confidence = 0.8
+            if re.search(r"\b(maybe|might|could|try)\b", sentence, re.IGNORECASE):
+                confidence = 0.62
+
+            snippet = sentence[:380]
+            fid = _sha(f"{r.get('_line')}|{snippet}")[:16]
+            atom = {
+                "id": _atom_id(session_id, "semantic_candidate", fid),
+                "collection": "atoms/session_semantic_candidates",
+                "title": f"Session {session_id} semantic candidate",
+                "summary": snippet,
+                "confidence": confidence,
+                "needs_review": True,
+                "data": {
+                    "atom_kind": "semantic_candidate",
+                    "session_id": session_id,
+                    "source_file": str(source_file),
+                    "source_line": r.get("_line"),
+                    "evidence": snippet,
+                    "generated_at": _now_iso(),
+                },
+            }
+            candidates.append(atom)
+            if len(candidates) >= max_candidates:
+                return candidates
+    return candidates
+
+
+def _upsert_atoms(conn: sqlite3.Connection, atoms: list[dict[str, Any]]) -> None:
+    for atom in atoms:
+        payload = {
+            "id": atom["id"],
+            "title": atom["title"],
+            "summary": atom["summary"],
+            "confidence": atom["confidence"],
+            "needs_review": atom["needs_review"],
+            "payload": atom["data"],
+        }
+        conn.execute(
+            """
+            INSERT INTO records (id, collection, data)
+            VALUES (?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              collection=excluded.collection,
+              data=excluded.data,
+              updated_at=datetime('now')
+            """,
+            (atom["id"], atom["collection"], json.dumps(payload, ensure_ascii=False)),
+        )
+
+
+def _session_files(source_dir: Path, session_ids: set[str] | None) -> list[Path]:
+    files = sorted(source_dir.glob("*.jsonl"))
+    if session_ids:
+        files = [p for p in files if p.stem in session_ids]
+    return files
+
+
+def run(args: argparse.Namespace) -> dict[str, Any]:
+    source_dir = Path(args.source_dir)
+    db_path = Path(args.db_path)
+    session_ids = set(args.session_id) if args.session_id else None
+
+    if not source_dir.exists():
+        raise FileNotFoundError(f"source dir not found: {source_dir}")
+    if args.write and not db_path.exists():
+        raise FileNotFoundError(f"db not found: {db_path}")
+
+    files = _session_files(source_dir, session_ids)
+    if args.limit > 0:
+        files = files[: args.limit]
+
+    out_atoms: list[dict[str, Any]] = []
+    per_session: list[dict[str, Any]] = []
+
+    for jf in files:
+        rows = _read_jsonl(jf)
+        sid = jf.stem
+        meta_atoms = _extract_metadata_atoms(sid, jf, rows)
+        semantic_atoms = _extract_semantic_candidates(sid, jf, rows, args.max_semantic_candidates)
+        atoms = meta_atoms + semantic_atoms
+        out_atoms.extend(atoms)
+        per_session.append(
+            {
+                "session_id": sid,
+                "source_file": str(jf),
+                "records": len(rows),
+                "metadata_atoms": len(meta_atoms),
+                "semantic_candidates": len(semantic_atoms),
+                "total_atoms": len(atoms),
+            }
+        )
+
+    wrote = 0
+    if args.write and out_atoms:
+        conn = sqlite3.connect(str(db_path))
+        _upsert_atoms(conn, out_atoms)
+        conn.commit()
+        conn.close()
+        wrote = len(out_atoms)
+
+    return {
+        "source_dir": str(source_dir),
+        "db_path": str(db_path),
+        "sessions_processed": len(files),
+        "atoms_generated": len(out_atoms),
+        "atoms_written": wrote,
+        "dry_run": not args.write,
+        "per_session": per_session,
+        "collections": sorted({a["collection"] for a in out_atoms}),
+    }
+
+
+def parse_args() -> argparse.Namespace:
+    ap = argparse.ArgumentParser(description="Extract metadata/semantic atoms from Claude JSONL sessions.")
+    ap.add_argument("--source-dir", default=str(DEFAULT_SOURCE_DIR), help="Directory containing session JSONL files.")
+    ap.add_argument("--db-path", default=str(DEFAULT_DB_PATH), help="SQLite DB path with `records` table.")
+    ap.add_argument("--session-id", action="append", help="Specific session id to process (repeatable).")
+    ap.add_argument("--limit", type=int, default=0, help="Process at most N sessions (0 = all after filters).")
+    ap.add_argument(
+        "--max-semantic-candidates",
+        type=int,
+        default=25,
+        help="Max semantic candidate atoms per session.",
+    )
+    ap.add_argument(
+        "--write",
+        action="store_true",
+        help="Write atoms to DB. Without this flag, script runs dry-run only.",
+    )
+    return ap.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    result = run(args)
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == "__main__":
+    main()

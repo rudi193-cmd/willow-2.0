@@ -1,0 +1,124 @@
+{
+    "result": [
+        {
+            "active_time": 1763066664,
+            "biz_type": 18,
+            "category": "ckmkzq",
+            "create_time": 1763066664,
+            "icon": "smart/icon/bay1635173423851W4SM/f00301d82c33c01cb926a8f24b671d00.png",
+            "id": "eb980920d1541edf05pflp",
+            "ip": "172.59.1.79",
+            "lat": "35.12",
+            "local_key": ":{g&Fxnsj7K@T`Ok",
+            "lon": "-106.58",
+            "model": "EKGD250",
+            "name": "Garage Door",
+            "online": true,
+            "owner_id": "270544469",
+            "product_id": "bcbb8c49zbe5z5ey",
+            "product_name": "Garage Door",
+            "status": [
+                {
+                    "code": "switch_1",
+                    "value": true
+                },
+                {
+                    "code": "countdown_1",
+                    "value": 0
+                },
+                {
+                    "code": "doorcontact_state",
+                    "value": false
+                },
+                {
+                    "code": "door_time_1",
+                    "value": 10
+                },
+                {
+                    "code": "alarm_countdown_1",
+                    "value": 300
+                },
+                {
+                    "code": "door_control_1",
+                    "value": "open"
+                },
+                {
+                    "code": "voice_control_1",
+                    "value": true
+                },
+                {
+                    "code": "door_state_1",
+                    "value": "none"
+                }
+            ],
+            "sub": false,
+            "time_zone": "-07:00",
+            "uid": "az1762030631758LSlYP",
+            "update_time": 1779113306,
+            "uuid": "8e6912f3110e0135"
+        },
+        {
+            "active_time": 1762301740,
+            "biz_type": 18,
+            "category": "dd",
+            "create_time": 1762301740,
+            "icon": "smart/icon/ay1502415387164HkSHB/8f91f0bd6753da663d89a641d0fb6a5e.jpg",
+            "id": "eb2f5da34b4810e409dhak",
+            "ip": "172.59.1.79",
+            "lat": "35.12",
+            "local_key": "9rkThQ$vWb/&Z?Wr",
+            "lon": "-106.58",
+            "model": "BarSmart V2.0",
+            "name": "BarSmart V2.0",
+            "online": true,
+            "owner_id": "270544469",
+            "product_id": "vv9lolykckz6zmux",
+            "product_name": "BarSmart V2.0",
+            "status": [
+                {
+                    "code": "switch_led",
+                    "value": true
+                },
+                {
+                    "code": "work_mode",
+                    "value": "white"
+                },
+                {
+                    "code": "bright_value",
+                    "value": 500
+                },
+                {
+                    "code": "temp_value",
+                    "value": 0
+                },
+                {
+                    "code": "colour_data",
+                    "value": "{\"h\":348,\"s\":900,\"v\":140}"
+                },
+                {
+                    "code": "scene_data",
+                    "value": "{\"scene_num\":1,\"scene_units\":[{\"bright\":200,\"h\":0,\"s\":0,\"temperature\":0,\"unit_change_mode\":\"static\",\"unit_gradient_duration\":13,\"unit_switch_duration\":40,\"v\":0}]}"
+                },
+                {
+                    "code": "countdown",
+                    "value": 0
+                }
+            ],
+            "sub": false,
+            "time_zone": "-07:00",
+            "uid": "az1762030631758LSlYP",
+            "update_time": 1778784702,
+            "uuid": "a21f3eecd8c87624"
+        }
+    ],
+    "success": true,
+    "t": 1779128970146,
+    "tid": "8233367552e711f193342aca4d255c19",
+    "file": {
+        "name": "tuya-raw.json",
+        "description": "Full raw list of Tuya devices.",
+        "account": "fy395qwkswe7rnaspx7n",
+        "date": "2026-05-18T12:29:30.668801",
+        "tinytuya": "1.18.0"
+    }
+}

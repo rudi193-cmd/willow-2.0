@@ -19,6 +19,10 @@ sap/log/*.md
 # RLM chunk state — ephemeral, never commit
 .claude/rlm_state/
 
+# Smart home — device credentials and runtime logs
+apps/smart-home/keys.json
+apps/smart-home/debug.log
+
 # Claude Code runtime artifacts
 .claude/scheduled_tasks.lock
 

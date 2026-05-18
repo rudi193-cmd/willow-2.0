@@ -1,0 +1,30 @@
+[
+  {
+    "name": "Garage Door",
+    "id": "eb980920d1541edf05pflp",
+    "ip": "192.168.12.125",
+    "ver": "3.4",
+    "type": "garage",
+    "group": "garage",
+    "dps": {
+      "switch": "1",
+      "contact": "3",
+      "state": "12"
+    }
+  },
+  {
+    "name": "BarSmart V2.0",
+    "id": "eb2f5da34b4810e409dhak",
+    "ip": "192.168.12.115",
+    "ver": "3.5",
+    "type": "light_rgbw",
+    "group": "living_room",
+    "dps": {
+      "switch": "20",
+      "mode": "21",
+      "brightness": "22",
+      "color_temp": "23",
+      "colour": "24"
+    }
+  }
+]
