@@ -1,0 +1,184 @@
+{
+  "meta": {
+    "session_date": "2026-05-18",
+    "context": "willow-2.0 sandbox — grove-only, no Willow MCP",
+    "agent": "Claude Sonnet 4.6 (no identity in this sandbox)",
+    "purpose": "Design session — ledger app suite architecture. No production builds. Three worktrees created."
+  },
+
+  "decisions": [
+    {
+      "id": "D1",
+      "decision": "Build a Textual TUI personal budget app in willow-2.0/ledger/",
+      "rationale": "Local-first, yggdrasil:v9 for NL entry + categorization + insights, SQLite via WILLOW_20_DB",
+      "status": "BUILT — core app complete, feature backlog in feature_cards.json"
+    },
+    {
+      "id": "D2",
+      "decision": "Two-stage file ingestion: Global Scout (watches ~/Downloads) → App Inbox (~/.willow/ledger-inbox/)",
+      "rationale": "App should never watch communal folders directly. Scout classifies, annotates, routes. App receives file + sidecar.",
+      "status": "DESIGNED — not yet built. Cards: inbox-watcher, csv-statement-parser, pdf-statement-parser, ofx-parser, dedup-engine, bank-format-library, sidecar-metadata, scout-notification, scout-config"
+    },
+    {
+      "id": "D3",
+      "decision": "Scout is bidirectional — inbound (statements → apps) AND outbound (preference atoms → KB outbox)",
+      "rationale": "Local Textual apps have no MCP access. Consent gate writes atom JSON to ~/.willow/kb-outbox/. Scout delivers to willow_knowledge_ingest. No new infrastructure needed.",
+      "status": "DESIGNED — architectural insight from this session, not yet built"
+    },
+    {
+      "id": "D4",
+      "decision": "Three-app suite: personal ledger, public ledger TUI (Vor), corporate ledger (Gjald)",
+      "rationale": "Three scales of the same financial intelligence graph. Same entity layer. Same local model. Different interfaces.",
+      "status": "Personal = built. Public TUI = worktree created (wt-vor-tui), not built. Corporate = worktree created (wt-corp-ledger-tui), sketched only."
+    },
+    {
+      "id": "D5",
+      "decision": "Unified vision: public ledger (Vor) doubles as investment research engine fed by USASpending + ProPublica",
+      "rationale": "User forms opinion from public record, asks yggdrasil for investment take given personal position + business exposure + stated values. Sovereign due diligence with no external subscription.",
+      "status": "DESIGNED — card: investment-intelligence"
+    },
+    {
+      "id": "D6",
+      "decision": "Values filters are first-class, binary-presence not percentage-threshold",
+      "rationale": "Percentage sliders let almost everyone through. Sean's DoD filter = any direct contract = flagged, no threshold. The system respects that distinction.",
+      "status": "DESIGNED — canonical example captured in investment-intelligence card"
+    },
+    {
+      "id": "D7",
+      "decision": "Consent gate: two-stream KB extraction — personal preferences (consent gated) vs factual entity knowledge (shared, no gate)",
+      "rationale": "Public data (DoD contractor list, 990 data, entity graph) belongs in shared KB. User values/filters are personal atoms requiring explicit consent before leaving local scope.",
+      "status": "DESIGNED — architectural pattern, not yet built"
+    },
+    {
+      "id": "D8",
+      "decision": "Naming deferred — full Norse shortlist captured, mapping resolves when full app ecosystem is laid out",
+      "rationale": "Names may map to apps, sub-features, or sub-components. Can't decide in isolation.",
+      "status": "DEFERRED"
+    }
+  ],
+
+  "apps": {
+    "personal_ledger": {
+      "path": "willow-2.0/ledger/",
+      "branch": "sandbox/willow-2.0",
+      "status": "built",
+      "entry": "python3 run_ledger.py",
+      "model": "yggdrasil:v9",
+      "db": "$WILLOW_20_DB (willow-2.0.db)",
+      "tables": ["ledger_accounts", "ledger_categories", "ledger_transactions"],
+      "name_candidates": ["Skuld", "Saga", "Verdandi", "Forseti", "Rún"]
+    },
+    "public_ledger_tui": {
+      "path": "willow-2.0-wt-vor-tui/",
+      "branch": "wt-vor-tui",
+      "status": "worktree_created_tui_not_built",
+      "backend": "safe-app-public-ledger FastAPI at :8422",
+      "backend_sources": ["ProPublica (IRS 990)", "USASpending (federal contracts)", "Paperclip (people)"],
+      "claim_types": ["nonprofit_funding", "federal_spending", "wealth_gap", "contractor_link"],
+      "verdict_schema": ["SUPPORTED", "PARTIALLY_SUPPORTED", "UNSUPPORTED", "INSUFFICIENT_DATA", "DISPUTED"],
+      "name_candidates": ["Vor", "Tyr", "Althing", "Logberg", "Syn"],
+      "tui_screens": ["Dashboard", "Search", "Audit Claim", "Federal Spending", "Client List"]
+    },
+    "corporate_ledger": {
+      "path": "willow-2.0-wt-corp-ledger-tui/",
+      "branch": "wt-corp-ledger-tui",
+      "status": "worktree_created_sketch_only",
+      "concept": "Double-entry bookkeeping, chart of accounts, P&L, multi-entity (in-house or external accountant)",
+      "name_candidates": ["Gjald", "Fé", "Auðr", "Eyrir", "Vaðmál"],
+      "tui_screens": ["Dashboard", "Journal Entry", "General Ledger", "Chart of Accounts", "Reports", "Clients"],
+      "key_feature": "NL journal entry — describe transaction, yggdrasil generates double-entry with account codes, accountant reviews"
+    }
+  },
+
+  "architecture": {
+    "entity_graph": {
+      "description": "Shared node layer across all three apps. Entity resolution normalizes 'Amazon', 'AMZN', 'AWS', 'Amazon.com Inc' to one node.",
+      "table": "ledger_entities (id, canonical_name, aliases JSON, type)",
+      "status": "designed, card: entity-graph"
+    },
+    "scout": {
+      "description": "Standalone background process. Watches configured folders. Classifies files. Routes with sidecar. Bidirectional: inbound (statements → app inboxes) + outbound (preference atoms → kb-outbox).",
+      "inbound_watch": "~/Downloads or configured paths",
+      "inbound_route": "~/.willow/ledger-inbox/ (or other app inboxes)",
+      "outbound_watch": "~/.willow/kb-outbox/",
+      "outbound_route": "willow_knowledge_ingest via Willow 1.9 session",
+      "config": "~/.willow/scout.json",
+      "classification_order": ["filename pattern match", "CSV header fingerprint", "LLM fallback (first 500 bytes)"],
+      "learns": "Pattern library grows — repeat imports from same bank skip LLM entirely",
+      "status": "designed, multiple cards"
+    },
+    "sidecar": {
+      "description": "JSON companion file written alongside routed financial statement. Carries pre-computed classification so app skips redundant analysis.",
+      "schema": {
+        "source_path": "string",
+        "detected_at": "ISO8601",
+        "file_type": "csv|pdf|ofx|xlsx",
+        "classification": {
+          "likely_bank": "string",
+          "account_type": "string",
+          "confidence": "float",
+          "method": "pattern|llm",
+          "date_range": "string"
+        },
+        "routing": {
+          "target_app": "string",
+          "target_inbox": "string"
+        }
+      },
+      "lifecycle": "deleted after successful import"
+    },
+    "consent_gate": {
+      "description": "UX pattern in any app. When user sets durable preference, app asks: remember across all Willow apps? If yes, writes atom JSON to ~/.willow/kb-outbox/. Scout delivers.",
+      "two_streams": {
+        "personal_preferences": "consent required, written to user KB namespace",
+        "factual_entity_knowledge": "no consent needed (public data), written to shared KB namespace"
+      },
+      "threshold_rule": "What counts as significant is always the user's call. System stores the rule, never overrides it."
+    },
+    "investment_intelligence": {
+      "description": "Cross-app synthesis layer. Vor surfaces company → yggdrasil reads public record + personal position + business exposure → investment opinion.",
+      "canonical_example": {
+        "user": "Sean",
+        "filter": "Any tech company with direct DoD contract = flagged. Binary. No percentage threshold.",
+        "source": "USASpending awarding_agency = Department of Defense",
+        "currently_flagged": ["Microsoft (JWCC)", "Amazon/AWS (JWCC + CIA)", "Google (JWCC)", "Palantir (core business ~55% govt)", "Oracle (JWCC)", "Anduril (defense-only, private)"],
+        "secondary_check": "Personal spending data checked first — user likely already paying flagged entities via subscriptions before investment question is reached",
+        "model_output": "Flagged holdings + flagged monthly spend + alternatives with no defense contracts + exit option"
+      }
+    }
+  },
+
+  "feature_cards": {
+    "file": "willow-2.0/ledger/feature_cards.json",
+    "total_cards": 37,
+    "tags": ["ai", "analysis", "tracking", "budgeting", "goals", "visualization", "investments", "tax", "data", "alerts", "ingestion", "scout", "cross-app"],
+    "cross_app_cards": ["investment-intelligence", "entity-graph"],
+    "requires_external": ["stock-portfolio (Yahoo Finance, free)", "crypto-tracker (CoinGecko, free, no key)", "direct-api-plaid (Plaid key)", "direct-api-mx (MX key)"],
+    "scout_cards": ["global-scout", "scout-classifier", "sidecar-metadata", "scout-notification", "scout-config"],
+    "ingestion_cards": ["inbox-watcher", "csv-statement-parser", "pdf-statement-parser", "ofx-parser", "dedup-engine", "bank-format-library", "import-preview-screen"]
+  },
+
+  "kb_extraction_pending": {
+    "note": "willow_knowledge_ingest not available in willow-2.0 sandbox. Atoms written to willow-2.0.db records table as local store. Full KB ingest requires Hanuman session with Willow MCP.",
+    "atoms_written_to_db": [
+      "ledger.vision",
+      "ledger.apps",
+      "ledger.scout_bus",
+      "ledger.consent_gate",
+      "ledger.values_example",
+      "ledger.sidecar_schema",
+      "ledger.corporate_sketch",
+      "ledger.name_candidates"
+    ]
+  },
+
+  "open_questions": [
+    "Which app gets built first when construction begins?",
+    "Does the scout live in willow-2.0 or its own repo?",
+    "Does the entity graph live in willow-2.0.db or a separate shared DB accessible to all three apps?",
+    "Name mapping — which Norse name goes to which app or layer?",
+    "PR threshold — what does 'worthy of a new repo' look like for each app?"
+  ],
+
+  "next_session_first_bite": "Pick one of the three apps and build the TUI. Recommended: Vor (public ledger TUI) — backend already exists at safe-app-public-ledger, TUI is the only missing piece."
+}
