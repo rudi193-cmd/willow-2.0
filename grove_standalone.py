@@ -401,7 +401,7 @@ class GroveApp(App):
         dispatcher.register(PacketType.NOTE,  _on_note)
         dispatcher.register(PacketType.KNOCK, _on_knock)
 
-        listener = U2UListener(host="0.0.0.0", port=_PORT,
+        listener = U2UListener(host="127.0.0.1", port=_PORT,
                                identity=self.identity, consent=gate)
         try:
             async with listener.serve():

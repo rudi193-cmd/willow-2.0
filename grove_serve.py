@@ -560,13 +560,13 @@ def _u2u_listen_thread() -> None:
 
     async def _run() -> None:
         listener = U2UListener(
-            host="0.0.0.0",
+            host="127.0.0.1",
             port=_U2U_PORT,
             identity=identity,
             consent=gate,
         )
         async with listener.serve():
-            print(f"[u2u] listening on 0.0.0.0:{_U2U_PORT}", flush=True)
+            print(f"[u2u] listening on 127.0.0.1:{_U2U_PORT}", flush=True)
             await asyncio.Event().wait()
 
     try:

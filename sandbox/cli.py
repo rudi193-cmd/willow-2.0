@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .engine import GitShapedError, advance, preview_advance
 from .gate_form import NewFeatureGate
-from .model import ShapeState, create_issue
+from .model import ShapeState, allowed_targets, create_issue
 from .reporting import allowed_line, json_lines, markdown_table
 from .store import JsonStore
 
