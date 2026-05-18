@@ -1,0 +1,3 @@
+# Local demo data for git-shaped sandbox (never commit)
+data/*.json
+data/*.jsonl

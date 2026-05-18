@@ -1,0 +1,375 @@
+#!/usr/bin/env python3
+"""
+metabolic.py — Norn pass runner.
+b17: NORN1  ΔΣ=42
+
+Runs on socket activation. Three jobs then exits:
+  1. Flat file lifecycle pass (W19FL) — compost turn → session → day → week
+  2. Community detection pass (W19CD) — label propagation over entity graph
+  3. Heartbeat measurement (W19HB) — Kolmogorov compression ratio as health signal
+
+Triggered by: session open, file lands in Nest, nightly timer, manual call.
+"""
+import json
+import os
+import sys
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
+STORE_ROOT = Path(os.environ.get("WILLOW_STORE_ROOT",
+                                  str(Path.home() / ".willow" / "store")))
+WILLOW_ROOT = Path(__file__).parent.parent
+
+# Ensure willow-1.9 is first on path — strip any willow-1.7 entries
+sys.path = [str(WILLOW_ROOT)] + [p for p in sys.path if "willow-1.7" not in p]
+
+
+def _load_pg_bridge():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "pg_bridge_19", WILLOW_ROOT / "core" / "pg_bridge.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _load_intelligence():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "intelligence_19", WILLOW_ROOT / "core" / "intelligence.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def compost_pass(dry_run: bool = False) -> int:
+    """
+    Flat file lifecycle: retire turn-level atoms once session composite exists.
+    Returns count of atoms retired. W19FL.
+    """
+    import sqlite3
+    retired = 0
+    turns_db = STORE_ROOT / "turns"
+    if not turns_db.exists():
+        return 0
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+
+    for db_file in turns_db.rglob("*.db"):
+        try:
+            conn = sqlite3.connect(str(db_file))
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                "SELECT id, data FROM records WHERE created < ?",
+                (cutoff.isoformat(),)
+            ).fetchall()
+            for row in rows:
+                data = json.loads(row["data"])
+                session_id = data.get("session_id")
+                if session_id and _session_composite_exists(session_id):
+                    if not dry_run:
+                        conn.execute("DELETE FROM records WHERE id = ?", (row["id"],))
+                    retired += 1
+            if not dry_run:
+                conn.commit()
+            conn.close()
+        except Exception:
+            pass
+    return retired
+
+
+def _session_composite_exists(session_id: str) -> bool:
+    import sqlite3
+    composites_db = STORE_ROOT / "sessions"
+    if not composites_db.exists():
+        return False
+    for db_file in composites_db.rglob("*.db"):
+        try:
+            conn = sqlite3.connect(str(db_file))
+            row = conn.execute(
+                "SELECT id FROM records WHERE data LIKE ?",
+                (f"%{session_id}%",)
+            ).fetchone()
+            conn.close()
+            if row:
+                return True
+        except Exception:
+            pass
+    return False
+
+
+def community_pass(dry_run: bool = False) -> int:
+    """
+    Community detection: label propagation over knowledge entities.
+    Returns count of community nodes written. W19CD.
+    """
+    try:
+        pgb = _load_pg_bridge()
+        bridge = pgb.PgBridge()
+    except Exception:
+        return 0
+
+    with bridge.conn.cursor() as cur:
+        cur.execute("""
+            SELECT project, COUNT(*) as atom_count
+            FROM knowledge
+            WHERE invalid_at IS NULL
+            GROUP BY project
+            HAVING COUNT(*) >= 5
+        """)
+        project_counts = cur.fetchall()
+
+    communities_written = 0
+    for project, count in project_counts:
+        if dry_run:
+            communities_written += 1
+            continue
+        community_id = f"community_{project}_{datetime.now(timezone.utc).strftime('%Y%m')}"
+        with bridge.conn.cursor() as cur:
+            cur.execute("""
+                SELECT title FROM knowledge
+                WHERE project = %s AND invalid_at IS NULL
+                ORDER BY valid_at DESC LIMIT 20
+            """, (project,))
+            titles = [r[0] for r in cur.fetchall() if r[0]]
+        if not titles:
+            continue
+        bridge.knowledge_put({
+            "id": community_id,
+            "project": project,
+            "title": f"Community node — {project}",
+            "summary": f"{count} atoms. Themes: {', '.join(titles[:5])}",
+            "source_type": "community_detection",
+            "category": "community",
+        })
+        communities_written += 1
+
+    return communities_written
+
+
+def measure_heartbeat() -> float:
+    """
+    Kolmogorov heartbeat: ratio of community nodes to total atoms.
+    Higher = more compression = more learning. Returns float 0.0–1.0. W19HB.
+    """
+    try:
+        pgb = _load_pg_bridge()
+        bridge = pgb.PgBridge()
+    except Exception:
+        return 0.5
+
+    with bridge.conn.cursor() as cur:
+        cur.execute("SELECT COUNT(*) FROM knowledge WHERE invalid_at IS NULL")
+        total = cur.fetchone()[0] or 1
+        cur.execute("""
+            SELECT COUNT(*) FROM knowledge
+            WHERE source_type = 'community_detection' AND invalid_at IS NULL
+        """)
+        communities = cur.fetchone()[0]
+
+    if total < 10:
+        return 0.5
+    return round(min(communities / (total / 10), 1.0), 3)
+
+
+def write_briefing(report: dict) -> None:
+    """Write morning briefing atom to user store."""
+    import sqlite3
+    briefings_dir = STORE_ROOT / "briefings"
+    briefings_dir.mkdir(parents=True, exist_ok=True)
+    db_path = briefings_dir / "daily.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS records (
+            id TEXT PRIMARY KEY, data TEXT NOT NULL, created TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    conn.execute(
+        "INSERT OR REPLACE INTO records (id, data) VALUES (?, ?)",
+        (f"briefing_{today}", json.dumps(report))
+    )
+    conn.commit()
+    conn.close()
+
+
+def soil_reflection_pass(store, collection_patterns: list[str], dry_run: bool = False) -> int:
+    """
+    ExpeL-style reflection over SOIL session_composite atoms.
+    For each pattern, finds matching collections, groups composites by user+app,
+    and writes a reflection atom when N >= 3 sessions exist.
+    Returns count of reflection atoms written.
+    """
+    import fnmatch
+    from collections import Counter, defaultdict
+
+    all_collections = store.collections()
+    written = 0
+
+    # Gather session_composites grouped by (user_uuid, app_id)
+    groups: dict[tuple, list[dict]] = defaultdict(list)
+    for pattern in collection_patterns:
+        for coll in all_collections:
+            if fnmatch.fnmatch(coll, pattern):
+                try:
+                    records = store.list(coll)
+                except Exception:
+                    continue
+                for rec in records:
+                    if rec.get("type") != "session_composite":
+                        continue
+                    uid = rec.get("user_uuid", "unknown")
+                    app = rec.get("app_id", coll.split("/")[1] if "/" in coll else coll)
+                    groups[(uid, app)].append(rec)
+
+    for (uid, app), sessions in groups.items():
+        if len(sessions) < 3:
+            continue
+
+        # ExpeL clustering: frequency analysis across sessions
+        entity_counter: Counter = Counter()
+        durations, nodes, edges = [], [], []
+        for s in sessions:
+            for et in s.get("entity_types_used", []):
+                entity_counter[et] += 1
+            if s.get("duration_seconds"):
+                durations.append(s["duration_seconds"])
+            if s.get("nodes_created"):
+                nodes.append(s["nodes_created"])
+            if s.get("edges_made"):
+                edges.append(s["edges_made"])
+
+        top_types = [t for t, _ in entity_counter.most_common(3)]
+        avg_dur = int(sum(durations) / len(durations)) if durations else 0
+        avg_nodes = round(sum(nodes) / len(nodes), 1) if nodes else 0
+
+        insight_parts = [f"{len(sessions)} sessions analyzed."]
+        if top_types:
+            insight_parts.append(f"Dominant entity types: {', '.join(top_types)}.")
+        if avg_dur:
+            insight_parts.append(f"Average session: {avg_dur // 60}m {avg_dur % 60}s.")
+        if avg_nodes:
+            insight_parts.append(f"Average nodes per session: {avg_nodes}.")
+        insight = " ".join(insight_parts)
+
+        reflection_id = f"reflection-{app}-{uid[:8]}-{len(sessions)}"
+        reflection = {
+            "id": reflection_id,
+            "type": "reflection",
+            "source_app": app,
+            "user_uuid": uid,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "insight": insight,
+            "evidence_sessions": [s.get("id", "") for s in sessions],
+            "session_count": len(sessions),
+        }
+
+        if not dry_run:
+            dest_collection = f"user-{uid}/{app}/atoms/reflections"
+            try:
+                store.put(dest_collection, reflection)
+                written += 1
+            except Exception:
+                pass
+        else:
+            written += 1
+
+    return written
+
+
+def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> dict:
+    """Run all Norn jobs including intelligence passes. Returns report dict."""
+    composted = compost_pass(dry_run=dry_run)
+    communities = community_pass(dry_run=dry_run)
+    heartbeat = measure_heartbeat()
+
+    draugr_count = serendipity_count = dark_matter_count = 0
+    revelation_count = mirror_count = mycorrhizal_count = 0
+    grove_indexed = 0
+    insight_count = 0
+    chunk_count = 0
+    intelligence_error = None
+
+    if not dry_run:
+        try:
+            pgb = _load_pg_bridge()
+            bridge = pgb.PgBridge()
+            intel = _load_intelligence()
+            zombie_ids = intel.draugr_scan(bridge)
+            draugr_count = intel.draugr_mark(bridge, zombie_ids)
+            serendipity_count = len(intel.serendipity_pass(bridge))
+            dark_matter_count = intel.dark_matter_pass(bridge)
+            revelation_count = intel.revelation_pass(bridge)
+            mirror_count = intel.mirror_pass(bridge)
+            mycorrhizal_count = intel.mycorrhizal_pass(bridge)
+        except Exception as _e:
+            import sys as _sys
+            print(f"[norn] intelligence pass error: {_e}", file=_sys.stderr)
+            intelligence_error = str(_e)
+
+        # PMEM2: insight + chunk synthesis over SOIL atoms
+        insight_count = 0
+        chunk_count = 0
+        try:
+            from willow.fylgja._mcp import call as _soil_call
+            insight_report = intel.insight_pass(_soil_call)
+            insight_count = insight_report.get("insights_written", 0)
+            chunk_report = intel.chunk_pass(_soil_call)
+            chunk_count = chunk_report.get("chunks_written", 0)
+        except Exception as _ie:
+            import sys as _sys
+            print(f"[norn] pmem2 pass error: {_ie}", file=_sys.stderr)
+
+        # Grove message ingest — optional, skipped silently if Grove not present
+        try:
+            import importlib.util as _ilu
+            _grove_root = WILLOW_ROOT.parent / "safe-app-willow-grove"
+            _si_path = _grove_root / "safe_integration.py"
+            if _si_path.exists():
+                _si_spec = _ilu.spec_from_file_location("grove_safe_integration", _si_path)
+                _si_mod = _ilu.module_from_spec(_si_spec)
+                _si_spec.loader.exec_module(_si_mod)
+                grove_indexed = _si_mod.flush_to_kb()
+        except Exception:
+            pass
+
+    report = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "composted": composted,
+        "communities": communities,
+        "heartbeat": heartbeat,
+        "squeakdog": heartbeat > 0.6,
+        "draugr": draugr_count,
+        "serendipity": serendipity_count,
+        "dark_matter": dark_matter_count,
+        "revelations": revelation_count,
+        "mirror": mirror_count,
+        "mycorrhizal": mycorrhizal_count,
+        "grove_indexed": grove_indexed,
+        "insights_written": insight_count,
+        "chunks_written": chunk_count,
+    }
+    if intelligence_error:
+        report["intelligence_error"] = intelligence_error
+    # SOIL reflection pass — only when collections are specified
+    reflections_written = 0
+    if collections:
+        try:
+            from core.willow_store import WillowStore
+            store = WillowStore()
+            reflections_written = soil_reflection_pass(store, collections, dry_run=dry_run)
+        except Exception as _re:
+            import sys as _sys
+            print(f"[norn] soil reflection pass error: {_re}", file=_sys.stderr)
+    report["reflections_written"] = reflections_written
+
+    if not dry_run:
+        write_briefing(report)
+    return report
+
+
+if __name__ == "__main__":
+    report = norn_pass()
+    print(json.dumps(report, indent=2))

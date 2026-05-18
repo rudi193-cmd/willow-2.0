@@ -1,0 +1,37 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mcp.json
+.worktrees/
+
+# Runtime logs — generated at runtime, not for version control
+sap/log/*.jsonl
+sap/log/*.md
+
+# Claude Code worktrees
+.claude/worktrees/
+
+# RLM chunk state — ephemeral, never commit
+.claude/rlm_state/
+
+# Claude Code runtime artifacts
+.claude/scheduled_tasks.lock
+
+# Agent KB atom scratch files — ephemeral, ingested into Postgres
+agents/hanuman/kb-atoms/
+
+# Python virtual environments
+.venv/
+venv/
+
+# Local overseer run logs (scripts/run_overseer.py)
+.overseer/
+
+*.sqlite
+*.sqlite3
+sap/tools/handoffs.db
