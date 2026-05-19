@@ -140,6 +140,7 @@ print(json.dumps(result, indent=2))
         HANDOFF_AGENT="${HANDOFF_AGENT}" "${WILLOW_PYTHON}" -c "
 import json, os, sqlite3, sys
 from pathlib import Path
+from sap.handoff_index import select_latest_handoff
 
 agent = os.environ.get('HANDOFF_AGENT', '')
 handoff_db = Path(os.environ.get('WILLOW_HANDOFF_DB', str(Path.home() / '.willow' / 'handoffs' / agent / 'handoffs.db')))
@@ -159,21 +160,20 @@ conn = sqlite3.connect(handoff_db)
 conn.row_factory = sqlite3.Row
 cur = conn.cursor()
 sql_agent = '''
-    SELECT f.filename, h.handoff_date, h.summary, h.open_threads, h.questions
+    SELECT f.filename, f.mtime, h.handoff_date, h.summary, h.open_threads, h.questions
     FROM handoffs h JOIN files f ON h.file_id = f.id
     WHERE h.file_type = 'session' AND f.filename LIKE ?
-    ORDER BY f.mtime DESC LIMIT 1
 '''
 sql_any = '''
-    SELECT f.filename, h.handoff_date, h.summary, h.open_threads, h.questions
+    SELECT f.filename, f.mtime, h.handoff_date, h.summary, h.open_threads, h.questions
     FROM handoffs h JOIN files f ON h.file_id = f.id
     WHERE h.file_type = 'session'
-    ORDER BY f.mtime DESC LIMIT 1
 '''
-row = cur.execute(sql_agent, (f'%{agent}%',)).fetchone() if agent else None
-if not row:
-    row = cur.execute(sql_any).fetchone()
+rows = cur.execute(sql_agent, (f'%{agent}%',)).fetchall() if agent else []
+if not rows:
+    rows = cur.execute(sql_any).fetchall()
 conn.close()
+row = select_latest_handoff(rows)
 
 if not row:
     print(json.dumps({'error': 'No session handoffs found.'}, indent=2))
