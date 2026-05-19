@@ -31,17 +31,24 @@ Never write to `public/` or another agent's namespace.
 
 ## Boot sequence
 
-@prompt Call these two tools in parallel before doing anything else. If fleet_status returns degraded or down, surface it and stop — everything else depends on it.
-
-| Step | Tool | Purpose |
-|------|------|---------|
-| 1 | `fleet_status` | Confirms Postgres + SOIL + Ollama are up |
-| 2 | `handoff_latest` | Last session state — what was in-flight, what's pending |
+@prompt Default boot path when MCP is available: read this file via markdownai, establish local operating context, then execute the compact 7-step loop below. If any required base is degraded, surface it and stop.
 
 @end
 
+| Step | Surface | Purpose |
+|------|---------|---------|
+| 1 | `markdownai-read_file("willow.md")` | Load the canonical boot contract |
+| 2 | Local operating context | Agent, namespace, repo root, branch, compact repo diff summary |
+| 3 | `fleet_status` | Confirms Postgres + SOIL + Ollama are up |
+| 4 | `handoff_latest` | Last session state — what was in-flight, what's pending |
+| 5 | `grove_get_history` | Fleet continuity for the agent channel/inbox |
+| 6 | `kb_search` | Task continuity before design or execution |
+| 7 | Stop or act | Surface degraded base, otherwise proceed |
+
+Keep step 2 compact: branch, clean/dirty, staged/unstaged/untracked counts, ahead/behind if known, and a short diff note. Do not dump a full patch at boot unless Sean asks for it.
+
 @constraint id=boot-order
-fleet_status and handoff_latest MUST be called before any other action.
+Read `willow.md`, establish compact local operating context, then call `fleet_status`, `handoff_latest`, `grove_get_history`, and `kb_search` before any non-trivial action.
 @end
 
 @constraint id=namespace
@@ -49,12 +56,24 @@ Agents MUST write only to their own namespace. Cross-namespace writes require ex
 @end
 
 @constraint id=pull-before-push
-Call grove_get_history before posting to Grove or building anything non-trivial. Another agent may have already built it.
+Call `grove_get_history` before posting to Grove or building anything non-trivial. Another agent may have already built it.
 @end
 
 @constraint id=kb-first
-Search KB before building. Use kb_search with the task topic. Convergence is proof this works.
+Search KB before building. Use `kb_search` with the task topic. Convergence is proof this works.
 @end
+
+---
+
+## Persistent memory stack
+
+This system remembers in three layers:
+
+1. **Boot persistence** — orient from live truth before acting.
+2. **Mid-session persistence** — accumulate compact traces while working.
+3. **End-of-session persistence** — seal the session so the next one does not start blind.
+
+Canonical detail lives in `willow/fylgja/skills/persistent-memory-stack.md`.
 
 ---
 
@@ -78,8 +97,9 @@ Search KB before building. Use kb_search with the task topic. Convergence is pro
 For raw API calls, Ollama agents, or offline use:
 
 1. Read `~/.willow/session_anchor_@env WILLOW_AGENT_NAME.json`
-2. Note `handoff_title`, `open_flags`, `postgres` status
-3. If Postgres is reachable, call `kb_search` on the task topic before building
-4. Proceed — write session notes to `~/.willow/` in your agent's namespace
+2. Establish local operating context with repo root, branch, and a compact repo diff summary
+3. Note `handoff_title`, `open_flags`, `postgres` status
+4. If Postgres is reachable, call `kb_search` on the task topic before building
+5. Proceed — write session notes to `~/.willow/` in your agent's namespace
 
-This file is the anchor. Real context is in the KB.
+Use the session anchor as a cache/fallback, not the primary truth source. Use `/startup` only for degraded boot, stale context, or deeper continuity recovery.
