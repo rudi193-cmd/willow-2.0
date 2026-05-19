@@ -2131,12 +2131,19 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                 result = {"error": str(e)}
 
         elif name == "jeles_sources":
+            _all_sources = dict(JELES_TRUSTED_SOURCES)
+            _sf = os.environ.get("JELES_SOURCES_FILE", "")
+            if _sf and Path(_sf).exists():
+                try:
+                    _all_sources.update(json.loads(Path(_sf).read_text()))
+                except Exception:
+                    pass
             result = {
                 name: {
                     "description": src.get("description", ""),
                     "takes_query": src.get("query_param") is not None,
                 }
-                for name, src in JELES_TRUSTED_SOURCES.items()
+                for name, src in _all_sources.items()
             }
 
         # ── Nest intake ───────────────────────────────────────────────────────

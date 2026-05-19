@@ -48,7 +48,7 @@ export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
 export PYTHONPATH="${WILLOW_ROOT}:${PYTHONPATH:-}"
 
 # Jeles trusted sources registry — 54 sources from Loki audit (atom 44A246FD)
-export JELES_SOURCES_FILE="${HOME}/Desktop/sources.json"
+export JELES_SOURCES_FILE="${HOME}/.willow/jeles_sources.json"
 
 cmd="${1:-start}"
 
