@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sap/server.py — SAP MCP Server 2.0
+sap/sap_mcp.py — SAP MCP Server 2.0
 willow-2.0 / SAP MCP 2.0
 b20: SAPMCP2  ΔΣ=42
 
@@ -23,10 +23,10 @@ Tool prefixes (14 domains):
   infer_     chat, imagine, speak
 
 Entry points:
-  stdio (default):    python3 -m sap.server
-  HTTP:               python3 -m sap.server --http [--host 127.0.0.1] [--port 6274]
+  stdio (default):    python3 sap/sap_mcp.py
+  HTTP:               python3 sap/sap_mcp.py --http [--host 127.0.0.1] [--port 6274]
 
-  .mcp.json stdio:    {"command": "python3", "args": ["-m", "sap.server"]}
+  .mcp.json stdio:    {"command": "python3", "args": ["sap/sap_mcp.py"]}
   .mcp.json HTTP:     {"url": "http://127.0.0.1:6274/mcp"}
 """
 from __future__ import annotations
@@ -41,7 +41,7 @@ from pathlib import Path
 from typing import AsyncIterator
 
 # ── Path setup ────────────────────────────────────────────────────────────────
-_SAP_ROOT    = Path(__file__).parent.parent   # willow-1.9/
+_SAP_ROOT    = Path(__file__).parent.parent   # willow-2.0/
 _WILLOW_CORE = _SAP_ROOT / "core"
 
 _sap_str = str(_SAP_ROOT)
@@ -121,12 +121,13 @@ _ENV_SNAPSHOT_PREFIXES = ("WILLOW_", "GROVE_", "HOME", "USER", "PATH", "PGUSER",
 # ── Startup helpers ───────────────────────────────────────────────────────────
 
 def _kill_stale_instances() -> None:
-    """Terminate other sap_mcp.py processes and their idle Postgres connections."""
+    """Terminate other sap_mcp.py processes FROM THIS REPO and their idle Postgres connections."""
     import signal
     import time
     import psutil  # type: ignore[import]
 
     my_pid = os.getpid()
+    my_root = str(_SAP_ROOT)  # Only kill instances from the same repo root
     stale_pids: list[int] = []
 
     try:
@@ -134,7 +135,7 @@ def _kill_stale_instances() -> None:
             if proc.info["pid"] == my_pid:
                 continue
             cmdline = " ".join(proc.info.get("cmdline") or [])
-            if "sap_mcp" in cmdline or "sap.server" in cmdline:
+            if ("sap_mcp" in cmdline or "sap.server" in cmdline) and my_root in cmdline:
                 stale_pids.append(proc.info["pid"])
     except Exception as err:
         logger.warning("[w2] stale instance scan failed: %s", err)
