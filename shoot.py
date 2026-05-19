@@ -983,9 +983,9 @@ def page_legal(win) -> bool:
         ("", dim),
         ("Personal use:     always free.", dim),
         ("Commercial use:   written consent required.", dim),
-        ("                  rudi193@gmail.com", dim),
+        ("                  see LICENSE for contact details.", dim),
         ("", dim),
-        ("MIT License · Copyright 2026 Sean Campbell", dim),
+        ("MIT License · Copyright 2026 Willow Contributors", dim),
         ("§ 1.1 Commercial Consent Clause", dim),
     ]
     for text, attr in terms:

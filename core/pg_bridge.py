@@ -250,7 +250,7 @@ CREATE TABLE IF NOT EXISTS policy_rules (
     threshold   REAL,
     window_sec  INTEGER DEFAULT 3600,
     action      TEXT NOT NULL DEFAULT 'warn',
-    created_by  TEXT NOT NULL DEFAULT 'heimdallr',
+    created_by  TEXT NOT NULL DEFAULT '',
     active      BOOLEAN NOT NULL DEFAULT TRUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -598,7 +598,7 @@ class PgBridge:
 
     def policy_put(self, name: str, rule_type: str = "limit", target: str = "*",
                    action: str = "warn", threshold: Optional[float] = None,
-                   window_sec: int = 3600, created_by: str = "heimdallr") -> str:
+                   window_sec: int = 3600, created_by: str = "") -> str:
         self._ensure_conn()
         rule_id = self.gen_id(8)
         with self.conn.cursor() as cur:
