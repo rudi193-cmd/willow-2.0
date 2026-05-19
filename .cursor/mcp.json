@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "markdownai": {
+      "type": "stdio",
+      "command": "bash",
+      "args": ["sap/markdownai_mcp.sh"],
+      "env": {}
+    },
+    "willow": {
+      "type": "stdio",
+      "command": "bash",
+      "args": ["sap/willow_mcp.sh"],
+      "env": {
+        "WILLOW_AGENT_NAME": "heimdallr",
+        "WILLOW_PG_DB": "willow_20"
+      }
+    }
+  }
+}
