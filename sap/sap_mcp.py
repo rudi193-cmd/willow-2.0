@@ -274,7 +274,7 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[None]:
 # ── MCP server ────────────────────────────────────────────────────────────────
 
 mcp = FastMCP(
-    "willow",
+    "willow-2",
     instructions=_ONBOARDING,
     lifespan=_lifespan,
 )
