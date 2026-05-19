@@ -540,7 +540,7 @@ def ensure_card_builder_channel() -> None:
         cur = conn.cursor()
         cur.execute("""
             INSERT INTO grove.channels (name, channel_type, description, agent_name)
-            VALUES ('card-builder', 'group', 'Heimdallr card builder interview', 'heimdallr')
+            VALUES ('card-builder', 'group', 'Card builder interview channel', 'willow')
             ON CONFLICT (name) DO NOTHING
         """)
         conn.commit()

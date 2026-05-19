@@ -504,7 +504,7 @@ def authorized_cross_app(requesting_app_id: str, target_collection: str, access:
         return True
 
     try:
-        user = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", "example-user"))
+        user = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
         conn = psycopg2.connect(dbname="willow_20", user=user)
         cur = conn.cursor()
 

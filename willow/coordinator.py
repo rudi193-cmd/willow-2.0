@@ -39,7 +39,7 @@ logging.basicConfig(
 # ── Config ────────────────────────────────────────────────────────────────────
 COORDINATOR_SENDER = "willow"
 FLEET_SENDERS      = frozenset({"hanuman", "heimdallr", "vishwakarma", "loki"})
-SEAN_SENDER        = "example-user"
+SEAN_SENDER        = os.environ.get("WILLOW_HUMAN_SENDER", os.environ.get("USER", "human"))
 
 API_URL          = os.environ.get("WILLOW_COORDINATOR_API_URL",         "http://localhost:11434/api/chat")
 MODEL            = os.environ.get("WILLOW_COORDINATOR_MODEL",           "yggdrasil:v9")

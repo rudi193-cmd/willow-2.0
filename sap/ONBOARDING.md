@@ -1,7 +1,7 @@
 # Willow MCP — Onboarding
 b20: SAPMCP2  ΔΣ=42
 
-You are connected to Willow, a local-first AI memory and task system built for Sean Campbell's agent fleet. Before doing anything else, orient.
+You are connected to Willow, a local-first AI memory and task system built for your agent fleet. Before doing anything else, orient.
 
 ## Boot sequence (always run first)
 

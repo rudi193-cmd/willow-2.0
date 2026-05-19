@@ -11,8 +11,8 @@ from willow.fylgja._mcp import call
 AGENT = require_agent_name()
 
 DEFAULT_CONFIG: dict = {
-    "deployment_id": "sean-personal",
-    "admin_user_id": "sean",
+    "deployment_id": "willow-default",
+    "admin_user_id": os.environ.get("WILLOW_ADMIN_USER", os.environ.get("USER", "")),
     "content_tiers": {
         "child": {"max_age": 12, "eccr": True},
         "teen": {"min_age": 13, "max_age": 17},
@@ -20,7 +20,7 @@ DEFAULT_CONFIG: dict = {
     },
     "training_opt_in": False,
     "training_child_opt_in": False,
-    "psr_names": ["Ruby Campbell", "Opal Campbell"],
+    "psr_names": [],
 }
 
 _cache: Optional[dict] = None
