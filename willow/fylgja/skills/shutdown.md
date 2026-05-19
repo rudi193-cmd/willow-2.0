@@ -5,6 +5,8 @@ description: Graceful Willow 2.0 session close — audit KB, write handoff, run 
 
 # /shutdown — Willow 2.0 Graceful Close
 
+Stack position: this skill completes the **end-of-session persistence** layer described in `willow/fylgja/skills/persistent-memory-stack.md`.
+
 ## Sequence
 
 1. **Resolve open process flags** — call `soil_list` with prefix `flags/` and filter for any

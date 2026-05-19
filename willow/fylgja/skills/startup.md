@@ -5,14 +5,16 @@ description: Willow 2.0 boot — anchor, inbox, ledger, KB continuity (config-dr
 
 # /startup
 
-> **MANDATORY — runs before responding to any first message, every session, no exceptions.** Casual openers do not bypass this. If you are reading this skill, run it to completion before you say anything else to Sean.
+> **Recovery path — not the default boot.** Use this skill when boot is degraded, the session anchor is missing/stale, or you need deeper continuity recovery than the normal `willow.md` path.
 
-SessionStart already ran status/handoff/flags and wrote `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. Re-call `willow_status` + `willow_handoff_latest` **only** if anchor missing or `written_at` > **2h**.
+Default boot with MCP available is the compact 7-step loop: (1) `markdownai-read_file("willow.md")`; (2) establish local operating context with agent, namespace, repo root, branch, and a compact repo diff summary; (3) `fleet_status`; (4) `handoff_latest`; (5) `grove_get_history` on the agent channel/inbox; (6) `kb_search` on the current task/topic; (7) stop on degraded base or proceed to act. Keep step 2 compact: branch, clean/dirty, staged/unstaged/untracked counts, ahead/behind if known, and a short diff note, not a full patch. SessionStart already ran status/handoff/flags and wrote `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. Re-run the deeper recovery steps below only if the anchor is missing, stale (`written_at` > **2h**), or live MCP boot is degraded.
+
+Stack position: this skill belongs to the **boot persistence** layer described in `willow/fylgja/skills/persistent-memory-stack.md`.
 
 ## Steps
 
 1. Read anchor JSON (path above).
-2. **Postgres — live probe, not anchor copy.** The anchor field `postgres` can be `unknown` when SessionStart could not reach MCP. Do **not** report that as the truth. Prefer `willow_status`: `postgres` is a **dict** ⇒ up. If MCP is missing, times out, or returns non-dict: from the **willow-2.0 repo root** run `pg_isready` (honor `WILLOW_PG_HOST` / `WILLOW_PG_PORT` if set) and one connect + `SELECT 1` against `WILLOW_PG_DB` (default `willow_20`) — e.g. `python3 -c "from core.pg_bridge import try_connect; c=try_connect(); assert c; c.close()"` or `psql`. **Probe success** ⇒ treat as up for the boot paragraph. **Probe failure** ⇒ post `#general`, stop.
+2. **Postgres — live probe, not anchor copy.** The anchor field `postgres` can be `unknown` when SessionStart could not reach MCP. Do **not** report that as the truth. Prefer `fleet_status`: `postgres` is a **dict** ⇒ up. If MCP is missing, times out, or returns non-dict: from the **willow-2.0 repo root** run `pg_isready` (honor `WILLOW_PG_HOST` / `WILLOW_PG_PORT` if set) and one connect + `SELECT 1` against `WILLOW_PG_DB` (default `willow_20`) — e.g. `python3 -c "from core.pg_bridge import try_connect; c=try_connect(); assert c; c.close()"` or `psql`. **Probe success** ⇒ treat as up for the boot paragraph. **Probe failure** ⇒ post `#general`, stop.
 3. `grove_get_history(channel={AGENT}, limit=20)` — inbox only; scan since `anchor.written_at` for directed / urgent / Loki.
 4. If `/tmp/willow-dispatch-inbox-{AGENT}.json` non-empty → read, surface, delete.
 5. Grove LISTEN monitor — `willow/fylgja/skills/grove-persistent-monitor.md` (all msgs on own channel; `@mentions` elsewhere); never `last_id=0`.
@@ -25,7 +27,7 @@ SessionStart already ran status/handoff/flags and wrote `~/.willow/session_ancho
 
 ## Rules
 
-- **Postgres:** Never answer "postgres is unknown" from the anchor alone; always run step 2 probe first when state is not already confirmed up via `willow_status`.
+- **Postgres:** Never answer "postgres is unknown" from the anchor alone; always run step 2 probe first when state is not already confirmed up via `fleet_status`.
 - No `#general` / `#architecture` / `#handoffs` pulls at boot (on-demand).
 - Do not read full handoff `.md` — anchor is enough.
 - **Tune KB recall vs tokens** by editing `willow/fylgja/config/startup_continuity.json`, not this file.

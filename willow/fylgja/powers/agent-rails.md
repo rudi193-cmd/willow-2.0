@@ -7,8 +7,17 @@ b17: FYLAR · ΔΣ=42
 
 ## 1. Cold pull (parallel when both apply)
 
-- First substantive reply in a chat **or** anchor missing / stale per `willow/fylgja/skills/startup.md`: call **`willow_status`** and **`willow_handoff_latest`** **together** (same round), not serial guesswork.
-- If `willow_status` is degraded/down on something you need → **stop** and report; do not build on a broken base.
+- Default boot path when MCP is available is a compact 7-step loop:
+  1. Read `willow.md` via `markdownai-read_file`.
+  2. Establish local operating context: agent, namespace, repo root, branch, and a compact repo diff summary.
+  3. Pull live system state with **`fleet_status`**.
+  4. Pull session continuity with **`handoff_latest`**.
+  5. Pull fleet continuity with **`grove_get_history`** on the agent channel/inbox.
+  6. Pull task continuity with **`kb_search`** on the current topic.
+  7. If any required base is degraded, **stop** and report; otherwise proceed to act.
+- Keep step 2 compact: branch, clean/dirty, staged/unstaged/untracked counts, ahead/behind if known, and a short diff note. Do not dump a full patch at boot.
+- Treat `session_anchor_*.json` as a cache/fallback. Use `/startup` only for degraded boot, stale context, or deeper continuity recovery.
+- Persistent memory architecture lives in `willow/fylgja/skills/persistent-memory-stack.md`: boot persistence, mid-session persistence, and end-of-session persistence.
 
 ## 2. Knowledge before muscle
 

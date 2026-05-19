@@ -1,6 +1,6 @@
 # `sandbox/` — Git-shaped state machine (WLGSM) reference implementation
 
-**b17:** GSSBX · ΔΣ=42  
+**b17:** GSSBX · ΔΣ=42
 
 Portable implementation of `docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md`. Full binding spec: `sandbox/docs/IMPLEMENTATION_SPEC.md`.
 
