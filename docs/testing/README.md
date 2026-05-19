@@ -1,4 +1,4 @@
-# Willow 1.9 — Testing Setup
+# Willow 2.0 — Testing Setup
 
 ## Required environment variables
 

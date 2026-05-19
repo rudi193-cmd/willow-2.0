@@ -19,10 +19,10 @@ except ImportError:
 
 DB_PARAMS = {
     "dbname": "willow_20",
-    "user": "sean-campbell",
+    "user": os.environ.get("USER", ""),
 }
 
-SESSION_ROOT = "/home/sean-campbell/.claude/projects"
+SESSION_ROOT = str(Path.home() / ".claude" / "projects")
 
 # Tool name classifier — maps MCP tool names to short categories
 def classify_tool(name: str) -> str:

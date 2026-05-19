@@ -15,7 +15,7 @@ Usage:
   python3 system_health.py --check weekly
   python3 system_health.py --check all
   python3 system_health.py --check all --json
-  python3 system_health.py --check boot --willow-dir ~/.willow --repo "${WILLOW_ROOT:-~/willow-1.9}"
+  python3 system_health.py --check boot --willow-dir ~/.willow --repo "${WILLOW_ROOT:-~/willow-2.0}"
 """
 
 import argparse
@@ -30,7 +30,7 @@ from pathlib import Path
 # ── Config ────────────────────────────────────────────────────────────────────
 
 DEFAULT_WILLOW_DIR  = Path("~/.willow").expanduser()
-DEFAULT_REPO_PATH   = Path(__import__("os").environ.get("WILLOW_ROOT", str(Path("~/willow-1.9").expanduser())))
+DEFAULT_REPO_PATH   = Path(__import__("os").environ.get("WILLOW_ROOT", str(Path("~/willow-2.0").expanduser())))
 OLLAMA_HOST         = "127.0.0.1"
 OLLAMA_PORT         = 11434
 MCP_HOST            = "127.0.0.1"

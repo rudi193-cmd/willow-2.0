@@ -75,6 +75,18 @@ _AUDIT_ALLOW_PATTERNS = [
     r"^\s*ls(\s|$)",        # file listing for disk audit
 ]
 
+# User-owned SQLite databases that are not protected stores.
+# Access to these bypasses the \bsqlite3\b block.
+# Protected stores (vault.db, .willow/store) are NOT listed here and remain blocked.
+_SQLITE_USER_PATHS = [
+    r"/SAFE/",          # principal personal data (sean.db, etc.)
+    r"\bai_news\.db\b", # AI news knowledge graph
+]
+
+
+def _sqlite_access_allowed(command: str) -> bool:
+    return any(re.search(p, command) for p in _SQLITE_USER_PATHS)
+
 F5_PROSE_TOOLS = {
     "mcp__willow__soil_put": "record",
     "mcp__willow__soil_update": "record",
@@ -111,6 +123,8 @@ def check_bash_block(command: str) -> str | None:
                 return None
     for pattern, reason in BASH_BLOCKS:
         if re.search(pattern, command, re.MULTILINE):
+            if pattern == r"\bsqlite3\b" and _sqlite_access_allowed(command):
+                continue
             return reason
     return None
 
@@ -319,7 +333,8 @@ def main():
             print(json.dumps({"decision": "block", "reason": reason}))
             sys.exit(0)
         # Security scan — exfiltration, credential theft, destructive, obfuscation
-        if command:
+        # Skip for user-owned SQLite databases (DROP TABLE etc. on personal data is fine).
+        if command and not (re.search(r"\bsqlite3\b", command) and _sqlite_access_allowed(command)):
             issues = _scan_bash(command)
             bad = _scan_worst(issues)
             if bad and bad.severity >= SEV_HIGH:

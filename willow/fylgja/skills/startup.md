@@ -1,6 +1,6 @@
 ---
 name: startup
-description: Willow 1.9 boot — anchor, inbox, ledger, KB continuity (config-driven), flags, report
+description: Willow 2.0 boot — anchor, inbox, ledger, KB continuity (config-driven), flags, report
 ---
 
 # /startup
@@ -12,7 +12,7 @@ SessionStart already ran status/handoff/flags and wrote `~/.willow/session_ancho
 ## Steps
 
 1. Read anchor JSON (path above).
-2. **Postgres — live probe, not anchor copy.** The anchor field `postgres` can be `unknown` when SessionStart could not reach MCP. Do **not** report that as the truth. Prefer `willow_status`: `postgres` is a **dict** ⇒ up. If MCP is missing, times out, or returns non-dict: from the **willow-1.9 repo root** run `pg_isready` (honor `WILLOW_PG_HOST` / `WILLOW_PG_PORT` if set) and one connect + `SELECT 1` against `WILLOW_PG_DB` (default `willow_20`) — e.g. `python3 -c "from core.pg_bridge import try_connect; c=try_connect(); assert c; c.close()"` or `psql`. **Probe success** ⇒ treat as up for the boot paragraph. **Probe failure** ⇒ post `#general`, stop.
+2. **Postgres — live probe, not anchor copy.** The anchor field `postgres` can be `unknown` when SessionStart could not reach MCP. Do **not** report that as the truth. Prefer `willow_status`: `postgres` is a **dict** ⇒ up. If MCP is missing, times out, or returns non-dict: from the **willow-2.0 repo root** run `pg_isready` (honor `WILLOW_PG_HOST` / `WILLOW_PG_PORT` if set) and one connect + `SELECT 1` against `WILLOW_PG_DB` (default `willow_20`) — e.g. `python3 -c "from core.pg_bridge import try_connect; c=try_connect(); assert c; c.close()"` or `psql`. **Probe success** ⇒ treat as up for the boot paragraph. **Probe failure** ⇒ post `#general`, stop.
 3. `grove_get_history(channel={AGENT}, limit=20)` — inbox only; scan since `anchor.written_at` for directed / urgent / Loki.
 4. If `/tmp/willow-dispatch-inbox-{AGENT}.json` non-empty → read, surface, delete.
 5. Grove LISTEN monitor — `willow/fylgja/skills/grove-persistent-monitor.md` (all msgs on own channel; `@mentions` elsewhere); never `last_id=0`.
@@ -29,4 +29,4 @@ SessionStart already ran status/handoff/flags and wrote `~/.willow/session_ancho
 - No `#general` / `#architecture` / `#handoffs` pulls at boot (on-demand).
 - Do not read full handoff `.md` — anchor is enough.
 - **Tune KB recall vs tokens** by editing `willow/fylgja/config/startup_continuity.json`, not this file.
-- **Path discipline:** `/startup` Cursor/Claude command stubs resolve **FYLGJA** via `WILLOW_FYLGJA_ROOT` or relative `willow/fylgja` / `willow-1.9/willow/fylgja` — never embed machine-local absolute paths in those stubs.
+- **Path discipline:** `/startup` Cursor/Claude command stubs resolve **FYLGJA** via `WILLOW_FYLGJA_ROOT` or relative `willow/fylgja` / `willow-2.0/willow/fylgja` — never embed machine-local absolute paths in those stubs.

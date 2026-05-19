@@ -77,7 +77,7 @@ def test_step_8_version_pin(tmp_path, monkeypatch):
     (tmp_path / ".willow").mkdir(parents=True, exist_ok=True)
     seed.step_8_version_pin()
     version = (tmp_path / ".willow" / "version").read_text().strip()
-    assert version == "1.9.0"
+    assert version == "2.0.0"
 
 
 def test_sleipnir_idempotent(tmp_path, monkeypatch):

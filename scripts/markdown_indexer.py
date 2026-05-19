@@ -17,11 +17,11 @@ try:
 except ImportError:
     raise
 
-DB_PARAMS = {"dbname": "willow_20", "user": "sean-campbell"}
+DB_PARAMS = {"dbname": "willow_20", "user": os.environ.get("USER", "")}
 
 ROOTS = [str(p) for p in [
     Path.home() / "github",
-    Path.home() / "Ashokoa" / "agents",
+    Path.home() / "agents",
 ] if p.exists()]
 
 SKIP_DIRS = {
@@ -44,7 +44,7 @@ def make_atom_id(filepath: str) -> str:
 def make_title(filepath: str) -> str:
     p = Path(filepath)
     try:
-        return str(p.relative_to("/home/sean-campbell"))
+        return str(p.relative_to(Path.home()))
     except ValueError:
         return p.name
 
