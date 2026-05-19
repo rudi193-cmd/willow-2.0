@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 _DEFAULT_SETTINGS = Path.home() / ".claude" / "settings.json"
-_PACKAGE_ROOT = Path(__file__).parent.parent.parent  # willow-1.9/
+_PACKAGE_ROOT = Path(__file__).parent.parent.parent  # willow-2.0/
 
 
 def _event_command(package_root: Path, module: str) -> str:

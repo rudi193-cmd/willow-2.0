@@ -21,7 +21,7 @@ FRANK (Formal Record and Notation Keeper) is wired into the watch loop alongside
 
 ## Hanuman
 
-**Root:** `~/github/willow-1.9/`  
+**Root:** `${WILLOW_ROOT:-~/willow-2.0}/`  
 **Namespace:** `hanuman/` in SOIL, `project='hanuman'` in KB  
 **Grove sender:** `hanuman`  
 **Identity:** Builder. Fleet coordinator. Claude Code CLI.

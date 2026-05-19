@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-seed.py — Willow 1.9  (one file to rule them all)
+seed.py — Willow 2.0  (one file to rule them all)
 b17: SEED9  ΔΣ=42
 
 First run:   full install + onboarding conversation + card creation + dashboard
@@ -32,7 +32,7 @@ BOOT_LOG      = Path("/tmp/willow-seed-debug.log")
 GROVE_DIR      = Path.home() / "github" / "safe-app-willow-grove"
 GROVE_APP      = GROVE_DIR / "app.py"
 GROVE_REPO     = "https://github.com/rudi193-cmd/safe-app-willow-grove.git"
-VERSION       = "1.9.0"
+VERSION       = "2.0.0"
 
 sys.path.insert(0, str(WILLOW_ROOT))
 

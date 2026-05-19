@@ -3,7 +3,7 @@ soil_client.py — Sync MCP client for Willow SOIL store operations.
 b17: SOIL1  ΔΣ=42
 
 Standalone. Only imports stdlib + mcp package (installed with willow-seed).
-No willow-1.9 Python library required at runtime — talks to willow.sh via stdio.
+No willow-2.0 Python library required at runtime — talks to willow.sh via stdio.
 
 Usage:
     from sap.clients.soil_client import SoilClient
@@ -17,7 +17,7 @@ Server discovery order:
     1. WILLOW_MCP_CMD env var (full command string)
     2. WILLOW_ROOT env var → {WILLOW_ROOT}/willow.sh
     3. ~/.willow-root symlink → willow.sh  (willow-seed install convention)
-    4. ~/willow-1.9/willow.sh  (dev fallback)
+    4. ~/willow-2.0/willow.sh  (dev fallback)
 """
 
 import asyncio
@@ -35,7 +35,7 @@ def _find_willow_sh() -> Optional[Path]:
     candidates = [
         os.environ.get("WILLOW_ROOT"),
         Path.home() / ".willow-root",
-        Path.home() / "github" / "willow-1.9",
+        Path.home() / "github" / "willow-2.0",
     ]
     for c in candidates:
         if c:

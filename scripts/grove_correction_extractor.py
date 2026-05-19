@@ -228,7 +228,7 @@ def main():
     parser.add_argument("--channel", default="general")
     parser.add_argument("--since-id", type=int, default=6400)
     parser.add_argument("--until-id", type=int, default=9999)
-    parser.add_argument("--output", default="/home/sean-campbell/github/yggdrasil-training-data/corrections/grove_20260429.jsonl")
+    parser.add_argument("--output", default=str(Path.home() / ".willow" / "exports" / "grove_20260429.jsonl"))
     args = parser.parse_args()
 
     pg = PgBridge()

@@ -1,9 +1,9 @@
 ---
 name: tdd
-description: Test-driven development for Willow 1.9 — willow_20_test schema, real DB, mock MCP
+description: Test-driven development for Willow 2.0 — willow_20_test schema, real DB, mock MCP
 ---
 
-# TDD — Willow 1.9
+# TDD — Willow 2.0
 
 ## Rules
 

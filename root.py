@@ -21,9 +21,9 @@ import sys
 from pathlib import Path
 
 WILLOW_ROOT = Path(__file__).parent
-VERSION = "1.9.0"
+VERSION = "2.0.0"
 
-# Ensure willow-1.9 is first on path — strip any willow-1.7 entries
+# Ensure willow-2.0 is first on path — strip any willow-1.7 entries
 sys.path = [str(WILLOW_ROOT)] + [p for p in sys.path if "willow-1.7" not in p]
 
 
@@ -123,7 +123,7 @@ def step_4_vault() -> Path:
 
 
 def _load_pg_bridge():
-    """Load pg_bridge from willow-1.9 explicitly — no path ambiguity."""
+    """Load pg_bridge from willow-2.0 explicitly — no path ambiguity."""
     import importlib.util
     spec = importlib.util.spec_from_file_location(
         "pg_bridge_19", WILLOW_ROOT / "core" / "pg_bridge.py"
@@ -452,7 +452,7 @@ def sleipnir(
             print("  │     willow status-all       check everything        │")
             print("  │     willow health           run diagnostics         │")
             print("  │                                                     │")
-            print("  │   Docs:  github.com/rudi193-cmd/willow-1.9         │")
+            print("  │   Docs:  github.com/rudi193-cmd/willow-2.0         │")
             print("  │                                                     │")
             print("  │   👋  Hello LLM Physics Discord —                   │")
             print("  │       running Willow on a phone. Yes, really.       │")
@@ -473,7 +473,7 @@ def sleipnir(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Sleipnir — Willow 1.9 install")
+    parser = argparse.ArgumentParser(description="Sleipnir — Willow 2.0 install")
     parser.add_argument("--skip-pg", action="store_true")
     parser.add_argument("--skip-socket", action="store_true")
     parser.add_argument("--skip-gpg", action="store_true")

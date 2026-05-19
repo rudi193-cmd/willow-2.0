@@ -321,7 +321,7 @@ def run_atom_synthesis() -> None:
             capture_output=True,
             text=True,
             timeout=5,
-            cwd=Path(__file__).parent.parent.parent.parent,  # willow-1.9 root
+            cwd=Path(__file__).parent.parent.parent.parent,  # willow-2.0 root
         )
 
         if result.returncode != 0:

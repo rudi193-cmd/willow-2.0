@@ -255,7 +255,7 @@ class UTETYHandler(BaseHTTPRequestHandler):
 def main():
     if not UTETY_WEB.exists():
         logger.error("UTETY web root not found: %s", UTETY_WEB)
-        logger.error("Set UTETY_WEB_ROOT or clone safe-app-utety-chat alongside willow-1.9")
+        logger.error("Set UTETY_WEB_ROOT or clone safe-app-utety-chat alongside willow-2.0")
         sys.exit(1)
 
     logger.info("UTETY HTTP server starting on port %d", PORT)

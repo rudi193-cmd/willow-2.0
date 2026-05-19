@@ -1,6 +1,6 @@
 [Unit]
 Description=Willow Metabolic Service Socket
-Documentation=https://github.com/rudi193-cmd/willow-1.9
+Documentation=https://github.com/rudi193-cmd/willow-2.0
 
 [Socket]
 ListenStream=%h/.willow/metabolic.sock

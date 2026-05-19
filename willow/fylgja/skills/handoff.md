@@ -1,9 +1,9 @@
 ---
 name: handoff
-description: Write a Willow 1.9 session handoff — structured KB atom + SQLite rebuild
+description: Write a Willow 2.0 session handoff — structured KB atom + SQLite rebuild
 ---
 
-# /handoff — Willow 1.9 Session Handoff
+# /handoff — Willow 2.0 Session Handoff
 
 ## Sequence
 

@@ -341,12 +341,12 @@ def _complete_task(conn, task_id: str, result: dict, steps: int = 0) -> None:
 
 
 def _willow_repo_root() -> Path | None:
-    """Resolve willow-1.9 checkout for Run Ledger imports (never rely on sibling-path guesses alone)."""
+    """Resolve willow-2.0 checkout for Run Ledger imports (never rely on sibling-path guesses alone)."""
     env = (os.environ.get("WILLOW_ROOT") or "").strip()
     candidates: list[Path] = []
     if env:
         candidates.append(Path(env).expanduser().resolve())
-    candidates.append((Path.home() / "github" / "willow-1.9").resolve())
+    candidates.append((Path.home() / "github" / "willow-2.0").resolve())
     for base in candidates:
         try:
             if (base / "core" / "run_ledger.py").is_file():
