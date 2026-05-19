@@ -847,7 +847,9 @@ class PgBridge:
         # Split multi-word queries into AND-ed ILIKE terms so "grove fleet"
         # finds atoms containing both words, not the exact phrase.
         # Empty query matches all rows (ILIKE '%%' is always true).
-        words = query.split()
+        # Cap at 20 unique words — 1000-word queries build O(N) ILIKE conditions
+        # that stall the Postgres query planner indefinitely (PEP 475 blocks SIGALRM).
+        words = list(dict.fromkeys(query.split()))[:20]
         filters = []
         params: list = []
         for word in words:
