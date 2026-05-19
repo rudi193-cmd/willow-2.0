@@ -141,7 +141,7 @@ class TestWithFixture:
         path = _fixture_path("no_record", input_data)
         path.unlink(missing_ok=True)
 
-        with patch.dict(os.environ, {"VCR_RECORD": ""}):
+        with patch.dict(os.environ, {"VCR_RECORD": "", "CI": ""}):
             result = with_fixture(input_data, "no_record", lambda: {"live": True})
 
         assert result == {"live": True}
