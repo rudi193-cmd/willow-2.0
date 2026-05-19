@@ -201,7 +201,7 @@ class GroveHandler(http.server.BaseHTTPRequestHandler):
                 payload = json.loads(body)
                 channel_name = payload.get("channel", "").strip()
                 content      = payload.get("content", "").strip()
-                sender       = payload.get("sender", "sean-campbell").strip()
+                sender       = payload.get("sender", "").strip()
             except Exception:
                 self._send_json(400, {"error": "invalid JSON"})
                 return
