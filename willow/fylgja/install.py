@@ -4,6 +4,7 @@ Run: python3 -m willow.fylgja.install [--dry-run] [--settings PATH]
 """
 import argparse
 import json
+import shlex
 import sys
 from pathlib import Path
 
@@ -12,8 +13,27 @@ _PACKAGE_ROOT = Path(__file__).parent.parent.parent  # willow-2.0/
 
 
 def _event_command(package_root: Path, module: str) -> str:
-    python = sys.executable
-    return f"PYTHONPATH={package_root} {python} -m willow.fylgja.events.{module}"
+    runner = package_root / "tools" / "run_fylgja_hook.py"
+    venv_python = package_root / ".venv-dev" / "bin" / "python3"
+    python = venv_python if venv_python.is_file() else Path(sys.executable)
+    return (
+        f"{shlex.quote(str(python))} "
+        f"{shlex.quote(str(runner))} "
+        f"willow.fylgja.events.{module}"
+    )
+
+
+def _is_fylgja_entry(entry: dict) -> bool:
+    for hook in entry.get("hooks", []):
+        command = str(hook.get("command", ""))
+        if "run_fylgja_hook.py" in command or "willow.fylgja.events." in command:
+            return True
+    return False
+
+
+def _merge_event_hooks(existing: list[dict], managed: list[dict]) -> list[dict]:
+    preserved = [entry for entry in (existing or []) if not _is_fylgja_entry(entry)]
+    return managed + preserved
 
 
 def build_hooks_block(package_root: Path) -> dict:
@@ -51,7 +71,10 @@ def apply_hooks(settings_path: Path = _DEFAULT_SETTINGS,
                 package_root: Path = _PACKAGE_ROOT,
                 dry_run: bool = False) -> None:
     settings = json.loads(settings_path.read_text()) if settings_path.exists() else {}
-    hooks = build_hooks_block(package_root)
+    managed_hooks = build_hooks_block(package_root)
+    hooks = dict(settings.get("hooks", {}))
+    for event_name, entries in managed_hooks.items():
+        hooks[event_name] = _merge_event_hooks(hooks.get(event_name, []), entries)
     if dry_run:
         print("[install] Dry run — would write hooks block:")
         print(json.dumps(hooks, indent=2))
@@ -75,7 +98,11 @@ def apply_plugin(settings_path: Path = _DEFAULT_SETTINGS,
         print(f"[install] Dry run — would add to enabledPlugins: {plugin_key!r}")
         return
 
-    plugins = settings.get("enabledPlugins", {})
+    plugins = {
+        key: value
+        for key, value in settings.get("enabledPlugins", {}).items()
+        if not str(key).startswith("fylgja@")
+    }
     plugins[plugin_key] = True
     settings["enabledPlugins"] = plugins
     tmp = settings_path.with_suffix(".tmp")

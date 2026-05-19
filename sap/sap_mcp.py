@@ -38,6 +38,8 @@ import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+from sap.handoff_index import select_latest_handoff
 from typing import AsyncIterator
 
 # ── Path setup ────────────────────────────────────────────────────────────────
@@ -1697,21 +1699,20 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
         conn.row_factory = _sql.Row
         cur  = conn.cursor()
         sql_agent = """
-            SELECT f.filename, h.handoff_date, h.summary, h.open_threads, h.questions
+            SELECT f.filename, f.mtime, h.handoff_date, h.summary, h.open_threads, h.questions
             FROM handoffs h JOIN files f ON h.file_id = f.id
             WHERE h.file_type = 'session' AND f.filename LIKE ?
-            ORDER BY f.mtime DESC LIMIT 1
         """
         sql_any = """
-            SELECT f.filename, h.handoff_date, h.summary, h.open_threads, h.questions
+            SELECT f.filename, f.mtime, h.handoff_date, h.summary, h.open_threads, h.questions
             FROM handoffs h JOIN files f ON h.file_id = f.id
             WHERE h.file_type = 'session'
-            ORDER BY f.mtime DESC LIMIT 1
         """
-        row = cur.execute(sql_agent, (f"%{agent_filter}%",)).fetchone() if agent_filter else None
-        if not row:
-            row = cur.execute(sql_any).fetchone()
+        rows = cur.execute(sql_agent, (f"%{agent_filter}%",)).fetchall() if agent_filter else []
+        if not rows:
+            rows = cur.execute(sql_any).fetchall()
         conn.close()
+        row = select_latest_handoff(rows)
         if not row:
             return {"error": "No session handoffs found."}
         return {
