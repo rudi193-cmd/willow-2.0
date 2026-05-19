@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Ensure willow-1.9 root is on sys.path regardless of how this module is imported
+# Ensure willow-2.0 root is on sys.path regardless of how this module is imported
 _ROOT = Path(__file__).parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))

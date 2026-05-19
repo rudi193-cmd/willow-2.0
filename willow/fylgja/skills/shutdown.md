@@ -1,9 +1,9 @@
 ---
 name: shutdown
-description: Graceful Willow 1.9 session close — audit KB, write handoff, run full pipeline
+description: Graceful Willow 2.0 session close — audit KB, write handoff, run full pipeline
 ---
 
-# /shutdown — Willow 1.9 Graceful Close
+# /shutdown — Willow 2.0 Graceful Close
 
 ## Sequence
 
@@ -39,7 +39,7 @@ description: Graceful Willow 1.9 session close — audit KB, write handoff, run 
 
 5. **Run the close pipeline** — the Stop hook is now cleanup-only. Run the full pipeline explicitly:
    ```
-   Bash: PYTHONPATH=/home/example/willow-1.9 /home/example/willow-1.9/.venv-dev/bin/python3 -m willow.fylgja.events.shutdown
+   Bash: PYTHONPATH="${WILLOW_ROOT:-$(pwd)}" "${WILLOW_ROOT:-$(pwd)}/.venv-dev/bin/python3" -m willow.fylgja.events.shutdown
    ```
    **Pipeline stages:**
    - `mark_session_clean` — track successful session close

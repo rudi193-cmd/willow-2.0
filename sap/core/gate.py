@@ -33,7 +33,7 @@ _safe_root_env = os.environ.get("WILLOW_SAFE_ROOT")
 if not _safe_root_env:
     raise RuntimeError(
         "WILLOW_SAFE_ROOT is not set — gate cannot initialize. "
-        "Set it to the SAFE/Applications directory (e.g. /home/example/SAFE/Applications)."
+        "Set it to the SAFE/Applications directory (e.g. $HOME/SAFE/Applications)."
     )
 SAFE_ROOT = Path(_safe_root_env)
 PROFESSOR_ROOT = SAFE_ROOT / "utety-chat" / "professors"

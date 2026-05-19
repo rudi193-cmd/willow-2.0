@@ -7,10 +7,18 @@ import os
 import sys
 import tarfile
 from pathlib import Path
+from unittest.mock import patch
 import pytest
 
 REPO_ROOT = str(Path(__file__).parent.parent.parent)
 sys.path = [REPO_ROOT] + [p for p in sys.path if "willow-1.7" not in p]
+
+
+@pytest.fixture(autouse=True)
+def mock_embed():
+    """Prevent Ollama calls in adversarial tests — they test SQL safety, not embeddings."""
+    with patch("core.pg_bridge.embed", return_value=None):
+        yield
 
 
 @pytest.fixture

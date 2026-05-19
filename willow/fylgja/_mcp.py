@@ -17,7 +17,7 @@ import os
 import subprocess
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).parent.parent.parent  # willow-1.9/
+_REPO_ROOT = Path(__file__).parent.parent.parent  # willow-2.0/
 _WILLOW_MCP = Path(os.environ.get(
     "WILLOW_MCP_BIN",
     str(Path.home() / ".local" / "bin" / "willow-mcp")

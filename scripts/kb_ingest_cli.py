@@ -3,7 +3,7 @@
 CLI mirror of MCP willow_knowledge_ingest — same memory_gate + PgBridge.ingest_atom path.
 b17: KBCLI1  ΔΣ=42
 
-Usage (from willow-1.9 repo root):
+Usage (from willow-2.0 repo root):
   python3 scripts/kb_ingest_cli.py --domain hanuman --title "..." --summary "..."
   python3 scripts/kb_ingest_cli.py ... --force   # bypass REDUNDANT/CONTRADICTION block
 """

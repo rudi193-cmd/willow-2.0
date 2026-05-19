@@ -12,7 +12,7 @@ This CLI tool runs a query against both models and shows side-by-side ranked
 results from Willow's knowledge table, letting you evaluate whether migrating
 from nomic (768d) to a higher-dim model is worthwhile before committing.
 
-Usage (from willow-1.9 root):
+Usage (from willow-2.0 root):
     python -m willow.ranking.embedder_compare "hybrid search fallback chain"
     python -m willow.ranking.embedder_compare "embed query" --limit 5 --project hanuman
     python -m willow.ranking.embedder_compare "..." --model-a nomic-embed-text --model-b mxbai-embed-large

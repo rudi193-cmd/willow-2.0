@@ -41,7 +41,7 @@ fork_log(
 
 ## 4. Note the worktree path
 
-The worktree is at `../willow-wt/<slug>` (absolute: `/home/example/willow-wt/<slug>`).
+The worktree is at `../willow-wt/<slug>` (absolute: `${HOME}/willow-wt/<slug>`).
 Open it in a new Claude Code session or editor window. The Willow MCP server runs from the main repo — the worktree shares it.
 
 ## Teardown (after merge)

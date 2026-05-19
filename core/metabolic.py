@@ -20,7 +20,7 @@ STORE_ROOT = Path(os.environ.get("WILLOW_STORE_ROOT",
                                   str(Path.home() / ".willow" / "store")))
 WILLOW_ROOT = Path(__file__).parent.parent
 
-# Ensure willow-1.9 is first on path — strip any willow-1.7 entries
+# Ensure willow-2.0 is first on path — strip any willow-1.7 entries
 sys.path = [str(WILLOW_ROOT)] + [p for p in sys.path if "willow-1.7" not in p]
 
 

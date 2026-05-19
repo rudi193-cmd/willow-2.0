@@ -70,7 +70,7 @@ import grove_reader
 from fleet import FleetManager, already_running
 import grove_session
 
-WILLOW_ROOT = Path(os.environ.get("WILLOW_ROOT", Path.home() / "github" / "willow-1.9"))
+WILLOW_ROOT = Path(os.environ.get("WILLOW_ROOT", Path.home() / "github" / "willow-2.0"))
 
 
 def _pg_ok() -> bool:

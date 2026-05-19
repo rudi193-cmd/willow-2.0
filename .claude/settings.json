@@ -3,15 +3,15 @@
     "mode": "workspace-write",
     "filesystem": {
       "denyRead": [
-        "/home/example/.claude",
-        "/home/example/willow-1.9",
-        "/home/example/github/safe-app-store"
+        "~/.claude",
+        "~/archive/willow-1.9",
+        "~/github/safe-app-store"
       ]
     }
   },
   "env": {
-    "WILLOW_20_DB": "/home/example/.willow/willow-2.0.db",
-    "WILLOW_ROOT": "/home/example/willow-2.0"
+    "WILLOW_20_DB": "~/.willow/willow-2.0.db",
+    "WILLOW_ROOT": "~/willow-2.0"
   },
   "permissions": {
     "allow": [
@@ -28,11 +28,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 /home/example/willow-2.0/orchestrator.py"
+            "command": "python3 ~/willow-2.0/orchestrator.py"
           },
           {
             "type": "command",
-            "command": "python3 /home/example/willow-2.0/persona.py"
+            "command": "python3 ~/willow-2.0/persona.py"
           }
         ]
       }
@@ -42,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 /home/example/willow-2.0/session_close.py"
+            "command": "python3 ~/willow-2.0/session_close.py"
           }
         ]
       }
