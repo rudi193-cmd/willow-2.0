@@ -93,30 +93,40 @@ def to_window(ctx: Optional[dict]) -> None:
 
 def grove_send(channel: str, content: str, sender: str | None = None) -> bool:
     """
-    Send a message to a Grove channel via the grove MCP server subprocess.
+    Send a message to a Grove channel via direct Postgres insert.
     Returns True on success, False on failure. Never raises.
     """
     import os
-    import subprocess
+    import psycopg2
     from core.agent_identity import require_agent_name as _require_agent_name
     if not sender:
         sender = os.environ.get("GROVE_SENDER") or _require_agent_name()
-    grove_mcp = os.environ.get(
-        "GROVE_MCP_BIN",
-        str(Path.home() / ".local" / "bin" / "grove-mcp")
-    )
-    payload = json.dumps({
-        "jsonrpc": "2.0", "id": 1,
-        "method": "tools/call",
-        "params": {
-            "name": "grove_send_message",
-            "arguments": {"channel_name": channel, "content": content, "sender": sender},
-        },
-    })
+    db   = os.environ.get("WILLOW_PG_DB", "willow_19")
+    user = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
+    host = os.environ.get("WILLOW_PG_HOST", "")
     try:
-        result = subprocess.run(
-            [grove_mcp], input=payload, capture_output=True, text=True, timeout=8
-        )
-        return result.returncode == 0
-    except Exception:
+        kwargs = dict(dbname=db, user=user)
+        if host:
+            kwargs["host"] = host
+        conn = psycopg2.connect(**kwargs)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM grove.channels WHERE name = %s", (channel,)
+            )
+            row = cur.fetchone()
+            if not row:
+                cur.execute(
+                    "INSERT INTO grove.channels (name) VALUES (%s) RETURNING id", (channel,)
+                )
+                row = cur.fetchone()
+            channel_id = row[0]
+            cur.execute(
+                "INSERT INTO grove.messages (channel_id, sender, content) VALUES (%s, %s, %s)",
+                (channel_id, sender, content),
+            )
+        conn.close()
+        return True
+    except Exception as e:
+        logger.warning("grove_send failed: %s", e)
         return False
