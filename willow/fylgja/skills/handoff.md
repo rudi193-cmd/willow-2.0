@@ -5,6 +5,8 @@ description: Write a Willow 2.0 session handoff — structured KB atom + SQLite 
 
 # /handoff — Willow 2.0 Session Handoff
 
+Stack position: this skill is the first third of the **end-of-session persistence** layer described in `willow/fylgja/skills/persistent-memory-stack.md`.
+
 ## Sequence
 
 1. **Load current state** — call `handoff_latest` to see prior open threads. Call

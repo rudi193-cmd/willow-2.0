@@ -83,7 +83,7 @@ b17: FYLOV · ΔΣ=42
 
 ## Deep binding
 
-Full process contract (WLGSM alignment, artifact table, failure modes):  
+Full process contract (WLGSM alignment, artifact table, failure modes):
 `docs/superpowers/specs/2026-05-12-project-overseer-process.md`
 
 ΔΣ=42

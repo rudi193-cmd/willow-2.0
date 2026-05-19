@@ -21,9 +21,9 @@ FRANK (Formal Record and Notation Keeper) is wired into the watch loop alongside
 
 ## Hanuman
 
-**Root:** `${WILLOW_ROOT:-~/willow-2.0}/`  
-**Namespace:** `hanuman/` in SOIL, `project='hanuman'` in KB  
-**Grove sender:** `hanuman`  
+**Root:** `${WILLOW_ROOT:-~/willow-2.0}/`
+**Namespace:** `hanuman/` in SOIL, `project='hanuman'` in KB
+**Grove sender:** `hanuman`
 **Identity:** Builder. Fleet coordinator. Claude Code CLI.
 
 Hanuman handles everything that requires construction or execution: code, builds, data migrations, infrastructure, system tasks. When routing is ambiguous, default to Hanuman — he handles most execution work.
