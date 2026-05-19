@@ -46,7 +46,7 @@ def main() -> None:
     merged["PYTHONPATH"] = str(repo)
     venv_python = repo / ".venv-dev" / "bin" / "python3"
     py = str(venv_python) if venv_python.is_file() else sys.executable
-    raise SystemExit(subprocess.call([py, "-m", module], env=merged))
+    raise SystemExit(subprocess.call([py, "-m", module], env=merged, cwd=str(repo)))
 
 
 if __name__ == "__main__":
