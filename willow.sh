@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# willow.sh — Willow 1.9 launcher
+# willow.sh — Willow 2.0 launcher
 # b17: WLW19  ΔΣ=42
 #
 # Usage:
 #   ./willow.sh              — start SAP MCP server (stdio)
 #   ./willow.sh status       — check Postgres + metabolic socket
+#   ./willow.sh fleet_status — check full boot health without MCP
+#   ./willow.sh handoff_latest [agent] — show latest handoff summary
 #   ./willow.sh metabolic    — run Norn pass now
 #   ./willow.sh update       — check for updates and apply if available
 #   ./willow.sh export       — dump user data to ~/.willow/export.json
@@ -35,6 +37,7 @@ export WILLOW_PYTHON
 export WILLOW_STORE_ROOT="${WILLOW_STORE_ROOT:-${HOME}/.willow/store}"
 export WILLOW_VAULT="${WILLOW_VAULT:-${HOME}/.willow/vault.db}"
 export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/SAFE/Applications}"
+export WILLOW_PGP_FINGERPRINT="${WILLOW_PGP_FINGERPRINT:-9B6F87BEB4AE56E23D3D055724AED1D0216053F5}"
 
 # Postgres — Unix socket, willow_20 DB (clean break from 1.7)
 unset WILLOW_PG_HOST WILLOW_PG_PORT WILLOW_PG_PASS
@@ -46,7 +49,7 @@ export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
 # export ANTHROPIC_API_KEY=""
 # export GROQ_API_KEY=""  # set in local env, not committed
 
-# Python path — willow-1.9 first, no legacy paths
+# Python path — willow-2.0 first, no legacy paths
 export PYTHONPATH="${WILLOW_ROOT}:${PYTHONPATH:-}"
 
 # Jeles trusted sources registry — 54 sources from Loki audit (atom 44A246FD)
@@ -60,7 +63,7 @@ case "$cmd" in
         ;;
 
     status)
-        echo "Willow 1.9 — status"
+        echo "Willow 2.0 — status"
         echo "  Store:    ${WILLOW_STORE_ROOT}"
         echo "  Vault:    ${WILLOW_VAULT}"
         echo "  Version:  $(cat "${HOME}/.willow/version" 2>/dev/null || echo 'not installed')"
@@ -78,16 +81,124 @@ if pg: pg.close()
             || echo "  Metabolic socket: inactive"
         ;;
 
+    fleet_status)
+        WILLOW_PG_DB="${WILLOW_PG_DB}" "${WILLOW_PYTHON}" -c "
+import json, os, sys
+import urllib.request
+from pathlib import Path
+sys.path.insert(0, '${WILLOW_ROOT}')
+from core.willow_store import WillowStore
+from core.pg_bridge import PgBridge, try_connect
+from sap.core.gate import SAFE_ROOT, PROFESSOR_ROOT, _verify_pgp
+
+store = WillowStore(os.environ['WILLOW_STORE_ROOT'])
+local_stats = store.stats() or {}
+local_count = sum(s.get('count', 0) for s in local_stats.values())
+
+conn = try_connect()
+pg_stats = {}
+if conn:
+    conn.close()
+    try:
+        pg = PgBridge()
+        if hasattr(pg, 'stats'):
+            pg_stats = pg.stats() or {}
+    except Exception:
+        pg_stats = {}
+
+try:
+    url = os.environ.get('OLLAMA_URL', 'http://localhost:11434') + '/api/tags'
+    with urllib.request.urlopen(url, timeout=2) as resp:
+        payload = json.loads(resp.read().decode('utf-8'))
+    ollama = {'running': True, 'models': [m.get('name') for m in payload.get('models', []) if m.get('name')]}
+except Exception:
+    ollama = {'running': False}
+
+manifest_paths = list(SAFE_ROOT.glob('*/safe-app-manifest.json')) + list(PROFESSOR_ROOT.glob('*/safe-app-manifest.json'))
+passed = 0
+failed = []
+for manifest_path in manifest_paths:
+    ok, _reason = _verify_pgp(manifest_path)
+    if ok:
+        passed += 1
+    else:
+        failed.append(manifest_path.parent.name)
+
+result = {
+    'local_store': {'collections': len(local_stats), 'records': local_count},
+    'postgres': pg_stats if pg_stats else ('not_connected' if conn is None else 'connected'),
+    'ollama': ollama,
+    'manifests': {'pass': passed, 'fail': len(failed), **({'failed': failed} if failed else {})},
+    'mode': 'portless',
+}
+print(json.dumps(result, indent=2))
+"
+        ;;
+
+    handoff_latest)
+        HANDOFF_AGENT="${2:-${WILLOW_AGENT_NAME}}"
+        HANDOFF_AGENT="${HANDOFF_AGENT}" "${WILLOW_PYTHON}" -c "
+import json, os, sqlite3, sys
+from pathlib import Path
+
+agent = os.environ.get('HANDOFF_AGENT', '')
+handoff_db = Path(os.environ.get('WILLOW_HANDOFF_DB', str(Path.home() / '.willow' / 'handoffs' / agent / 'handoffs.db')))
+if not handoff_db.exists():
+    candidates = sorted(
+        (Path.home() / '.willow' / 'handoffs').glob('*/handoffs.db'),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    if candidates:
+        handoff_db = candidates[0]
+if not handoff_db.exists():
+    print(json.dumps({'error': 'handoffs.db not found. Run handoff_rebuild first.'}, indent=2))
+    raise SystemExit(1)
+
+conn = sqlite3.connect(handoff_db)
+conn.row_factory = sqlite3.Row
+cur = conn.cursor()
+sql_agent = '''
+    SELECT f.filename, h.handoff_date, h.summary, h.open_threads, h.questions
+    FROM handoffs h JOIN files f ON h.file_id = f.id
+    WHERE h.file_type = 'session' AND f.filename LIKE ?
+    ORDER BY f.mtime DESC LIMIT 1
+'''
+sql_any = '''
+    SELECT f.filename, h.handoff_date, h.summary, h.open_threads, h.questions
+    FROM handoffs h JOIN files f ON h.file_id = f.id
+    WHERE h.file_type = 'session'
+    ORDER BY f.mtime DESC LIMIT 1
+'''
+row = cur.execute(sql_agent, (f'%{agent}%',)).fetchone() if agent else None
+if not row:
+    row = cur.execute(sql_any).fetchone()
+conn.close()
+
+if not row:
+    print(json.dumps({'error': 'No session handoffs found.'}, indent=2))
+    raise SystemExit(1)
+
+print(json.dumps({
+    'filename': row['filename'],
+    'date': row['handoff_date'],
+    'summary': row['summary'],
+    'open_threads': json.loads(row['open_threads']) if row['open_threads'] else [],
+    'questions': json.loads(row['questions']) if row['questions'] else [],
+}, indent=2))
+"
+        ;;
+
     metabolic)
-        echo "Willow 1.9 — running Norn pass"
+        echo "Willow 2.0 — running Norn pass"
         WILLOW_PG_DB="${WILLOW_PG_DB}" exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/core/metabolic.py"
         ;;
 
     update)
-        echo "Willow 1.9 — checking for updates"
+        echo "Willow 2.0 — checking for updates"
         CURRENT=$(cat "${HOME}/.willow/version" 2>/dev/null || echo "unknown")
         LATEST=$(curl -s --max-time 5 \
-            "https://api.github.com/repos/rudi193-cmd/willow-1.9/releases/latest" \
+            "https://api.github.com/repos/rudi193-cmd/willow-2.0/releases/latest" \
             2>/dev/null | "${WILLOW_PYTHON}" -c \
             "import json,sys; d=json.load(sys.stdin); print(d.get('tag_name','unknown'))" \
             2>/dev/null || echo "unknown")
@@ -103,7 +214,7 @@ if pg: pg.close()
         ;;
 
     export)
-        echo "Willow 1.9 — exporting user data to ~/.willow/export.json"
+        echo "Willow 2.0 — exporting user data to ~/.willow/export.json"
         WILLOW_PG_DB="${WILLOW_PG_DB}" "${WILLOW_PYTHON}" -c "
 import sys, json, os
 sys.path.insert(0, '${WILLOW_ROOT}')
@@ -149,7 +260,7 @@ print(f'  Deleted {count} KB edges for project: {project}')
         ;;
 
     ledger)
-        echo "Willow 1.9 — FRANK's Ledger"
+        echo "Willow 2.0 — FRANK's Ledger"
         LEDGER_PROJECT="${2:-}"
         LEDGER_PROJECT="${LEDGER_PROJECT}" WILLOW_PG_DB="${WILLOW_PG_DB}" "${WILLOW_PYTHON}" -c "
 import sys, os, json
@@ -170,7 +281,7 @@ for e in entries:
         ;;
 
     backup)
-        echo "Willow 1.9 — backup"
+        echo "Willow 2.0 — backup"
         WILLOW_PG_DB="${WILLOW_PG_DB}" "${WILLOW_PYTHON}" -c "
 import sys, os, json
 sys.path.insert(0, '${WILLOW_ROOT}')
@@ -253,7 +364,7 @@ print('  Restore complete.')
         ;;
 
     valhalla)
-        echo "Willow 1.9 — Valhalla collection"
+        echo "Willow 2.0 — Valhalla collection"
         echo "  Scanning KB for DPO pair candidates..."
         WILLOW_PG_DB="${WILLOW_PG_DB}" "${WILLOW_PYTHON}" -c "
 import sys, os
@@ -273,7 +384,7 @@ print('  The Einherjar grow stronger.')
         ;;
 
     verify)
-        echo "Willow 1.9 — manifest verification"
+        echo "Willow 2.0 — manifest verification"
         SAFE_ROOT="${WILLOW_SAFE_ROOT}"
         pass=0; fail=0
         for manifest in "${SAFE_ROOT}"/*/safe-app-manifest.json; do
@@ -293,7 +404,7 @@ print('  The Einherjar grow stronger.')
         ;;
 
     start-all)
-        echo "Willow 1.9 — starting all services"
+        echo "Willow 2.0 — starting all services"
         _services=(grove-mcp journal-watcher journal-responder willow-dashboard willow-metabolic corpus-watcher)
         for svc in "${_services[@]}"; do
             if systemctl --user is-active --quiet "${svc}.service" 2>/dev/null; then
@@ -309,7 +420,7 @@ print('  The Einherjar grow stronger.')
         ;;
 
     stop-all)
-        echo "Willow 1.9 — stopping all services"
+        echo "Willow 2.0 — stopping all services"
         _services=(willow-dashboard grove-mcp journal-watcher journal-responder willow-metabolic corpus-watcher)
         for svc in "${_services[@]}"; do
             systemctl --user stop "${svc}.service" 2>/dev/null \
@@ -319,7 +430,7 @@ print('  The Einherjar grow stronger.')
         ;;
 
     status-all)
-        echo "Willow 1.9 — system status"
+        echo "Willow 2.0 — system status"
         echo ""
 
         # Postgres
@@ -373,10 +484,10 @@ else:
         ;;
 
     check-updates)
-        echo "Willow 1.9 — checking for updates"
+        echo "Willow 2.0 — checking for updates"
         CURRENT=$(grep -r '' "${HOME}/.willow/version" 2>/dev/null || echo "unknown")
         LATEST=$(curl -sf --max-time 10 \
-            "https://api.github.com/repos/rudi193-cmd/willow-1.9/releases/latest" \
+            "https://api.github.com/repos/rudi193-cmd/willow-2.0/releases/latest" \
             2>/dev/null | "${WILLOW_PYTHON}" -c \
             "import json,sys; d=json.load(sys.stdin); print(d.get('tag_name','unknown'))" \
             2>/dev/null || echo "unknown")
@@ -508,7 +619,7 @@ except ImportError:
         ;;
 
     litellm-start)
-        echo "Willow 1.9 — starting LiteLLM gateway"
+        echo "Willow 2.0 — starting LiteLLM gateway"
         CONFIG_FILE="${HOME}/.willow/litellm_config.yaml"
         "${WILLOW_PYTHON}" -c "
 import sys, yaml, json
@@ -592,7 +703,7 @@ print(f'  Disabled: ${PROVIDER}')
         ;;
 
     *)
-        echo "Usage: willow.sh [start|status|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]]"
+        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]]"
         exit 1
         ;;
 esac

@@ -25,6 +25,8 @@ Database: @env WILLOW_PG_DB
 Write only to your agent's namespace (e.g. `heimdallr/`, `orin/`).
 Never write to `public/` or another agent's namespace.
 
+@end
+
 ---
 
 ## Boot sequence
@@ -36,10 +38,23 @@ Never write to `public/` or another agent's namespace.
 | 1 | `fleet_status` | Confirms Postgres + SOIL + Ollama are up |
 | 2 | `handoff_latest` | Last session state — what was in-flight, what's pending |
 
-@constraint id=boot-order: fleet_status and handoff_latest MUST be called before any other action.
-@constraint id=namespace: Agents MUST write only to their own namespace. Cross-namespace writes require explicit authorization.
-@constraint id=pull-before-push: Call grove_get_history before posting to Grove or building anything non-trivial. Another agent may have already built it.
-@constraint id=kb-first: Search KB before building. Use kb_search with the task topic. Convergence is proof this works.
+@end
+
+@constraint id=boot-order
+fleet_status and handoff_latest MUST be called before any other action.
+@end
+
+@constraint id=namespace
+Agents MUST write only to their own namespace. Cross-namespace writes require explicit authorization.
+@end
+
+@constraint id=pull-before-push
+Call grove_get_history before posting to Grove or building anything non-trivial. Another agent may have already built it.
+@end
+
+@constraint id=kb-first
+Search KB before building. Use kb_search with the task topic. Convergence is proof this works.
+@end
 
 ---
 

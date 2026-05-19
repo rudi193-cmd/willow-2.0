@@ -9,7 +9,7 @@ The SAP (Sovereign Application Protocol) MCP server. Exposes Willow's KB, store,
   "mcpServers": {
     "willow": {
       "command": "python3",
-      "args": ["/path/to/willow-1.9/sap/sap_mcp.py"]
+      "args": ["/path/to/willow-2.0/sap/sap_mcp.py"]
     }
   }
 }
@@ -20,8 +20,8 @@ The server sends orientation instructions in the `initialize` response — no to
 ## First five tools
 
 ```
-willow_status          → confirm system is up
-willow_handoff_latest  → last session state
+fleet_status          → confirm system is up
+handoff_latest  → last session state
 grove_get_history      → what the fleet has been doing
 willow_knowledge_search → find existing knowledge before building
 willow_task_submit     → queue work for Kart

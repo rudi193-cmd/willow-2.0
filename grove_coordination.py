@@ -1,7 +1,7 @@
 # willow/grove_coordination.py — Grove coordination helpers. b17: GRVC1  ΔΣ=42
 #
 # NOT currently wired into app.py or any dashboard entrypoint.
-# Depends on core.willow_store (willow-1.9 cross-repo import).
+# Depends on core.willow_store from the active Willow checkout.
 # Available for future grove outbox/relay work — not dead, just not started.
 from __future__ import annotations
 import uuid

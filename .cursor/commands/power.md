@@ -5,7 +5,7 @@ Low-token behavioral router (same model as MCP `tools/list` → `tools/call` and
 ## Roots
 
 - Env: `WILLOW_FYLGJA_ROOT` → directory that contains `powers/` and `skills/`.
-- Default: `~/github/willow-1.9/willow/fylgja`
+- Default: `${WILLOW_ROOT:-~/willow-2.0}/willow/fylgja`
 
 ## After invocation
 

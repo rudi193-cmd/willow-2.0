@@ -20,10 +20,10 @@ except ImportError:
 
 DB_PARAMS = {
     "dbname": "willow_20",
-    "user": "example-user",
+    "user": os.environ.get("USER", ""),
 }
 
-SESSION_ROOT = "/home/example/.claude/projects"
+SESSION_ROOT = str(Path.home() / ".claude" / "projects")
 
 MIN_LENGTH = 30
 

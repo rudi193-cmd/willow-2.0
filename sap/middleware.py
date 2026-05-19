@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # ── Path setup (mirrors sap_mcp.py) ─────────────────────────────────────────
-_SAP_ROOT   = Path(__file__).parent.parent   # willow-1.9/
+_SAP_ROOT   = Path(__file__).parent.parent   # willow-2.0/
 _WILLOW_CORE = _SAP_ROOT / "core"
 
 _sap_str = str(_SAP_ROOT)

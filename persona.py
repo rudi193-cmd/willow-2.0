@@ -14,6 +14,9 @@ import sqlite3
 import sys
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parent
+HOME = Path.home()
+
 DB_PATH    = Path.home() / ".willow" / "willow-2.0.db"
 STATE_FILE = Path.home() / ".willow" / "willow-2.0-active-persona"
 
@@ -28,25 +31,25 @@ PERSONAS = {
         "label": "Hanuman",
         "desc": "Builder. Fleet coordinator. Claude Code CLI.",
         "source": "file",
-        "path": "/home/example/willow-1.9/CLAUDE.md",
+        "path": str(REPO_ROOT / "CLAUDE.md"),
     },
     "loki": {
         "label": "Loki",
         "desc": "The one they didn't plan for. Fleet accountant.",
         "source": "file",
-        "path": "/home/example/github/CLAUDE.md",
+        "path": str(HOME / "github" / "CLAUDE.md"),
     },
     "skirnir": {
         "label": "Skirnir",
         "desc": "Emissary. Gate-witness.",
         "source": "file",
-        "path": "/home/example/github/skirnir/CLAUDE.md",
+        "path": str(HOME / "github" / "skirnir" / "CLAUDE.md"),
     },
     "vishwakarma": {
         "label": "Vishwakarma",
         "desc": "Divine architect. Builder of the SAFE App Store.",
         "source": "file",
-        "path": "/home/example/github/safe-app-store/CLAUDE.md",
+        "path": str(HOME / "github" / "safe-app-store" / "CLAUDE.md"),
     },
     "none": {
         "label": "None",

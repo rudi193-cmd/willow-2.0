@@ -157,7 +157,7 @@ def create_worktree(
 
 def _willow_cmd(*args) -> dict | None:
     """Call a Willow MCP tool via willow.sh CLI if available."""
-    willow_sh = Path.home() / "github" / "willow-1.9" / "willow.sh"
+    willow_sh = Path.home() / "github" / "willow-2.0" / "willow.sh"
     if not willow_sh.exists():
         return None
     try:

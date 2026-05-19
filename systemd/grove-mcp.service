@@ -1,6 +1,6 @@
 [Unit]
 Description=Grove MCP Server — streamable-HTTP, Postgres NOTIFY push
-Documentation=https://github.com/rudi193-cmd/willow-1.9
+Documentation=https://github.com/rudi193-cmd/willow-2.0
 After=network.target postgresql.service
 
 [Service]

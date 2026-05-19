@@ -1,5 +1,5 @@
 """
-Binder: Connect the Absurd — willow-1.9 port
+Binder: Connect the Absurd — Willow 2.0 port
 =============================================
 Finds non-obvious cross-category connections in the knowledge graph.
 

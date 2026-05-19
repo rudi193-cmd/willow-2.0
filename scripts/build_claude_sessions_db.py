@@ -412,12 +412,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Build SQLite DB from Claude session JSONL files.")
     parser.add_argument(
         "--source-dir",
-        default="/home/example/.claude/projects/-home-example-user-github-willow-2-0",
+        default=str(Path.home() / ".claude" / "projects"),
         help="Directory containing session JSONL files.",
     )
     parser.add_argument(
         "--out-db",
-        default="/home/example/.claude/projects/-home-example-user-github-willow-2-0/claude_sessions.context.db",
+        default=str(Path.home() / ".claude" / "projects" / "claude_sessions.context.db"),
         help="Output SQLite DB file path.",
     )
     args = parser.parse_args()

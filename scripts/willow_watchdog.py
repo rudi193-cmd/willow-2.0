@@ -24,7 +24,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-WILLOW_SH   = Path.home() / "github" / "willow-1.9" / "willow.sh"
+WILLOW_SH   = Path.home() / "github" / "willow-2.0" / "willow.sh"
 LOG_FILE    = Path.home() / ".willow" / "watchdog.log"
 PID_FILE    = Path.home() / ".willow" / "watchdog.pid"
 MCP_PATTERN = "sap_mcp.py"

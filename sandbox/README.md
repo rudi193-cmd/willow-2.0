@@ -24,7 +24,7 @@ Global: `--data PATH` (default `sandbox/data/changes.json`).
 ## Typical flows
 
 ```bash
-cd ~/github/willow-1.9
+cd ${WILLOW_ROOT:-~/willow-2.0}
 
 python3 -m sandbox init
 
@@ -51,4 +51,4 @@ python3 -m pytest tests/test_sandbox/test_git_shaped.py -v
 
 ## Related repos
 
-**`willow-sandbox`** (separate clone) is for heavier corpus / collapse work. This **`willow-1.9/sandbox/`** package is the small **WLGSM state machine** only.
+**`willow-sandbox`** (separate clone) is for heavier corpus / collapse work. This **`willow-2.0/sandbox/`** package is the small **WLGSM state machine** only.
