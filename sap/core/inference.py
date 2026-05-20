@@ -66,6 +66,21 @@ def load_credential(key: str) -> str | None:
     return os.environ.get(key)
 
 
+# ── Persona loading ───────────────────────────────────────────────────────────
+
+def load_persona(agent: str) -> str | None:
+    """Return persona file contents for agent, or None if not found."""
+    root = pathlib.Path(__file__).parent.parent.parent
+    candidates = [
+        root / "willow" / "fylgja" / "personas" / f"{agent.lower()}.md",
+        pathlib.Path.home() / "agents" / "hanuman" / "personas" / f"{agent.lower()}.md",
+    ]
+    for p in candidates:
+        if p.exists():
+            return p.read_text(encoding="utf-8").strip()
+    return None
+
+
 # ── Chat backends ──────────────────────────────────────────────────────────────
 
 def chat_groq(agent: str, message: str) -> str | None:
