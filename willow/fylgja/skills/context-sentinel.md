@@ -10,7 +10,8 @@ Check session context health and apply the cascading relief protocol before qual
 ## Run
 
 ```bash
-bash {skills_dir}/scripts/check_context.sh
+SCRIPTS="${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/willow-2.0}/willow/fylgja}/skills/scripts"
+bash "$SCRIPTS/check_context.sh"
 ```
 
 ## Interpret and act
@@ -28,7 +29,7 @@ bash {skills_dir}/scripts/check_context.sh
 Session start
     │
     ├─ STATUS_OK       → continue
-    ├─ COMPACT_NOW     → /compact → re-check
+    ├─ COMPACT_NOW     → `/compact` → re-check
     └─ HANDOFF_NOW     → /handoff → willow task submit → end
 ```
 

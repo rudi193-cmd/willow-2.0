@@ -1,104 +1,58 @@
 ---
 name: health
-description: System and memory health audit — quick checks, deep diagnostics, memory staleness
+description: Willow stack health check — boot/daily/weekly tiers + memory audit. Works without an active MCP session.
 ---
 
-# /health — Health Checks
+# /health [mode]
 
-Run diagnostic checks on system infrastructure, local store, and memory files.
+Modes: `boot` (default) · `daily` · `weekly` · `memory`
 
-## Modes
+Scripts live at `${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/willow-2.0}/willow/fylgja}/skills/scripts/`.
 
-### Quick Check (30 seconds)
+## System checks (boot / daily / weekly)
+
 ```bash
-python3 {skills_dir}/scripts/system_health.py --check boot
+SCRIPTS="${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/willow-2.0}/willow/fylgja}/skills/scripts"
+python3 "$SCRIPTS/system_health.py" --check boot    # every session
+python3 "$SCRIPTS/system_health.py" --check daily   # once per day
+python3 "$SCRIPTS/system_health.py" --check weekly  # once per week
 ```
 
-**Returns:** Postgres/Ollama/Store status + open flags count.
+| Status   | Action                                                           |
+|----------|------------------------------------------------------------------|
+| HEALTHY  | No action needed                                                 |
+| WARN     | Review and offer fix                                             |
+| CRITICAL | Service down — fix before proceeding with memory-dependent tasks |
 
-**When to use:**
-- Every session start
-- Before KB-dependent work
-- When something feels slow
-
-**Output:**
-```
-POSTGRES:   up / down / degraded
-OLLAMA:     up (N models) / down
-STORE:      N collections · M records
-OPEN_FLAGS: N
-```
-
-If Postgres is down, stop. Everything downstream is degraded.
-
----
-
-### Deep Diagnostic (2 minutes)
-```bash
-python3 {skills_dir}/scripts/system_health.py --check weekly
-```
-
-**Returns:** Full system audit + cleanup recommendations.
-
-**What it checks:**
-- Postgres connections, table sizes, index health
-- Ollama models, memory usage, cache
-- SOIL store for orphaned records
-- Jeles sessions (stale?)
-- Forks (abandoned branches?)
-
-**When to use:**
-- Weekly maintenance
-- Before large batch operations
-- When system feels degraded
-
-**Act on results:**
-
-| Status | Action |
-|--------|--------|
-| HEALTHY | No action needed |
-| WARN | Review the suggestion and apply if safe |
-| CRITICAL | Fix before proceeding with memory-dependent work |
-
----
-
-### Memory Audit (1 minute)
-```bash
-python3 {skills_dir}/scripts/memory_health.py --dir ~/.claude/projects/<project>/memory --limit 50
-python3 {skills_dir}/scripts/memory_health.py --dir ~/.claude/projects/<project>/memory --limit 50 --qmd  # enable DARK detection
-```
-
-**Returns:** Memory files categorized by age + redundancy + quality.
-
-**Categories:**
-
-| Bucket | Age | Action |
-|--------|-----|--------|
-| HOT | < 7 days | Healthy — no action |
-| WARM | 7–30 days | Healthy — no action |
-| STALE | 30–90 days | Review — update or archive |
-| DEAD | > 90 days | Archive — move to memory/archive/ |
-| REDUNDANT | — | Merge — show both, ask which to keep |
-| DARK | — | Re-index — run `qmd update` or `openclaw memory sync` |
-| CONTRADICTION | — | Clarify — show conflicting phrases, ask user |
-
-**When to use:**
-- End of session (before handoff)
-- When memory feels fragmented
-- After major refactoring
-
-**Cleanup actions (confirm before running):**
-1. Archive all DEAD files → `memory/archive/`
-2. Show REDUNDANT pairs for manual review
-3. Fix DARK records via re-index
-4. Show CONTRADICTION files for editing
+Cleanup actions (offer after reporting — always confirm first):
+1. Merge or delete orphaned forks
+2. Clean old jeles sessions (`willow jeles cleanup`)
+3. Remove dead Ollama models (`ollama rm <model>`)
+4. Run Postgres VACUUM ANALYZE
 5. Skip — report only
 
----
+## Memory audit (`/health memory`)
+
+```bash
+SCRIPTS="${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/willow-2.0}/willow/fylgja}/skills/scripts"
+python3 "$SCRIPTS/memory_health.py" --dir ~/.claude/projects/<project>/memory --limit 50
+python3 "$SCRIPTS/memory_health.py" --dir ~/.claude/projects/<project>/memory --limit 50 --qmd
+```
+
+| Bucket       | Age        | Action                                     |
+|--------------|------------|--------------------------------------------|
+| HOT          | < 7 days   | Healthy — no action                        |
+| WARM         | 7–30 days  | Healthy — no action                        |
+| STALE        | 30–90 days | Review — update or archive                 |
+| DEAD         | > 90 days  | Archive — move to memory/archive/          |
+| REDUNDANT    | —          | Merge — show both files, ask which to keep |
+| DARK         | —          | Re-index — run `qmd update`                |
+| CONTRADICTION| —          | Clarify — show conflicting phrases, ask    |
+
+Run memory audit before every handoff and after major refactoring.
 
 ## Rules
 
-- Postgres health is a hard stop. Everything is degraded if it's down.
+- Postgres down = hard stop. Everything downstream is degraded.
+- Boot check is safe to run frequently. Weekly check does full DB scans — expensive.
 - Always confirm before any destructive action (archive, delete, reindex).
-- Quick check is safe to run frequently (10 MCP calls). Deep check is expensive (database full scans).
-- Memory audit should run before every handoff.

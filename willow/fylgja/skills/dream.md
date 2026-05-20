@@ -22,6 +22,8 @@ Check conditions first: `dream_check(app_id)` — returns `{should_dream, hours_
 
 2. **Run the pipeline** — call `dream_run(app_id)`. Optionally pass `force=True` to skip the 24h/5-session gate.
 
+   > **Known issue #11:** `dream_run` may time out on the synthesis step. If it does, run `tension_scan` standalone (step below) and call `infer_chat` directly with mistral:7b for the synthesis narrative.
+
    The pipeline:
    - Scans the 20 most recent valid KB atoms
    - Runs lightweight tension detection (10 atoms × top-3 semantic neighbors via mistral:7b)

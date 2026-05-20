@@ -10,18 +10,17 @@ Quick read of where things stand. No writes, no changes — just source ring.
 ## TOOL PRE-LOAD (first action after invocation)
 
 ```
-ToolSearch query: "select:willow_status,store_stats,willow_query,soil_search,willow_task_list"
+ToolSearch query: "select:mcp__willow__fleet_status,mcp__willow__soil_search,mcp__willow__soil_stats,mcp__willow__agent_task_list"
 ```
 
 ## Report
 
-1. **Boot health** — which BIOS subsystems are up (from boot_status)
-2. **Agent schema** — atom count, edge count, edges/atoms ratio vs e target
-3. **Hydrogen targets** — shell progress vs 2π/π/e targets
-4. **Fleet** — providers available, last response time
-5. **Open work** — from {AGENT}.gaps, top 5 by severity (status='open') — {AGENT} is the active agent identity (hanuman, heimdallr, etc.)
-6. **Unpushed** — any uncommitted/unpushed code changes across repos
-7. **Session delta** — atoms written this session, atoms archived, edges created
+1. **Boot health** — Postgres, Ollama, manifests (from `fleet_status`)
+2. **Agent schema** — atom count, edge count, edges/atoms ratio (from `soil_stats`)
+3. **Fleet** — models available, manifest pass/fail
+4. **Open work** — `soil_list(<agent>/flags)` top 5 by severity, status=open
+5. **Unpushed** — uncommitted/unpushed code changes (`git status`, `git log @{u}..`)
+6. **Session delta** — atoms written this session, edges created
 
 ## Rules
 - Read only. No writes.

@@ -52,9 +52,10 @@ Learned patterns live as edges in the knowledge graph, not as orphaned files. Th
    }
    ```
 
-5. **Create edges** — for each related atom, call `store_add_edge`:
+5. **Create edges** — for each related atom, call `soil_add_edge`:
    ```json
    {
+     "app_id": "hanuman",
      "from_id": "<pattern_atom_id>",
      "to_id": "<related_atom_id>",
      "relation": "relates_to|solves|affects|contradicts|implements",

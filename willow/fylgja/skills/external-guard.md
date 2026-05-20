@@ -10,14 +10,15 @@ Defend the ingestion pipeline against prompt injection by scanning and wrapping 
 ## Scan
 
 ```bash
-python3 {skills_dir}/scripts/guard.py --text "..." 
-python3 {skills_dir}/scripts/guard.py --file path/to/content.txt
+SCRIPTS="${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/willow-2.0}/willow/fylgja}/skills/scripts"
+python3 "$SCRIPTS/guard.py" --text "..."
+python3 "$SCRIPTS/guard.py" --file path/to/content.txt
 ```
 
 ## Wrap (sandwich defense)
 
 ```bash
-python3 {skills_dir}/scripts/guard.py --text "..." --wrap
+python3 "$SCRIPTS/guard.py" --text "..." --wrap
 ```
 
 Output is ready to use as a user-turn message — boundary markers tell the LLM the content is data, not instructions.
