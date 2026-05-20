@@ -11,7 +11,6 @@ W19MR: Mirror — meta-community detection
 W19MC: Mycorrhizal — sparse KB feeding from adjacent projects
 PMEM2: Insight pass + Chunk synthesis
 """
-import os
 from core.agent_identity import require_agent_name
 import psycopg2.extras
 import uuid as _uuid
@@ -124,8 +123,8 @@ def serendipity_pass(bridge, recent_days: int = 7,
     for atom in surfaced[:5]:
         try:
             bridge.promote(atom["id"])
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[WARN] promote({atom['id']}) failed: {e}", flush=True)
 
     return surfaced[:5]
 

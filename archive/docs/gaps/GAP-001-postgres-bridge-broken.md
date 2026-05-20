@@ -1,11 +1,14 @@
-# GAP-001: Postgres Bridge Completely Broken — All KB Tools Silent-Failing
+# GAP-001 — Postgres bridge silent-fail
+
+**ARCHIVED · CLOSED postmortem.** Moved from `docs/gaps/` (2026-05-19). Not open work — see [`docs/KNOWN_GAPS.md`](../../../docs/KNOWN_GAPS.md).
 
 | Field | Value |
 |-------|-------|
 | ID | GAP-001 |
-| Severity | CRITICAL |
+| Severity | CRITICAL (at discovery) |
 | Discovered | 2026-04-22 |
-| Status | Fixed (partially) |
+| Closed | 2026-04-22 (same session) |
+| Status | **Fixed** — `sap_mcp.py` uses `PgBridge()`; default DB **`willow_20`** |
 | Session | SESSION_HANDOFF_20260422_hanuman_a.md |
 | b17 | GAP01 ΔΣ=42 |
 
@@ -60,17 +63,16 @@ The 1.9 `pg_bridge.py` was rebuilt minimal — only 4 methods: `knowledge_put`, 
 
 ---
 
-## Still Open
+## Follow-ups (not part of GAP-001)
 
-### JELES Bidirectionality
+These were noted at close time. They are **not** the Postgres bridge bug. Track elsewhere (wiki, specs, or a new gap id if still true in 2.0):
 
-The die-namic-system RAG (`indexer.py`, SQLite FTS5, `.index.db`) is **not connected to Willow at all**. JELES currently only indexes sessions INTO the KB (ingest direction). The retrieval direction — pulling from the RAG index to augment context — does not exist. This is Open Question 4 in the Fylgja spec.
-
-The age consent / hard stop governance data Sean referenced as "in pieces in the KB" is actually in `die-namic-system/governance/HARD_STOPS.md`, `SESSION_CONSENT.md`, and `source_ring/eccr/SAFETY.md` — not in the Postgres KB or SOIL store. It was never ingested because the ingest pipeline was broken (Failure 1).
+- JELES / session RAG bidirectionality — design question, not silent MCP failure
+- Governance docs outside KB — ingest when needed via `kb_ingest`
 
 ---
 
-## Blast Radius
+## Blast radius (at discovery)
 
 Any feature built on top of Postgres tools before 2026-04-22 was operating on empty/error responses:
 - `willow_knowledge_ingest` — all KB writes failed silently

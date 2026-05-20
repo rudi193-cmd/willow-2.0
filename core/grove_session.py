@@ -6,7 +6,6 @@ Writes hard_close=True on start, False on clean exit.
 Resume prompt fires if hard_close=True at next boot.
 """
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any

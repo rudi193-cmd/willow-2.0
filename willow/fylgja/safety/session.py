@@ -6,7 +6,6 @@ import json
 import os
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from core.agent_identity import require_agent_name
 from willow.fylgja._mcp import call

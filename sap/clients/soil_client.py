@@ -61,8 +61,8 @@ class SoilClient:
         sh = Path(willow_sh) if willow_sh else _find_willow_sh()
         if not sh or not sh.exists():
             sys.stderr.write(
-                f"[soil_client] willow.sh not found. "
-                f"Set WILLOW_ROOT or WILLOW_MCP_CMD.\n"
+                "[soil_client] willow.sh not found. "
+                "Set WILLOW_ROOT or WILLOW_MCP_CMD.\n"
             )
             return
 

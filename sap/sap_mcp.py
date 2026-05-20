@@ -2,7 +2,7 @@
 """
 sap/sap_mcp.py — SAP MCP Server 2.0
 willow-2.0 / SAP MCP 2.0
-b20: SAPMCP2  ΔΣ=42
+b20: SAPMCP2 · ΔΣ=42
 
 FastMCP rebuild of sap_mcp.py.
 
@@ -56,7 +56,7 @@ if _core_str not in sys.path:
     sys.path.insert(1, _core_str)
 
 # ── Version ───────────────────────────────────────────────────────────────────
-VERSION = "2.0.0"
+from core.version import VERSION, sync_installed_version
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -915,7 +915,8 @@ async def agent_route(app_id: str, message: str, session_id: str = "") -> dict:
             }
         if pg:
             try:
-                import hashlib, uuid as _u
+                import hashlib
+                import uuid as _u
                 with pg.conn.cursor() as cur:
                     if message:
                         ph  = hashlib.sha256(message.encode()).hexdigest()[:16]
@@ -1049,7 +1050,10 @@ async def agent_task_submit(
     loop = asyncio.get_running_loop()
 
     def _submit():
-        import subprocess, uuid, time, shlex
+        import subprocess
+        import uuid
+        import time
+        import shlex
         task_id = uuid.uuid4().hex[:8].upper()
         started = time.time()
         _rl_log_event("task_submit", ref=task_id)
@@ -1168,7 +1172,8 @@ async def fork_create(
     loop = asyncio.get_running_loop()
 
     def _create():
-        import uuid, json as _j
+        import uuid
+        import json as _j
         fid = fork_id or f"FORK-{uuid.uuid4().hex[:8].upper()}"
         with PgBridge() as b:
             b.conn.cursor().execute(
@@ -1691,7 +1696,8 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
     loop = asyncio.get_running_loop()
 
     def _latest():
-        import json as _j, sqlite3 as _sql
+        import json as _j
+        import sqlite3 as _sql
         if not Path(HANDOFF_DB).exists():
             return {"error": "handoffs.db not found. Run handoff_rebuild first."}
         agent_filter = agent or app_id or os.environ.get("WILLOW_AGENT_NAME", "")
@@ -2300,7 +2306,7 @@ async def policy_put(
         name, rule_type, target, action, threshold, window_sec, app_id,
     )
     # Invalidate middleware TTL cache so new rule takes effect immediately
-    from sap.middleware import _policy_cache_lock, _policy_cache_ts as _pts
+    from sap.middleware import _policy_cache_lock
     import sap.middleware as _mw
     with _policy_cache_lock:
         _mw._policy_cache_ts = 0.0
@@ -2358,7 +2364,6 @@ async def voice_keyterms(
 
     def _build():
         import subprocess as _sp
-        from pathlib import Path as _P
         from os.path import basename as _bn
         terms: set = set(_VOICE_GLOBAL_TERMS)
 
@@ -2611,8 +2616,9 @@ async def diagnostic_summary(
     loop = asyncio.get_running_loop()
 
     def _diag():
-        import subprocess as _sp, json as _j, shutil as _sh
-        from pathlib import Path as _P
+        import subprocess as _sp
+        import json as _j
+        import shutil as _sh
 
         results: dict = {"path": path, "tool": tool, "diagnostics": []}
         baseline_key = f"{app_id}/diag/baseline"

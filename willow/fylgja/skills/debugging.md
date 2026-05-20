@@ -7,7 +7,7 @@ description: Systematic bug hunt — check KB and prior sessions before reproduc
 
 ## Steps
 
-1. **Search for prior context** — call `store_search` on `hanuman/atoms` for the error message or module name. Check if this bug has been seen before.
+1. **Search for prior context** — call `soil_search` on `hanuman/atoms` for the error message or module name. Check if this bug has been seen before.
 2. **State the bug** — exact error, `file:line` if known, what was expected vs what happened.
 3. **Identify the smallest reproduction** — what is the minimum input that triggers this?
 4. **Hypothesize** — list 2-3 candidate causes, ranked by likelihood.

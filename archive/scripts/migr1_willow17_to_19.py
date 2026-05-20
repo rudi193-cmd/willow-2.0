@@ -15,7 +15,6 @@ Add --dry-run to count without writing.
 import argparse
 import json
 import os
-import sys
 from datetime import datetime, timezone
 
 import psycopg2

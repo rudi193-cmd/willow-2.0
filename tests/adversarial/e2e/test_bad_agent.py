@@ -4,7 +4,6 @@
 After each bad call, a valid call is sent to confirm the server has not
 entered an error state or crashed (no state corruption).
 """
-import pytest
 
 
 def _call(send, recv, proc, call_id: int, params: dict) -> dict | None:

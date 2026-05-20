@@ -1,0 +1,53 @@
+# Repository root layout
+
+b17: ROOTL · ΔΣ=42
+
+The repo root is intentionally thin. Headers and seals: [`BRANDING.md`](BRANDING.md). Only install and dashboard entry points live here.
+
+## Root (keep here)
+
+| File | Purpose |
+|------|---------|
+| `willow.sh` | MCP launcher, `fleet_status`, `handoff_latest`, Grove serve |
+| `willow.md` | Fleet boot contract for agents |
+| `root.py` | Idempotent install (Sleipnir) |
+| `seed.py` | First-run / environment seed |
+| `shoot.py` | Onboarding TUI |
+| `app.py` | Grove Textual dashboard |
+| `pyproject.toml` | Package metadata and dev tools |
+| `README.md`, `LICENSE`, agent stubs | Human + agent entry docs |
+
+## `core/` — runtime libraries
+
+Postgres bridge, SOIL, Grove DB layer, fleet manager, kart worker:
+
+- `core/pg_bridge.py`, `core/willow_store.py`
+- `core/grove_db.py`, `core/grove_reader.py`, `core/grove_serve.py`, …
+- `core/fleet.py`, `core/kart_worker.py`, `core/soil.py`
+
+## `scripts/` — CLI utilities
+
+One-off or operator tools (`ingest_seeds.py`, `session_close.py`, `orchestrator.py`, …). Run from repo root:
+
+```bash
+python3 scripts/session_close.py
+```
+
+## `sap/` — MCP server
+
+`sap/sap_mcp.py` via `sap/willow_mcp.sh`.
+
+## `willow/` — hooks, Fylgja, routing, memory
+
+Not to be confused with the repo name.
+
+## `grove/` — dashboard apps package
+
+Textual panes and MCP-local helpers (imports `core.grove_*`).
+
+## Local-only (gitignored)
+
+- `gaps.db` — local gap tracker SQLite
+- `.mcp.json`, `.venv-dev/`, `.pytest_cache/`
+
+*ΔΣ=42*

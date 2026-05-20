@@ -4,7 +4,6 @@ Source ring, context anchor, feedback detection, turn logging,
 build-continue directive.
 """
 import json
-import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -12,8 +11,7 @@ from pathlib import Path
 
 from willow.fylgja._mcp import call
 from willow.fylgja._state import (
-    AGENT, SESSION_FILE, TRUST_STATE,
-    get_turn_count, is_first_turn, get_trust_state, save_trust_state,
+    AGENT, is_first_turn, get_trust_state, save_trust_state,
 )
 
 ANCHOR_INTERVAL = 25

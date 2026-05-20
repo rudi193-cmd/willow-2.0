@@ -1,12 +1,13 @@
 ---
-b17: WLWR1
-title: Security Audit — Willow (willow-1.9)
+b17: WLWR1 · ΔΣ=42
+title: Security Audit — Willow 2.0
 date: 2026-05-06
 auditor: Heimdallr (Claude Code, Haiku 4.5)
 status: open (tracking doc)
+updated: 2026-05-19 — W-SQL-01, W-EXC-01 patched in tree; see docs/BETA_AUDIT_REPORT.md
 ---
 
-# Security Audit — Willow (willow-1.9)
+# Security Audit — Willow 2.0
 
 Part of the Level 2 full-fleet security audit.
 

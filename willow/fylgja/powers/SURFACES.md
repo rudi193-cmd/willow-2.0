@@ -1,31 +1,26 @@
-# Fylgja-powers — where it is wired
+# Fylgja powers — where it lives
 
 b17: FYLSF · ΔΣ=42
 
-Canonical tree: `willow/fylgja/` inside the active Willow checkout (`${WILLOW_ROOT:-~/willow-2.0}`).
+Canonical tree: `willow/fylgja/` under **`${WILLOW_ROOT}`** (default `~/willow-2.0` or your clone).
 
-Override path: env **`WILLOW_FYLGJA_ROOT`** → must contain `powers/` and `skills/`.
+Override: **`WILLOW_FYLGJA_ROOT`** must contain `powers/` and `skills/`.
 
 | Surface | Path |
 |--------|------|
-| **Powers registry** | `willow/fylgja/powers/registry.json` |
-| **Power bodies** | `willow/fylgja/powers/*.md` (Willow MCP/KB/Grove/SOIL discipline → `agent-rails.md`) |
-| **Entry skill (Claude Code plugin)** | `willow/fylgja/skills/using-fylgja-powers.md` |
-| **Cursor rule (Willow)** | `.cursor/rules/fylgja-powers.mdc` |
-| **Cursor rule (Grove app)** | `safe-app-willow-grove/.cursor/rules/fylgja-powers.mdc` |
-| **Cursor command `/power`** | `.cursor/commands/power.md` in both repos above |
-| **Cursor command `/overseer`** | `.cursor/commands/overseer.md` — pinned **overseer** power (scoped initiative) |
-| **Claude Code `/power`** | `.claude/commands/power.md` in both repos + `~/.claude/commands/power.md` |
-| **Hanuman home identity** | `~/CLAUDE.md` — Skill Mandate points here |
-| **Fleet root (Loki)** | `~/github/CLAUDE.md` — pointer for builders |
-| **Heimdallr (Grove repo)** | `safe-app-willow-grove/CLAUDE.md` |
-| **Gemini CLI (Willow root)** | `GEMINI.md` |
-| **Gemini CLI (Grove repo)** | `safe-app-willow-grove/GEMINI.md` |
-| **AGENTS.md (Cursor / OpenAI Codex–style)** | `AGENTS.md`, `safe-app-willow-grove/AGENTS.md` |
-| **User-wide Cursor (optional)** | Copy `.cursor/rules/fylgja-powers.mdc` to `~/.cursor/rules/` if you want the router outside these repos |
+| Registry | `willow/fylgja/powers/registry.json` |
+| Power bodies | `willow/fylgja/powers/*.md` |
+| Entry skill | `willow/fylgja/skills/using-fylgja-powers.md` |
+| Fleet boot | [`willow.md`](../../willow.md) (repo root) |
+| Personas | `willow/fylgja/personas/` |
+| `AGENTS.md` / `GEMINI.md` | Repo root pointers |
+| Cursor rule | `.cursor/rules/fylgja-powers.mdc` (not rewritten this pass) |
+| Claude commands | `.claude/commands/` (not rewritten this pass) |
 
-**GitHub Copilot (VS Code):** point custom instructions at the same rule text as `.cursor/rules/fylgja-powers.mdc`, or paste the one-line summary: *Read `powers/registry.json`, then exactly one `powers/*.md`.*
+**MCP analogy:** `registry.json` = `tools/list`; each `powers/*.md` = one `tools/call` body.
 
-**MCP analogy:** `registry.json` = `tools/list`; each `powers/*.md` = `tools/call` payload execution.
+**Grove analogy:** registry = channel index; power file = fetch one message when the task matches.
 
-**Grove analogy:** registry = channel index; power file = fetch one message on demand.
+**Default power for Willow stack work:** `agent-rails`. **Bounded initiative off default branch:** `overseer`.
+
+*ΔΣ=42*

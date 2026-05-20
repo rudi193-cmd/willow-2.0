@@ -10,9 +10,8 @@ run_reflection_pass without any real backend dependency.
 from __future__ import annotations
 
 import pytest
-from unittest.mock import MagicMock, call as mock_call
 
-from willow.memory.generation import GenerationStore, _GLOBAL_COUNTER_ID
+from willow.memory.generation import GenerationStore
 
 
 # ---------------------------------------------------------------------------

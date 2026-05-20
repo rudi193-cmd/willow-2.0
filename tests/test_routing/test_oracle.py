@@ -1,11 +1,10 @@
 """willow_route oracle — rule-based fast path and LLM fallback."""
 from unittest.mock import patch
-import pytest
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from willow.routing.oracle import route, load_rules, match_rules, DEFAULT_AGENT
+from willow.routing.oracle import route, match_rules, DEFAULT_AGENT
 
 SAMPLE_RULES = [
     {"id": "rule-kart",    "pattern": r"\b(task|build|deploy|run|execute)\b",       "agent": "kart",    "priority": 10},

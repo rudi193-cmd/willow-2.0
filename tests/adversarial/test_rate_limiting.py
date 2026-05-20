@@ -3,7 +3,6 @@
 Each test uses a fresh Gleipnir instance to avoid cross-test state pollution.
 """
 import time
-import pytest
 from core.gleipnir import Gleipnir
 
 
@@ -23,7 +22,7 @@ def test_at_soft_limit_warns():
         g.check("adv_app_warn", "store_list")
     allowed, reason = g.check("adv_app_warn", "store_list")  # 31st
     assert allowed is True
-    assert reason != "", f"Expected soft warning, got empty reason"
+    assert reason != "", "Expected soft warning, got empty reason"
 
 
 def test_over_hard_limit_denied():
@@ -33,7 +32,7 @@ def test_over_hard_limit_denied():
         g.check("adv_app_hard", "store_list")
     allowed, reason = g.check("adv_app_hard", "store_list")  # 61st
     assert allowed is False
-    assert reason != "", f"Expected denial reason, got empty string"
+    assert reason != "", "Expected denial reason, got empty string"
 
 
 def test_window_expiry_resets_count():

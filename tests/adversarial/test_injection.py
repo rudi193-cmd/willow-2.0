@@ -3,7 +3,6 @@
 Each test fires a known SQL injection payload and asserts the defense held.
 """
 import time
-import pytest
 
 
 def test_sql_drop_table_in_id(bridge):

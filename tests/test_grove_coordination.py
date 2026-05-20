@@ -2,7 +2,7 @@
 import pytest
 from core.willow_store import WillowStore
 from willow.grove_coordination import (
-    outbox_queue, outbox_drain, node_announce, node_list, alert_pending
+    outbox_queue, outbox_drain, node_announce, node_list
 )
 
 

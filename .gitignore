@@ -6,6 +6,9 @@ __pycache__/
 dist/
 build/
 .pytest_cache/
+.pytest_results.json
+pytest_output.txt
+mypy_output.txt
 .mcp.json
 .worktrees/
 

@@ -1,7 +1,6 @@
 """Tests for W19GD — graceful degradation when Postgres is down."""
 import sys
 from pathlib import Path
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

@@ -7,7 +7,6 @@ Personal signal scanner: scans last user turn for family/health/creative/emotion
 stages candidates to personal/candidates for Loki review → sean.db write gate.
 """
 import json
-import os
 import re
 import sys
 import time as _time

@@ -1,14 +1,17 @@
-# Fylgja Personas
+# Personas
 
-One `.md` file per persona. File name = persona name passed to `--persona`.
+One `.md` per persona. Filename = name passed to `--persona`.
 
-**Format:** The entire file content is used as the system prompt verbatim.
+The file body becomes the system prompt **verbatim**. No wrapper. No hidden preamble.
 
-**Example:** `gerald.md` → loaded by `hanuman_cli.py --persona gerald`
+**Example:** `gerald.md` → `hanuman_cli.py --persona gerald`
 
-**Lookup order (hanuman_cli.py):**
-1. `${WILLOW_ROOT:-~/willow-2.0}/willow/fylgja/personas/<name>.md` ← here
-2. `~/agents/hanuman/personas/<name>.md`
-3. Default CLAUDE.md system prompt (with console notice)
+**Lookup order:**
 
-Create persona files here. Do not commit placeholder or stub content.
+1. `${WILLOW_ROOT}/willow/fylgja/personas/<name>.md` ← here  
+2. `~/agents/hanuman/personas/<name>.md`  
+3. Default `CLAUDE.md` system prompt (with console notice)
+
+Character lives in the file. Code enforces constraints. Do not commit empty stubs.
+
+*ΔΣ=42*

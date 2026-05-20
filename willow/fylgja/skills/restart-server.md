@@ -10,12 +10,12 @@ Reload Willow and Grove MCP servers. Willow reloads in-process; Grove requires a
 ## TOOL PRE-LOAD (first action after invocation)
 
 ```
-ToolSearch query: "select:willow_reload,willow_chat,willow_system_status"
+ToolSearch query: "select:fleet_reload,willow_chat,willow_system_status"
 ```
 
 ## Sequence
 
-1. **Reload Willow** — call `mcp__willow__willow_reload` with target `"all"`
+1. **Reload Willow** — call `mcp__willow__fleet_reload` with target `"all"`
 2. **Restart Grove** — run Bash below. Grove is a persistent streamable-HTTP server (port 8765) — in-process reload is not possible. **Do not** rely on a single `sleep 2` then `is-active`: systemd can still report **`activating`** (non-active) while the unit binds and loads; polling avoids a false failure and races with follow-on MCP checks.
 
 ```bash
@@ -61,7 +61,7 @@ Args passed at invocation modify which servers are restarted:
 
 - **`/restart-server willow`** — reload Willow only, skip Grove systemd restart
 - **`/restart-server grove`** — restart Grove only, skip Willow reload
-- **`/restart-server postgres`** — reconnect Postgres only (`willow_reload` target: `postgres`)
+- **`/restart-server postgres`** — reconnect Postgres only (`fleet_reload` target: `postgres`)
 - **`/restart-server all`** or no args — default: reload both Willow and Grove
 
 ## Rules

@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 from unittest.mock import patch
 from willow.fylgja.events.prompt_submit import (
     detect_feedback,

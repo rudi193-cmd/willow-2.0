@@ -7,7 +7,6 @@ No external dependencies required (no spaCy, no Postgres).
 """
 from __future__ import annotations
 
-import pytest
 
 from willow.memory.norn_hook import NornScrubber, ScrubResult, PiiFinding, notice
 

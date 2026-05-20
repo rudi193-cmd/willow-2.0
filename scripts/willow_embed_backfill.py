@@ -12,7 +12,6 @@ Usage:
 """
 import argparse
 import collections
-import os
 import signal
 import sys
 import time

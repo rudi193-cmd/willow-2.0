@@ -1,30 +1,70 @@
-# Willow SAP — MCP Server
+# SAP — Willow MCP server
 
-The SAP (Sovereign Application Protocol) MCP server. Exposes Willow's KB, store, Grove, and task queue to any MCP client.
+b20: SAPMCP2 · ΔΣ=42
+
+Branding: [`../docs/BRANDING.md`](../docs/BRANDING.md)
+
+The Sovereign Application Protocol gate and MCP surface. Exposes KB, SOIL, fleet health, tasks, handoffs, and inference to any MCP client.
+
+---
 
 ## Connect
+
+**Canonical launcher** (sets venv, paths, DB):
 
 ```json
 {
   "mcpServers": {
     "willow": {
-      "command": "python3",
-      "args": ["/path/to/willow-2.0/sap/sap_mcp.py"]
+      "command": "bash",
+      "args": ["sap/willow_mcp.sh"],
+      "env": {
+        "WILLOW_AGENT_NAME": "your_agent",
+        "WILLOW_PG_DB": "willow_20"
+      }
     }
   }
 }
 ```
 
-The server sends orientation instructions in the `initialize` response — no tool call needed.
+Copy from [`.mcp.json.example`](../.mcp.json.example) at repo root.
 
-## First five tools
+The server sends orientation on `initialize` — you still should read [`willow.md`](../willow.md).
+
+---
+
+## Boot tools (first five)
 
 ```
-fleet_status          → confirm system is up
-handoff_latest  → last session state
-grove_get_history      → what the fleet has been doing
-willow_knowledge_search → find existing knowledge before building
-willow_task_submit     → queue work for Kart
+fleet_status       → Postgres, SOIL, Ollama, SAFE manifests
+handoff_latest     → last session state
+kb_search          → search before you build
+agent_task_submit  → queue shell work for Kart
+grove_get_history  → Grove MCP (sibling repo), not sap_mcp
 ```
 
-Full onboarding: [ONBOARDING.md](ONBOARDING.md)
+Full agent flow: [ONBOARDING.md](ONBOARDING.md)
+
+---
+
+## HTTP mode (optional)
+
+```bash
+python3 sap/sap_mcp.py --http --host 127.0.0.1 --port 6274
+```
+
+Local beta uses **stdio only**. HTTP needs an auth layer — do not expose without one.
+
+---
+
+## Run
+
+```bash
+bash sap/willow_mcp.sh
+# or
+python3 sap/sap_mcp.py
+```
+
+Requires `WILLOW_SAFE_ROOT` (SAFE manifests) and `WILLOW_AGENT_NAME`.
+
+*ΔΣ=42*

@@ -2,7 +2,6 @@
 b17: TINT9  ΔΣ=42
 """
 import os
-import pytest
 import psycopg2.extras
 from datetime import datetime, timezone, timedelta
 
@@ -70,7 +69,7 @@ def test_draugr_scan_ignores_community_nodes():
 
 
 def test_draugr_mark_sets_category():
-    from core.intelligence import draugr_scan, draugr_mark
+    from core.intelligence import draugr_mark
     bridge = _bridge()
     _put_old(bridge, "dr_mark_test", "test_draugr3", "mark this zombie", days_old=90)
 

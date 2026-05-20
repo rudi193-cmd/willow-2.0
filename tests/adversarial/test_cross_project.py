@@ -4,7 +4,6 @@ Without a connect declaration, private atoms must be filtered out.
 Only community_detection atoms may cross project boundaries unauthenticated.
 """
 import json
-import pytest
 from core.ratatoskr import (
     get_connected_projects,
     is_connected,

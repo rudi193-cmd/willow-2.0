@@ -1,7 +1,7 @@
 """tests/test_model_adapter.py — model adapter interface tests."""
 import pytest
 from core.model_adapter import (
-    ModelAdapter, OllamaAdapter, AnthropicAdapter, GroqAdapter,
+    OllamaAdapter, AnthropicAdapter, GroqAdapter,
     XaiAdapter, OpenAICompatibleAdapter, get_adapter,
 )
 

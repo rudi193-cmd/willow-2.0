@@ -43,8 +43,8 @@ def test_sequential_flood_triggers_hard_limit(server_process):
         if "Rate limit exceeded" in text or "Gleipnir holds" in text:
             denied += 1
     assert denied >= 1, (
-        f"Expected Gleipnir to deny at least 1 call after 60, got 0 denials in 70 calls. "
-        f"Check that Gleipnir is wired into sap_mcp.py tool dispatch."
+        "Expected Gleipnir to deny at least 1 call after 60, got 0 denials in 70 calls. "
+        "Check that Gleipnir is wired into sap_mcp.py tool dispatch."
     )
 
 

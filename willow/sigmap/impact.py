@@ -6,7 +6,6 @@ Given a file path and dependency graphs, returns what would be affected
 by changes to that file: direct importers, transitive importers (2 hops),
 affected test files, and affected API route files.
 """
-from pathlib import Path
 
 
 def get_impact(

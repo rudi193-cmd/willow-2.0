@@ -1,7 +1,5 @@
 """Tests for SqliteBridge — full API parity with PgBridge."""
 import json
-import tempfile
-from pathlib import Path
 import pytest
 from core.sqlite_bridge import SqliteBridge
 
@@ -49,7 +47,6 @@ def test_ingest_atom(db):
 
 
 def test_knowledge_search_respects_invalid(db):
-    from datetime import datetime, timezone
     db.knowledge_put({"id": "VALID", "title": "Valid atom", "summary": "active"})
     db.knowledge_put({"id": "INVAL", "title": "Invalid atom", "summary": "expired",
                       "invalid_at": "2020-01-01T00:00:00+00:00"})

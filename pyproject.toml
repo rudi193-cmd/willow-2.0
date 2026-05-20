@@ -1,0 +1,32 @@
+[project]
+name = "willow"
+version = "2.0.0"
+description = "Willow 2.0 — local-first AI stack (Ollama by default)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "psycopg2-binary>=2.9.0",
+    "cryptography>=41.0.0",
+    "mcp>=1.6.0,<2.0.0",
+    "litellm>=1.30.0",
+    "textual>=0.61.0",
+    "starlette>=0.37.0",
+    "uvicorn>=0.30.0",
+    "aiohttp>=3.9.0",
+    "psutil",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-timeout>=2.1.0",
+    "ruff",
+    "mypy",
+]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true

@@ -13,8 +13,8 @@ Two modes: design new solutions (brainstorm) or fix existing problems (debug).
 
 ### Steps
 
-1. **Search existing KB** — `willow_knowledge_search` on the feature/problem. Read relevant atoms before forming opinions.
-2. **Search prior sessions** — `store_search` on `hanuman/atoms` with relevant keywords. Check if this was approached before.
+1. **Search existing KB** — `kb_search` on the feature/problem. Read relevant atoms before forming opinions.
+2. **Search prior sessions** — `soil_search` on `hanuman/atoms` with relevant keywords. Check if this was approached before.
 3. **State the problem** — one sentence. What are we solving?
 4. **Generate 3 approaches** — for each: name it, state the core tradeoff in one sentence.
 5. **Recommend one** — which approach and why, in 2 sentences.
@@ -39,7 +39,7 @@ Two modes: design new solutions (brainstorm) or fix existing problems (debug).
 
 ### Steps
 
-1. **Search prior context** — `store_search` on `hanuman/atoms` for the error message or module name. This bug may have been seen before.
+1. **Search prior context** — `soil_search` on `hanuman/atoms` for the error message or module name. This bug may have been seen before.
 2. **State the bug** — exact error, `file:line` if known, expected vs actual behavior.
 3. **Identify reproduction** — what is the minimum input that triggers this?
 4. **Hypothesize** — list 2-3 candidate causes, ranked by likelihood.

@@ -1,8 +1,6 @@
 import json
-import sys
 from io import StringIO
 from unittest.mock import patch
-from pathlib import Path
 import willow.fylgja.events.session_start as m
 
 

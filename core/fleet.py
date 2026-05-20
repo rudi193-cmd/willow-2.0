@@ -17,12 +17,12 @@ from typing import Callable
 
 _LOG_LOCK = threading.Lock()
 
-_REPO_ROOT   = Path(__file__).parent
+_REPO_ROOT   = Path(__file__).parent.parent
 _VENV_DEV    = _REPO_ROOT / ".venv-dev" / "bin" / "python3"
 _VENV_PYTHON = Path.home() / ".willow-venv" / "bin" / "python3"
 _SYS_PYTHON  = "/usr/bin/python3"
 _AGENTS_BIN  = Path.home() / "agents" / "hanuman" / "bin"
-_GROVE_DIR   = Path(__file__).parent
+_GROVE_DIR   = _REPO_ROOT
 _PY          = str(_VENV_DEV) if _VENV_DEV.exists() else (str(_VENV_PYTHON) if _VENV_PYTHON.exists() else _SYS_PYTHON)
 _LOG_FILE    = Path.home() / ".willow" / "fleet.log"
 _PID_FILE    = Path.home() / ".willow" / "grove.pid"
@@ -40,7 +40,7 @@ if not _log.handlers:
 # It watches ~/  via inotify and is resource-heavy. Enable via Grove Settings.
 _SERVICES: dict[str, dict] = {
     "grove_serve": {
-        "cmd": [_PY, str(_GROVE_DIR / "grove_serve.py"), "--host", "127.0.0.1", "--port", "7777"],
+        "cmd": [_PY, str(_GROVE_DIR / "core" / "grove_serve.py"), "--host", "127.0.0.1", "--port", "7777"],
         "cwd": str(_GROVE_DIR),
         "env": {"WILLOW_PG_DB": "willow_20", "WILLOW_PG_USER": os.environ.get("USER", "")},
         "port": 7777,                    # GAP 1: checked before spawn

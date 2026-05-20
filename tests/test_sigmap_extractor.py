@@ -8,7 +8,6 @@ filtering, dunder filtering, return types, async, sig cap, empty/syntax-error fi
 import sys
 from pathlib import Path
 
-import pytest
 
 # Ensure repo root on path (worktree layout)
 _REPO = Path(__file__).resolve().parent.parent

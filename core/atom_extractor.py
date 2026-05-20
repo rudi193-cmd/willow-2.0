@@ -16,7 +16,7 @@ import subprocess
 import uuid
 from dataclasses import dataclass, asdict, field
 from datetime import datetime, timezone
-from typing import Optional, Callable
+from typing import Optional
 
 
 @dataclass

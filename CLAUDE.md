@@ -1,3 +1,7 @@
+# Claude Code — Willow 2.0
+
+b17: CLDE2 · ΔΣ=42
+
 See [willow.md](willow.md) — canonical fleet entry point for all runtimes.
 
 Default 7-step boot path:

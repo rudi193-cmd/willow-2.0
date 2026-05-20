@@ -1,187 +1,159 @@
-## Willow 1.9 — First 5 Minutes
+# First five minutes — Willow 2.0
 
-You are going to:
+You will:
 
-- Install Willow
-- Confirm it’s healthy
-- Start it
-- (Optional) check it from your phone on the same Wi‑Fi
+1. Install
+2. Check health
+3. Start services
+4. (Optional) ping your desktop from your phone on the same Wi‑Fi
 
-If anything goes wrong, jump to **If something fails** at the bottom.
+If something breaks, jump to **If something fails** at the bottom.
 
 ---
 
-## 0) Install (Linux / macOS)
+## 0) Install
 
-Copy/paste this whole block:
+Copy this block (Linux / macOS):
 
 ```bash
-git clone https://github.com/rudi193-cmd/willow-1.9
-cd willow-1.9
+git clone https://github.com/rudi193-cmd/willow-2.0
+cd willow-2.0
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .
 python3 seed.py
 ```
 
-### What you should see
+**What you should see:** setup steps scrolling, then your shell prompt back. No panic unless it stops with an error.
 
-- A bunch of setup steps running.
-- When it finishes, you get your normal prompt back.
+Default database name is **`willow_20`**. If you still have `willow_19` from an old install, see [`CODE_DIFF_1.9_to_2.0.md`](CODE_DIFF_1.9_to_2.0.md).
 
 ---
 
 ## 1) Check status
 
-Copy/paste:
-
 ```bash
+./willow.sh fleet_status
 ./willow.sh status
 ```
 
-### What you should see
-
-- A short status report.
-- If most items show `[✓]`, you’re good.
+**Good:** JSON or lines with `[✓]` on postgres, ollama, manifests.  
+**Bad:** `degraded`, `not_connected`, or a traceback — stop and fix before step 2.
 
 ---
 
 ## 2) Start Willow
 
-Copy/paste:
-
 ```bash
 ./willow.sh start
 ```
 
-### What you should see
-
-- Output indicating services started.
-- If it stays attached and keeps printing logs, leave it running in that terminal and open a new one for the next steps.
+Leave that terminal open if it streams logs. Open a second terminal for the next steps.
 
 ---
 
-## 3) Optional: check your computer from your phone (same Wi‑Fi)
+## 3) Optional — phone on same Wi‑Fi
 
-This lets your phone ask your computer “are you up?” without Discord/Telegram/cloud relays.
-
-### On your computer
-
-Copy/paste:
+### Desktop
 
 ```bash
 ./willow.sh serve
 ```
 
-### What you should see
+Note the listening port (usually `7777`) and `~/.willow/grove_token`.
 
-- A line that it’s listening on `:7777`
-- A token file location like `~/.willow/grove_token`
-
-Leave this running.
-
-### On your phone (Android + Termux)
-
-Install Termux (F‑Droid recommended), then:
+### Phone (Termux)
 
 ```bash
 pkg install python git
-git clone https://github.com/rudi193-cmd/willow-1.9
-cd willow-1.9
-python3 root.py --termux --skip-pg
+git clone https://github.com/rudi193-cmd/willow-2.0
+cd willow-2.0
+python3 seed.py --termux --skip-pg
 ```
 
-Copy the token from your computer into the phone:
+Copy the desktop token:
 
 ```bash
 echo "TOKEN" > ~/.willow/grove_token && chmod 600 ~/.willow/grove_token
 ```
 
-Ask your computer for status (replace the IP):
+Ask the desktop for status (replace IP):
 
 ```bash
-bash ~/willow-1.9/willow.sh grove send <COMPUTER_IP>:7777 status-all
+bash ~/willow-2.0/willow.sh grove send 192.168.x.x:7777 status-all
 ```
 
-### What you should see
-
-- Your computer’s status printed on the phone.
+**Good:** your desktop’s status printed on the phone.
 
 ---
 
-## Optional: connect Grove to claude.ai (external tunnel)
+## Optional — IDE (Cursor / Claude Code)
 
-By default Grove MCP runs on `localhost:8765` — Claude Code sessions on this machine connect automatically. To reach it from claude.ai or any external client, you need a tunnel.
+Copy [`.mcp.json.example`](../.mcp.json.example) to `.mcp.json`. Set:
 
-**Step 1** — Start an ngrok tunnel:
-```bash
-ngrok http 8765
-# → https://your-id.ngrok-free.app
-```
+- `WILLOW_AGENT_NAME` — your agent id (e.g. `heimdallr`)
+- `WILLOW_PG_DB` — `willow_20`
 
-**Step 2** — Tell the Grove MCP service about the tunnel URL (persists across reboots):
-```bash
-systemctl --user edit grove-mcp
-```
-Add:
-```ini
-[Service]
-Environment=GROVE_MCP_URL=https://your-id.ngrok-free.app
-```
-Then: `systemctl --user restart grove-mcp`
+Launchers:
 
-**Step 3** — In claude.ai → Settings → Integrations → MCP servers, add:
-```
-https://your-id.ngrok-free.app/mcp
-```
+- `sap/willow_mcp.sh` — Willow tools
+- `sap/markdownai_mcp.sh` — reads `willow.md` and skills
 
-Each user sets their own tunnel URL. No shared hardcoded value — the service file is the only place it lives.
+Details: [`IDE_INTEGRATION.md`](IDE_INTEGRATION.md)
 
 ---
 
-## Optional: enable a cloud model key
+## Optional — cloud model
 
-Willow works without cloud keys. If you *want* to add one:
+Not required. Ollama is enough to start.
 
 ```bash
-./willow.sh providers enable anthropic --key <your_key>
+./willow.sh providers enable anthropic --key YOUR_KEY
 ./willow.sh providers list
 ```
 
 ---
 
-## Where your data lives (plain English)
+## Where your data lives
 
-- `~/.willow/` — your local Willow data folder
-- `~/.willow/store/` — local “state + memory” store
-- `~/.willow/grove_token` — the secret your phone uses to talk to your computer
+| Path | What |
+|------|------|
+| `~/.willow/` | Local Willow home |
+| `~/.willow/store/` | SOIL collections |
+| `~/.willow/grove_token` | LAN pairing secret |
+| Postgres `willow_20` | KB atoms (desktop) |
 
-Nothing is uploaded by default.
+Nothing uploads by default.
 
 ---
 
 ## If something fails
 
-### “Command not found” / wrong folder
-
-Make sure you’re inside the `willow-1.9` folder:
+**Wrong folder**
 
 ```bash
-pwd
-ls
+pwd && ls willow.sh seed.py
 ```
 
-You should see `willow.sh` and `root.py`.
-
-### Status shows Postgres down
-
-Re-run the installer:
+**Postgres down**
 
 ```bash
-python3 root.py
+python3 seed.py
 ```
 
-### Phone can’t connect
+**Phone cannot connect**
 
-- Make sure phone + computer are on the same Wi‑Fi
-- Make sure `./willow.sh serve` is still running on the computer
-- Make sure you used the computer’s LAN IP (not `127.0.0.1`)
-- Re-check token file permissions on the phone: `chmod 600 ~/.willow/grove_token`
+- Same Wi‑Fi as desktop
+- `./willow.sh serve` still running
+- LAN IP, not `127.0.0.1`
+- `chmod 600 ~/.willow/grove_token`
 
+**Tests or agents complain about identity**
+
+```bash
+export WILLOW_AGENT_NAME=your_agent
+export WILLOW_SAFE_ROOT=$HOME/SAFE/Applications
+```
+
+---
+
+*ΔΣ=42*
