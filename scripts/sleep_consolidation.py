@@ -3,25 +3,48 @@
 sleep_consolidation.py — Nightly KB consolidation (NREM phase).
 b17: SCM01
 
-Runs after midnight. Two passes:
+Runs after midnight. Five passes:
 1. NREM: find near-identical KB atoms (same project, similar title+summary),
    flag older duplicates with invalid_at so search skips them.
 2. Flag contradictions: find atoms with 'same title prefix, different summary'
    in recent vs old — log to frank_ledger for Hanuman to resolve.
+3. SQLite consolidation: auto-promote high-confidence session atoms from
+   willow-2.0.db → Postgres KB; delete 0-byte loose .db files in ~/.willow/.
+4. Insight pass: cluster N≥3 reflection atoms by domain → Layer 5 insight atom
+   (requires Willow MCP available via willow/fylgja/_mcp.py).
+5. Chunk pass: cluster N≥2 insight atoms on executable domains → reusable chunk.
 
 Usage:
-    python3 scripts/sleep_consolidation.py [--dry-run]
+    python3 scripts/sleep_consolidation.py [--dry-run] [--skip-intelligence]
 
-Safe to run repeatedly — idempotent. Skips already-invalidated atoms.
+Safe to run repeatedly — idempotent. Skips already-decided atoms.
 """
 import argparse
 import sys
+import json
+import hashlib
+import os
+import sqlite3
+import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.pg_bridge import PgBridge
+
+try:
+    from willow.fylgja._mcp import call as _mcp_call
+    _MCP_AVAILABLE = True
+except Exception:
+    _mcp_call = None
+    _MCP_AVAILABLE = False
+
+try:
+    from core.intelligence import insight_pass, chunk_pass
+    _INTELLIGENCE_AVAILABLE = True
+except Exception:
+    _INTELLIGENCE_AVAILABLE = False
 
 SIMILARITY_THRESHOLD = 0.85   # title overlap ratio for dedup
 RECENCY_DAYS = 14              # atoms newer than this are "recent"
@@ -209,9 +232,146 @@ def update_decay(pg, dry_run: bool) -> int:
     return updated
 
 
+WILLOW_20_DB   = Path.home() / ".willow" / "willow-2.0.db"
+WILLOW_DIR     = Path.home() / ".willow"
+ATOM_REVIEW    = Path.home() / ".willow" / "atom_review_state.json"
+PROMOTE_THRESH = 0.72   # confidence >= this → auto-promote
+REJECT_THRESH  = 0.62   # confidence < this → auto-reject (skip forever)
+COLLECTION     = "atoms/session_semantic_candidates"
+PROJECT        = "hanuman"
+
+
+def _atom_id(evidence: str) -> str:
+    return "SES" + hashlib.sha256(evidence.encode()).hexdigest()[:8].upper()
+
+
+def run_sqlite_consolidation(pg, dry_run: bool) -> dict:
+    stats = {"promoted": 0, "rejected": 0, "deleted_files": []}
+
+    # ── 1. Auto-promote / auto-reject session semantic candidates ─────────────
+    if not WILLOW_20_DB.exists():
+        print("[SQLite] willow-2.0.db not found — skipping atom promotion.")
+    else:
+        # Load existing review state so we don't re-decide already-decided atoms
+        review_state = {"decisions": {}}
+        if ATOM_REVIEW.exists():
+            try:
+                review_state = json.loads(ATOM_REVIEW.read_text())
+            except Exception:
+                pass
+        decided = set(review_state.get("decisions", {}).keys())
+
+        conn = sqlite3.connect(str(WILLOW_20_DB))
+        rows = conn.execute(
+            "SELECT id, data FROM records WHERE collection = ?", (COLLECTION,)
+        ).fetchall()
+        conn.close()
+
+        pg_cur = pg.conn.cursor()
+        now = datetime.now(timezone.utc)
+        promoted_ids, rejected_ids = [], []
+
+        for rid, raw in rows:
+            if rid in decided:
+                continue
+            try:
+                d = json.loads(raw)
+                p = d.get("payload", d)
+                conf = float(p.get("confidence", d.get("confidence", 0)))
+                evidence = p.get("evidence", d.get("summary", ""))
+                if not evidence:
+                    continue
+
+                if conf >= PROMOTE_THRESH:
+                    aid = _atom_id(evidence)
+                    title = (evidence[:60] + "…") if len(evidence) > 60 else evidence
+                    if not dry_run:
+                        pg_cur.execute(
+                            """
+                            INSERT INTO knowledge
+                              (id, project, valid_at, title, summary, content, source_type, category)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (id) DO NOTHING
+                            """,
+                            (aid, PROJECT, now, title, evidence,
+                             json.dumps({"source_atom_id": rid, "confidence": conf,
+                                         "session_id": p.get("session_id", "")}),
+                             "session", "decision"),
+                        )
+                    promoted_ids.append(rid)
+                    stats["promoted"] += 1
+
+                elif conf < REJECT_THRESH:
+                    rejected_ids.append(rid)
+                    stats["rejected"] += 1
+
+            except Exception as e:
+                print(f"[SQLite] atom {rid} error: {e}")
+
+        if not dry_run:
+            pg.conn.commit()
+            # Record decisions in review state so they're not revisited
+            for rid in promoted_ids:
+                review_state["decisions"][rid] = "y"
+            for rid in rejected_ids:
+                review_state["decisions"][rid] = "n"
+            ATOM_REVIEW.write_text(json.dumps(review_state, indent=2))
+
+        print(f"[SQLite] Atoms — promoted: {stats['promoted']}, rejected: {stats['rejected']}"
+              + (" (dry run)" if dry_run else ""))
+
+    # ── 2. Delete 0-byte loose .db files in ~/.willow/ ────────────────────────
+    skip = {"vault.db", "angrybob-admissibility.db", "angrybob-calculus.db",
+            "willow-2.0.db", "claude_sessions_all.db", "corpus_index_log.db"}
+    for f in WILLOW_DIR.glob("*.db"):
+        if f.name in skip:
+            continue
+        if f.stat().st_size == 0:
+            stats["deleted_files"].append(f.name)
+            if not dry_run:
+                f.unlink()
+                print(f"[SQLite] Deleted empty file: {f.name}")
+            else:
+                print(f"[SQLite] Would delete empty file: {f.name}")
+
+    return stats
+
+
+def run_intelligence_passes(dry_run: bool) -> dict:
+    """Run insight_pass + chunk_pass via MCP store_call. Skips gracefully if MCP unavailable."""
+    stats = {"insights_written": 0, "chunks_written": 0, "skipped": False}
+
+    if not _MCP_AVAILABLE or not _INTELLIGENCE_AVAILABLE:
+        print("[Intelligence] MCP or intelligence module unavailable — skipping PMEM passes.")
+        stats["skipped"] = True
+        return stats
+
+    if dry_run:
+        print("[Intelligence] dry-run — would run insight_pass + chunk_pass via MCP.")
+        return stats
+
+    try:
+        ir = insight_pass(_mcp_call)
+        stats["insights_written"] = ir.get("insights_written", 0)
+        print(f"[Intelligence] insight_pass done — {stats['insights_written']} insights written.")
+    except Exception as e:
+        print(f"[Intelligence] insight_pass error: {e}")
+
+    try:
+        cr = chunk_pass(_mcp_call)
+        stats["chunks_written"] = cr.get("chunks_written", 0)
+        print(f"[Intelligence] chunk_pass done — {stats['chunks_written']} chunks written.")
+    except Exception as e:
+        print(f"[Intelligence] chunk_pass error: {e}")
+
+    return stats
+
+
 def main():
     parser = argparse.ArgumentParser(description="Nightly KB consolidation (NREM phase)")
     parser.add_argument("--dry-run", action="store_true", help="Report without writing")
+    parser.add_argument("--skip-intelligence", action="store_true",
+                        help="Skip insight_pass + chunk_pass (PMEM phases 3/6)")
     args = parser.parse_args()
 
     mode = "DRY RUN" if args.dry_run else "LIVE"
@@ -221,25 +381,51 @@ def main():
     pg = PgBridge()
     pg._ensure_conn()
 
-    nrem_stats = nrem_dedup(pg, args.dry_run)
+    nrem_stats    = nrem_dedup(pg, args.dry_run)
     contradictions = flag_contradictions(pg, args.dry_run)
-    decayed = update_decay(pg, args.dry_run)
+    decayed       = update_decay(pg, args.dry_run)
+    sqlite_stats  = run_sqlite_consolidation(pg, args.dry_run)
 
-    print("\n[sleep_consolidation] Done.")
+    intel_stats: dict = {"insights_written": 0, "chunks_written": 0, "skipped": True}
+    if not args.skip_intelligence:
+        intel_stats = run_intelligence_passes(args.dry_run)
+
+    print(f"\n[sleep_consolidation] Done.")
     print(f"  Scanned: {nrem_stats['scanned']} atoms")
     print(f"  Deduped: {nrem_stats['deduped']} duplicates invalidated")
     print(f"  Contradictions: {len(contradictions)} flagged")
     print(f"  Decay: {decayed} session rows updated")
+    print(f"  SQLite promoted: {sqlite_stats['promoted']}  rejected: {sqlite_stats['rejected']}  deleted files: {sqlite_stats['deleted_files']}")
+    print(f"  Insights: {intel_stats['insights_written']}  Chunks: {intel_stats['chunks_written']}"
+          + (" (skipped)" if intel_stats.get("skipped") else ""))
 
-    if not args.dry_run and (nrem_stats["deduped"] > 0 or len(contradictions) > 0):
+    anything_wrote = (
+        nrem_stats["deduped"] > 0
+        or len(contradictions) > 0
+        or sqlite_stats["promoted"] > 0
+        or intel_stats["insights_written"] > 0
+        or intel_stats["chunks_written"] > 0
+    )
+    if not args.dry_run and anything_wrote:
         pg.ledger_append(
             project="fleet",
             event_type="consolidation_run",
             content={
-                "summary": f"NREM: {nrem_stats['deduped']} deduped, {len(contradictions)} contradictions",
+                "summary": (
+                    f"NREM: {nrem_stats['deduped']} deduped, "
+                    f"{len(contradictions)} contradictions, "
+                    f"{sqlite_stats['promoted']} promoted, "
+                    f"{intel_stats['insights_written']} insights, "
+                    f"{intel_stats['chunks_written']} chunks"
+                ),
                 "deduped": nrem_stats["deduped"],
                 "contradictions": len(contradictions),
                 "decayed": decayed,
+                "sqlite_promoted": sqlite_stats["promoted"],
+                "sqlite_rejected": sqlite_stats["rejected"],
+                "deleted_files": sqlite_stats["deleted_files"],
+                "insights_written": intel_stats["insights_written"],
+                "chunks_written": intel_stats["chunks_written"],
                 "run_at": datetime.now(timezone.utc).isoformat(),
             }
         )
