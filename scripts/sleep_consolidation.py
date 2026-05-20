@@ -3,16 +3,19 @@
 sleep_consolidation.py — Nightly KB consolidation (NREM phase).
 b17: SCM01
 
-Runs after midnight. Three passes:
+Runs after midnight. Five passes:
 1. NREM: find near-identical KB atoms (same project, similar title+summary),
    flag older duplicates with invalid_at so search skips them.
 2. Flag contradictions: find atoms with 'same title prefix, different summary'
    in recent vs old — log to frank_ledger for Hanuman to resolve.
 3. SQLite consolidation: auto-promote high-confidence session atoms from
    willow-2.0.db → Postgres KB; delete 0-byte loose .db files in ~/.willow/.
+4. Insight pass: cluster N≥3 reflection atoms by domain → Layer 5 insight atom
+   (requires Willow MCP available via willow/fylgja/_mcp.py).
+5. Chunk pass: cluster N≥2 insight atoms on executable domains → reusable chunk.
 
 Usage:
-    python3 scripts/sleep_consolidation.py [--dry-run]
+    python3 scripts/sleep_consolidation.py [--dry-run] [--skip-intelligence]
 
 Safe to run repeatedly — idempotent. Skips already-decided atoms.
 """
@@ -29,6 +32,19 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.pg_bridge import PgBridge
+
+try:
+    from willow.fylgja._mcp import call as _mcp_call
+    _MCP_AVAILABLE = True
+except Exception:
+    _mcp_call = None
+    _MCP_AVAILABLE = False
+
+try:
+    from core.intelligence import insight_pass, chunk_pass
+    _INTELLIGENCE_AVAILABLE = True
+except Exception:
+    _INTELLIGENCE_AVAILABLE = False
 
 SIMILARITY_THRESHOLD = 0.85   # title overlap ratio for dedup
 RECENCY_DAYS = 14              # atoms newer than this are "recent"
@@ -321,9 +337,41 @@ def run_sqlite_consolidation(pg, dry_run: bool) -> dict:
     return stats
 
 
+def run_intelligence_passes(dry_run: bool) -> dict:
+    """Run insight_pass + chunk_pass via MCP store_call. Skips gracefully if MCP unavailable."""
+    stats = {"insights_written": 0, "chunks_written": 0, "skipped": False}
+
+    if not _MCP_AVAILABLE or not _INTELLIGENCE_AVAILABLE:
+        print("[Intelligence] MCP or intelligence module unavailable — skipping PMEM passes.")
+        stats["skipped"] = True
+        return stats
+
+    if dry_run:
+        print("[Intelligence] dry-run — would run insight_pass + chunk_pass via MCP.")
+        return stats
+
+    try:
+        ir = insight_pass(_mcp_call)
+        stats["insights_written"] = ir.get("insights_written", 0)
+        print(f"[Intelligence] insight_pass done — {stats['insights_written']} insights written.")
+    except Exception as e:
+        print(f"[Intelligence] insight_pass error: {e}")
+
+    try:
+        cr = chunk_pass(_mcp_call)
+        stats["chunks_written"] = cr.get("chunks_written", 0)
+        print(f"[Intelligence] chunk_pass done — {stats['chunks_written']} chunks written.")
+    except Exception as e:
+        print(f"[Intelligence] chunk_pass error: {e}")
+
+    return stats
+
+
 def main():
     parser = argparse.ArgumentParser(description="Nightly KB consolidation (NREM phase)")
     parser.add_argument("--dry-run", action="store_true", help="Report without writing")
+    parser.add_argument("--skip-intelligence", action="store_true",
+                        help="Skip insight_pass + chunk_pass (PMEM phases 3/6)")
     args = parser.parse_args()
 
     mode = "DRY RUN" if args.dry_run else "LIVE"
@@ -338,26 +386,46 @@ def main():
     decayed       = update_decay(pg, args.dry_run)
     sqlite_stats  = run_sqlite_consolidation(pg, args.dry_run)
 
+    intel_stats: dict = {"insights_written": 0, "chunks_written": 0, "skipped": True}
+    if not args.skip_intelligence:
+        intel_stats = run_intelligence_passes(args.dry_run)
+
     print(f"\n[sleep_consolidation] Done.")
     print(f"  Scanned: {nrem_stats['scanned']} atoms")
     print(f"  Deduped: {nrem_stats['deduped']} duplicates invalidated")
     print(f"  Contradictions: {len(contradictions)} flagged")
     print(f"  Decay: {decayed} session rows updated")
     print(f"  SQLite promoted: {sqlite_stats['promoted']}  rejected: {sqlite_stats['rejected']}  deleted files: {sqlite_stats['deleted_files']}")
+    print(f"  Insights: {intel_stats['insights_written']}  Chunks: {intel_stats['chunks_written']}"
+          + (" (skipped)" if intel_stats.get("skipped") else ""))
 
-    if not args.dry_run and (nrem_stats["deduped"] > 0 or len(contradictions) > 0
-                              or sqlite_stats["promoted"] > 0):
+    anything_wrote = (
+        nrem_stats["deduped"] > 0
+        or len(contradictions) > 0
+        or sqlite_stats["promoted"] > 0
+        or intel_stats["insights_written"] > 0
+        or intel_stats["chunks_written"] > 0
+    )
+    if not args.dry_run and anything_wrote:
         pg.ledger_append(
             project="fleet",
             event_type="consolidation_run",
             content={
-                "summary": f"NREM: {nrem_stats['deduped']} deduped, {len(contradictions)} contradictions, {sqlite_stats['promoted']} atoms promoted",
+                "summary": (
+                    f"NREM: {nrem_stats['deduped']} deduped, "
+                    f"{len(contradictions)} contradictions, "
+                    f"{sqlite_stats['promoted']} promoted, "
+                    f"{intel_stats['insights_written']} insights, "
+                    f"{intel_stats['chunks_written']} chunks"
+                ),
                 "deduped": nrem_stats["deduped"],
                 "contradictions": len(contradictions),
                 "decayed": decayed,
                 "sqlite_promoted": sqlite_stats["promoted"],
                 "sqlite_rejected": sqlite_stats["rejected"],
                 "deleted_files": sqlite_stats["deleted_files"],
+                "insights_written": intel_stats["insights_written"],
+                "chunks_written": intel_stats["chunks_written"],
                 "run_at": datetime.now(timezone.utc).isoformat(),
             }
         )

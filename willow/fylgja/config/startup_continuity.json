@@ -13,6 +13,9 @@
     {"query": "learnings reflections insight session patterns agent behavior", "limit": 5},
     {"query": "build pattern session sequence deliverable form static mockup", "limit": 3},
     {"query": "design decisions approved rejected sovereignty physical metaphor reporter", "limit": 3},
-    {"query": "friction rework avoidable project build agent patterns", "limit": 3}
+    {"query": "friction rework avoidable project build agent patterns", "limit": 3},
+    {"query": "active tasks pending gates outstanding work next bite kart", "limit": 4, "intent": "task"},
+    {"query": "design preference approved pattern sovereignty static local-first", "limit": 4, "intent": "preference"},
+    {"query": "system status infrastructure deployed running live fleet willow", "limit": 4, "intent": "world-state"}
   ]
 }
