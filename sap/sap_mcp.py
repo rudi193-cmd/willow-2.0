@@ -1719,12 +1719,14 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
         conn.row_factory = _sql.Row
         cur  = conn.cursor()
         sql_agent = """
-            SELECT f.filename, f.mtime, h.handoff_date, h.summary, h.open_threads, h.questions
+            SELECT f.filename, f.mtime, h.handoff_date, h.summary,
+                   h.open_threads, h.questions, h.agreements, h.capabilities
             FROM handoffs h JOIN files f ON h.file_id = f.id
             WHERE h.file_type = 'session' AND f.filename LIKE ?
         """
         sql_any = """
-            SELECT f.filename, f.mtime, h.handoff_date, h.summary, h.open_threads, h.questions
+            SELECT f.filename, f.mtime, h.handoff_date, h.summary,
+                   h.open_threads, h.questions, h.agreements, h.capabilities
             FROM handoffs h JOIN files f ON h.file_id = f.id
             WHERE h.file_type = 'session'
         """
@@ -1739,8 +1741,10 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
             "filename":     row["filename"],
             "date":         row["handoff_date"],
             "summary":      row["summary"],
-            "open_threads": _j.loads(row["open_threads"]) if row["open_threads"] else [],
-            "questions":    _j.loads(row["questions"])    if row["questions"]    else [],
+            "open_threads": _j.loads(row["open_threads"])  if row["open_threads"]  else [],
+            "questions":    _j.loads(row["questions"])     if row["questions"]     else [],
+            "agreements":   _j.loads(row["agreements"])    if row["agreements"]    else [],
+            "capabilities": _j.loads(row["capabilities"])  if row["capabilities"]  else [],
         }
 
     return await loop.run_in_executor(_executor, _latest)
