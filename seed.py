@@ -35,9 +35,9 @@ GROVE_DIR      = Path(os.environ.get(
 ))
 GROVE_APP      = GROVE_DIR / "app.py"
 GROVE_REPO     = "https://github.com/rudi193-cmd/safe-app-willow-grove.git"
-VERSION       = "2.0.0"
-
 sys.path.insert(0, str(WILLOW_ROOT))
+
+from core.version import VERSION, sync_installed_version
 
 
 # ── Venv bootstrap ────────────────────────────────────────────────────────────
@@ -1705,7 +1705,7 @@ def run_new_user(stdscr) -> None:
         _wire_grove_mcp(grove_mcp_url)
 
     # Write version pin
-    (Path.home() / ".willow" / "version").write_text(VERSION + "\n")
+    sync_installed_version()
 
     # Save boot config
     cfg = {

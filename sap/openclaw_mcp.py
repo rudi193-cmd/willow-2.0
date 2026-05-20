@@ -13,7 +13,6 @@ Exposes send, status, and sessions as MCP tools.
 """
 import json
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -114,8 +113,6 @@ def openclaw_gateway_start(port: int = 18789, force: bool = False) -> dict:
         port: Gateway port (default 18789).
         force: Kill anything already bound to the port before starting.
     """
-    import os
-    import signal as _signal
 
     args = [OPENCLAW, "gateway", "--port", str(port)]
     if force:

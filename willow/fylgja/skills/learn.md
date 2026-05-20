@@ -32,7 +32,7 @@ Learned patterns live as edges in the knowledge graph, not as orphaned files. Th
    - "Skills consolidation by mode reduces duplication"
    - "Gleipnir rate window resets per app_id independently"
 
-2. **Search existing atoms** — `willow_knowledge_search` for the pattern name and related keywords. If an identical pattern atom exists, update its edges instead of creating a duplicate.
+2. **Search existing atoms** — `kb_search` for the pattern name and related keywords. If an identical pattern atom exists, update its edges instead of creating a duplicate.
 
 3. **Identify related atoms** — list 2-4 atoms this pattern connects to:
    - Problem it solves
@@ -40,7 +40,7 @@ Learned patterns live as edges in the knowledge graph, not as orphaned files. Th
    - Similar patterns or constraints
    - Use cases that trigger it
 
-4. **Create the pattern atom** — `willow_knowledge_ingest`:
+4. **Create the pattern atom** — `kb_ingest`:
    ```json
    {
      "app_id": "hanuman",

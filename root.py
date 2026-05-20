@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 root.py — Sleipnir: 8-step idempotent install.
-b17: SLP19  ΔΣ=42
+b17: SLP20 · ΔΣ=42
 
 Eight legs. Handles eight things that used to live in eight places.
 Idempotent: run twice, nothing breaks. Run after reinstall: still works.
@@ -15,16 +15,16 @@ import argparse
 import json
 import os
 import shutil
-import sqlite3
 import subprocess
 import sys
 from pathlib import Path
 
 WILLOW_ROOT = Path(__file__).parent
-VERSION = "2.0.0"
 
 # Ensure willow-2.0 is first on path — strip any willow-1.7 entries
 sys.path = [str(WILLOW_ROOT)] + [p for p in sys.path if "willow-1.7" not in p]
+
+from core.version import VERSION, sync_installed_version
 
 
 def step_telemetry_init() -> None:
@@ -219,8 +219,7 @@ def step_10_kb_seed(skip_pg: bool = False, termux: bool = False) -> None:
 
 def step_8_version_pin() -> None:
     """Write ~/.willow/version — Sleipnir won't re-run after this."""
-    version_path = Path.home() / ".willow" / "version"
-    version_path.write_text(VERSION + "\n")
+    sync_installed_version()
 
 
 def step_9_path() -> None:
@@ -291,7 +290,7 @@ pause
 """
     bat.write_text(bat_content)
     print(f"  Created: {bat}")
-    print(f"  Double-click 'Launch Willow.bat' on your Windows Desktop to start.")
+    print("  Double-click 'Launch Willow.bat' on your Windows Desktop to start.")
     return True
 
 
@@ -307,7 +306,7 @@ def step_grove_identity() -> Path:
         ident = Identity.generate(key_path)
         print(f"  Grove identity created: {key_path}")
         print(f"  Public key: {ident.public_key_hex[:32]}...")
-        print(f"  Share your public key with trusted contacts to connect via Grove.")
+        print("  Share your public key with trusted contacts to connect via Grove.")
     except ImportError:
         print("  Grove u2u module not yet available — arriving in Phase 3. Skipping.")
     return key_path
@@ -408,7 +407,7 @@ def sleipnir(
     if termux:
         print("  Mode: Termux (Android)")
     print(f"  System: {WILLOW_ROOT}")
-    print(f"  User data: ~/.willow/  (yours — delete it and you're gone)")
+    print("  User data: ~/.willow/  (yours — delete it and you're gone)")
     print()
 
     steps = [

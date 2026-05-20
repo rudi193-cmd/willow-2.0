@@ -1,19 +1,32 @@
 ---
 name: Feature request
-about: Suggest an idea for Willow
+about: An idea for Willow 2.0
 title: 'feat: '
 labels: enhancement
 assignees: ''
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+**Problem**
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+What friction are you hitting? One short paragraph.
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+**Proposed change**
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+What should exist when this is done?
+
+**Alternatives**
+
+What else you considered — including "do nothing."
+
+**Fit**
+
+- [ ] Local-first (works without cloud)
+- [ ] Fleet / MCP / KB / Grove / SOIL — which layer?
+
+**Context**
+
+Screenshots, sketches, prior art, links.
+
+---
+
+Willow favors **small vertical slices** and **kb_search before build**. Big features usually start as a KB atom + Grove post before code.

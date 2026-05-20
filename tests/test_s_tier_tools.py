@@ -10,7 +10,6 @@ import json
 import os
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -28,7 +27,6 @@ def split_identifier():
     os.environ["WILLOW_AGENT_NAME"] = "test-agent"
     try:
         # sap_mcp may already be imported; import module and grab function
-        import importlib
         import sap.sap_mcp as _mod
         fn = _mod._split_identifier
     finally:

@@ -10,7 +10,7 @@ Quick read of where things stand. No writes, no changes — just source ring.
 ## TOOL PRE-LOAD (first action after invocation)
 
 ```
-ToolSearch query: "select:willow_status,store_stats,willow_query,store_search,willow_task_list"
+ToolSearch query: "select:willow_status,store_stats,willow_query,soil_search,willow_task_list"
 ```
 
 ## Report

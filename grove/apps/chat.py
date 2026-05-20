@@ -5,9 +5,7 @@ import curses
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-import grove_db
-import soil
-import grove_reader
+from core import grove_db, grove_reader, soil
 from grove.apps.base import App
 from grove import theme
 

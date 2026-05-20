@@ -8,7 +8,6 @@ with regex fallback for FastAPI routes and non-Python language support
 """
 import ast
 import re
-import sys
 from pathlib import Path
 from typing import Optional
 

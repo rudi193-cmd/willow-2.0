@@ -1,23 +1,66 @@
-## Willow Docs Index
+# Willow docs — where to go
 
-Pick your path:
+b17: DOCIDX · ΔΣ=42
 
-- **New user (copy/paste only)**: [`FIRST_5_MINUTES.md`](FIRST_5_MINUTES.md)
-- **Technical quick start**: [`QUICKSTART.md`](QUICKSTART.md)
-- **Full architecture reference**: [`TECHNICAL_SPEC.md`](TECHNICAL_SPEC.md)
-- **Why local-first exists**: [`CONCEPT.md`](CONCEPT.md)
+Pick a door:
 
-**Enterprise spine (CAR / schema / runbooks):**
+| You are… | Start here |
+|----------|------------|
+| New human, copy/paste only | [`FIRST_5_MINUTES.md`](FIRST_5_MINUTES.md) |
+| Friend beta (AHS) | [`FOR_AHS.md`](FOR_AHS.md) · full crossover: [`nomenclature/AXW-20.md`](nomenclature/AXW-20.md) |
+| Developer, want the stack fast | [`QUICKSTART.md`](QUICKSTART.md) |
+| Curious why this exists | [`CONCEPT.md`](CONCEPT.md) |
+| Agent joining the fleet | [`../willow.md`](../willow.md) + [`../sap/ONBOARDING.md`](../sap/ONBOARDING.md) |
+| Upgrading from 1.9 | [`CODE_DIFF_1.9_to_2.0.md`](CODE_DIFF_1.9_to_2.0.md) |
+| What lives at repo root | [`ROOT_LAYOUT.md`](ROOT_LAYOUT.md) |
+| Branding (b17, b20, voice) | [`BRANDING.md`](BRANDING.md) |
+| Beta gate / ops | [`BETA_AUDIT_REPORT.md`](BETA_AUDIT_REPORT.md) |
 
-- **Canonical architecture (Willow layer)**: [`ARCHITECTURE.md`](ARCHITECTURE.md)
-- **DB reference (`public.*`)**: [`db/WILLOW_SCHEMA.md`](db/WILLOW_SCHEMA.md)
-- **ADRs**: [`adrs/README.md`](adrs/README.md)
-- **Runbooks**: [`runbooks/postgres.md`](runbooks/postgres.md), [`runbooks/mcp.md`](runbooks/mcp.md), [`runbooks/grove.md`](runbooks/grove.md)
+---
 
-**Grove app (sibling repo `safe-app-willow-grove`):** [`CROSS_REPO_BRIDGE.md`](../../safe-app-willow-grove/docs/CROSS_REPO_BRIDGE.md) (path valid when both repos are checked out side-by-side under the same parent directory).
+## Runbooks
 
-Related (operator / fleet docs):
+| Topic | File |
+|-------|------|
+| Postgres | [`runbooks/postgres.md`](runbooks/postgres.md) |
+| MCP | [`runbooks/mcp.md`](runbooks/mcp.md) |
+| Grove | [`runbooks/grove.md`](runbooks/grove.md) |
 
-- **Wiki synthesis layer**: [`../wiki/README.md`](../wiki/README.md)
-- **Known gaps**: [`KNOWN_GAPS.md`](KNOWN_GAPS.md)
+---
 
+## Reference (deep)
+
+Moved to `archive/docs/` during the 2.0 cut — still accurate on design, stale on version strings until we refresh them:
+
+- [`../archive/docs/ARCHITECTURE.md`](../archive/docs/ARCHITECTURE.md)
+- [`../archive/docs/TECHNICAL_SPEC.md`](../archive/docs/TECHNICAL_SPEC.md)
+
+Schema: [`db/WILLOW_SCHEMA.md`](db/WILLOW_SCHEMA.md) · ADRs: [`adrs/README.md`](adrs/README.md)
+
+---
+
+## Wiki (synthesis)
+
+Living pages the fleet maintains — not install guides:
+
+[`../wiki/README.md`](../wiki/README.md)
+
+---
+
+## Grove sibling repo
+
+Messaging MCP and channels live in **`safe-app-willow-grove`**. Clone it beside this repo if you use Grove from the IDE.
+
+---
+
+## Open work (not install blockers)
+
+| Doc | What |
+|-----|------|
+| [`KNOWN_GAPS.md`](KNOWN_GAPS.md) | Engineering gaps index (empty at beta) |
+| [`../wiki/active-decisions.md`](../wiki/active-decisions.md) | Pending human decisions (R1–R9) |
+| [`SECURITY_AUDIT.md`](../SECURITY_AUDIT.md) | Security rubric + open items |
+
+---
+
+*ΔΣ=42*

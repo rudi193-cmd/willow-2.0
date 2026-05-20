@@ -1,126 +1,51 @@
-# Active Decisions
+# Active decisions
 
-*Maintained synthesis — last updated 2026-05-04. Update when Sean ratifies.*
+*Maintained synthesis · Willow 2.0 · 2026-05-19*
 
-8 items pending Sean's explicit call. 1 resolved (R4). Once ratified, each becomes executable without further check-in.
+Pending explicit human ratification. Until then, the fleet documents and waits — or treats dev behavior as intentional where noted.
 
-Source: WILLOW_DECISIONS.md (Desktop), generated 2026-05-03.
-
----
-
-## R1 + R2 — Old `willow` Database ⚠️ HIGHEST PRIORITY
-
-**The situation:** Two Postgres databases are running — `willow` (old) and `willow_20` (current). The old database contains personal data that has NOT been migrated:
-- `legal_gazelle` — legal/document data
-- genealogy data
-- `dating_wellbeing` records
-- `health_events`
-- `the_squirrel` data
-
-This is family data, not system data. It's the most important thing stranded.
-
-**Sean's choices:**
-- **Migrate and shut down** — fleet migrates the personal data to `willow_20`, then decommissions `willow`
-- **Leave running intentionally** — document it as "old DB: active by design," stop flagging as a gap
-
-**Status:** Open. Fleet ready to execute migration on ratification.
+Source of truth for text: operator copy of `WILLOW_DECISIONS.md` when present.
 
 ---
 
-## R3 — SAP PGP Authentication
+## R1 + R2 — Old `willow` database ⚠️
 
-**The situation:** SAP has skipped PGP verification 72/72 times. All sessions run via `WILLOW_DEV_SAFE_ROOT` bypass in `.mcp.json`. No session has ever used production PGP signing.
+Two Postgres DBs: legacy `willow` and current **`willow_20`**.
 
-**Sean's choices:**
-- **Declare dev mode permanent** — document, stop treating as a gap
-- **Wire production PGP** — real authorization gate, higher security
+Legacy holds family data not fully migrated: legal, genealogy, health, etc. This is not system cruft.
 
-**Status:** Open. Current behavior is functional but undeclared.
-
----
-
-## R4 — frank_ledger Write Path ✓ RESOLVED
-
-**Decision:** Build the write path.
-
-**Executed:** `willow_frank_ledger_write` and `willow_frank_ledger_read` wired as MCP tools (commit d77840e, 2026-05-04). Ratified via blanket authorization (Grove msg 7372). Chain is live with real entries.
-
----
-
-## R5 — The Binder: "Fully Local" vs Reality
-
-**The situation:** The Binder's README says "fully local, no cloud." The actual code calls `googleapis.com/v1beta/models/gemini-2.5-flash` with a Cloudflare Pages backend. The security audit missed the entire Cloudflare backend.
-
-**Sean's choices:**
-- **Fix the claim** — update README to accurately describe what The Binder does
-- **Fix the code** — remove cloud dependency (significant rebuild)
+**Choices:** migrate → decommission `willow` · or document `willow` as intentional side-by-side.
 
 **Status:** Open.
 
 ---
 
-## R6 — norn_pass.py (Pre-Ship Blocker)
+## R3 — SAP PGP authentication
 
-**The situation:** `norn_pass.py` is defined in the architecture as a mandatory pre-ship check. It does not exist on disk.
+Dev manifests (`WILLOW_SAFE_ROOT`) skipped PGP in practice. Functional for local fleet.
 
-**Sean's choices:**
-- **Still required** — fleet builds it; becomes a real gate before any future ship
-- **Remove from spec** — strike from architecture; was planned but not blocking anything in practice
+**Choices:** declare dev permanent · or wire production PGP.
 
-**Status:** Open.
+**Status:** Open. Stdio MCP = local trust boundary. HTTP MCP = revisit auth.
 
 ---
 
-## R7 — Bot Loki (watcher.py)
+## R4 — Embed model
 
-**The situation:** `watcher.py` is described as a bot version of Loki that monitors Grove autonomously. Unclear if it exists, what it does, or whether it's usable.
-
-**Sean's choices:**
-- **Authorize it** — fleet investigates and gets it running if usable
-- **Formally remove** — strike Bot Loki from architecture; live Loki is the adversarial function
-
-**Status:** Open.
+Resolved in fleet practice: `nomic-embed-text` via Ollama. Backfill scripts in `scripts/`.
 
 ---
 
-## R8 — Four Parallel Willow Implementations
+## R5–R9
 
-**The situation:** Four versions of Willow exist on disk as separate repos. Only `willow_20` is canonical.
+See desktop `WILLOW_DECISIONS.md` for insulin-dosing parameters (autonomy thresholds, decay, replication). Wiki does not duplicate stale numbers — read the file or ask the human.
 
-**Sean's choices:**
-- **Formally archive** — mark read-only on GitHub, remove from active consideration
-- **Leave as-is** — keep accessible, accept cognitive overhead
-
-**Status:** Open.
+When Sean ratifies: update this page and ingest a KB atom with the decision.
 
 ---
 
-## R9 — Three Orphan External Repos
+## 2.0 beta note
 
-**The situation:** Three repos with no documented connection to the current system. Fleet can identify them on request.
+[`docs/BETA_AUDIT_REPORT.md`](../docs/BETA_AUDIT_REPORT.md) — packaging, tests, security smells addressed for first outside user. R1–R9 are product/governance, not install blockers.
 
-**Sean's choices:**
-- **Keep** — leave as-is
-- **Archive** — mark read-only on GitHub
-- **Remove** — delete them
-
-**Status:** Open.
-
----
-
-## How to Ratify
-
-Post in Grove `#general` or `#loki`. One line per decision:
-- "R1: migrate and shut down"
-- "R3: declare dev mode permanent"
-- "R4: build the write path"
-
-Fleet executes immediately on ratification. No check-in needed.
-
----
-
-## The Artificial Pancreas Frame
-
-These 9 decisions are the insulin dosing parameters. Once set, the system runs without asking. The fleet is not closed-loop until R1-R9 are resolved — Sean is in the approval loop for routine decisions that the system should already know how to handle.
-
-R1+R2 matter most — personal family data is stranded.
+*ΔΣ=42*

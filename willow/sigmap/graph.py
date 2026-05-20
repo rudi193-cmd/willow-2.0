@@ -8,7 +8,6 @@ Handles absolute imports, relative imports (.foo, ..foo), and package
 hierarchies.
 """
 import ast
-import sys
 from pathlib import Path
 
 

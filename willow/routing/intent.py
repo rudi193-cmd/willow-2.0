@@ -49,7 +49,6 @@ Usage:
 """
 
 import re
-from typing import Optional
 
 # ---------------------------------------------------------------------------
 # Intent taxonomy (7 classes, matching sigmap/ranking.py _INTENTS)

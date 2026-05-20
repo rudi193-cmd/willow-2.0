@@ -321,8 +321,8 @@ class ProfessorClient:
     def __init__(self, professor_name: str):
         if not authorized(UTETY_APP_ID):
             raise PermissionError(
-                f"UTETY is not SAP-authorized. "
-                f"Seed SAFE/Applications/UTETY/ to grant access."
+                "UTETY is not SAP-authorized. "
+                "Seed SAFE/Applications/UTETY/ to grant access."
             )
 
         self.name = professor_name

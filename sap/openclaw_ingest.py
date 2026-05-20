@@ -13,7 +13,6 @@ State file: ~/.willow/openclaw_ingest_cursor.json
 """
 import argparse
 import json
-import os
 from core.agent_identity import require_agent_name
 import sys
 from datetime import datetime, timezone

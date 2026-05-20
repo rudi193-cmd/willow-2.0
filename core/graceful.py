@@ -6,7 +6,6 @@ b17: GRD19  ΔΣ=42
 DegradedBridge is a drop-in for PgBridge that routes to SOIL (SQLite).
 Use get_bridge() instead of PgBridge() directly wherever degradation matters.
 """
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional

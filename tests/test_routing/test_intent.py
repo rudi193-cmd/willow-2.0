@@ -18,7 +18,6 @@ from willow.routing.intent import (
     extract_slots,
     _tokenize,
     _INTENT_RULES,
-    _DEFAULT_INTENT,
 )
 
 
@@ -243,7 +242,6 @@ class TestIntentInOracle(unittest.TestCase):
 
     def test_all_intents_covered(self):
         from willow.routing.oracle import _INTENT_AGENT_MAP
-        from willow.routing.intent import _INTENT_RULES
         # Every intent in the classifier should have an agent mapping
         for intent in _INTENT_RULES:
             self.assertIn(intent, _INTENT_AGENT_MAP,

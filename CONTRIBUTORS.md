@@ -1,8 +1,10 @@
-# Contributors & Acknowledgments
+# Contributors & acknowledgments
+
+Willow 2.0 — local-first AI stack. PolyForm Noncommercial 1.0.0.
 
 ## Built by
 
-- **Sean Campbell** — system architecture, knowledge graph design, agent identity system
+- **Sean Campbell** — architecture, knowledge graph, agent identity, fleet design
 
 ## Open Source — Used Directly
 
@@ -36,7 +38,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [paulkaefer/cowsay-files](https://github.com/paulkaefer/cowsay-files) | paulkaefer | Add kidcat.cow and billcipher.cow | [PR #34](https://github.com/paulkaefer/cowsay-files/pull/34) merged |
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: Willow adapter for Postgres-backed knowledge store | [PR #145](https://github.com/manojmallick/sigmap/pull/145) merged |
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: native Python AST extractor for accurate signature extraction | [PR #144](https://github.com/manojmallick/sigmap/pull/144) merged |
-| [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #401](https://github.com/TensorBlock/awesome-mcp-servers/pull/401) merged |
+| [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | Add willow — portless MCP server with PGP-signed authorization | [PR #401](https://github.com/TensorBlock/awesome-mcp-servers/pull/401) merged |
 | [ngrok/ngrok-python](https://github.com/ngrok/ngrok-python) | ngrok | docs: add an example for using ngrok with google colab | [PR #161](https://github.com/ngrok/ngrok-python/pull/161) open |
 | [ngrok/ngrok-python](https://github.com/ngrok/ngrok-python) | ngrok | fix: update type hints to reflect awaitable return types for module methods | [PR #160](https://github.com/ngrok/ngrok-python/pull/160) open |
 | [ngrok/ngrok-python](https://github.com/ngrok/ngrok-python) | ngrok | feat: add `--log-level` parameter to `ngrok.__main__` | [PR #159](https://github.com/ngrok/ngrok-python/pull/159) open |
@@ -70,7 +72,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | feat: add willow-mcp to Knowledge Management & Memory | [PR #432](https://github.com/TensorBlock/awesome-mcp-servers/pull/432) closed |
 | [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) | punkpeye | feat: add willow-mcp to Knowledge & Memory 🤖🤖🤖 | [PR #5247](https://github.com/punkpeye/awesome-mcp-servers/pull/5247) closed |
 | [openclaw/openclaw](https://github.com/openclaw/openclaw) | openclaw | feat(skill): add sap-enforcer — SAP/1.0 MCP tool authorization | [PR #69792](https://github.com/openclaw/openclaw/pull/69792) closed |
-| [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) | punkpeye | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #4991](https://github.com/punkpeye/awesome-mcp-servers/pull/4991) closed |
+| [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) | punkpeye | Add willow — portless MCP server with PGP-signed authorization | [PR #4991](https://github.com/punkpeye/awesome-mcp-servers/pull/4991) closed |
 | [RyjoxTechnologies/Octopoda-OS](https://github.com/RyjoxTechnologies/Octopoda-OS) | RyjoxTechnologies | feat(brain): add DarkRadar fifth signal to BrainHub | [PR #1](https://github.com/RyjoxTechnologies/Octopoda-OS/pull/1) closed |
 | [openclaw/openclaw](https://github.com/openclaw/openclaw) | openclaw | feat(skill): add willow-memory-health ClawHub skill | [PR #67789](https://github.com/openclaw/openclaw/pull/67789) closed |
 
@@ -79,14 +81,18 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 <!-- ALL-CONTRIBUTORS-LIST:START -->
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
-People who have forked, contributed to, or directly improved willow-1.9. Tracked automatically via the fork-watcher workflow. When you contribute back, you get added here.
+Forkers and contributors to **willow-2.0** and earlier lines. The fork-watcher workflow updates this table when you contribute back.
 
-## MCP Ecosystem
+## MCP ecosystem
 
-Willow implements the [Model Context Protocol](https://modelcontextprotocol.io) — an open standard donated to the Agentic AI Foundation in December 2025.
+Willow speaks [Model Context Protocol](https://modelcontextprotocol.io).
 
 Listed on [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) and [ClawHub](https://clawhub.ai).
 
 ## License
 
-PolyForm Noncommercial 1.0.0. See [LICENSE](LICENSE).
+See [`LICENSE`](LICENSE).
+
+---
+
+*Plant the tree. Tend the roots. Let nothing be lost.*

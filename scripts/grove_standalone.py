@@ -20,7 +20,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, Input, Label, ListItem, ListView, RichLog, Rule, Static
 from textual import on, work
 
-import grove_db as db
+from core import grove_db as db
 from u2u import dispatcher
 from u2u.consent import ConsentGate
 from u2u.contacts import Contact, ContactStore

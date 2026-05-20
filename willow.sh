@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # willow.sh — Willow 2.0 launcher
-# b17: WLW19  ΔΣ=42
+# b17: WLW20 · ΔΣ=42
 #
 # Usage:
 #   ./willow.sh              — start SAP MCP server (stdio)
@@ -52,6 +52,21 @@ export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
 # Python path — willow-2.0 first, no legacy paths
 export PYTHONPATH="${WILLOW_ROOT}:${PYTHONPATH:-}"
 
+_willow_sync_version() {
+    local repo_ver=""
+    if [[ -f "${WILLOW_ROOT}/VERSION" ]]; then
+        repo_ver="$(tr -d '[:space:]' < "${WILLOW_ROOT}/VERSION")"
+    fi
+    [[ -z "${repo_ver}" ]] && return
+    mkdir -p "${HOME}/.willow"
+    echo "${repo_ver}" > "${HOME}/.willow/version"
+}
+
+_willow_installed_version() {
+    _willow_sync_version
+    cat "${HOME}/.willow/version" 2>/dev/null || echo "not installed"
+}
+
 # Jeles trusted sources registry — 54 sources from Loki audit (atom 44A246FD)
 export JELES_SOURCES_FILE="${HOME}/Desktop/sources.json"
 
@@ -66,7 +81,7 @@ case "$cmd" in
         echo "Willow 2.0 — status"
         echo "  Store:    ${WILLOW_STORE_ROOT}"
         echo "  Vault:    ${WILLOW_VAULT}"
-        echo "  Version:  $(cat "${HOME}/.willow/version" 2>/dev/null || echo 'not installed')"
+        echo "  Version:  $(_willow_installed_version)"
         "${WILLOW_PYTHON}" -c "
 import sys, os
 sys.path.insert(0, '${WILLOW_ROOT}')
@@ -82,6 +97,7 @@ if pg: pg.close()
         ;;
 
     fleet_status)
+        _willow_sync_version
         WILLOW_PG_DB="${WILLOW_PG_DB}" "${WILLOW_PYTHON}" -c "
 import json, os, sys
 import urllib.request

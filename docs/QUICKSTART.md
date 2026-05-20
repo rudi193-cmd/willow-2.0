@@ -1,23 +1,23 @@
-# Willow Quick Start
+# Willow 2.0 — Quick start
 
-Local-first AI stack. Your hardware. Your data. No API key required to start.
+Local-first AI stack. Your hardware. Your data. No API key required to begin.
 
-Want the simplest copy/paste onboarding? Start here: [`FIRST_5_MINUTES.md`](FIRST_5_MINUTES.md).
+Simpler path? [`FIRST_5_MINUTES.md`](FIRST_5_MINUTES.md).
 
 ---
 
-## What You Get
+## What you get
 
-| Component | What it does |
-|---|---|
-| **Ollama inference** | LLM runs on your machine — no key, no cloud |
-| **Knowledge graph** | Postgres or SQLite, persists across every session |
-| **30+ MCP tools** | File ops, web fetch, task queue, KB search — all callable by the agent |
-| **Skill system** | Composable agent behaviors, works with any LLM or API key |
-| **Grove dashboard** | Terminal UI showing system health at a glance |
-| **LAN remote control** | Phone → desktop over your local network, no cloud relay |
+| Piece | Role |
+|-------|------|
+| **Ollama** | Default inference on your machine |
+| **KB (LOAM)** | Postgres or SQLite — memory that survives sessions |
+| **SAP MCP** | 40+ tools: KB, SOIL, fleet, tasks, handoffs, inference |
+| **Fylgja** | Skills and powers — Markdown behaviors, any model |
+| **Grove** | Terminal dashboard + LAN remote (sibling repo for full bus) |
+| **SAFE gate** | Every tool call checked against manifests |
 
-Cloud providers (Anthropic, OpenAI, Gemini) are optional. Enable them when you want them.
+Cloud providers are optional.
 
 ---
 
@@ -26,118 +26,125 @@ Cloud providers (Anthropic, OpenAI, Gemini) are optional. Enable them when you w
 ### Linux / macOS
 
 ```bash
-git clone https://github.com/rudi193-cmd/willow-1.9
-cd willow-1.9
+git clone https://github.com/rudi193-cmd/willow-2.0
+cd willow-2.0
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"   # optional: pytest, ruff, mypy
 python3 seed.py
 ```
 
-The guided installer walks you through every step: dependencies, GPG key, provider selection, vault setup, Postgres schema, knowledge base seed, PATH.
+`seed.py` sets up: deps, GPG, vault, `willow_20`, KB seed, PATH, optional Grove network URL.
 
-### Android / Termux
+### Termux
 
 ```bash
 pkg install python postgresql git
-git clone https://github.com/rudi193-cmd/willow-1.9
-cd willow-1.9
+git clone https://github.com/rudi193-cmd/willow-2.0
+cd willow-2.0
 python3 seed.py --termux --skip-pg
 ```
 
-SQLite is used instead of Postgres. Everything else is identical.
-
 ---
 
-## First Five Minutes
+## First commands
 
 ```bash
-./willow.sh status         # check core health
-./willow.sh verify         # verify SAFE manifests (auth layer)
-./willow.sh ledger         # verify FRANK ledger chain + show recent entries
+./willow.sh fleet_status      # health JSON (no MCP)
+./willow.sh handoff_latest      # last session handoff
+./willow.sh status              # human-readable status
+./willow.sh verify              # SAFE manifests
+./willow.sh ledger              # FRANK chain check
 ```
 
-Add a cloud key when you want one:
+Add a cloud provider when you want one:
 
 ```bash
-./willow.sh providers enable anthropic --key YOUR_API_KEY
-# (Other providers supported; see docs/TECHNICAL_SPEC.md for the full surface.)
+./willow.sh providers enable anthropic --key YOUR_KEY
 ```
 
-Start the LAN server:
+LAN server:
 
 ```bash
 ./willow.sh serve
-```
-
-Expected output:
-
-```
-[grove] Listening on 0.0.0.0:7777
-[grove] Token: abc123def456
+# → 0.0.0.0:7777, token in ~/.willow/grove_token
 ```
 
 ---
 
-## Connect Your Phone
+## MCP (IDE)
 
-On the desktop, generate a pairing token:
+**Willow server** — `sap/willow_mcp.sh` → `sap/sap_mcp.py`
 
-```bash
-./willow.sh serve          # if not already running
-./willow.sh grove pair     # prints the token
+```json
+{
+  "mcpServers": {
+    "willow": {
+      "command": "bash",
+      "args": ["sap/willow_mcp.sh"],
+      "env": {
+        "WILLOW_AGENT_NAME": "your_agent",
+        "WILLOW_PG_DB": "willow_20"
+      }
+    }
+  }
+}
 ```
 
-On the phone (Termux):
+Boot tools (in order): `fleet_status` → `handoff_latest` → `kb_search` on your task.
 
-```bash
-echo "TOKEN" > ~/.willow/grove_token && chmod 600 ~/.willow/grove_token
-bash ~/willow-1.9/willow.sh grove send 192.168.x.x:7777 status-all
-```
+Full agent contract: [`willow.md`](../willow.md) · [`sap/ONBOARDING.md`](../sap/ONBOARDING.md)
 
-Replace `TOKEN` with the token from `grove pair` and `192.168.x.x` with your desktop's LAN IP.
+**Grove server** — separate repo `safe-app-willow-grove`, module `grove.mcp_local`.
 
 ---
 
 ## Skills
 
-Skills are composable agent behaviors — think of them as named, reusable prompts with tool access.
-
-Browse and install from ClawHub:
-
-```bash
-npx clawhub install willow-system-health
-```
-
-Or load a built-in skill directly:
+Built-in: `willow/fylgja/skills/`  
+Powers (router): `willow/fylgja/powers/registry.json`
 
 ```bash
-willow skill load system-health
+willow skill load system-health   # when CLI wired
 ```
 
-Built-in skills live in `willow/fylgja/skills/`. Drop a `.yaml` file there to add your own.
+ClawHub skills work when you install them — same Markdown contract as 1.9.
 
 ---
 
-## Knowledge Base
-
-The KB persists everything the agent learns across sessions.
+## Knowledge base
 
 ```bash
-willow kb search "postgres setup"      # search stored knowledge
-willow kb ingest path/to/notes.md      # add a document
+# CLI wrappers vary; MCP is canonical:
+# kb_search, kb_ingest, kb_get
 ```
 
-The agent uses MCP tools (`willow_knowledge_search`, `willow_knowledge_ingest`) to read and write the KB automatically during tasks.
+Search before you write. Duplicates cost everyone time.
 
 ---
 
-## What's Next
+## Develop
 
-- Browse skills: [https://clawhub.ai](https://clawhub.ai)
-- Technical spec: `docs/TECHNICAL_SPEC.md`
-- Community: Discord — **LLM Physics**
-- Docs index: `docs/INDEX.md`
+```bash
+export WILLOW_AGENT_NAME=heimdallr
+export WILLOW_SAFE_ROOT=$HOME/SAFE/Applications
+export WILLOW_PG_DB=willow_20
+export PYTHONPATH=$(pwd)
+
+pytest
+ruff check .
+```
 
 ---
 
-## What This Actually Means
+## What's next
 
-Willow is a stack, not a product. You clone it, you run it, and from that point forward the inference, the memory, and the tooling all live on hardware you control. The cloud providers are there when you need them — for a model you don't have weights for, or a task that needs more headroom — but they're addons, not the foundation. The foundation is local. That's the point.
+- [`CONCEPT.md`](CONCEPT.md) — why local-first
+- [`../wiki/`](../wiki/) — fleet synthesis
+- [`CODE_DIFF_1.9_to_2.0.md`](CODE_DIFF_1.9_to_2.0.md) — 1.9 → 2.0
+- [`archive/docs/TECHNICAL_SPEC.md`](../archive/docs/TECHNICAL_SPEC.md) — deep reference
+
+---
+
+Willow is a stack you install once. The graph grows. Skills accumulate. Nodes multiply. The foundation stays local. That is the point.
+
+*ΔΣ=42*

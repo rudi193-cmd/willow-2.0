@@ -85,7 +85,7 @@ except ImportError:
 # This is fail-closed: a broken gate must not silently open all tools.
 _GATE_DOWN_ALLOWED = frozenset({"willow_status", "willow_health"})
 try:
-    from sap.core.gate import authorized as sap_authorized, list_authorized as sap_list_authorized, permitted as sap_permitted
+    from sap.core.gate import authorized as sap_authorized, permitted as sap_permitted
     _SAP_GATE = True
 except Exception as _e:
     _SAP_GATE = False
@@ -130,7 +130,7 @@ import sap.core.blast as _blast
 
 # ── Postgres bridge ───────────────────────────────────────────────────────────
 try:
-    from core.pg_bridge import try_connect, PgBridge, init_schema
+    from core.pg_bridge import PgBridge, init_schema
     pg = PgBridge()
     init_schema(pg.conn)
 except Exception as _pg_init_err:
@@ -138,7 +138,8 @@ except Exception as _pg_init_err:
     print(f"[pg] PgBridge init failed: {_pg_init_err}", file=sys.stderr)
     # Write a flag file so /startup and monitoring can detect this silently-broken state.
     try:
-        import pathlib as _pl, os as _os
+        import pathlib as _pl
+        import os as _os
         _flag = _pl.Path(_os.path.expanduser("~/.willow/pg_failure.flag"))
         _flag.parent.mkdir(parents=True, exist_ok=True)
         _flag.write_text(str(_pg_init_err))
@@ -146,7 +147,8 @@ except Exception as _pg_init_err:
         pass
     # Best-effort Grove alert via raw psycopg2 — PgBridge unavailable but Grove DB may still work.
     try:
-        import psycopg2 as _psy, os as _os
+        import psycopg2 as _psy
+        import os as _os
         _gc = _psy.connect(dbname=_os.environ.get("WILLOW_PG_DB", "willow_20"))
         with _gc.cursor() as _c:
             _c.execute("SELECT id FROM grove.channels WHERE name='general' LIMIT 1")
@@ -1638,7 +1640,8 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
 
         # ── Forks (inlined — no external imports) ────────────────────────────
         elif name == "willow_fork_create":
-            import uuid as _uuid_f, json as _jf
+            import uuid as _uuid_f
+            import json as _jf
             _fid = arguments.get("fork_id") or f"FORK-{_uuid_f.uuid4().hex[:8].upper()}"
             with PgBridge() as b:
                 cur = b.conn.cursor()
@@ -1792,7 +1795,8 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
                 _oracle_ran_ok = False
             if pg:
                 try:
-                    import hashlib as _hl, uuid as _uuid_r
+                    import hashlib as _hl
+                    import uuid as _uuid_r
                     with pg.conn.cursor() as _rc:
                         if _msg:
                             _ph = _hl.sha256(_msg.encode()).hexdigest()[:16]
@@ -1830,7 +1834,10 @@ def _call_tool_sync(name: str, arguments: dict) -> list[types.TextContent]:
 
         # ── Task Executor (inline — submit = execute, no queue, no daemon) ──────
         elif name == "willow_task_submit":
-            import subprocess as _sp, uuid as _uuid2, time as _time, shlex as _shlex
+            import subprocess as _sp
+            import uuid as _uuid2
+            import time as _time
+            import shlex as _shlex
             _task_cmd  = arguments["task"]
             _task_id   = _uuid2.uuid4().hex[:8].upper()
             _started   = _time.time()

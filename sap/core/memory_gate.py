@@ -8,7 +8,6 @@ remain advisory — sap_mcp.py does not block on them.
 from __future__ import annotations
 
 import re
-import sys
 from typing import Any, Optional
 
 __all__ = ["check_candidate"]

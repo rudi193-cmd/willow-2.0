@@ -1,103 +1,97 @@
-# Willow — Getting Started
+# Willow 2.0 — Getting started
 
-Hi Felix. This is Willow. It's a personal AI system that runs on your computer.
-Here's everything you need to know.
+b17: FELX2 · ΔΣ=42
 
----
-
-## What You Need Before Starting
-
-1. **Windows 10/11** with WSL2 installed
-  - Open PowerShell as Administrator and run:
-   `wsl --install`
-  - Restart when Windows asks you to
-2. **Ubuntu** in WSL
-  - Open the Microsoft Store, search "Ubuntu", install it
-  - Launch it once and set up your username and password
-3. That's it. Everything else installs automatically.
+Hi Felix. This is Willow — a personal AI system that runs on your computer.
 
 ---
 
-## How to Install
+## What you need
 
-Open your **Ubuntu (WSL)** terminal and run these commands:
+1. **Windows 10/11** with WSL2  
+   PowerShell (Admin): `wsl --install`  
+   Restart when asked.
+
+2. **Ubuntu** from the Microsoft Store  
+   Launch once. Pick a username and password.
+
+3. That is all. The installer handles the rest.
+
+---
+
+## Install
+
+Open **Ubuntu (WSL)**:
 
 ```bash
-sudo apt update && sudo apt install -y git python3 python3-pip postgresql curl
+sudo apt update && sudo apt install -y git python3 python3-pip python3-venv postgresql curl
+git clone https://github.com/rudi193-cmd/willow-2.0 ~/github/willow-2.0
+cd ~/github/willow-2.0
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .
+python3 seed.py
 ```
 
-```bash
-git clone https://github.com/rudi193-cmd/willow-1.9.git ~/github/willow-1.9
-```
+When it finishes:
 
 ```bash
-cd ~/github/willow-1.9 && python3 root.py
-```
-
-When the install finishes, run:
-
-```bash
-cd ~/github/willow-1.9
+./willow.sh fleet_status
 ./willow.sh status
 ```
 
 ---
 
-## How to Start Willow
-
-Copy/paste:
+## Start Willow
 
 ```bash
-cd ~/github/willow-1.9
+cd ~/github/willow-2.0
 ./willow.sh start
 ```
 
-This starts Willow’s local services (the tool server used by Cursor/Claude and other clients).
-
-Leave it running in that terminal.
+Leave that terminal open. It runs the local services your IDE connects to.
 
 ---
 
-## Check that it’s working
+## Check it works
 
-In a *new* Ubuntu terminal, run:
+New Ubuntu window:
 
 ```bash
-cd ~/github/willow-1.9
+cd ~/github/willow-2.0
 ./willow.sh status
 ```
 
-If you see Postgres connected (or at least clear output without errors), you’re good.
+Postgres connected (or clear output, no traceback) means you are good.
 
 ---
 
-## If Something Breaks
+## If something breaks
 
-Copy/paste this and send the output to Sean:
+Send Sean this output:
 
 ```bash
-cd ~/github/willow-1.9
+cd ~/github/willow-2.0
+./willow.sh fleet_status
 ./willow.sh status
 ```
 
 ---
 
-## How to Get Updates
-
-From Ubuntu (WSL):
+## Updates
 
 ```bash
-cd ~/github/willow-1.9
+cd ~/github/willow-2.0
+git pull
 ./willow.sh update
 ```
 
 ---
 
-## How to Stop Willow
+## Stop
 
-In the terminal where you ran `./willow.sh start`, press `Ctrl+C`.
+In the terminal where `./willow.sh start` is running: `Ctrl+C`.
 
 ---
 
-*Built by Sean Campbell. If you're reading this, you're one of the first people to use it.*
+*Built by Sean Campbell. You are among the first outside the house to run it.*  
 *ΔΣ=42*

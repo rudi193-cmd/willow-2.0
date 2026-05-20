@@ -19,11 +19,9 @@ Usage:
     result = execute()  # returns NukeResult
 """
 
-import glob
 import json
 import logging
 import os
-import shutil
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path

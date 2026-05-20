@@ -8,7 +8,6 @@ empty entries, graph boost for neighbors.
 import sys
 from pathlib import Path
 
-import pytest
 
 _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in sys.path:

@@ -2,7 +2,6 @@
 b17: WDASH  ΔΣ=42
 """
 from abc import ABC, abstractmethod
-import curses
 
 
 class App(ABC):

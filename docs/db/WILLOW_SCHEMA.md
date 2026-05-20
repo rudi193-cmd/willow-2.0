@@ -2,7 +2,9 @@
 
 **b17:** WILSC · ΔΣ=42  
 
-**Authoritative source:** `core/pg_bridge.py` (`_SCHEMA` + `_MIGRATIONS` + `_INDEXES`). This document summarizes **operator-relevant** tables; drift should be fixed in code first, then this file.
+**Database:** `willow_20` (Willow 2.0 default).
+
+**Authoritative source:** `core/pg_bridge.py` (`_SCHEMA` + `_MIGRATIONS` + `_INDEXES`). This file summarizes operator-relevant tables; fix code first, then update here.
 
 > **Note:** `safe-app-willow-grove/schema.sql` includes a **stub** `willow.routing_decisions` for standalone installs. The **rich** `routing_decisions` / `knowledge` shapes are created by **`pg_bridge`** in a full Willow install. Prefer introspection on your live DB when in doubt.
 

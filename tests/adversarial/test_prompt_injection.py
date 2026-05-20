@@ -6,7 +6,6 @@ Evasion tests: obfuscated payloads must still be caught.
 Clean tests: legitimate content must NOT be flagged (false positive check).
 """
 import base64
-import pytest
 from core.memory_sanitizer import sanitize, scan_struct, MEMORY_OPEN, MEMORY_CLOSE
 
 

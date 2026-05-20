@@ -37,7 +37,7 @@ def _truncate(s: str, n: int = 80) -> str:
 def _show_results(results: list[dict], score_field: str = "_rrf_score",
                   label: str = "Results") -> None:
     if not results:
-        print(f"  (no results)")
+        print("  (no results)")
         return
     print(f"\n{label} ({len(results)} hits):")
     print(f"  {'#':<3}  {'Score':<10}  {'ID':<12}  {'Title':<40}  Summary")

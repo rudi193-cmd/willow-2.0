@@ -3,7 +3,6 @@
 Tests for W19TR — Temporal Replay.
 """
 import os
-import pytest
 from datetime import datetime, timezone, timedelta
 
 os.environ.setdefault("WILLOW_PG_DB", "willow_20")

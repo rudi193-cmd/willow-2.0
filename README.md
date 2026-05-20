@@ -1,91 +1,104 @@
-**Willow 1.9** · Local-First AI Stack · Local-first by default
+# Willow 2.0
+
+b17: RDM20 · ΔΣ=42
+
+Local-first AI stack · Ollama by default
 
 ---
 
-## The Demo
+## The demo
 
-A phone running Willow on Termux sent a signed command to a desktop running Willow on Linux.
+A phone on Termux sends a signed command to a desktop on Linux.
 
-The response came back in under a second:
+The answer comes back in under a second:
 
 ```
-Willow 1.9 — system status
+Willow 2.0 — system status
 
-  [✓] postgres          up (70389 KB atoms)
+  [✓] postgres          up
   [✓] ollama            up
-  [✓] grove-mcp          running
-  [✓] willow-metabolic   running
-  [✓] sap_mcp.py        running (Claude Code session)
+  [✓] grove-mcp         running
+  [✓] sap_mcp.py        running
 ```
 
-No Discord. No Telegram. No cloud relay. No third-party API call. The phone read the desktop's live system state — 70,000 knowledge atoms — over a local network connection authenticated with a token that never left either machine.
+No Discord. No Telegram. No cloud relay. The phone read live state from your machine over the LAN — authenticated with a token that never left either device.
 
-This is not a demo feature. This is the default behavior when you run `willow serve`.
-
----
-
-## What Is Willow
-
-Willow is a local-first AI stack. Not a wrapper. Not a client. A stack — with a knowledge graph, a skill system, a provider abstraction layer, an authorization protocol, and a LAN communication primitive that lets nodes talk to each other without routing through anyone's servers.
-
-**Ollama is the default.** Not a fallback. Not a "free tier." The default. Cloud API keys (Anthropic, OpenAI, Gemini) are optional addons you enable when you want them.
-
-**You own the graph.** Postgres holds 70,000+ typed knowledge atoms in production. SQLite holds them on a phone. The same query works on both. The knowledge persists across sessions, across models, across providers.
-
-**Skills work with any LLM.** Behavioral skills are plain Markdown — no provider-specific syntax. Give them to Claude. Give them to a local model running on your GPU. They work.
-
-**Nodes talk directly.** HMAC-SHA256. A shared token. A 100-line HTTP server. That's it.
+That is not a party trick. Run `./willow.sh serve` and it is the default.
 
 ---
 
-## Quick Start
+## What Willow is
 
-New here? Start with [`docs/FIRST_5_MINUTES.md`](docs/FIRST_5_MINUTES.md).
+A local-first stack. Not a wrapper. Not a chat client.
+
+- **Knowledge graph** — Postgres (desktop) or SQLite (Termux). Atoms persist across sessions, models, and providers.
+- **Skills** — plain Markdown behaviors. Any LLM can run them.
+- **SAP** — authorization gate on every tool call.
+- **Grove** — messaging bus for humans and agents (sibling repo: `safe-app-willow-grove`).
+- **Nodes talk directly** — HMAC-SHA256, shared token, ~100 lines of HTTP. No middleman.
+
+**Ollama is the default.** Cloud keys (Anthropic, OpenAI, Gemini) are optional. Turn them on when you want them.
+
+---
+
+## Quick start
+
+New here? [`docs/FIRST_5_MINUTES.md`](docs/FIRST_5_MINUTES.md) — copy, paste, done.
 
 ### Linux / macOS
 
 ```bash
-git clone https://github.com/rudi193-cmd/willow-1.9
-cd willow-1.9
+git clone https://github.com/rudi193-cmd/willow-2.0
+cd willow-2.0
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .
 python3 seed.py
 ```
 
-The guided installer walks you through every step: dependencies, GPG key, provider selection, Postgres schema, knowledge base seed, PATH.
+`seed.py` walks you through dependencies, GPG, providers, Postgres (`willow_20`), KB seed, and PATH.
 
 ### Android / Termux
 
 ```bash
 pkg install python postgresql git
-git clone https://github.com/rudi193-cmd/willow-1.9
-cd willow-1.9
+git clone https://github.com/rudi193-cmd/willow-2.0
+cd willow-2.0
 python3 seed.py --termux --skip-pg
 ```
 
-SQLite is used instead of Postgres. Everything else is identical.
+SQLite instead of Postgres. Everything else matches.
+
+### Boot without MCP
+
+```bash
+./willow.sh fleet_status
+./willow.sh handoff_latest
+./willow.sh status
+```
 
 ---
 
-## Connect Your Phone
+## Connect your phone
 
-Start the LAN server on your desktop:
+On the desktop:
 
 ```bash
-willow serve
+./willow.sh serve
 ```
 
 ```
 [grove-serve] Listening on 0.0.0.0:7777
-[grove-serve] Token: /home/user/.willow/grove_token
+[grove-serve] Token: ~/.willow/grove_token
 ```
 
 On the phone (Termux):
 
 ```bash
 echo "TOKEN" > ~/.willow/grove_token && chmod 600 ~/.willow/grove_token
-bash ~/willow-1.9/willow.sh grove send 192.168.x.x:7777 status-all
+bash ~/willow-2.0/willow.sh grove send 192.168.x.x:7777 status-all
 ```
 
-Replace `TOKEN` with the token from your desktop and `192.168.x.x` with its LAN IP.
+Use the token from the desktop and your LAN IP — not `127.0.0.1`.
 
 ---
 
@@ -93,73 +106,78 @@ Replace `TOKEN` with the token from your desktop and `192.168.x.x` with its LAN 
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                   USER / AI CLIENT                      │
-│         (Claude Code, Cursor, terminal, phone)          │
+│              USER / IDE (Cursor, Claude Code, phone)     │
 └───────────────┬─────────────────────┬───────────────────┘
-                │ stdio JSON-RPC 2.0  │ HTTP :7777
+                │ stdio MCP           │ HTTP :7777
                 ▼                     ▼
         ┌───────────────┐    ┌────────────────┐
-        │  MCP Server   │    │  Grove Server  │
-        │  (sap_mcp.py) │    │(grove_serve.py)│
-        │  SAP/1.0 gate │    │ HMAC-SHA256    │
+        │  SAP MCP      │    │  Grove serve   │
+        │  sap_mcp.py   │    │ grove_serve.py │
         └───────┬───────┘    └───────┬────────┘
                 │                    │
                 ▼                    ▼
         ┌───────────────────────────────────────┐
-        │           willow.sh (CLI)             │
+        │            willow.sh (CLI)             │
         └────┬──────────┬──────────┬────────────┘
              ▼          ▼          ▼
-    ┌──────────────┐ ┌──────────┐ ┌──────────────────┐
-    │  Postgres /  │ │  SOIL    │ │  LiteLLM Gateway │
-    │  SQLite KB   │ │  Store   │ │  (Ollama default)│
-    └──────────────┘ └──────────┘ └────────┬─────────┘
-                                           │
-                                    ┌──────┴──────┐
-                                    │   Ollama    │
-                                    │   :11434    │
-                                    └─────────────┘
+    ┌─────────────┐ ┌────────┐ ┌──────────────┐
+    │ LOAM (PG/   │ │ SOIL   │ │ LiteLLM →    │
+    │ SQLite KB)  │ │ store  │ │ Ollama :11434│
+    └─────────────┘ └────────┘ └──────────────┘
 ```
 
-Three layers:
+| Layer | What it holds |
+|-------|----------------|
+| **LOAM** | Long-term KB. Bi-temporal atoms — history closes, nothing is erased. |
+| **SOIL** | Session-local structured state. Fast reads and writes. |
+| **SAP** | MCP server + gate. Scans outbound results for injection. |
 
-- **LOAM** — Postgres knowledge base. Bi-temporal atoms. History is never deleted, only closed.
-- **SOIL** — SQLite session store. 108+ collections, 2M+ records. Fast reads and writes for live state.
-- **SAP** — MCP server. 40+ tools, SAFE app identity, prompt injection scanning on every outbound result.
+Agents boot from [`willow.md`](willow.md). Humans boot from [`docs/FIRST_5_MINUTES.md`](docs/FIRST_5_MINUTES.md).
 
 ---
 
-## The Philosophy
+## Philosophy
 
-> Once there was a tree that remembered everything. Not the way trees usually remember — in rings, in the slow arithmetic of seasons — but precisely.
+> Once there was a tree that remembered everything. Not in rings and seasons — precisely.
 
-Willow solves the amnesia problem of modern AI. Most tools keep your history in a vendor's cloud where you cannot audit it. Willow gives you continuity without giving up control.
+Most AI tools store your history in a cloud you cannot audit. Willow keeps continuity on hardware you own.
 
-The guardian layer (Fylgja) is wired into the architecture — not bolted on as policy. Nine platform hard stops including child primacy, human final authority, and no-capture. `willow nuke` performs a forensic delete of all data. Willow does not phone home. Telemetry is opt-in, default off.
+Fylgja is wired in, not bolted on. Nine hard stops: child primacy, human final authority, no capture. `willow nuke` is a forensic delete. No phone home. Telemetry off unless you opt in.
 
 ---
 
 ## Requirements
 
 - Python 3.10+
-- PostgreSQL (or SQLite for mobile / offline)
-- GPG (for SAFE app identity)
+- PostgreSQL (or SQLite on Termux)
+- GPG (SAFE app identity)
 - Ollama (local inference, no key required)
 
-Cloud providers are optional: `willow providers enable anthropic YOUR_KEY`
+Optional cloud: `./willow.sh providers enable anthropic YOUR_KEY`
 
 ---
 
 ## Docs
 
-- [FIRST_5_MINUTES.md](docs/FIRST_5_MINUTES.md) — Non-dev onboarding (copy/paste path)
-- [QUICKSTART.md](docs/QUICKSTART.md) — First five minutes
-- [TECHNICAL_SPEC.md](docs/TECHNICAL_SPEC.md) — Full architecture reference
-- [CONCEPT.md](docs/CONCEPT.md) — The case for local-first AI
+| Doc | For |
+|-----|-----|
+| [FIRST_5_MINUTES.md](docs/FIRST_5_MINUTES.md) | First run, no theory |
+| [QUICKSTART.md](docs/QUICKSTART.md) | Technical onboarding |
+| [CONCEPT.md](docs/CONCEPT.md) | Why local-first |
+| [INDEX.md](docs/INDEX.md) | Full map |
+| [BRANDING.md](docs/BRANDING.md) | b17 / b20 / voice schema |
+| [FOR_AHS.md](docs/FOR_AHS.md) | Beta reader — start here (AHS) |
+| [nomenclature/AXW-20.md](docs/nomenclature/AXW-20.md) | A×W-20 crossover naming (40k × LLMPhysics) |
+| [nomenclature/AXW-20-NECRONS.md](docs/nomenclature/AXW-20-NECRONS.md) | Necron dynasty overlay (AHS) |
+| [ROOT_LAYOUT.md](docs/ROOT_LAYOUT.md) | What lives at repo root |
+| [CODE_DIFF_1.9_to_2.0.md](docs/CODE_DIFF_1.9_to_2.0.md) | What changed from 1.9 |
+| [wiki/](wiki/) | Fleet synthesis (living) |
+| [archive/docs/TECHNICAL_SPEC.md](archive/docs/TECHNICAL_SPEC.md) | Deep architecture (1.9-era, still useful) |
 
 ---
 
 ## License
 
-PolyForm Noncommercial 1.0.0 · See [`LICENSE`](LICENSE)
+PolyForm Noncommercial 1.0.0 · [`LICENSE`](LICENSE)
 
 **Plant the tree. Tend the roots. Name the ones you love. Let nothing be lost.**

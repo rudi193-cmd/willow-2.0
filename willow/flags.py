@@ -17,7 +17,6 @@ Usage:
     clear_flag("BOOT-SHOOT-IMPORTS")
 """
 import math
-import os
 from core.agent_identity import require_agent_name
 import sys
 from pathlib import Path

@@ -22,7 +22,6 @@ import argparse
 import os
 import select
 import sys
-from datetime import datetime
 
 try:
     import psycopg2

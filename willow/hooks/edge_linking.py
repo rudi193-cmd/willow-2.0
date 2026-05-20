@@ -12,7 +12,7 @@ This module creates relationships between atoms:
 
 import sys
 from pathlib import Path
-from typing import Optional, Callable
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 

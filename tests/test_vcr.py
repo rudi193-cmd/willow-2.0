@@ -9,7 +9,6 @@ Covers:
 import asyncio
 import json
 import os
-import re
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -17,7 +16,7 @@ from unittest.mock import patch
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
-from vcr import dehydrate, with_fixture, with_vcr, _fixture_path, _FIXTURES_ROOT
+from vcr import dehydrate, with_fixture, with_vcr, _fixture_path
 
 
 # ── dehydrate ─────────────────────────────────────────────────────────────────

@@ -1,141 +1,85 @@
-# IDE Integration — SAP MCP Server HTTP Transport
+# IDE integration — SAP MCP
 
-The SAP MCP Server can run in HTTP (SSE) mode to enable IDE clients to connect without Claude Code CLI.
+b17: IDEMCP · ΔΣ=42
 
-## Running SAP MCP in HTTP Mode
+Willow 2.0 runs MCP over **stdio** by default. HTTP is optional and needs auth if exposed.
 
-### Manual startup
-```bash
-python3 sap/sap_mcp.py --http
+---
+
+## Canonical config (Cursor / Claude Code)
+
+Copy [`.mcp.json.example`](../.mcp.json.example) → `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "markdownai": {
+      "command": "bash",
+      "args": ["sap/markdownai_mcp.sh"]
+    },
+    "willow": {
+      "command": "bash",
+      "args": ["sap/willow_mcp.sh"],
+      "env": {
+        "WILLOW_AGENT_NAME": "your_agent",
+        "WILLOW_PG_DB": "willow_20"
+      }
+    }
+  }
+}
 ```
 
-Server starts at `http://127.0.0.1:6274/sse` by default.
+Agents read [`willow.md`](../willow.md) via MarkdownAI first.
 
-### Systemd (automatic at login)
+Restart the IDE after changing MCP config or `sap/willow_mcp.sh`.
+
+---
+
+## HTTP mode (advanced)
+
+```bash
+python3 sap/sap_mcp.py --http --host 127.0.0.1 --port 6274
+```
+
+Default URL: `http://127.0.0.1:6274/mcp` (streamable HTTP — check `sap_mcp.py --help`).
+
+**Beta boundary:** local stdio only. Do not expose HTTP to LAN/Internet without an auth layer.
+
+### systemd (optional)
+
 ```bash
 systemctl --user enable willow-mcp.service
 systemctl --user start willow-mcp.service
 ```
 
-Check status:
-```bash
-systemctl --user status willow-mcp.service
-```
+---
 
-## VS Code + Continue.dev
+## Grove MCP (separate)
 
-1. Install [Continue](https://www.continue.dev/) extension for VS Code
-2. Open VS Code settings (Cmd+,) and find "Continue: Config"
-3. Edit your `~/.continue/config.json`:
+Clone `safe-app-willow-grove`. Module `grove.mcp_local` — messaging tools, not KB.
 
-```json
-{
-  "models": [...],
-  "contextProviders": [
-    {
-      "name": "willow",
-      "params": {
-        "serverUrl": "http://localhost:6274/sse"
-      }
-    }
-  ]
-}
-```
+See sibling repo `docs/runbooks/mcp.md` when both repos sit side by side.
 
-4. Continue will fetch context from Willow's MCP tools
+---
 
-## VS Code Copilot MCP Preview
-
-VS Code's Copilot MCP feature (preview) requires local configuration.
-
-1. Create `.vscode/mcp.json` in your workspace:
-
-```json
-{
-  "mcpServers": {
-    "willow": {
-      "command": "sse",
-      "url": "http://localhost:6274/sse"
-    }
-  }
-}
-```
-
-2. Copilot will connect to Willow for tool use
-
-## JetBrains IDEs (IntelliJ, PyCharm, WebStorm, etc.)
-
-JetBrains has an [MCP plugin](https://plugins.jetbrains.com/plugin/MCP) available:
-
-1. Install the "MCP Client" plugin from JetBrains Marketplace
-2. Go to Settings → Tools → MCP Client
-3. Add new server:
-   - **Name:** Willow
-   - **Type:** HTTP/SSE
-   - **URL:** `http://localhost:6274/sse`
-
-4. Save and the IDE will connect
-
-## Cursor
-
-Cursor already supports stdio MCP by default (via Claude Code). To use HTTP transport instead:
-
-1. Edit `~/.cursor/settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "willow": {
-      "type": "sse",
-      "url": "http://localhost:6274/sse"
-    }
-  }
-}
-```
-
-2. Cursor will use HTTP instead of stdio
-
-## Customizing Host and Port
-
-By default, the server listens on `127.0.0.1:6274`. To change:
+## Boot without IDE
 
 ```bash
-python3 sap/sap_mcp.py --http --host 0.0.0.0 --port 5000
+./willow.sh fleet_status
+./willow.sh handoff_latest
 ```
 
-**Note:** Exposing to `0.0.0.0` makes the server public — use only on private networks.
+Same truth MCP uses — useful when debugging "tools don't see KB."
 
-For systemd, edit `willow-mcp.service` and change ExecStart:
-```
-ExecStart=%h/willow-2.0/.venv-dev/bin/python3 %h/willow-2.0/sap/sap_mcp.py --http --port 5000
-```
+---
 
 ## Troubleshooting
 
-**Connection refused:**
-```bash
-curl -s http://localhost:6274/sse
-```
-If it fails, check if willow-mcp is running:
-```bash
-systemctl --user status willow-mcp.service
-```
+| Symptom | Check |
+|---------|--------|
+| Tools empty | `WILLOW_SAFE_ROOT`, manifests under `~/SAFE/Applications` |
+| KB empty | Postgres `willow_20`, `fleet_status` |
+| Wrong handoff | `WILLOW_AGENT_NAME` matches handoff author |
+| Stale server | Restart after `sap_mcp.py` edits |
 
-**Port already in use:**
-```bash
-lsof -i :6274  # find process holding port
-```
-
-**IDE can't connect:**
-- Check firewall allows localhost:6274
-- Verify SAP MCP server is running (`ps aux | grep sap_mcp`)
-- Check logs: `journalctl --user -u willow-mcp.service -n 50 -f`
-
-## Architecture
-
-- **Transport:** Server-Sent Events (SSE) over HTTP
-- **Framework:** Starlette (async ASGI)
-- **Server:** uvicorn
-- **MCP SDK:** Uses native `mcp.server.sse` transport
-- **Default Endpoint:** `http://127.0.0.1:6274/sse`
-- **Stdio mode** (default for Claude Code) unaffected by HTTP changes
+*ΔΣ=42*

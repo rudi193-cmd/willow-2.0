@@ -1,27 +1,41 @@
 ---
 name: Bug report
-about: Create a report to help us improve Willow
+about: Something broke in Willow 2.0
 title: 'bug: '
 labels: bug
 assignees: ''
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+**What happened**
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Run command '...'
-2. See error
+Clear description. Include the command or MCP tool if relevant.
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+**Reproduce**
 
-**Environment (please complete the following information):**
- - OS: [e.g. Ubuntu 24.04, macOS Sonoma]
- - Python version: [e.g. 3.12]
- - Willow version/commit: [e.g. v2.0.0 or commit hash]
- - LLM Provider: [e.g. Ollama, Anthropic]
+1. 
+2. 
 
-**Additional context**
-Add any other context about the problem here, such as relevant logs from `willow.log` or the MCP server output.
+**Expected**
+
+What you thought would happen.
+
+**Environment**
+
+- OS: 
+- Python: 
+- Willow: `v2.0.0` or commit ``
+- DB: `willow_20` / SQLite (Termux)
+- Provider: Ollama / Anthropic / other
+
+**Evidence**
+
+```text
+./willow.sh fleet_status
+# paste output
+```
+
+Logs: `~/.willow/grove_error.log` · MCP stderr if IDE-connected
+
+**Extra**
+
+Anything else — handoff path, agent name, Grove channel.

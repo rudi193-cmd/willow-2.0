@@ -1,6 +1,6 @@
 # The Fleet
 
-*Maintained synthesis — last updated 2026-05-04.*
+*Maintained synthesis · Willow 2.0 · 2026-05-19*
 
 ---
 
@@ -30,7 +30,7 @@ Hanuman handles everything that requires construction or execution: code, builds
 
 **The rule:** One bite at a time, within a scope. When given explicit scope ("do the full stack," "finish the plan"), run to scope completion without mid-task check-ins. The only valid mid-task stops are genuine blockers: missing dependency, ambiguity that changes the implementation, permission failure.
 
-**KB writes:** `willow_knowledge_ingest`. Session atoms and edges go in `hanuman/` namespace.
+**KB writes:** `kb_ingest` (search with `kb_search` first). Session atoms and edges go in `hanuman/` namespace.
 
 ---
 

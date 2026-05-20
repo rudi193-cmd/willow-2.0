@@ -9,7 +9,6 @@ dependency graph traversal, and intent-based weight adjustments.
 import os
 import re
 import time
-from pathlib import Path
 from typing import Optional
 
 # ── Scoring weights (from SigMap ranker.js) ──────────────────────────────────

@@ -56,10 +56,10 @@ def main() -> int:
     if already_shown(sid):
         return 0
 
-    print(f"<orchestrator>")
+    print("<orchestrator>")
     print(f"Last session: {created_at} (id={sid})")
     print(summary)
-    print(f"</orchestrator>")
+    print("</orchestrator>")
     mark_shown(sid)
     return 0
 

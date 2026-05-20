@@ -2,14 +2,14 @@
 import sqlite3
 import sys
 from pathlib import Path
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 def test_step_1_creates_willow_dirs(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    import importlib, root as seed
+    import importlib
+    import root as seed
     importlib.reload(seed)
     seed.step_1_dirs()
     assert (tmp_path / ".willow").exists()
@@ -21,7 +21,8 @@ def test_step_1_creates_willow_dirs(tmp_path, monkeypatch):
 
 def test_step_1_idempotent(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    import importlib, root as seed
+    import importlib
+    import root as seed
     importlib.reload(seed)
     seed.step_1_dirs()
     seed.step_1_dirs()  # second call must not raise
@@ -30,7 +31,8 @@ def test_step_1_idempotent(tmp_path, monkeypatch):
 
 def test_step_4_vault_creates_db(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    import importlib, root as seed
+    import importlib
+    import root as seed
     import core.vault; importlib.reload(core.vault)
     importlib.reload(seed)
     (tmp_path / ".willow").mkdir(parents=True, exist_ok=True)
@@ -47,7 +49,8 @@ def test_step_4_vault_creates_db(tmp_path, monkeypatch):
 
 def test_step_4_vault_key_permissions(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    import importlib, root as seed
+    import importlib
+    import root as seed
     import core.vault; importlib.reload(core.vault)
     importlib.reload(seed)
     (tmp_path / ".willow").mkdir(parents=True, exist_ok=True)
@@ -59,7 +62,8 @@ def test_step_4_vault_key_permissions(tmp_path, monkeypatch):
 
 def test_step_4_vault_idempotent(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    import importlib, root as seed
+    import importlib
+    import root as seed
     import core.vault; importlib.reload(core.vault)
     importlib.reload(seed)
     (tmp_path / ".willow").mkdir(parents=True, exist_ok=True)
@@ -72,7 +76,8 @@ def test_step_4_vault_idempotent(tmp_path, monkeypatch):
 
 def test_step_8_version_pin(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    import importlib, root as seed
+    import importlib
+    import root as seed
     importlib.reload(seed)
     (tmp_path / ".willow").mkdir(parents=True, exist_ok=True)
     seed.step_8_version_pin()
@@ -82,7 +87,8 @@ def test_step_8_version_pin(tmp_path, monkeypatch):
 
 def test_sleipnir_idempotent(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    import importlib, root as seed
+    import importlib
+    import root as seed
     importlib.reload(seed)
     seed.sleipnir(skip_pg=True, skip_socket=True, skip_gpg=True, no_chain=True)
     seed.sleipnir(skip_pg=True, skip_socket=True, skip_gpg=True, no_chain=True)

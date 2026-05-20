@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
-from core.pii_detect import detect_all, redact_all, PIIMatch
+from core.pii_detect import detect_all, redact_all
 from core.secret_prefixes import detect_secret
 
 

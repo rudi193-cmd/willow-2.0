@@ -5,7 +5,6 @@ Uses willow_20_test (from conftest) like every other test in this suite.
 """
 import os
 import sys
-import uuid
 from pathlib import Path
 
 import pytest
