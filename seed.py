@@ -29,7 +29,10 @@ WILLOW_ROOT   = Path(__file__).parent
 VENV_DIR      = Path.home() / ".willow" / "venv"
 BOOT_CONFIG   = Path.home() / ".willow" / "seed-boot.json"
 BOOT_LOG      = Path("/tmp/willow-seed-debug.log")
-GROVE_DIR      = Path.home() / "github" / "safe-app-willow-grove"
+GROVE_DIR      = Path(os.environ.get(
+    "WILLOW_GROVE_DIR",
+    str(Path.home() / "github" / "safe-app-willow-grove"),
+))
 GROVE_APP      = GROVE_DIR / "app.py"
 GROVE_REPO     = "https://github.com/rudi193-cmd/safe-app-willow-grove.git"
 VERSION       = "2.0.0"
@@ -960,7 +963,7 @@ def _step_mcp_config(agent_name: str) -> None:
         base = {}
     servers = base.get("mcpServers", {})
 
-    grove_dir = str(Path.home() / "github" / "safe-app-willow-grove")
+    grove_dir = str(GROVE_DIR)
     pythonpath = f"{WILLOW_ROOT}:{grove_dir}"
 
     servers["willow"] = {
@@ -1395,8 +1398,8 @@ def page_first_conversation(win, provider: str, api_key: str, name_str: str) -> 
 
 # ── Page: feature opt-ins ─────────────────────────────────────────────────────
 def page_features(win) -> dict:
-    """Grove / Jeles / Nest opt-in. Returns {grove, grove_handle, jeles, nest}."""
-    features = {"grove": False, "grove_handle": "", "jeles": False, "nest": False}
+    """Grove / Jeles / Nest opt-in. Returns {grove, grove_handle, grove_mcp_url, jeles, nest}."""
+    features = {"grove": False, "grove_handle": "", "grove_mcp_url": "", "jeles": False, "nest": False}
 
     opts = [
         ("grove", "Grove Network",
@@ -1448,6 +1451,19 @@ def page_features(win) -> dict:
                     win.refresh()
                     time.sleep(0.6)
                     _write_grove_sender(features["grove_handle"])
+                    y += 3
+                    _safe(win, y, 2, "Grove network URL (optional).", bright)
+                    y += 1
+                    _safe(win, y, 2, "  Paste the URL you were given to join a Grove network,", dim)
+                    y += 1
+                    _safe(win, y, 2, "  or leave blank to use your local Grove only.", dim)
+                    y += 1
+                    grove_url = _get_input(win, y, "> ", max_len=120)
+                    features["grove_mcp_url"] = grove_url.strip()
+                    if features["grove_mcp_url"]:
+                        _safe(win, y + 1, 2, "  Network URL saved.", green)
+                    else:
+                        _safe(win, y + 1, 2, "  Local-only mode.", dim)
                     win.refresh()
                     time.sleep(1.0)
                 break
@@ -1642,6 +1658,23 @@ def _launch_dashboard(env_extra: dict | None = None) -> None:
         print(f"Expected: {GROVE_APP}")
 
 
+# ── Grove network wiring ──────────────────────────────────────────────────────
+def _wire_grove_mcp(url: str) -> None:
+    """Add remote Grove MCP server to .mcp.json so Claude Code can reach the network."""
+    mcp_path = WILLOW_ROOT / ".mcp.json"
+    try:
+        base = json.loads(mcp_path.read_text()) if mcp_path.exists() else {}
+    except Exception:
+        base = {}
+    servers = base.get("mcpServers", {})
+    servers["grove"] = {"url": url}
+    base["mcpServers"] = servers
+    tmp = mcp_path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(base, indent=2))
+    tmp.replace(mcp_path)
+    _blog(f"grove MCP wired: {url}")
+
+
 # ── New user flow ─────────────────────────────────────────────────────────────
 def run_new_user(stdscr) -> None:
     _init_colors()
@@ -1666,6 +1699,11 @@ def run_new_user(stdscr) -> None:
     # Cards
     create_onboarding_cards(gate["name"], atoms, features, "personal")
 
+    # Wire Grove network MCP if URL was provided
+    grove_mcp_url = features.get("grove_mcp_url", "")
+    if grove_mcp_url:
+        _wire_grove_mcp(grove_mcp_url)
+
     # Write version pin
     (Path.home() / ".willow" / "version").write_text(VERSION + "\n")
 
@@ -1678,6 +1716,7 @@ def run_new_user(stdscr) -> None:
         "pgp_fingerprint": fingerprint,
         "provider":        gate["provider"],
         "grove_handle":    features.get("grove_handle", ""),
+        "grove_mcp_url":   grove_mcp_url,
         "features":        features,
         "agreed_license":          True,
         "agreed_covenant":         True,
