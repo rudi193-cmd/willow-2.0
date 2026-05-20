@@ -1,183 +1,135 @@
 # Willow 2.0
 
-b17: RDM20 · ΔΣ=42
+**Local-first memory and tools for AI agents.**
 
-Local-first AI stack · Ollama by default
-
----
-
-## The demo
-
-A phone on Termux sends a signed command to a desktop on Linux.
-
-The answer comes back in under a second:
-
-```
-Willow 2.0 — system status
-
-  [✓] postgres          up
-  [✓] ollama            up
-  [✓] grove-mcp         running
-  [✓] sap_mcp.py        running
-```
-
-No Discord. No Telegram. No cloud relay. The phone read live state from your machine over the LAN — authenticated with a token that never left either device.
-
-That is not a party trick. Run `./willow.sh serve` and it is the default.
+Willow keeps a knowledge graph on hardware you control, exposes it through an MCP server, and runs local inference with Ollama by default. Cloud API keys are optional. Your data stays in Postgres (desktop) or SQLite (Termux).
 
 ---
 
-## What Willow is
+## What you get
 
-A local-first stack. Not a wrapper. Not a chat client.
+| Piece | What it does |
+|-------|----------------|
+| **Knowledge base** | Atoms that survive across sessions, models, and IDEs |
+| **SAP MCP** | ~40 tools — search memory, fleet health, tasks, handoffs, inference |
+| **SAFE gate** | Every tool call checked against manifests before it runs |
+| **SOIL** | Fast structured state on disk (per agent / collection) |
+| **Grove** | Terminal dashboard + LAN remote control (`./willow.sh serve`) |
+| **Fylgja** | Skills and powers — Markdown behaviors any model can follow |
 
-- **Knowledge graph** — Postgres (desktop) or SQLite (Termux). Atoms persist across sessions, models, and providers.
-- **Skills** — plain Markdown behaviors. Any LLM can run them.
-- **SAP** — authorization gate on every tool call.
-- **Grove** — messaging bus for humans and agents (sibling repo: `safe-app-willow-grove`).
-- **Nodes talk directly** — HMAC-SHA256, shared token, ~100 lines of HTTP. No middleman.
-
-**Ollama is the default.** Cloud keys (Anthropic, OpenAI, Gemini) are optional. Turn them on when you want them.
+IDEs connect via MCP (`sap/sap_mcp.py`). Humans use `./willow.sh` and the docs below.
 
 ---
 
 ## Quick start
 
-New here? [`docs/FIRST_5_MINUTES.md`](docs/FIRST_5_MINUTES.md) — copy, paste, done.
-
-### Linux / macOS
+**New here:** [`docs/FIRST_5_MINUTES.md`](docs/FIRST_5_MINUTES.md) — copy, paste, verify health.
 
 ```bash
 git clone https://github.com/rudi193-cmd/willow-2.0
 cd willow-2.0
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
+pip install -e ".[dev]"   # omit .[dev] if you skip tests
 python3 seed.py
 ```
 
-`seed.py` walks you through dependencies, GPG, providers, Postgres (`willow_20`), KB seed, and PATH.
-
-### Android / Termux
+Then:
 
 ```bash
-pkg install python postgresql git
-git clone https://github.com/rudi193-cmd/willow-2.0
-cd willow-2.0
-python3 seed.py --termux --skip-pg
+./willow.sh fleet_status   # postgres, ollama, manifests
+./willow.sh start          # services
+./willow.sh status         # version + summary
 ```
 
-SQLite instead of Postgres. Everything else matches.
+**Termux:** same clone, then `python3 seed.py --termux --skip-pg` (SQLite instead of Postgres). Details in [`docs/QUICKSTART.md`](docs/QUICKSTART.md).
 
-### Boot without MCP
-
-```bash
-./willow.sh fleet_status
-./willow.sh handoff_latest
-./willow.sh status
-```
+Default database name is **`willow_20`**. Upgrading from 1.9? See [`docs/CODE_DIFF_1.9_to_2.0.md`](docs/CODE_DIFF_1.9_to_2.0.md).
 
 ---
 
-## Connect your phone
+## Connect Cursor / Claude Code
 
-On the desktop:
+Point MCP at `sap/willow_mcp.sh` (or follow [`docs/IDE_INTEGRATION.md`](docs/IDE_INTEGRATION.md)). Agents boot from [`willow.md`](willow.md) — health check, handoff, then act.
+
+---
+
+## Phone on the same Wi‑Fi (optional)
+
+Run a signed HTTP listener on your desktop; ping it from Termux. No Discord, no cloud relay.
+
+**Desktop:**
 
 ```bash
 ./willow.sh serve
+# Token: ~/.willow/grove_token
 ```
 
-```
-[grove-serve] Listening on 0.0.0.0:7777
-[grove-serve] Token: ~/.willow/grove_token
-```
-
-On the phone (Termux):
+**Phone:**
 
 ```bash
 echo "TOKEN" > ~/.willow/grove_token && chmod 600 ~/.willow/grove_token
 bash ~/willow-2.0/willow.sh grove send 192.168.x.x:7777 status-all
 ```
 
-Use the token from the desktop and your LAN IP — not `127.0.0.1`.
+Use your LAN IP, not `127.0.0.1`. Full walkthrough: [`docs/FIRST_5_MINUTES.md`](docs/FIRST_5_MINUTES.md) §3.
 
 ---
 
-## Architecture
+## Layout (high level)
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│              USER / IDE (Cursor, Claude Code, phone)     │
-└───────────────┬─────────────────────┬───────────────────┘
-                │ stdio MCP           │ HTTP :7777
-                ▼                     ▼
-        ┌───────────────┐    ┌────────────────┐
-        │  SAP MCP      │    │  Grove serve   │
-        │  sap_mcp.py   │    │ grove_serve.py │
-        └───────┬───────┘    └───────┬────────┘
-                │                    │
-                ▼                    ▼
-        ┌───────────────────────────────────────┐
-        │            willow.sh (CLI)             │
-        └────┬──────────┬──────────┬────────────┘
-             ▼          ▼          ▼
-    ┌─────────────┐ ┌────────┐ ┌──────────────┐
-    │ LOAM (PG/   │ │ SOIL   │ │ LiteLLM →    │
-    │ SQLite KB)  │ │ store  │ │ Ollama :11434│
-    └─────────────┘ └────────┘ └──────────────┘
+IDE / CLI / phone
+       │
+       ├── SAP MCP (stdio) ──► KB, SOIL, fleet, tasks
+       │
+       └── Grove serve :7777 ──► remote status / commands
+                │
+                ▼
+         Postgres or SQLite  +  Ollama (default)
 ```
 
-| Layer | What it holds |
-|-------|----------------|
-| **LOAM** | Long-term KB. Bi-temporal atoms — history closes, nothing is erased. |
-| **SOIL** | Session-local structured state. Fast reads and writes. |
-| **SAP** | MCP server + gate. Scans outbound results for injection. |
-
-Agents boot from [`willow.md`](willow.md). Humans boot from [`docs/FIRST_5_MINUTES.md`](docs/FIRST_5_MINUTES.md).
-
----
-
-## Philosophy
-
-> Once there was a tree that remembered everything. Not in rings and seasons — precisely.
-
-Most AI tools store your history in a cloud you cannot audit. Willow keeps continuity on hardware you own.
-
-Fylgja is wired in, not bolted on. Nine hard stops: child primacy, human final authority, no capture. `willow nuke` is a forensic delete. No phone home. Telemetry off unless you opt in.
+Repo map: [`docs/ROOT_LAYOUT.md`](docs/ROOT_LAYOUT.md). Deeper architecture: [`wiki/what-is-willow.md`](wiki/what-is-willow.md).
 
 ---
 
 ## Requirements
 
 - Python 3.10+
-- PostgreSQL (or SQLite on Termux)
+- PostgreSQL 15+ with pgvector (or SQLite on Termux)
 - GPG (SAFE app identity)
-- Ollama (local inference, no key required)
+- [Ollama](https://ollama.com) for local inference
 
-Optional cloud: `./willow.sh providers enable anthropic YOUR_KEY`
+Optional: `./willow.sh providers enable anthropic YOUR_KEY` (or OpenAI / Gemini).
 
 ---
 
-## Docs
+## Status
 
-| Doc | For |
-|-----|-----|
-| [FIRST_5_MINUTES.md](docs/FIRST_5_MINUTES.md) | First run, no theory |
+**Beta (2.0)** — tests and packaging are in place; wiki and archive specs may lag code. Honest gaps: [`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md). Audit snapshot: [`docs/BETA_AUDIT_REPORT.md`](docs/BETA_AUDIT_REPORT.md).
+
+---
+
+## Documentation
+
+| Start here | |
+|------------|---|
+| [FIRST_5_MINUTES.md](docs/FIRST_5_MINUTES.md) | Install and first green checks |
 | [QUICKSTART.md](docs/QUICKSTART.md) | Technical onboarding |
 | [CONCEPT.md](docs/CONCEPT.md) | Why local-first |
-| [INDEX.md](docs/INDEX.md) | Full map |
-| [BRANDING.md](docs/BRANDING.md) | b17 / b20 / voice schema |
-| [FOR_AHS.md](docs/FOR_AHS.md) | Beta reader — start here (AHS) |
-| [nomenclature/AXW-20.md](docs/nomenclature/AXW-20.md) | A×W-20 crossover naming (40k × LLMPhysics) |
-| [nomenclature/AXW-20-NECRONS.md](docs/nomenclature/AXW-20-NECRONS.md) | Necron dynasty overlay (AHS) |
-| [ROOT_LAYOUT.md](docs/ROOT_LAYOUT.md) | What lives at repo root |
-| [CODE_DIFF_1.9_to_2.0.md](docs/CODE_DIFF_1.9_to_2.0.md) | What changed from 1.9 |
-| [wiki/](wiki/) | Fleet synthesis (living) |
-| [archive/docs/TECHNICAL_SPEC.md](archive/docs/TECHNICAL_SPEC.md) | Deep architecture (1.9-era, still useful) |
+| [IDE_INTEGRATION.md](docs/IDE_INTEGRATION.md) | Cursor / Claude Code MCP |
+| [INDEX.md](docs/INDEX.md) | Full doc map |
+
+| Reference | |
+|-----------|---|
+| [wiki/](wiki/) | Living fleet synthesis |
+| [BRANDING.md](docs/BRANDING.md) | Voice and artifact codes |
+| [FOR_AHS.md](docs/FOR_AHS.md) | Beta reader guide (friend onboarding) |
+| [nomenclature/](docs/nomenclature/) | Optional crossover naming (40k × LLMPhysics) |
 
 ---
 
 ## License
 
-PolyForm Noncommercial 1.0.0 · [`LICENSE`](LICENSE)
+PolyForm Noncommercial 1.0.0 — see [`LICENSE`](LICENSE).
 
-**Plant the tree. Tend the roots. Name the ones you love. Let nothing be lost.**
+*Plant the tree. Tend the roots. Name the ones you love. Let nothing be lost.*
