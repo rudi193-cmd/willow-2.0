@@ -1,1 +1,26 @@
-{}
+{
+  "permissions": {
+    "allow": [
+      "Mcp(willow:fleet_status)",
+      "Mcp(willow:handoff_latest)",
+      "Mcp(willow:handoff_rebuild)",
+      "Mcp(willow:handoff_search)",
+      "Mcp(willow:kb_search)",
+      "Mcp(willow:kb_get)",
+      "Mcp(willow:kb_ingest)",
+      "Mcp(willow:kb_journal)",
+      "Mcp(willow:ledger_read)",
+      "Mcp(willow:ledger_write)",
+      "Mcp(willow:soil_list)",
+      "Mcp(willow:session_review)",
+      "Mcp(markdownai:read_file)",
+      "Mcp(markdownai:get_env)",
+      "Shell(./willow.sh)",
+      "Shell(python3)",
+      "Shell(uv run)",
+      "Shell(gh)",
+      "Shell(rg)"
+    ],
+    "deny": []
+  }
+}

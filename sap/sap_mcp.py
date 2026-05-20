@@ -2103,7 +2103,9 @@ async def dream_run(app_id: str, force: bool = False) -> dict:
                 f"AutoDream over {len(atoms)} atoms — {len(tensions)} tensions detected. "
                 + (synthesis[:300] if synthesis else "")
             )
-            atom_id = pg.knowledge_put({
+            atom_id = pg.gen_id(8)
+            pg.knowledge_put({
+                "id":          atom_id,
                 "title":       f"Dream {now.strftime('%Y-%m-%d')} — {app_id}",
                 "summary":     dream_summary,
                 "content":     {
