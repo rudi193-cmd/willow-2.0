@@ -11,7 +11,8 @@
   },
   "env": {
     "WILLOW_20_DB": "~/.willow/willow-2.0.db",
-    "WILLOW_ROOT": "~/willow-2.0"
+    "WILLOW_ROOT": "~/willow-2.0",
+    "WILLOW_SAFE_ROOT": "/home/sean-campbell/SAFE/Applications"
   },
   "permissions": {
     "allow": [
