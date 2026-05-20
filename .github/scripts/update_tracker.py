@@ -80,7 +80,12 @@ def main():
         owner = pr['repository']['owner']['login'] if 'owner' in pr['repository'] else pr['repository']['nameWithOwner'].split('/')[0]
         new_table += f"| [{pr['repository']['nameWithOwner']}](https://github.com/{pr['repository']['nameWithOwner']}) | {owner} | {pr['title']} | [PR #{pr['number']}]({pr['url']}) closed |\n"
 
-    pattern = r"\| Project \| Maintainer \| What we contributed \| Status \|\n\|---------\|-----------\|---------------------\|--------\|\n(?:\|.*\|\n)+"
+    # Match header row + optional data rows (empty table must still match)
+    pattern = (
+        r"\| Project \| Maintainer \| What we contributed \| Status \|\n"
+        r"\|---------\|-----------\|---------------------\|--------\|\n"
+        r"(?:\|.*\|\n)*"
+    )
     content = re.sub(pattern, new_table, content)
 
     with open("CONTRIBUTORS.md", "w") as f:

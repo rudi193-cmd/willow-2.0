@@ -368,6 +368,19 @@ def _hot_reload(target: str = "all") -> dict:
         except Exception as e:
             errors.append(f"store: {e}")
 
+    if target in ("all", "gate"):
+        try:
+            sys.modules.pop("sap.core.gate", None)
+            import sap.core.gate as _gate_new
+            importlib.reload(_gate_new)
+            # Patch middleware's name-bound references so permitted() sees new PERMISSION_GROUPS
+            import sap.middleware as _mw
+            _mw.sap_authorized = _gate_new.authorized
+            _mw.sap_permitted  = _gate_new.permitted
+            reloaded.append("gate: reloaded")
+        except Exception as e:
+            errors.append(f"gate: {e}")
+
     return {
         "status":   "reloaded" if not errors else "partial",
         "reloaded": reloaded,
@@ -503,7 +516,7 @@ async def fleet_agents(app_id: str) -> dict:
 @sap_gate()
 async def fleet_reload(app_id: str, target: str = "all") -> dict:
     """Hot-reload Willow modules without restarting the MCP server.
-    target: all | blast | inference | postgres | store"""
+    target: all | blast | inference | postgres | store | gate"""
     logger.info("[w2] fleet_reload app_id=%s target=%s", app_id, target)
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_executor, _hot_reload, target)
@@ -1119,8 +1132,9 @@ async def infer_chat(app_id: str, agent: str = "willow", message: str = "") -> d
                     or _inf.chat_openrouter(agent, message)
                     or f"[{agent}] Inference unavailable.")
         from sap.clients.professor_client import _ask_ollama, PROFESSOR_MODELS, DEFAULT_MODEL
-        model = PROFESSOR_MODELS.get(agent, DEFAULT_MODEL)
-        return (_ask_ollama(model, f"You are {agent}, a Willow AI agent.", message)
+        system_prompt = _inf.load_persona(agent) or f"You are {agent}, a Willow AI agent."
+        model = PROFESSOR_MODELS.get(agent.title(), PROFESSOR_MODELS.get(agent, DEFAULT_MODEL))
+        return (_ask_ollama(model, system_prompt, message)
                 or f"[{agent}] Inference unavailable.")
 
     try:
@@ -2089,7 +2103,9 @@ async def dream_run(app_id: str, force: bool = False) -> dict:
                 f"AutoDream over {len(atoms)} atoms — {len(tensions)} tensions detected. "
                 + (synthesis[:300] if synthesis else "")
             )
-            atom_id = pg.knowledge_put({
+            atom_id = pg.gen_id(8)
+            pg.knowledge_put({
+                "id":          atom_id,
                 "title":       f"Dream {now.strftime('%Y-%m-%d')} — {app_id}",
                 "summary":     dream_summary,
                 "content":     {

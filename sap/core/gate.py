@@ -152,6 +152,9 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "fleet_reload", "fleet_restart",
         "policy_put", "policy_list", "policy_delete",
     }),
+    "soul": frozenset({
+        "tension_scan", "dream_check", "dream_run",
+    }),
 }
 
 # If set, only these app_ids are accepted (comma-separated). INFRA IDs are always exempt.
