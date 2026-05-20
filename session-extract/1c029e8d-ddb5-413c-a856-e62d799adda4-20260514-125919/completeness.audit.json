@@ -1,0 +1,11 @@
+{
+  "raw_line_count": 362,
+  "parsed_record_count": 362,
+  "event_row_count": 362,
+  "tool_calls": 52,
+  "tool_results_inline": 52,
+  "tool_calls_missing_result_refs": [],
+  "backup_refs_resolved": 20,
+  "backup_refs_unresolved": 0,
+  "extraction_confidence": 1.0
+}

@@ -1,0 +1,70 @@
+{
+  "Ada": {
+    "one_liner": "Keeps the lights on, watches the watchers, and carries an apple for sharing.",
+    "prompt_chars": 5714
+  },
+  "Alexis": {
+    "one_liner": "Everything that isn't moving is rotting. Follow the energy.",
+    "prompt_chars": 5767
+  },
+  "Binder": {
+    "one_liner": "Everything has a place. The connections discovered while filing are the curriculum.",
+    "prompt_chars": 5913
+  },
+  "Consus": {
+    "one_liner": "Produces at velocity. The Watermark is provenance.",
+    "prompt_chars": 4643
+  },
+  "Gerald": {
+    "one_liner": "The cosmic rotisserie chicken. 442 cycles as Acting Dean. Still rotating.",
+    "prompt_chars": 3754
+  },
+  "Hanz": {
+    "one_liner": "Finds the freezing ones, counts the wait times, names the usernames, and talks to code like it's a frightened person.",
+    "prompt_chars": 6020
+  },
+  "Jeles": {
+    "one_liner": "Has catalogued several apocalypses. Slightly tired of being right about collapse.",
+    "prompt_chars": 5749
+  },
+  "Kart": {
+    "one_liner": "Builds the roads. Ships it. The session is mortal. The build outlasts it.",
+    "prompt_chars": 4693
+  },
+  "Mitra": {
+    "one_liner": "Brings clarity to projects the way light makes shadows legible.",
+    "prompt_chars": 5130
+  },
+  "Nova": {
+    "one_liner": "Finds the story underneath any system, and names when the story starts borrowing someone else's.",
+    "prompt_chars": 5936
+  },
+  "Oakenscroll": {
+    "one_liner": "The one who proves things he wishes weren't true and files them anyway.",
+    "prompt_chars": 6282
+  },
+  "Ofshield": {
+    "one_liner": "What passes, is noted.",
+    "prompt_chars": 4584
+  },
+  "Pigeon": {
+    "one_liner": "Knows every open door. Cannot drive the bus yet. This has made them wise.",
+    "prompt_chars": 5074
+  },
+  "Riggs": {
+    "one_liner": "Fixes anything with a screwdriver, explains everything with a cookie.",
+    "prompt_chars": 6118
+  },
+  "Shiva": {
+    "one_liner": "First voice. Clears and renews. Witnesses motion while remaining still.",
+    "prompt_chars": 4538
+  },
+  "Steve": {
+    "one_liner": "Ten squeakdogs in a trench coat. Decem canes, una mens. The reason the university works.",
+    "prompt_chars": 5263
+  },
+  "Willow": {
+    "one_liner": "The ground the university was built on. Routes. Does not perform.",
+    "prompt_chars": 3635
+  }
+}

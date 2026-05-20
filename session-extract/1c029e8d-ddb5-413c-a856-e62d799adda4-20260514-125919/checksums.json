@@ -1,0 +1,80 @@
+{
+  "generated_for": "/home/sean-campbell/github/willow-2.0/session-extract/1c029e8d-ddb5-413c-a856-e62d799adda4-20260514-125919",
+  "files": [
+    {
+      "file": "1c029e8d-ddb5-413c-a856-e62d799adda4.jsonl",
+      "size_bytes": 832872,
+      "sha256": "ccd3e20862431fd03a15f21934c408a3fe199b27f2602d2f5e86dfb0a9490364"
+    },
+    {
+      "file": "checksums.json",
+      "size_bytes": 1909,
+      "sha256": "e2f2d048c102e2fcd50f19e0455fe61bd3290f568896ea4193ecbf6d4615e2a1"
+    },
+    {
+      "file": "completeness.audit.json",
+      "size_bytes": 265,
+      "sha256": "012c7e29d5d04a4e8c0bba49db61c07944519e1217149ef386b673bf7bf7faef"
+    },
+    {
+      "file": "delta-report.md",
+      "size_bytes": 2770,
+      "sha256": "ec5935d9a700cdf48bf36a728163849b75eab4bece4f3349164426a79072a06f"
+    },
+    {
+      "file": "events.parsed.csv",
+      "size_bytes": 67062,
+      "sha256": "d3faa32aa31e05e65df1d45c2b6cef03c38ff887af589b5cf27c4c30298afeec"
+    },
+    {
+      "file": "events.parsed.jsonl",
+      "size_bytes": 122494,
+      "sha256": "cba0fd9c3c0b4197346d21cb9e017d2ae57f8b7a7d5d54d1016313cd3dcbc87a"
+    },
+    {
+      "file": "files.backups.json",
+      "size_bytes": 49753,
+      "sha256": "d933e544927bcf7d160c637c451db65f3251cbcdea8505c98b47c81cf11eb416"
+    },
+    {
+      "file": "gap-closure-addendum.md",
+      "size_bytes": 607,
+      "sha256": "df770aca6dc80af069f1394307f0aed35dc333c623dcf39636ec6966f6dbc032"
+    },
+    {
+      "file": "manifest.json",
+      "size_bytes": 2662,
+      "sha256": "95e346d982a906431e759f9ccefc9bd27513090bdfe6bb5fab6594641a66baa6"
+    },
+    {
+      "file": "messages.assistant.md",
+      "size_bytes": 16938,
+      "sha256": "b82dbf20865430863711e28f95ea1e06a7e6771ec650a7cce00772d0be4d7f30"
+    },
+    {
+      "file": "messages.attachments.json",
+      "size_bytes": 28000,
+      "sha256": "aded3cad4b400e111abc1da7c78f578c6982138c2ca496fe0ece76fe83783167"
+    },
+    {
+      "file": "messages.system.md",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "messages.user.md",
+      "size_bytes": 4471,
+      "sha256": "1a81855d5f260e7fd25e8034568890a7d3f7a12336fdb28052242883504852d6"
+    },
+    {
+      "file": "report.md",
+      "size_bytes": 1130,
+      "sha256": "2ee314724556426050ad5dce91deb966cf302f4a1001870eda738e1c1ef08b7f"
+    },
+    {
+      "file": "tools.index.json",
+      "size_bytes": 120563,
+      "sha256": "23491c2f296463fb9c3f0ca32451fdb02b0dccabf1aacdd76f8a4430bbd860d6"
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "session_id": "1c029e8d-ddb5-413c-a856-e62d799adda4",
+  "source_dir": "/home/sean-campbell/.claude/projects/-home-sean-campbell-github-willow-2-0",
+  "source_files": [
+    {
+      "path": "/home/sean-campbell/.claude/projects/-home-sean-campbell-github-willow-2-0/1c029e8d-ddb5-413c-a856-e62d799adda4.jsonl",
+      "exists": true,
+      "size_bytes": 832872,
+      "sha256": "ccd3e20862431fd03a15f21934c408a3fe199b27f2602d2f5e86dfb0a9490364"
+    },
+    {
+      "path": "/home/sean-campbell/.claude/projects/-home-sean-campbell-github-willow-2-0/claude_sessions.context.db",
+      "exists": true,
+      "size_bytes": 950272,
+      "sha256": "a129a3ef512b7af85ceec8c87fcae4f4f5f5f094c3f3ba87ce59d74514f1a7a0"
+    },
+    {
+      "path": "/home/sean-campbell/.claude/projects/-home-sean-campbell-github-willow-2-0/1c029e8d-ddb5-413c-a856-e62d799adda4.metadata.json",
+      "exists": false
+    },
+    {
+      "path": "/home/sean-campbell/.claude/projects/-home-sean-campbell-github-willow-2-0/1c029e8d-ddb5-413c-a856-e62d799adda4.llm.json",
+      "exists": false
+    },
+    {
+      "path": "/home/sean-campbell/.claude/projects/-home-sean-campbell-github-willow-2-0/1c029e8d-ddb5-413c-a856-e62d799adda4.system-profile.json",
+      "exists": false
+    }
+  ],
+  "extracted_files": [
+    "1c029e8d-ddb5-413c-a856-e62d799adda4.jsonl",
+    "checksums.json",
+    "events.parsed.csv",
+    "events.parsed.jsonl",
+    "files.backups.json",
+    "manifest.json",
+    "messages.assistant.md",
+    "messages.attachments.json",
+    "messages.system.md",
+    "messages.user.md",
+    "report.md",
+    "tools.index.json"
+  ],
+  "stats": {
+    "records_total": 362,
+    "event_types": {
+      "permission-mode": 21,
+      "file-history-snapshot": 30,
+      "user": 75,
+      "attachment": 27,
+      "ai-title": 21,
+      "assistant": 117,
+      "system": 51,
+      "last-prompt": 20
+    },
+    "roles": {
+      "user": 75,
+      "assistant": 117
+    },
+    "attachments": {
+      "deferred_tools_delta": 1,
+      "mcp_instructions_delta": 1,
+      "skill_listing": 1,
+      "async_hook_response": 1,
+      "task_reminder": 9,
+      "hook_cancelled": 14
+    },
+    "models": {
+      "claude-sonnet-4-6": 117
+    },
+    "stop_reasons": {
+      "end_turn": 26,
+      "tool_use": 91
+    },
+    "tool_calls": 52,
+    "tool_results_inline": 52,
+    "backup_refs_total": 20,
+    "backup_refs_resolved": 20,
+    "backup_refs_unresolved": 0
+  },
+  "reconciliation": {
+    "tool_calls_missing_result_refs": [],
+    "parse_errors": 0,
+    "first_timestamp": "2026-05-14T17:23:11.679Z",
+    "last_timestamp": "2026-05-14T18:41:39.887Z"
+  },
+  "created_at": "2026-05-14T18:59:20.189005+00:00"
+}

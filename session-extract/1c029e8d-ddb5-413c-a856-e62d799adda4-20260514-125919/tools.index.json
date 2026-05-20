@@ -1,0 +1,1269 @@
+{
+  "tool_calls": [
+    {
+      "line": 17,
+      "timestamp": "2026-05-14T17:25:09.087Z",
+      "assistant_uuid": "7c5a7a6c-9221-4451-a3da-bb4d6c65cb44",
+      "tool_use_id": "toolu_01QMLZw5eP7FeoFdEX4EBneU",
+      "tool_name": "AskUserQuestion",
+      "input": {
+        "questions": [
+          {
+            "question": "Which TUI framework?",
+            "header": "TUI library",
+            "multiSelect": false,
+            "options": [
+              {
+                "label": "Textual",
+                "description": "Python, component-based, CSS styling, rich widget set (Recommended)"
+              },
+              {
+                "label": "Rich + custom",
+                "description": "Python, lower-level, more control"
+              },
+              {
+                "label": "blessed / urwid",
+                "description": "Python, older-style curses wrapper"
+              }
+            ]
+          },
+          {
+            "question": "Which social platforms are we tracking?",
+            "header": "Platforms",
+            "multiSelect": true,
+            "options": [
+              {
+                "label": "Twitter/X",
+                "description": "Followers, likes, impressions, etc."
+              },
+              {
+                "label": "Instagram",
+                "description": "Followers, reach, engagement"
+              },
+              {
+                "label": "YouTube",
+                "description": "Subscribers, views, watch time"
+              },
+              {
+                "label": "LinkedIn",
+                "description": "Connections, impressions, reactions"
+              }
+            ]
+          },
+          {
+            "question": "What's the main view \u2014 dashboard or drill-down?",
+            "header": "UX shape",
+            "multiSelect": false,
+            "options": [
+              {
+                "label": "Dashboard first",
+                "description": "All platforms side-by-side, summary numbers, sparklines (Recommended)"
+              },
+              {
+                "label": "Drill-down first",
+                "description": "Pick a platform, see full detail view"
+              },
+              {
+                "label": "Both (tabbed)",
+                "description": "Top-level tabs: Dashboard + per-platform detail tabs"
+              }
+            ]
+          }
+        ]
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 21,
+      "timestamp": "2026-05-14T17:26:49.315Z",
+      "assistant_uuid": "eeba2d28-8ec7-48db-965c-b7a13be1a033",
+      "tool_use_id": "toolu_0187B1mhEgzNSSw2gp4FCCFT",
+      "tool_name": "AskUserQuestion",
+      "input": {
+        "questions": [
+          {
+            "question": "Does the PostgreSQL schema already exist, or should I design it?",
+            "header": "DB schema",
+            "multiSelect": false,
+            "options": [
+              {
+                "label": "Design it fresh",
+                "description": "I'll create tables for Reddit, Facebook, LinkedIn stats"
+              },
+              {
+                "label": "Schema exists",
+                "description": "Share the table names/structure and I'll wire to it"
+              }
+            ]
+          }
+        ]
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 34,
+      "timestamp": "2026-05-14T17:30:30.011Z",
+      "assistant_uuid": "134ca7f8-6495-408c-be7a-1989bef79ec7",
+      "tool_use_id": "toolu_01XzQ7gg9UPsDrNE95e2TaqH",
+      "tool_name": "Read",
+      "input": {
+        "file_path": "/home/sean-campbell/Downloads/SEED_v1_TEMPLATE.json"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 41,
+      "timestamp": "2026-05-14T17:32:31.487Z",
+      "assistant_uuid": "a71b6b84-1871-479c-8ca3-d5160ab92716",
+      "tool_use_id": "toolu_01SS6XWRmkbhxAwtjiD8HJc1",
+      "tool_name": "Read",
+      "input": {
+        "file_path": "/home/sean-campbell/Downloads/SEED_v3_TEMPLATE.json"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 57,
+      "timestamp": "2026-05-14T17:35:01.988Z",
+      "assistant_uuid": "506ab98e-b110-4bd9-809b-9bf64a7d8716",
+      "tool_use_id": "toolu_01F7JRzevibPTheqEb97vN2N",
+      "tool_name": "Bash",
+      "input": {
+        "command": "ls /home/sean-campbell/github/willow-2.0/",
+        "description": "Check current directory contents"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 62,
+      "timestamp": "2026-05-14T17:35:06.490Z",
+      "assistant_uuid": "b686783b-3cb9-4daf-a1e1-981a7d75a04a",
+      "tool_use_id": "toolu_017GPmVNgNgwXehnAD9Xfe3n",
+      "tool_name": "Bash",
+      "input": {
+        "command": "find /home/sean-campbell/github/willow-2.0 -maxdepth 1 -type f -o -maxdepth 1 -type d | sort",
+        "description": "List top-level files and dirs"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 64,
+      "timestamp": "2026-05-14T17:35:15.505Z",
+      "assistant_uuid": "3abc2532-a91f-49fc-a300-f754d812b38f",
+      "tool_use_id": "toolu_01Gedv2reKQkAQ69ZQBtaGUF",
+      "tool_name": "Write",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/schema.sql",
+        "content": "CREATE TABLE IF NOT EXISTS accounts (\n    id          SERIAL PRIMARY KEY,\n    platform    TEXT NOT NULL,\n    handle      TEXT NOT NULL,\n    label       TEXT,\n    created_at  TIMESTAMPTZ DEFAULT now()\n);\n\nCREATE TABLE IF NOT EXISTS stats_snapshots (\n    id          SERIAL PRIMARY KEY,\n    account_id  INT REFERENCES accounts(id) ON DELETE CASCADE,\n    captured_at TIMESTAMPTZ DEFAULT now(),\n    followers   BIGINT,\n    following   BIGINT,\n    posts       BIGINT,\n    reach       BIGINT,\n    impressions BIGINT,\n    engagement  NUMERIC(8,4),\n    likes       BIGINT,\n    comments    BIGINT,\n    shares      BIGINT,\n    extra       JSONB\n);\n\nCREATE TABLE IF NOT EXISTS posts (\n    id          SERIAL PRIMARY KEY,\n    account_id  INT REFERENCES accounts(id) ON DELETE CASCADE,\n    platform_id TEXT,\n    posted_at   TIMESTAMPTZ,\n    title       TEXT,\n    url         TEXT,\n    likes       BIGINT,\n    comments    BIGINT,\n    shares      BIGINT,\n    reach       BIGINT,\n    extra       JSONB\n);\n\nCREATE INDEX IF NOT EXISTS idx_snapshots_account_time\n    ON stats_snapshots (account_id, captured_at DESC);\n\nCREATE INDEX IF NOT EXISTS idx_posts_account_time\n    ON posts (account_id, posted_at DESC);\n"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 67,
+      "timestamp": "2026-05-14T17:35:19.445Z",
+      "assistant_uuid": "603186e0-033c-484b-893f-b471d0b3d1ad",
+      "tool_use_id": "toolu_01FRbvnT47W5dsYgg2RUCvqe",
+      "tool_name": "Write",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/requirements.txt",
+        "content": "psycopg2-binary>=2.9\nrich>=13.0\n"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 70,
+      "timestamp": "2026-05-14T17:35:32.099Z",
+      "assistant_uuid": "ad1ecd13-6a01-495f-a750-bd86078cb4e2",
+      "tool_use_id": "toolu_01Edqqt3KLZmCgUGLXBqSV21",
+      "tool_name": "Write",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/db.py",
+        "content": "import os\nfrom contextlib import contextmanager\n\nimport psycopg2\nfrom psycopg2.extras import RealDictCursor\n\nDATABASE_URL = os.environ.get(\"DATABASE_URL\", \"postgresql://localhost/social_stats\")\n\n_ALLOWED_METRICS = frozenset(\n    {\"followers\", \"following\", \"posts\", \"reach\", \"impressions\",\n     \"engagement\", \"likes\", \"comments\", \"shares\"}\n)\n\n\n@contextmanager\ndef get_conn():\n    conn = psycopg2.connect(DATABASE_URL)\n    try:\n        yield conn\n    finally:\n        conn.close()\n\n\ndef fetch_dashboard():\n    \"\"\"Latest + previous snapshot per account, with deltas computed client-side.\"\"\"\n    sql = \"\"\"\n    WITH ranked AS (\n        SELECT\n            a.id          AS account_id,\n            a.platform,\n            a.handle,\n            a.label,\n            s.captured_at,\n            s.followers,\n            s.following,\n            s.posts,\n            s.reach,\n            s.impressions,\n            s.engagement,\n            s.likes,\n            s.comments,\n            s.shares,\n            ROW_NUMBER() OVER (\n                PARTITION BY a.id ORDER BY s.captured_at DESC\n            ) AS rn\n        FROM accounts a\n        JOIN stats_snapshots s ON s.account_id = a.id\n    )\n    SELECT * FROM ranked WHERE rn <= 2\n    ORDER BY account_id, rn\n    \"\"\"\n    with get_conn() as conn:\n        with conn.cursor(cursor_factory=RealDictCursor) as cur:\n            cur.execute(sql)\n            rows = cur.fetchall()\n\n    accounts: dict = {}\n    for row in rows:\n        aid = row[\"account_id\"]\n        if aid not in accounts:\n            accounts[aid] = {\"current\": None, \"previous\": None}\n        if row[\"rn\"] == 1:\n            accounts[aid][\"current\"] = dict(row)\n        else:\n            accounts[aid][\"previous\"] = dict(row)\n\n    return [v for v in accounts.values() if v[\"current\"] is not None]\n\n\ndef fetch_sparkline(account_id: int, metric: str = \"followers\", limit: int = 12):\n    if metric not in _ALLOWED_METRICS:\n        raise ValueError(f\"Unknown metric: {metric}\")\n    sql = f\"\"\"\n        SELECT {metric} FROM stats_snapshots\n        WHERE account_id = %s AND {metric} IS NOT NULL\n        ORDER BY captured_at DESC\n        LIMIT %s\n    \"\"\"\n    with get_conn() as conn:\n        with conn.cursor() as cur:\n            cur.execute(sql, (account_id, limit))\n            rows = cur.fetchall()\n    return [float(r[0]) for r in reversed(rows)]\n\n\ndef fetch_recent_posts(account_id: int, limit: int = 5):\n    sql = \"\"\"\n        SELECT platform_id, posted_at, title, url,\n               likes, comments, shares, reach\n        FROM posts\n        WHERE account_id = %s\n        ORDER BY posted_at DESC\n        LIMIT %s\n    \"\"\"\n    with get_conn() as conn:\n        with conn.cursor(cursor_factory=RealDictCursor) as cur:\n            cur.execute(sql, (account_id, limit))\n            return [dict(r) for r in cur.fetchall()]\n"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 74,
+      "timestamp": "2026-05-14T17:36:11.931Z",
+      "assistant_uuid": "7a229b26-8702-4881-a79f-97a6cd2dd60f",
+      "tool_use_id": "toolu_018Uz4XcRG3hPxP4zPSvjQhG",
+      "tool_name": "Write",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "content": "#!/usr/bin/env python3\n\"\"\"Social stats dashboard \u2014 Rich TUI, cursor-navigable.\"\"\"\n\nimport select\nimport sys\nimport termios\nimport threading\nimport time\nimport tty\n\nfrom rich import box\nfrom rich.console import Console\nfrom rich.layout import Layout\nfrom rich.panel import Panel\nfrom rich.table import Table\nfrom rich.text import Text\nfrom rich.live import Live\n\nfrom db import fetch_dashboard, fetch_sparkline, fetch_recent_posts\n\nconsole = Console()\n\n_SPARK = \"\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588\"\n\nPLATFORM_STYLE = {\n    \"reddit\":   \"orange3\",\n    \"facebook\": \"blue\",\n    \"linkedin\": \"cyan1\",\n}\n\n\n# \u2500\u2500 rendering helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\ndef sparkline(values: list[float]) -> str:\n    if len(values) < 2:\n        return \"\u2500\" * max(len(values), 8)\n    mn, mx = min(values), max(values)\n    if mx == mn:\n        return \"\u2584\" * len(values)\n    span = mx - mn\n    return \"\".join(_SPARK[int((v - mn) / span * 7)] for v in values)\n\n\ndef fmt_num(val) -> str:\n    if val is None:\n        return \"\u2500\"\n    if isinstance(val, float):\n        return f\"{val:.2%}\"\n    n = int(val)\n    if n >= 1_000_000:\n        return f\"{n/1_000_000:.1f}M\"\n    if n >= 1_000:\n        return f\"{n/1_000:.1f}k\"\n    return f\"{n:,}\"\n\n\ndef delta_markup(cur_val, prev_val) -> str:\n    if prev_val is None or cur_val is None:\n        return \"\"\n    diff = cur_val - prev_val\n    if diff == 0:\n        return \"[dim]  \u2500[/dim]\"\n    sign = \"+\" if diff > 0 else \"\"\n    color = \"green\" if diff > 0 else \"red\"\n    return f\"[{color}]{sign}{fmt_num(diff)}[/{color}]\"\n\n\ndef account_panel(entry: dict, spark: list[float], selected: bool) -> Panel:\n    cur = entry[\"current\"]\n    prev = entry.get(\"previous\")\n    platform = cur[\"platform\"]\n    color = PLATFORM_STYLE.get(platform, \"white\")\n    border = \"bright_white\" if selected else color\n\n    METRICS = [\n        (\"Followers\",   \"followers\"),\n        (\"Following\",   \"following\"),\n        (\"Posts\",       \"posts\"),\n        (\"Reach\",       \"reach\"),\n        (\"Impressions\", \"impressions\"),\n        (\"Engagement\",  \"engagement\"),\n        (\"Likes\",       \"likes\"),\n        (\"Comments\",    \"comments\"),\n        (\"Shares\",      \"shares\"),\n    ]\n\n    grid = Table.grid(padding=(0, 1))\n    grid.add_column(min_width=12)\n    grid.add_column(min_width=9, justify=\"right\")\n    grid.add_column(min_width=9, justify=\"left\")\n\n    for label, key in METRICS:\n        c = cur.get(key)\n        p = prev.get(key) if prev else None\n        grid.add_row(\n            Text(label, style=\"dim\"),\n            Text(fmt_num(c), style=\"bold\"),\n            Text.from_markup(delta_markup(c, p)),\n        )\n\n    grid.add_row(\"\")\n    spark_str = sparkline(spark) if spark else \"\u2500\" * 12\n    grid.add_row(\n        Text(\"followers\", style=\"dim\"),\n        Text(spark_str, style=color),\n        Text(\"\"),\n    )\n\n    handle = cur.get(\"handle\", \"\")\n    title = f\"[{color}]{platform.upper()}[/{color}]  [dim]{handle}[/dim]\"\n    if selected:\n        title = f\"[bold]{title}[/bold]\"\n\n    return Panel(grid, title=title, border_style=border, padding=(1, 2))\n\n\ndef posts_panel(posts: list[dict], platform: str) -> Panel:\n    color = PLATFORM_STYLE.get(platform, \"white\")\n    t = Table(box=box.SIMPLE, show_header=True, header_style=f\"bold {color}\")\n    t.add_column(\"Posted\", style=\"dim\", min_width=10)\n    t.add_column(\"Title\", min_width=24, no_wrap=True)\n    t.add_column(\"Likes\", justify=\"right\")\n    t.add_column(\"Comments\", justify=\"right\")\n    t.add_column(\"Shares\", justify=\"right\")\n    t.add_column(\"Reach\", justify=\"right\")\n\n    for p in posts:\n        posted = p[\"posted_at\"].strftime(\"%Y-%m-%d\") if p.get(\"posted_at\") else \"\u2500\"\n        title = (p.get(\"title\") or \"\u2500\")[:32]\n        t.add_row(\n            posted, title,\n            fmt_num(p.get(\"likes\")),\n            fmt_num(p.get(\"comments\")),\n            fmt_num(p.get(\"shares\")),\n            fmt_num(p.get(\"reach\")),\n        )\n\n    return Panel(t, title=f\"[{color}]Recent Posts[/{color}]\", border_style=color)\n\n\n# \u2500\u2500 layout assembly \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\ndef build_layout(state: dict) -> Layout:\n    data = state[\"data\"]\n    spark_map = state[\"spark_map\"]\n    posts_map = state[\"posts_map\"]\n    cursor = state[\"cursor\"]\n    mode = state[\"mode\"]\n    last_updated = state[\"last_updated\"]\n    err = state.get(\"error\")\n\n    root = Layout()\n    root.split_column(\n        Layout(name=\"header\", size=3),\n        Layout(name=\"body\"),\n        Layout(name=\"footer\", size=3),\n    )\n\n    # header\n    ts = Text(justify=\"center\")\n    ts.append(\"SOCIAL STATS TRACKER\", style=\"bold white\")\n    ts.append(f\"  \u00b7  {last_updated}\", style=\"dim\")\n    root[\"header\"].update(Panel(ts, border_style=\"dim\"))\n\n    # body\n    if err:\n        root[\"body\"].update(Panel(f\"[red]{err}[/red]\", border_style=\"red\"))\n    elif not data:\n        root[\"body\"].update(Panel(\"[dim]No data. Run seed.py to populate.[/dim]\", border_style=\"dim\"))\n    elif mode == \"detail\":\n        entry = data[cursor]\n        cur = entry[\"current\"]\n        acct_id = cur[\"account_id\"]\n        platform = cur[\"platform\"]\n        body = Layout()\n        body.split_row(\n            Layout(name=\"card\", ratio=1),\n            Layout(name=\"posts\", ratio=2),\n        )\n        body[\"card\"].update(account_panel(entry, spark_map.get(acct_id, []), True))\n        body[\"posts\"].update(posts_panel(posts_map.get(acct_id, []), platform))\n        root[\"body\"].update(body)\n    else:\n        cols = [Layout(name=f\"col_{i}\") for i in range(len(data))]\n        root[\"body\"].split_row(*cols)\n        for i, entry in enumerate(data):\n            acct_id = entry[\"current\"][\"account_id\"]\n            root[f\"col_{i}\"].update(\n                account_panel(entry, spark_map.get(acct_id, []), i == cursor)\n            )\n\n    # footer\n    if mode == \"detail\":\n        keys = \"[esc] back  [\u2190\u2192] switch  [r] refresh  [q] quit\"\n    else:\n        keys = \"[\u2190\u2192] select  [enter] detail  [r] refresh  [q] quit\"\n    root[\"footer\"].update(Panel(Text(keys, justify=\"center\", style=\"dim\"), border_style=\"dim\"))\n\n    return root\n\n\n# \u2500\u2500 app \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nclass App:\n    def __init__(self):\n        self._lock = threading.Lock()\n        self._state = {\n            \"data\": [],\n            \"spark_map\": {},\n            \"posts_map\": {},\n            \"cursor\": 0,\n            \"mode\": \"dashboard\",\n            \"last_updated\": \"\u2500\",\n            \"error\": None,\n        }\n\n    def _refresh(self):\n        try:\n            data = fetch_dashboard()\n            spark_map = {\n                e[\"current\"][\"account_id\"]: fetch_sparkline(e[\"current\"][\"account_id\"])\n                for e in data\n            }\n            posts_map = {\n                e[\"current\"][\"account_id\"]: fetch_recent_posts(e[\"current\"][\"account_id\"])\n                for e in data\n            }\n            with self._lock:\n                self._state[\"data\"] = data\n                self._state[\"spark_map\"] = spark_map\n                self._state[\"posts_map\"] = posts_map\n                self._state[\"last_updated\"] = time.strftime(\"%H:%M:%S\")\n                self._state[\"error\"] = None\n                count = len(data)\n                if self._state[\"cursor\"] >= count:\n                    self._state[\"cursor\"] = max(0, count - 1)\n        except Exception as exc:\n            with self._lock:\n                self._state[\"error\"] = str(exc)\n                self._state[\"last_updated\"] = time.strftime(\"%H:%M:%S\")\n\n    def _render(self) -> Layout:\n        with self._lock:\n            import copy\n            snapshot = copy.deepcopy(self._state)\n        return build_layout(snapshot)\n\n    def _handle_key(self, key: str):\n        with self._lock:\n            state = self._state\n            count = len(state[\"data\"])\n            if key == \"q\":\n                return False\n            elif key == \"r\":\n                pass  # refresh handled outside\n            elif key in (\"\\x1b[C\", \"\\x1b[D\"):  # right / left arrow (ESC sequences)\n                delta = 1 if key == \"\\x1b[C\" else -1\n                state[\"cursor\"] = (state[\"cursor\"] + delta) % max(count, 1)\n            elif key in (\"\\r\", \"\\n\") and state[\"mode\"] == \"dashboard\":\n                state[\"mode\"] = \"detail\"\n            elif key == \"\\x1b\" and state[\"mode\"] == \"detail\":\n                state[\"mode\"] = \"dashboard\"\n        return True\n\n    def run(self):\n        self._refresh()\n\n        fd = sys.stdin.fileno()\n        old = termios.tcgetattr(fd)\n\n        try:\n            tty.setraw(fd)\n            with Live(self._render(), console=console, screen=True, refresh_per_second=4) as live:\n                pending_refresh = False\n                while True:\n                    r, _, _ = select.select([sys.stdin], [], [], 0.25)\n                    if r:\n                        key = sys.stdin.read(1)\n                        # Read arrow escape sequences\n                        if key == \"\\x1b\":\n                            r2, _, _ = select.select([sys.stdin], [], [], 0.05)\n                            if r2:\n                                rest = sys.stdin.read(2)\n                                key = key + rest\n\n                        if key == \"q\":\n                            break\n                        elif key == \"r\":\n                            pending_refresh = True\n                        else:\n                            if not self._handle_key(key):\n                                break\n\n                    if pending_refresh:\n                        pending_refresh = False\n                        self._refresh()\n\n                    live.update(self._render())\n        finally:\n            termios.tcsetattr(fd, termios.TCSADRAIN, old)\n\n\nif __name__ == \"__main__\":\n    App().run()\n"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 79,
+      "timestamp": "2026-05-14T17:36:26.470Z",
+      "assistant_uuid": "e493c06e-bf1a-439c-a5fb-222b35fc398d",
+      "tool_use_id": "toolu_01HWTZmEM2SE8HYwqNujf4eL",
+      "tool_name": "Write",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/seed.py",
+        "content": "#!/usr/bin/env python3\n\"\"\"Populate the DB with 30 days of fake stats for Reddit, Facebook, LinkedIn.\"\"\"\n\nimport datetime\nimport random\n\nfrom db import get_conn\n\nACCOUNTS = [\n    (\"reddit\",   \"u/your_handle\",   \"Reddit\"),\n    (\"facebook\", \"fb_your_page\",    \"Facebook\"),\n    (\"linkedin\", \"li_your_profile\", \"LinkedIn\"),\n]\n\n\ndef seed():\n    with get_conn() as conn:\n        with conn.cursor() as cur:\n            with open(\"schema.sql\") as f:\n                cur.execute(f.read())\n\n            account_ids = []\n            for platform, handle, label in ACCOUNTS:\n                cur.execute(\n                    \"INSERT INTO accounts (platform, handle, label) VALUES (%s, %s, %s) RETURNING id\",\n                    (platform, handle, label),\n                )\n                account_ids.append(cur.fetchone()[0])\n\n            now = datetime.datetime.utcnow()\n            for aid in account_ids:\n                followers = random.randint(2_000, 40_000)\n\n                for day in range(30, 0, -1):\n                    followers = max(0, followers + random.randint(-80, 300))\n                    ts = now - datetime.timedelta(days=day, hours=random.randint(0, 6))\n                    cur.execute(\n                        \"\"\"\n                        INSERT INTO stats_snapshots\n                            (account_id, captured_at, followers, following, posts,\n                             reach, impressions, engagement, likes, comments, shares)\n                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)\n                        \"\"\",\n                        (\n                            aid, ts,\n                            followers,\n                            random.randint(100, 3_000),\n                            random.randint(50, 8_000),\n                            random.randint(1_000, 120_000),\n                            random.randint(5_000, 600_000),\n                            round(random.uniform(0.005, 0.12), 4),\n                            random.randint(50, 15_000),\n                            random.randint(5, 2_000),\n                            random.randint(2, 800),\n                        ),\n                    )\n\n                # Recent posts\n                for i in range(8):\n                    posted = now - datetime.timedelta(days=random.randint(0, 30))\n                    cur.execute(\n                        \"\"\"\n                        INSERT INTO posts\n                            (account_id, platform_id, posted_at, title,\n                             likes, comments, shares, reach)\n                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)\n                        \"\"\",\n                        (\n                            aid,\n                            f\"post_{aid}_{i}\",\n                            posted,\n                            f\"Sample post #{i+1} from account {aid}\",\n                            random.randint(10, 5_000),\n                            random.randint(1, 500),\n                            random.randint(0, 200),\n                            random.randint(100, 30_000),\n                        ),\n                    )\n\n        conn.commit()\n    print(\"Seeded: 3 accounts, 30 days of snapshots, 8 posts each.\")\n\n\nif __name__ == \"__main__\":\n    seed()\n"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 88,
+      "timestamp": "2026-05-14T17:39:15.681Z",
+      "assistant_uuid": "d4d74c59-04fc-47e3-8273-e5390276a73a",
+      "tool_use_id": "toolu_01N8zMCz1GUr8kpToGYfG5xR",
+      "tool_name": "Bash",
+      "input": {
+        "command": "python3 -m venv /home/sean-campbell/github/willow-2.0/social-stats/.venv && /home/sean-campbell/github/willow-2.0/social-stats/.venv/bin/pip install -r /home/sean-campbell/github/willow-2.0/social-stats/requirements.txt",
+        "description": "Create venv and install dependencies"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 121,
+      "timestamp": "2026-05-14T17:44:39.541Z",
+      "assistant_uuid": "fe51b025-4d76-4a95-a715-0723936d08eb",
+      "tool_use_id": "toolu_01EvDcS38J97tkJdaECF2J4o",
+      "tool_name": "Write",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "content": "#!/usr/bin/env python3\n\"\"\"Social stats dashboard \u2014 Rich TUI, cursor-navigable.\"\"\"\n\nimport select\nimport sys\nimport termios\nimport threading\nimport time\nimport tty\n\nfrom rich import box\nfrom rich.columns import Columns\nfrom rich.console import Console, Group\nfrom rich.layout import Layout\nfrom rich.panel import Panel\nfrom rich.table import Table\nfrom rich.text import Text\nfrom rich.live import Live\n\nfrom db import fetch_dashboard, fetch_sparkline, fetch_recent_posts\n\nconsole = Console()\n\n_SPARK = \"\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588\"\n\nPLATFORM_STYLE = {\n    \"reddit\":   \"orange3\",\n    \"facebook\": \"blue\",\n    \"linkedin\": \"cyan1\",\n}\n\n\n# \u2500\u2500 rendering helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\ndef sparkline(values: list) -> str:\n    if len(values) < 2:\n        return \"\u2500\" * max(len(values), 8)\n    mn, mx = min(values), max(values)\n    if mx == mn:\n        return \"\u2584\" * len(values)\n    span = mx - mn\n    return \"\".join(_SPARK[int((v - mn) / span * 7)] for v in values)\n\n\ndef fmt_num(val) -> str:\n    if val is None:\n        return \"\u2500\"\n    if isinstance(val, float):\n        return f\"{val:.2%}\"\n    n = int(val)\n    if n >= 1_000_000:\n        return f\"{n/1_000_000:.1f}M\"\n    if n >= 1_000:\n        return f\"{n/1_000:.1f}k\"\n    return f\"{n:,}\"\n\n\ndef delta_markup(cur_val, prev_val) -> str:\n    if prev_val is None or cur_val is None:\n        return \"\"\n    diff = float(cur_val) - float(prev_val)\n    if diff == 0:\n        return \"[dim]\u2500[/dim]\"\n    sign = \"+\" if diff > 0 else \"\"\n    color = \"green\" if diff > 0 else \"red\"\n    return f\"[{color}]{sign}{fmt_num(diff)}[/{color}]\"\n\n\ndef account_panel(entry: dict, spark: list, selected: bool) -> Panel:\n    cur = entry[\"current\"]\n    prev = entry.get(\"previous\")\n    platform = cur[\"platform\"]\n    color = PLATFORM_STYLE.get(platform, \"white\")\n    border = \"bright_white\" if selected else color\n\n    METRICS = [\n        (\"Followers\",   \"followers\"),\n        (\"Following\",   \"following\"),\n        (\"Posts\",       \"posts\"),\n        (\"Reach\",       \"reach\"),\n        (\"Impressions\", \"impressions\"),\n        (\"Engagement\",  \"engagement\"),\n        (\"Likes\",       \"likes\"),\n        (\"Comments\",    \"comments\"),\n        (\"Shares\",      \"shares\"),\n    ]\n\n    t = Table.grid(padding=(0, 1))\n    t.add_column(min_width=12, style=\"dim\")\n    t.add_column(min_width=9, justify=\"right\", style=\"bold\")\n    t.add_column(min_width=8, justify=\"left\")\n\n    for label, key in METRICS:\n        c = cur.get(key)\n        p = prev.get(key) if prev else None\n        t.add_row(label, fmt_num(c), Text.from_markup(delta_markup(c, p)))\n\n    t.add_row(\"\", \"\", \"\")\n    spark_str = sparkline(spark) if spark else \"\u2500\" * 12\n    t.add_row(\n        Text(\"sparkline\", style=\"dim\"),\n        Text(spark_str, style=color),\n        Text(\"\"),\n    )\n\n    handle = cur.get(\"handle\", \"\")\n    label = cur.get(\"label\") or handle\n    title = f\"[{color}]{platform.upper()}[/{color}]  [dim]{handle}[/dim]\"\n\n    return Panel(t, title=title, border_style=border, padding=(1, 2))\n\n\ndef posts_panel(posts: list, platform: str) -> Panel:\n    color = PLATFORM_STYLE.get(platform, \"white\")\n    t = Table(box=box.SIMPLE, show_header=True, header_style=f\"bold {color}\")\n    t.add_column(\"Posted\", style=\"dim\", min_width=10)\n    t.add_column(\"Title\", min_width=24, no_wrap=True)\n    t.add_column(\"Likes\", justify=\"right\")\n    t.add_column(\"Comments\", justify=\"right\")\n    t.add_column(\"Shares\", justify=\"right\")\n    t.add_column(\"Reach\", justify=\"right\")\n\n    for p in posts:\n        posted = p[\"posted_at\"].strftime(\"%Y-%m-%d\") if p.get(\"posted_at\") else \"\u2500\"\n        title_str = (p.get(\"title\") or \"\u2500\")[:32]\n        t.add_row(\n            posted, title_str,\n            fmt_num(p.get(\"likes\")),\n            fmt_num(p.get(\"comments\")),\n            fmt_num(p.get(\"shares\")),\n            fmt_num(p.get(\"reach\")),\n        )\n\n    return Panel(t, title=f\"[{color}]Recent Posts[/{color}]\", border_style=color)\n\n\n# \u2500\u2500 layout update (in-place, persistent layout object) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\ndef update_layout(layout: Layout, state: dict) -> None:\n    data = state[\"data\"]\n    spark_map = state[\"spark_map\"]\n    posts_map = state[\"posts_map\"]\n    cursor = state[\"cursor\"]\n    mode = state[\"mode\"]\n    last_updated = state[\"last_updated\"]\n    err = state.get(\"error\")\n\n    # header\n    ts = Text(justify=\"center\")\n    ts.append(\"SOCIAL STATS TRACKER\", style=\"bold white\")\n    ts.append(f\"  \u00b7  {last_updated}\", style=\"dim\")\n    layout[\"header\"].update(Panel(ts, border_style=\"dim\"))\n\n    # footer\n    if mode == \"detail\":\n        keys = \"[esc] back  [\u2190\u2192] switch  [r] refresh  [q] quit\"\n    else:\n        keys = \"[\u2190\u2192] select  [enter] detail  [r] refresh  [q] quit\"\n    layout[\"footer\"].update(\n        Panel(Text(keys, justify=\"center\", style=\"dim\"), border_style=\"dim\")\n    )\n\n    # body\n    if err:\n        layout[\"body\"].update(Panel(f\"[red]{err}[/red]\", border_style=\"red\"))\n        return\n\n    if not data:\n        layout[\"body\"].update(\n            Panel(\"[dim]No data. Run seed.py to populate.[/dim]\", border_style=\"dim\")\n        )\n        return\n\n    if mode == \"detail\":\n        entry = data[cursor]\n        cur = entry[\"current\"]\n        acct_id = cur[\"account_id\"]\n        platform = cur[\"platform\"]\n\n        left = account_panel(entry, spark_map.get(acct_id, []), True)\n        right = posts_panel(posts_map.get(acct_id, []), platform)\n\n        # Use a two-column table to avoid Layout rebuild\n        body_table = Table.grid(expand=True)\n        body_table.add_column(ratio=1)\n        body_table.add_column(ratio=2)\n        body_table.add_row(left, right)\n        layout[\"body\"].update(body_table)\n    else:\n        body_table = Table.grid(expand=True)\n        for _ in data:\n            body_table.add_column(ratio=1)\n        panels = [\n            account_panel(\n                entry,\n                spark_map.get(entry[\"current\"][\"account_id\"], []),\n                i == cursor,\n            )\n            for i, entry in enumerate(data)\n        ]\n        body_table.add_row(*panels)\n        layout[\"body\"].update(body_table)\n\n\n# \u2500\u2500 app \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nclass App:\n    def __init__(self):\n        self._lock = threading.Lock()\n        self._state = {\n            \"data\": [],\n            \"spark_map\": {},\n            \"posts_map\": {},\n            \"cursor\": 0,\n            \"mode\": \"dashboard\",\n            \"last_updated\": \"\u2500\",\n            \"error\": None,\n        }\n\n    def _refresh(self):\n        try:\n            data = fetch_dashboard()\n            spark_map = {\n                e[\"current\"][\"account_id\"]: fetch_sparkline(e[\"current\"][\"account_id\"])\n                for e in data\n            }\n            posts_map = {\n                e[\"current\"][\"account_id\"]: fetch_recent_posts(e[\"current\"][\"account_id\"])\n                for e in data\n            }\n            with self._lock:\n                self._state[\"data\"] = data\n                self._state[\"spark_map\"] = spark_map\n                self._state[\"posts_map\"] = posts_map\n                self._state[\"last_updated\"] = time.strftime(\"%H:%M:%S\")\n                self._state[\"error\"] = None\n                count = len(data)\n                if self._state[\"cursor\"] >= count:\n                    self._state[\"cursor\"] = max(0, count - 1)\n        except Exception as exc:\n            with self._lock:\n                self._state[\"error\"] = str(exc)\n                self._state[\"last_updated\"] = time.strftime(\"%H:%M:%S\")\n\n    def _handle_key(self, key: str) -> bool:\n        with self._lock:\n            state = self._state\n            count = len(state[\"data\"])\n            if key == \"q\":\n                return False\n            elif key in (\"\\x1b[C\", \"\\x1b[D\"):\n                delta = 1 if key == \"\\x1b[C\" else -1\n                state[\"cursor\"] = (state[\"cursor\"] + delta) % max(count, 1)\n            elif key in (\"\\r\", \"\\n\") and state[\"mode\"] == \"dashboard\":\n                state[\"mode\"] = \"detail\"\n            elif key == \"\\x1b\" and state[\"mode\"] == \"detail\":\n                state[\"mode\"] = \"dashboard\"\n        return True\n\n    def run(self):\n        self._refresh()\n\n        # Build the layout once \u2014 update it in place every frame\n        layout = Layout()\n        layout.split_column(\n            Layout(name=\"header\", size=3),\n            Layout(name=\"body\"),\n            Layout(name=\"footer\", size=3),\n        )\n\n        fd = sys.stdin.fileno()\n        old = termios.tcgetattr(fd)\n\n        try:\n            tty.setraw(fd)\n            with Live(layout, console=console, screen=True, refresh_per_second=8) as _:\n                while True:\n                    with self._lock:\n                        import copy\n                        snapshot = copy.deepcopy(self._state)\n                    update_layout(layout, snapshot)\n\n                    r, _, _ = select.select([sys.stdin], [], [], 0.1)\n                    if r:\n                        key = sys.stdin.read(1)\n                        if key == \"\\x1b\":\n                            r2, _, _ = select.select([sys.stdin], [], [], 0.05)\n                            if r2:\n                                rest = sys.stdin.read(2)\n                                key = key + rest\n\n                        if key == \"q\":\n                            break\n                        elif key == \"r\":\n                            self._refresh()\n                        else:\n                            if not self._handle_key(key):\n                                break\n        finally:\n            termios.tcsetattr(fd, termios.TCSADRAIN, old)\n\n\nif __name__ == \"__main__\":\n    App().run()\n"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 137,
+      "timestamp": "2026-05-14T17:46:50.914Z",
+      "assistant_uuid": "2b4eaf33-faaa-4e88-906d-f57ca0ea643c",
+      "tool_use_id": "toolu_01JKLXr9uGXKaXzH7cjgpgns",
+      "tool_name": "Read",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "offset": 153,
+        "limit": 40
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 140,
+      "timestamp": "2026-05-14T17:46:55.412Z",
+      "assistant_uuid": "f6aef73a-c3e6-46b5-b25b-7fc197970864",
+      "tool_use_id": "toolu_01XjFiUVDAkMqzcAdB2UB2gG",
+      "tool_name": "Read",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "offset": 210,
+        "limit": 60
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 145,
+      "timestamp": "2026-05-14T17:46:58.666Z",
+      "assistant_uuid": "1a771479-c5dc-4947-984e-1c3d0931ef7d",
+      "tool_use_id": "toolu_016Yit8ggwFg1NaNSHGfNHYQ",
+      "tool_name": "Read",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "offset": 271,
+        "limit": 35
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 147,
+      "timestamp": "2026-05-14T17:47:03.405Z",
+      "assistant_uuid": "d91951e9-11f6-40cd-88b3-cc380fe3afc5",
+      "tool_use_id": "toolu_01WsVfUYz1t89HTXkRh4shud",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "        fd = sys.stdin.fileno()\n        old = termios.tcgetattr(fd)\n\n        try:\n            tty.setraw(fd)\n            with Live(layout, console=console, screen=True, refresh_per_second=8) as _:",
+        "new_string": "        fd = sys.stdin.fileno()\n        old = termios.tcgetattr(fd)\n\n        try:\n            tty.setcbreak(fd)  # cbreak keeps OPOST; setraw breaks ANSI escape output\n            with Live(layout, console=console, screen=True, refresh_per_second=8) as _:"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 172,
+      "timestamp": "2026-05-14T17:54:40.831Z",
+      "assistant_uuid": "2cb2d3e3-1f6c-47ce-8c6f-ceae8c4d361b",
+      "tool_use_id": "toolu_016e8EvBDxcuFEdmeevKR7Cd",
+      "tool_name": "AskUserQuestion",
+      "input": {
+        "questions": [
+          {
+            "question": "How is the subreddit data getting into the system?",
+            "header": "Data source",
+            "multiSelect": false,
+            "options": [
+              {
+                "label": "Reddit API directly",
+                "description": "App calls Reddit API live \u2014 needs client_id, secret, refresh_token"
+              },
+              {
+                "label": "Already in Postgres",
+                "description": "You have an ingest pipeline that already populates the DB"
+              },
+              {
+                "label": "Build the ingest too",
+                "description": "Build both the Reddit API fetcher and the TUI card"
+              }
+            ]
+          },
+          {
+            "question": "Which mod metrics matter most for the card?",
+            "header": "Mod metrics",
+            "multiSelect": true,
+            "options": [
+              {
+                "label": "Subscriber growth",
+                "description": "Total subs + delta, active users now"
+              },
+              {
+                "label": "Mod queue",
+                "description": "Unmoderated, reported, spam counts"
+              },
+              {
+                "label": "Recent mod actions",
+                "description": "Last N actions from the mod log"
+              },
+              {
+                "label": "Banned / approved users",
+                "description": "Running totals"
+              }
+            ]
+          }
+        ]
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 176,
+      "timestamp": "2026-05-14T18:12:44.852Z",
+      "assistant_uuid": "86a4058f-7791-466a-8220-495db41725d4",
+      "tool_use_id": "toolu_01UEemP2CZ4ufV7UQxLg5VYp",
+      "tool_name": "Bash",
+      "input": {
+        "command": "/home/sean-campbell/github/willow-2.0/social-stats/.venv/bin/pip install praw 2>&1 | tail -3",
+        "description": "Install praw into venv"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 178,
+      "timestamp": "2026-05-14T18:12:56.221Z",
+      "assistant_uuid": "e3d96feb-3775-4e4a-90f5-e4df914f1eeb",
+      "tool_use_id": "toolu_01DjLhr2zcaBUKJKVRJTAwJ6",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/requirements.txt",
+        "old_string": "psycopg2-binary>=2.9\nrich>=13.0\n",
+        "new_string": "psycopg2-binary>=2.9\nrich>=13.0\npraw>=7.8\n"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 181,
+      "timestamp": "2026-05-14T18:13:01.158Z",
+      "assistant_uuid": "fb6d9967-66d4-48ee-a583-c15ce588d86c",
+      "tool_use_id": "toolu_01Lo4hu4is7Y8LbYmEugXnt5",
+      "tool_name": "Read",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/schema.sql"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 183,
+      "timestamp": "2026-05-14T18:13:07.125Z",
+      "assistant_uuid": "36400787-9b2c-4ba8-afa0-6b44a04046ab",
+      "tool_use_id": "toolu_016g4kVF85XZ9mTVnyyUUf8b",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/schema.sql",
+        "old_string": "CREATE INDEX IF NOT EXISTS idx_posts_account_time\n    ON posts (account_id, posted_at DESC);",
+        "new_string": "CREATE INDEX IF NOT EXISTS idx_posts_account_time\n    ON posts (account_id, posted_at DESC);\n\nCREATE TABLE IF NOT EXISTS subreddits (\n    id          SERIAL PRIMARY KEY,\n    name        TEXT NOT NULL UNIQUE,   -- without r/\n    created_at  TIMESTAMPTZ DEFAULT now()\n);\n\nCREATE TABLE IF NOT EXISTS subreddit_snapshots (\n    id              SERIAL PRIMARY KEY,\n    subreddit_id    INT REFERENCES subreddits(id) ON DELETE CASCADE,\n    captured_at     TIMESTAMPTZ DEFAULT now(),\n    subscribers     BIGINT,\n    active_users    INT,\n    mod_queue       INT,\n    reports         INT,\n    spam            INT\n);\n\nCREATE INDEX IF NOT EXISTS idx_sub_snapshots_time\n    ON subreddit_snapshots (subreddit_id, captured_at DESC);"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 185,
+      "timestamp": "2026-05-14T18:13:22.125Z",
+      "assistant_uuid": "1a135b10-179d-4757-aaaa-c95feb2c536a",
+      "tool_use_id": "toolu_014zUNtAU6oxj7SWWkVcE1os",
+      "tool_name": "Write",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/fetch_reddit.py",
+        "content": "#!/usr/bin/env python3\n\"\"\"\nFetch subreddit mod stats via PRAW and store a snapshot to Postgres.\n\nRequired env vars:\n  REDDIT_CLIENT_ID\n  REDDIT_CLIENT_SECRET\n  REDDIT_REFRESH_TOKEN\n  REDDIT_USERNAME\n  SUBREDDIT           \u2014 subreddit name (without r/)\n  DATABASE_URL        \u2014 postgres connection string\n\nRun on a schedule (cron, systemd timer) to build history.\n\"\"\"\n\nimport os\nimport sys\nimport praw\nfrom db import get_conn\n\nREQUIRED = [\n    \"REDDIT_CLIENT_ID\",\n    \"REDDIT_CLIENT_SECRET\",\n    \"REDDIT_REFRESH_TOKEN\",\n    \"REDDIT_USERNAME\",\n    \"SUBREDDIT\",\n]\n\n\ndef get_reddit() -> praw.Reddit:\n    missing = [k for k in REQUIRED if not os.environ.get(k)]\n    if missing:\n        print(f\"Missing env vars: {', '.join(missing)}\", file=sys.stderr)\n        sys.exit(1)\n\n    return praw.Reddit(\n        client_id=os.environ[\"REDDIT_CLIENT_ID\"],\n        client_secret=os.environ[\"REDDIT_CLIENT_SECRET\"],\n        refresh_token=os.environ[\"REDDIT_REFRESH_TOKEN\"],\n        user_agent=f\"social-stats-tracker/1.0 by u/{os.environ['REDDIT_USERNAME']}\",\n    )\n\n\ndef _count(generator, cap=500) -> int:\n    \"\"\"Count items from a PRAW listing without fetching unboundedly.\"\"\"\n    n = 0\n    for _ in generator:\n        n += 1\n        if n >= cap:\n            break\n    return n\n\n\ndef fetch_and_store(subreddit_name: str) -> None:\n    reddit = get_reddit()\n    sub = reddit.subreddit(subreddit_name)\n\n    subscribers = sub.subscribers\n    active_users = sub.active_user_count\n    mod_queue = _count(sub.mod.modqueue(limit=500))\n    reports = _count(sub.mod.reports(limit=500))\n    spam = _count(sub.mod.spam(limit=500))\n\n    with get_conn() as conn:\n        with conn.cursor() as cur:\n            cur.execute(\n                \"\"\"\n                INSERT INTO subreddits (name)\n                VALUES (%s)\n                ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name\n                RETURNING id\n                \"\"\",\n                (subreddit_name,),\n            )\n            subreddit_id = cur.fetchone()[0]\n\n            cur.execute(\n                \"\"\"\n                INSERT INTO subreddit_snapshots\n                    (subreddit_id, subscribers, active_users, mod_queue, reports, spam)\n                VALUES (%s, %s, %s, %s, %s, %s)\n                \"\"\",\n                (subreddit_id, subscribers, active_users, mod_queue, reports, spam),\n            )\n        conn.commit()\n\n    print(\n        f\"r/{subreddit_name}: {subscribers:,} subs | \"\n        f\"{active_users} active | \"\n        f\"queue={mod_queue} reports={reports} spam={spam}\"\n    )\n\n\nif __name__ == \"__main__\":\n    name = os.environ.get(\"SUBREDDIT\", \"\").strip()\n    if not name:\n        print(\"Set SUBREDDIT env var.\", file=sys.stderr)\n        sys.exit(1)\n    fetch_and_store(name)\n"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 192,
+      "timestamp": "2026-05-14T18:13:34.210Z",
+      "assistant_uuid": "ba4e26d1-4af6-4656-bc20-c218ca71ac4a",
+      "tool_use_id": "toolu_01V2MUY9YyVpHcHR2zSEkWbj",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/db.py",
+        "old_string": "def fetch_recent_posts(account_id: int, limit: int = 5):",
+        "new_string": "def fetch_subreddit_dashboard():\n    \"\"\"Latest + previous snapshot per subreddit.\"\"\"\n    sql = \"\"\"\n    WITH ranked AS (\n        SELECT\n            s.id          AS subreddit_id,\n            s.name,\n            sn.captured_at,\n            sn.subscribers,\n            sn.active_users,\n            sn.mod_queue,\n            sn.reports,\n            sn.spam,\n            ROW_NUMBER() OVER (\n                PARTITION BY s.id ORDER BY sn.captured_at DESC\n            ) AS rn\n        FROM subreddits s\n        JOIN subreddit_snapshots sn ON sn.subreddit_id = s.id\n    )\n    SELECT * FROM ranked WHERE rn <= 2\n    ORDER BY subreddit_id, rn\n    \"\"\"\n    with get_conn() as conn:\n        with conn.cursor(cursor_factory=RealDictCursor) as cur:\n            cur.execute(sql)\n            rows = cur.fetchall()\n\n    subs: dict = {}\n    for row in rows:\n        sid = row[\"subreddit_id\"]\n        if sid not in subs:\n            subs[sid] = {\"current\": None, \"previous\": None}\n        if row[\"rn\"] == 1:\n            subs[sid][\"current\"] = dict(row)\n        else:\n            subs[sid][\"previous\"] = dict(row)\n\n    return [v for v in subs.values() if v[\"current\"] is not None]\n\n\ndef fetch_recent_posts(account_id: int, limit: int = 5):"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 195,
+      "timestamp": "2026-05-14T18:13:41.287Z",
+      "assistant_uuid": "980a3f50-c3b5-4409-a658-2852444576e7",
+      "tool_use_id": "toolu_01DfosQTCoZV6LGt8h7wTT8y",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "from db import fetch_dashboard, fetch_sparkline, fetch_recent_posts",
+        "new_string": "from db import fetch_dashboard, fetch_sparkline, fetch_recent_posts, fetch_subreddit_dashboard"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 198,
+      "timestamp": "2026-05-14T18:13:57.251Z",
+      "assistant_uuid": "c31baecc-c5cb-4665-97b6-3ce91654128b",
+      "tool_use_id": "toolu_01YZ7Sv85fS77H4yanHhLE5j",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "# \u2500\u2500 layout update (in-place, persistent layout object) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+        "new_string": "def mod_card(entry: dict) -> Panel:\n    cur = entry[\"current\"]\n    prev = entry.get(\"previous\")\n    name = cur[\"name\"]\n\n    QUEUE_METRICS = [\n        (\"Mod Queue\", \"mod_queue\"),\n        (\"Reports\",   \"reports\"),\n        (\"Spam\",      \"spam\"),\n    ]\n\n    t = Table.grid(padding=(0, 1))\n    t.add_column(min_width=12, style=\"dim\")\n    t.add_column(min_width=8, justify=\"right\", style=\"bold\")\n    t.add_column(min_width=8, justify=\"left\")\n\n    for label, key in QUEUE_METRICS:\n        c = cur.get(key)\n        p = prev.get(key) if prev else None\n        # For queue items, growth is bad \u2014 invert colours\n        if c is not None and p is not None:\n            diff = (c or 0) - (p or 0)\n            sign = \"+\" if diff > 0 else \"\"\n            if diff == 0:\n                delta = Text.from_markup(\"[dim]\u2500[/dim]\")\n            else:\n                color = \"red\" if diff > 0 else \"green\"\n                delta = Text.from_markup(f\"[{color}]{sign}{diff}[/{color}]\")\n        else:\n            delta = Text(\"\")\n        t.add_row(label, fmt_num(c), delta)\n\n    t.add_row(\"\", \"\", \"\")\n    t.add_row(Text(\"Subscribers\", style=\"dim\"), Text(fmt_num(cur.get(\"subscribers\")), style=\"bold\"), Text(\"\"))\n    t.add_row(Text(\"Active now\",  style=\"dim\"), Text(fmt_num(cur.get(\"active_users\")), style=\"bold\"), Text(\"\"))\n\n    # Urgency indicator\n    total_queue = (cur.get(\"mod_queue\") or 0) + (cur.get(\"reports\") or 0) + (cur.get(\"spam\") or 0)\n    if total_queue == 0:\n        badge = \"[green]\u25cf clear[/green]\"\n    elif total_queue < 10:\n        badge = \"[yellow]\u25cf pending[/yellow]\"\n    else:\n        badge = \"[red]\u25cf action needed[/red]\"\n\n    title = f\"[orange3]r/{name}[/orange3]  {badge}\"\n    return Panel(t, title=title, border_style=\"orange3\", padding=(1, 2))\n\n\n# \u2500\u2500 layout update (in-place, persistent layout object) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 204,
+      "timestamp": "2026-05-14T18:14:02.477Z",
+      "assistant_uuid": "15135347-f1de-4592-8bb1-e7852bdfbee8",
+      "tool_use_id": "toolu_01KHKezsDamsBemgUp6PKWmy",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "        self._state = {\n            \"data\": [],\n            \"spark_map\": {},\n            \"posts_map\": {},\n            \"cursor\": 0,\n            \"mode\": \"dashboard\",\n            \"last_updated\": \"\u2500\",\n            \"error\": None,\n        }",
+        "new_string": "        self._state = {\n            \"data\": [],\n            \"spark_map\": {},\n            \"posts_map\": {},\n            \"subreddits\": [],\n            \"cursor\": 0,\n            \"mode\": \"dashboard\",\n            \"last_updated\": \"\u2500\",\n            \"error\": None,\n        }"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 207,
+      "timestamp": "2026-05-14T18:14:06.979Z",
+      "assistant_uuid": "fc1ea757-9c4a-4a85-9ff0-55b8918d3009",
+      "tool_use_id": "toolu_015hzmm6NLW57PxN9zxeTVPJ",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "            with self._lock:\n                self._state[\"data\"] = data\n                self._state[\"spark_map\"] = spark_map\n                self._state[\"posts_map\"] = posts_map\n                self._state[\"last_updated\"] = time.strftime(\"%H:%M:%S\")\n                self._state[\"error\"] = None",
+        "new_string": "            subreddits = fetch_subreddit_dashboard()\n            with self._lock:\n                self._state[\"data\"] = data\n                self._state[\"spark_map\"] = spark_map\n                self._state[\"posts_map\"] = posts_map\n                self._state[\"subreddits\"] = subreddits\n                self._state[\"last_updated\"] = time.strftime(\"%H:%M:%S\")\n                self._state[\"error\"] = None"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 210,
+      "timestamp": "2026-05-14T18:14:12.519Z",
+      "assistant_uuid": "6ac39e39-45d9-4d8f-a662-439f98e5bf35",
+      "tool_use_id": "toolu_01J7kB83yaAoj7SrmYuYCetM",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "def update_layout(layout: Layout, state: dict) -> None:\n    data = state[\"data\"]\n    spark_map = state[\"spark_map\"]\n    posts_map = state[\"posts_map\"]\n    cursor = state[\"cursor\"]\n    mode = state[\"mode\"]\n    last_updated = state[\"last_updated\"]\n    err = state.get(\"error\")",
+        "new_string": "def update_layout(layout: Layout, state: dict) -> None:\n    data = state[\"data\"]\n    spark_map = state[\"spark_map\"]\n    posts_map = state[\"posts_map\"]\n    subreddits = state.get(\"subreddits\", [])\n    cursor = state[\"cursor\"]\n    mode = state[\"mode\"]\n    last_updated = state[\"last_updated\"]\n    err = state.get(\"error\")"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 212,
+      "timestamp": "2026-05-14T18:14:19.990Z",
+      "assistant_uuid": "d4242379-0d82-4e0a-bf4b-e2d44be8bb75",
+      "tool_use_id": "toolu_01HXLSC4HXqv9azJu8vnjfSX",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "    else:\n        body_table = Table.grid(expand=True)\n        for _ in data:\n            body_table.add_column(ratio=1)\n        panels = [\n            account_panel(\n                entry,\n                spark_map.get(entry[\"current\"][\"account_id\"], []),\n                i == cursor,\n            )\n            for i, entry in enumerate(data)\n        ]\n        body_table.add_row(*panels)\n        layout[\"body\"].update(body_table)",
+        "new_string": "    else:\n        outer = Table.grid(expand=True)\n        outer.add_column(ratio=1)\n\n        # Social account row\n        accounts_row = Table.grid(expand=True)\n        for _ in data:\n            accounts_row.add_column(ratio=1)\n        panels = [\n            account_panel(\n                entry,\n                spark_map.get(entry[\"current\"][\"account_id\"], []),\n                i == cursor,\n            )\n            for i, entry in enumerate(data)\n        ]\n        if panels:\n            accounts_row.add_row(*panels)\n        outer.add_row(accounts_row)\n\n        # Subreddit mod row (only if data exists)\n        if subreddits:\n            mod_row = Table.grid(expand=True)\n            for _ in subreddits:\n                mod_row.add_column(ratio=1)\n            mod_row.add_row(*[mod_card(e) for e in subreddits])\n            outer.add_row(mod_row)\n\n        layout[\"body\"].update(outer)"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 218,
+      "timestamp": "2026-05-14T18:14:28.071Z",
+      "assistant_uuid": "1ec2453c-eede-4ff8-9478-e887e29b2d85",
+      "tool_use_id": "toolu_01Xb114M9QG7fEBcxfSMXZB9",
+      "tool_name": "Bash",
+      "input": {
+        "command": "cd /home/sean-campbell/github/willow-2.0/social-stats && DATABASE_URL=postgresql:///social_stats .venv/bin/python -c \"\nfrom db import get_conn\nwith get_conn() as conn:\n    with conn.cursor() as cur:\n        cur.execute(open('schema.sql').read())\n    conn.commit()\nprint('schema updated')\n\"",
+        "description": "Apply schema additions to live DB"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 220,
+      "timestamp": "2026-05-14T18:14:35.662Z",
+      "assistant_uuid": "aa113d92-a03a-4499-8e81-f65a65d58bd3",
+      "tool_use_id": "toolu_01EW1QrKCpBfosyjnSuWVwg9",
+      "tool_name": "Bash",
+      "input": {
+        "command": "DATABASE_URL=postgresql:///social_stats .venv/bin/python -c \"\nimport random, datetime\nfrom db import get_conn\n\nSUB = 'your_subreddit'\n\nwith get_conn() as conn:\n    with conn.cursor() as cur:\n        cur.execute(\n            'INSERT INTO subreddits (name) VALUES (%s) ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name RETURNING id',\n            (SUB,)\n        )\n        sid = cur.fetchone()[0]\n        now = datetime.datetime.utcnow()\n        subs = random.randint(5000, 80000)\n        for day in range(30, 0, -1):\n            subs = max(0, subs + random.randint(-20, 150))\n            ts = now - datetime.timedelta(days=day)\n            cur.execute(\n                'INSERT INTO subreddit_snapshots (subreddit_id, captured_at, subscribers, active_users, mod_queue, reports, spam) VALUES (%s,%s,%s,%s,%s,%s,%s)',\n                (sid, ts, subs, random.randint(10,500), random.randint(0,25), random.randint(0,15), random.randint(0,8))\n            )\n    conn.commit()\nprint('subreddit seeded')\n\"",
+        "description": "Seed fake subreddit mod data"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 230,
+      "timestamp": "2026-05-14T18:21:29.247Z",
+      "assistant_uuid": "63676d07-12bb-49ac-839d-37f75ff3dbcf",
+      "tool_use_id": "toolu_01L5azcwbywbhQR4JW3rggSb",
+      "tool_name": "Read",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 237,
+      "timestamp": "2026-05-14T18:22:07.342Z",
+      "assistant_uuid": "8c2cb5ee-60c6-4f9f-94d5-502c7df66ff7",
+      "tool_use_id": "toolu_01QZvLimqX443YXWtqWpHZ2Q",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/db.py",
+        "old_string": "def fetch_subreddit_dashboard():",
+        "new_string": "def fetch_multi_sparklines(account_id: int, limit: int = 20) -> dict:\n    \"\"\"Return {metric: [float, ...]} for all plottable metrics, oldest-first.\"\"\"\n    sql = \"\"\"\n        SELECT followers, reach, engagement, likes, comments, shares\n        FROM stats_snapshots\n        WHERE account_id = %s\n        ORDER BY captured_at DESC\n        LIMIT %s\n    \"\"\"\n    with get_conn() as conn:\n        with conn.cursor() as cur:\n            cur.execute(sql, (account_id, limit))\n            rows = cur.fetchall()\n\n    keys = [\"followers\", \"reach\", \"engagement\", \"likes\", \"comments\", \"shares\"]\n    result: dict = {k: [] for k in keys}\n    for row in reversed(rows):\n        for i, k in enumerate(keys):\n            if row[i] is not None:\n                result[k].append(float(row[i]))\n    return result\n\n\ndef fetch_subreddit_dashboard():"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 242,
+      "timestamp": "2026-05-14T18:22:21.066Z",
+      "assistant_uuid": "eb30707a-d2e0-4b46-91f2-018196072c09",
+      "tool_use_id": "toolu_01L7Su9PGqcmLdLoGCoUuMme",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "from rich import box\nfrom rich.columns import Columns\nfrom rich.console import Console, Group\nfrom rich.layout import Layout\nfrom rich.panel import Panel\nfrom rich.table import Table\nfrom rich.text import Text\nfrom rich.live import Live\n\nfrom db import fetch_dashboard, fetch_sparkline, fetch_recent_posts, fetch_subreddit_dashboard",
+        "new_string": "from rich import box\nfrom rich.align import Align\nfrom rich.columns import Columns\nfrom rich.console import Console, Group\nfrom rich.layout import Layout\nfrom rich.padding import Padding\nfrom rich.panel import Panel\nfrom rich.rule import Rule\nfrom rich.table import Table\nfrom rich.text import Text\nfrom rich.live import Live\n\nfrom db import (\n    fetch_dashboard, fetch_sparkline, fetch_multi_sparklines,\n    fetch_recent_posts, fetch_subreddit_dashboard,\n)"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 246,
+      "timestamp": "2026-05-14T18:22:47.278Z",
+      "assistant_uuid": "9c7b63a5-52da-4fb1-adae-1669ebd4d6b0",
+      "tool_use_id": "toolu_01FWfbDrScjPTJGzGrK5p9YK",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "def mod_card(entry: dict) -> Panel:",
+        "new_string": "def _spark_row(label: str, values: list, color: str) -> tuple:\n    \"\"\"Returns (label_text, spark_text, range_text) for the sparklines table.\"\"\"\n    spark = sparkline(values) if len(values) >= 2 else \"\u2500\" * 12\n    if values:\n        lo, hi = min(values), max(values)\n        is_pct = lo < 1 and hi < 1\n        if is_pct:\n            rng = f\"{lo:.1%} \u2192 {hi:.1%}\"\n        elif hi >= 1000:\n            rng = f\"{fmt_num(lo)} \u2192 {fmt_num(hi)}\"\n        else:\n            rng = f\"{lo:.0f} \u2192 {hi:.0f}\"\n    else:\n        rng = \"\u2500\"\n    return (\n        Text(label, style=\"dim\"),\n        Text(spark, style=color),\n        Text(rng, style=\"dim\"),\n    )\n\n\ndef popup_content(entry: dict, multi_sparks: dict, posts: list) -> Panel:\n    cur = entry[\"current\"]\n    prev = entry.get(\"previous\")\n    platform = cur[\"platform\"]\n    color = PLATFORM_STYLE.get(platform, \"white\")\n    handle = cur.get(\"handle\", \"\")\n\n    # \u2500\u2500 summary bar \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    KEY_METRICS = [\n        (\"Followers\",  \"followers\"),\n        (\"Reach\",      \"reach\"),\n        (\"Engagement\", \"engagement\"),\n        (\"Likes\",      \"likes\"),\n    ]\n    summary = Table.grid(expand=True, padding=(0, 2))\n    for _ in KEY_METRICS:\n        summary.add_column(ratio=1, justify=\"center\")\n\n    labels_row, values_row, deltas_row = [], [], []\n    for label, key in KEY_METRICS:\n        c = cur.get(key)\n        p = prev.get(key) if prev else None\n        labels_row.append(Text(label, style=\"dim\", justify=\"center\"))\n        values_row.append(Text(fmt_num(c), style=f\"bold {color}\", justify=\"center\"))\n        deltas_row.append(Text.from_markup(delta_markup(c, p) or \"[dim]\u2500[/dim]\"))\n\n    summary.add_row(*labels_row)\n    summary.add_row(*values_row)\n    summary.add_row(*deltas_row)\n\n    # \u2500\u2500 sparklines \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    spark_table = Table.grid(padding=(0, 1))\n    spark_table.add_column(min_width=12, style=\"dim\")\n    spark_table.add_column(min_width=20)\n    spark_table.add_column(min_width=18, style=\"dim\")\n\n    SPARK_METRICS = [\n        (\"Followers\",  \"followers\"),\n        (\"Reach\",      \"reach\"),\n        (\"Engagement\", \"engagement\"),\n        (\"Likes\",      \"likes\"),\n        (\"Comments\",   \"comments\"),\n        (\"Shares\",     \"shares\"),\n    ]\n    for label, key in SPARK_METRICS:\n        vals = multi_sparks.get(key, [])\n        spark_table.add_row(*_spark_row(label, vals, color))\n\n    # \u2500\u2500 recent posts \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    pt = Table(box=box.SIMPLE, show_header=True, header_style=f\"bold {color}\", expand=True)\n    pt.add_column(\"Posted\", style=\"dim\", min_width=10)\n    pt.add_column(\"Title\", min_width=28, no_wrap=True)\n    pt.add_column(\"Likes\",    justify=\"right\")\n    pt.add_column(\"Comments\", justify=\"right\")\n    pt.add_column(\"Reach\",    justify=\"right\")\n\n    for p in posts:\n        posted = p[\"posted_at\"].strftime(\"%Y-%m-%d\") if p.get(\"posted_at\") else \"\u2500\"\n        pt.add_row(\n            posted,\n            (p.get(\"title\") or \"\u2500\")[:40],\n            fmt_num(p.get(\"likes\")),\n            fmt_num(p.get(\"comments\")),\n            fmt_num(p.get(\"reach\")),\n        )\n\n    # \u2500\u2500 assemble \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    body = Group(\n        summary,\n        Text(\"\"),\n        Rule(style=\"dim\"),\n        Text(\" Metric History\", style=\"dim\"),\n        spark_table,\n        Rule(style=\"dim\"),\n        Text(\" Recent Posts\", style=\"dim\"),\n        pt,\n    )\n\n    title = f\"[{color}]{platform.upper()}[/{color}]  [bold]{handle}[/bold]\"\n    return Panel(body, title=title, border_style=color, padding=(1, 3))\n\n\ndef mod_card(entry: dict) -> Panel:"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 252,
+      "timestamp": "2026-05-14T18:23:08.782Z",
+      "assistant_uuid": "8b22ea20-f7b6-4de2-82ed-2293a5c27f51",
+      "tool_use_id": "toolu_01F1DX7sJWY81XiMmUGWc1r6",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "def update_layout(layout: Layout, state: dict) -> None:\n    data = state[\"data\"]\n    spark_map = state[\"spark_map\"]\n    posts_map = state[\"posts_map\"]\n    subreddits = state.get(\"subreddits\", [])\n    cursor = state[\"cursor\"]\n    mode = state[\"mode\"]\n    last_updated = state[\"last_updated\"]\n    err = state.get(\"error\")\n\n    # header\n    ts = Text(justify=\"center\")\n    ts.append(\"SOCIAL STATS TRACKER\", style=\"bold white\")\n    ts.append(f\"  \u00b7  {last_updated}\", style=\"dim\")\n    layout[\"header\"].update(Panel(ts, border_style=\"dim\"))\n\n    # footer\n    if mode == \"detail\":\n        keys = \"[esc] back  [\u2190\u2192] switch  [r] refresh  [q] quit\"\n    else:\n        keys = \"[\u2190\u2192] select  [enter] detail  [r] refresh  [q] quit\"\n    layout[\"footer\"].update(\n        Panel(Text(keys, justify=\"center\", style=\"dim\"), border_style=\"dim\")\n    )\n\n    # body\n    if err:\n        layout[\"body\"].update(Panel(f\"[red]{err}[/red]\", border_style=\"red\"))\n        return\n\n    if not data:\n        layout[\"body\"].update(\n            Panel(\"[dim]No data. Run seed.py to populate.[/dim]\", border_style=\"dim\")\n        )\n        return\n\n    if mode == \"detail\":\n        entry = data[cursor]\n        cur = entry[\"current\"]\n        acct_id = cur[\"account_id\"]\n        platform = cur[\"platform\"]\n\n        left = account_panel(entry, spark_map.get(acct_id, []), True)\n        right = posts_panel(posts_map.get(acct_id, []), platform)\n\n        # Use a two-column table to avoid Layout rebuild\n        body_table = Table.grid(expand=True)\n        body_table.add_column(ratio=1)\n        body_table.add_column(ratio=2)\n        body_table.add_row(left, right)\n        layout[\"body\"].update(body_table)\n    else:",
+        "new_string": "def update_layout(layout: Layout, state: dict) -> None:\n    data = state[\"data\"]\n    spark_map = state[\"spark_map\"]\n    multi_sparks_map = state.get(\"multi_sparks_map\", {})\n    posts_map = state[\"posts_map\"]\n    subreddits = state.get(\"subreddits\", [])\n    cursor = state[\"cursor\"]\n    mode = state[\"mode\"]\n    last_updated = state[\"last_updated\"]\n    err = state.get(\"error\")\n\n    # header\n    ts = Text(justify=\"center\")\n    ts.append(\"SOCIAL STATS TRACKER\", style=\"bold white\")\n    ts.append(f\"  \u00b7  {last_updated}\", style=\"dim\")\n    layout[\"header\"].update(Panel(ts, border_style=\"dim\"))\n\n    # footer\n    if mode == \"popup\":\n        keys = \"[esc] close  [\u2190\u2192] prev/next  [r] refresh  [q] quit\"\n    else:\n        keys = \"[\u2190\u2192] select  [enter] pop out  [r] refresh  [q] quit\"\n    layout[\"footer\"].update(\n        Panel(Text(keys, justify=\"center\", style=\"dim\"), border_style=\"dim\")\n    )\n\n    # body\n    if err:\n        layout[\"body\"].update(Panel(f\"[red]{err}[/red]\", border_style=\"red\"))\n        return\n\n    if not data:\n        layout[\"body\"].update(\n            Panel(\"[dim]No data. Run seed.py to populate.[/dim]\", border_style=\"dim\")\n        )\n        return\n\n    if mode == \"popup\":\n        entry = data[cursor]\n        acct_id = entry[\"current\"][\"account_id\"]\n        card = popup_content(\n            entry,\n            multi_sparks_map.get(acct_id, {}),\n            posts_map.get(acct_id, []),\n        )\n        popup_width = min(console.width - 6, 110)\n        layout[\"body\"].update(\n            Align.center(Padding(card, (1, 0)), vertical=\"middle\", width=popup_width)\n        )\n        return\n    else:"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 255,
+      "timestamp": "2026-05-14T18:23:14.824Z",
+      "assistant_uuid": "651c01e5-64d1-4f32-8c9a-8cde89102064",
+      "tool_use_id": "toolu_01QKErVpXccu7SyTJ398KRky",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "        self._state = {\n            \"data\": [],\n            \"spark_map\": {},\n            \"posts_map\": {},\n            \"subreddits\": [],\n            \"cursor\": 0,\n            \"mode\": \"dashboard\",\n            \"last_updated\": \"\u2500\",\n            \"error\": None,\n        }",
+        "new_string": "        self._state = {\n            \"data\": [],\n            \"spark_map\": {},\n            \"multi_sparks_map\": {},\n            \"posts_map\": {},\n            \"subreddits\": [],\n            \"cursor\": 0,\n            \"mode\": \"dashboard\",\n            \"last_updated\": \"\u2500\",\n            \"error\": None,\n        }"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 257,
+      "timestamp": "2026-05-14T18:23:20.740Z",
+      "assistant_uuid": "cfe1c392-9a3e-4da7-abee-e12d30bc2f25",
+      "tool_use_id": "toolu_018t1oUGQRxz7emDkbQrBBRP",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "            spark_map = {\n                e[\"current\"][\"account_id\"]: fetch_sparkline(e[\"current\"][\"account_id\"])\n                for e in data\n            }\n            posts_map = {\n                e[\"current\"][\"account_id\"]: fetch_recent_posts(e[\"current\"][\"account_id\"])\n                for e in data\n            }\n            subreddits = fetch_subreddit_dashboard()\n            with self._lock:\n                self._state[\"data\"] = data\n                self._state[\"spark_map\"] = spark_map\n                self._state[\"posts_map\"] = posts_map\n                self._state[\"subreddits\"] = subreddits",
+        "new_string": "            ids = [e[\"current\"][\"account_id\"] for e in data]\n            spark_map = {i: fetch_sparkline(i) for i in ids}\n            multi_sparks_map = {i: fetch_multi_sparklines(i) for i in ids}\n            posts_map = {i: fetch_recent_posts(i) for i in ids}\n            subreddits = fetch_subreddit_dashboard()\n            with self._lock:\n                self._state[\"data\"] = data\n                self._state[\"spark_map\"] = spark_map\n                self._state[\"multi_sparks_map\"] = multi_sparks_map\n                self._state[\"posts_map\"] = posts_map\n                self._state[\"subreddits\"] = subreddits"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 262,
+      "timestamp": "2026-05-14T18:23:25.576Z",
+      "assistant_uuid": "1fd0b5d3-9a20-44b0-bf95-9d60c729ec1d",
+      "tool_use_id": "toolu_01MVssTfnsCFcjYcWLgz1yPM",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "            elif key in (\"\\r\", \"\\n\") and state[\"mode\"] == \"dashboard\":\n                state[\"mode\"] = \"detail\"\n            elif key == \"\\x1b\" and state[\"mode\"] == \"detail\":\n                state[\"mode\"] = \"dashboard\"",
+        "new_string": "            elif key in (\"\\r\", \"\\n\") and state[\"mode\"] == \"dashboard\":\n                state[\"mode\"] = \"popup\"\n            elif key == \"\\x1b\" and state[\"mode\"] == \"popup\":\n                state[\"mode\"] = \"dashboard\""
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 266,
+      "timestamp": "2026-05-14T18:23:31.086Z",
+      "assistant_uuid": "48c53549-df94-43ee-869e-844d0d30b9c6",
+      "tool_use_id": "toolu_011iKVupspCLnzyZJkozmxaU",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "            elif key in (\"\\x1b[C\", \"\\x1b[D\"):\n                delta = 1 if key == \"\\x1b[C\" else -1\n                state[\"cursor\"] = (state[\"cursor\"] + delta) % max(count, 1)",
+        "new_string": "            elif key in (\"\\x1b[C\", \"\\x1b[D\"):\n                delta = 1 if key == \"\\x1b[C\" else -1\n                state[\"cursor\"] = (state[\"cursor\"] + delta) % max(count, 1)\n                # Stay in popup while navigating cards"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 277,
+      "timestamp": "2026-05-14T18:30:01.458Z",
+      "assistant_uuid": "1773c7f6-3ac3-4f06-a477-a94f36dfe8f0",
+      "tool_use_id": "toolu_017rUZJCeoiNXJwHXDV9Eq2S",
+      "tool_name": "Read",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "offset": 240,
+        "limit": 80
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 279,
+      "timestamp": "2026-05-14T18:30:05.540Z",
+      "assistant_uuid": "25831488-ad85-4684-993e-92af69512c33",
+      "tool_use_id": "toolu_01ERfKFcK42eEzyhrHoznEzt",
+      "tool_name": "Read",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "offset": 320,
+        "limit": 70
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 284,
+      "timestamp": "2026-05-14T18:30:08.466Z",
+      "assistant_uuid": "3ead4afe-3349-4181-aee3-1d5f3e6c505f",
+      "tool_use_id": "toolu_01FdqV2jDJk8GfPm3hXUuUha",
+      "tool_name": "Read",
+      "input": {
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "offset": 390,
+        "limit": 60
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 288,
+      "timestamp": "2026-05-14T18:31:02.492Z",
+      "assistant_uuid": "03f5408b-47ee-4520-a7cd-f68fb988e2a7",
+      "tool_use_id": "toolu_01Kma6PZnytGwXoZK2d8BXUC",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "    if mode == \"popup\":\n        entry = data[cursor]\n        acct_id = entry[\"current\"][\"account_id\"]\n        card = popup_content(\n            entry,\n            multi_sparks_map.get(acct_id, {}),\n            posts_map.get(acct_id, []),\n        )\n        popup_width = min(console.width - 6, 110)\n        layout[\"body\"].update(\n            Align.center(Padding(card, (1, 0)), vertical=\"middle\", width=popup_width)\n        )\n        return\n    else:",
+        "new_string": "    if mode == \"popup\":\n        entry = data[cursor]\n        acct_id = entry[\"current\"][\"account_id\"]\n        card = popup_content(\n            entry,\n            multi_sparks_map.get(acct_id, {}),\n            posts_map.get(acct_id, []),\n        )\n        # Horizontal centering via a 3-column grid; panel fills the centre column\n        container = Table.grid(expand=True)\n        container.add_column(ratio=1)\n        container.add_column(ratio=5)\n        container.add_column(ratio=1)\n        container.add_row(\"\", card, \"\")\n        layout[\"body\"].update(container)\n        return\n    else:"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 291,
+      "timestamp": "2026-05-14T18:31:10.374Z",
+      "assistant_uuid": "cc74ea71-d220-44b9-9f26-71d7bec972f1",
+      "tool_use_id": "toolu_01RkF17wQy9YNM1xCWuUW41J",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "    if mode == \"popup\":\n        entry = data[cursor]\n        acct_id = entry[\"current\"][\"account_id\"]\n        card = popup_content(\n            entry,\n            multi_sparks_map.get(acct_id, {}),\n            posts_map.get(acct_id, []),\n        )",
+        "new_string": "    if mode == \"popup\":\n        entry = data[cursor]\n        acct_id = entry[\"current\"][\"account_id\"]\n        try:\n            card = popup_content(\n                entry,\n                multi_sparks_map.get(acct_id, {}),\n                posts_map.get(acct_id, []),\n            )\n        except Exception as exc:\n            layout[\"body\"].update(Panel(f\"[red]popup error: {exc}[/red]\"))\n            return"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 305,
+      "timestamp": "2026-05-14T18:34:14.699Z",
+      "assistant_uuid": "2860ad03-b865-45c5-afac-5669944dbb46",
+      "tool_use_id": "toolu_017u2QUEFc9CdodUoAp7f22y",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "class App:\n    def __init__(self):\n        self._lock = threading.Lock()\n        self._state = {\n            \"data\": [],\n            \"spark_map\": {},\n            \"multi_sparks_map\": {},\n            \"posts_map\": {},\n            \"subreddits\": [],\n            \"cursor\": 0,\n            \"mode\": \"dashboard\",\n            \"last_updated\": \"\u2500\",\n            \"error\": None,\n        }\n\n    def _refresh(self):\n        try:\n            data = fetch_dashboard()\n            ids = [e[\"current\"][\"account_id\"] for e in data]\n            spark_map = {i: fetch_sparkline(i) for i in ids}\n            multi_sparks_map = {i: fetch_multi_sparklines(i) for i in ids}\n            posts_map = {i: fetch_recent_posts(i) for i in ids}\n            subreddits = fetch_subreddit_dashboard()\n            with self._lock:\n                self._state[\"data\"] = data\n                self._state[\"spark_map\"] = spark_map\n                self._state[\"multi_sparks_map\"] = multi_sparks_map\n                self._state[\"posts_map\"] = posts_map\n                self._state[\"subreddits\"] = subreddits\n                self._state[\"last_updated\"] = time.strftime(\"%H:%M:%S\")\n                self._state[\"error\"] = None\n                count = len(data)\n                if self._state[\"cursor\"] >= count:\n                    self._state[\"cursor\"] = max(0, count - 1)\n        except Exception as exc:\n            with self._lock:\n                self._state[\"error\"] = str(exc)\n                self._state[\"last_updated\"] = time.strftime(\"%H:%M:%S\")\n\n    def _handle_key(self, key: str) -> bool:\n        with self._lock:\n            state = self._state\n            count = len(state[\"data\"])\n            if key == \"q\":\n                return False\n            elif key in (\"\\x1b[C\", \"\\x1b[D\"):\n                delta = 1 if key == \"\\x1b[C\" else -1\n                state[\"cursor\"] = (state[\"cursor\"] + delta) % max(count, 1)\n                # Stay in popup while navigating cards\n            elif key in (\"\\r\", \"\\n\") and state[\"mode\"] == \"dashboard\":\n                state[\"mode\"] = \"popup\"\n            elif key == \"\\x1b\" and state[\"mode\"] == \"popup\":\n                state[\"mode\"] = \"dashboard\"\n        return True\n\n    def run(self):\n        self._refresh()\n\n        # Build the layout once \u2014 update it in place every frame\n        layout = Layout()\n        layout.split_column(\n            Layout(name=\"header\", size=3),\n            Layout(name=\"body\"),\n            Layout(name=\"footer\", size=3),\n        )\n\n        fd = sys.stdin.fileno()\n        old = termios.tcgetattr(fd)\n\n        try:\n            tty.setcbreak(fd)  # cbreak keeps OPOST; setraw breaks ANSI escape output\n            with Live(layout, console=console, screen=True, refresh_per_second=8) as _:\n                while True:\n                    with self._lock:\n                        import copy\n                        snapshot = copy.deepcopy(self._state)\n                    update_layout(layout, snapshot)\n\n                    r, _, _ = select.select([sys.stdin], [], [], 0.1)\n                    if r:\n                        key = sys.stdin.read(1)\n                        if key == \"\\x1b\":\n                            r2, _, _ = select.select([sys.stdin], [], [], 0.05)\n                            if r2:\n                                rest = sys.stdin.read(2)\n                                key = key + rest\n\n                        if key == \"q\":\n                            break\n                        elif key == \"r\":\n                            self._refresh()\n                        else:\n                            if not self._handle_key(key):\n                                break\n        finally:\n            termios.tcsetattr(fd, termios.TCSADRAIN, old)",
+        "new_string": "class App:\n    def __init__(self):\n        self._lock = threading.Lock()\n        self._generation = 0       # incremented on every state change\n        self._refreshing = False   # prevents overlapping background refreshes\n        self._state = {\n            \"data\": [],\n            \"spark_map\": {},\n            \"multi_sparks_map\": {},\n            \"posts_map\": {},\n            \"subreddits\": [],\n            \"cursor\": 0,\n            \"mode\": \"dashboard\",\n            \"last_updated\": \"\u2500\",\n            \"error\": None,\n        }\n\n    def _do_refresh(self):\n        try:\n            data = fetch_dashboard()\n            ids = [e[\"current\"][\"account_id\"] for e in data]\n            spark_map        = {i: fetch_sparkline(i)        for i in ids}\n            multi_sparks_map = {i: fetch_multi_sparklines(i) for i in ids}\n            posts_map        = {i: fetch_recent_posts(i)     for i in ids}\n            subreddits = fetch_subreddit_dashboard()\n            with self._lock:\n                self._state[\"data\"]             = data\n                self._state[\"spark_map\"]        = spark_map\n                self._state[\"multi_sparks_map\"] = multi_sparks_map\n                self._state[\"posts_map\"]        = posts_map\n                self._state[\"subreddits\"]       = subreddits\n                self._state[\"last_updated\"]     = time.strftime(\"%H:%M:%S\")\n                self._state[\"error\"]            = None\n                count = len(data)\n                if self._state[\"cursor\"] >= count:\n                    self._state[\"cursor\"] = max(0, count - 1)\n                self._generation += 1\n        except Exception as exc:\n            with self._lock:\n                self._state[\"error\"]        = str(exc)\n                self._state[\"last_updated\"] = time.strftime(\"%H:%M:%S\")\n                self._generation += 1\n        finally:\n            with self._lock:\n                self._refreshing = False\n\n    def _refresh_bg(self):\n        with self._lock:\n            if self._refreshing:\n                return\n            self._refreshing = True\n        threading.Thread(target=self._do_refresh, daemon=True).start()\n\n    def _handle_key(self, key: str) -> bool:\n        with self._lock:\n            state = self._state\n            count = len(state[\"data\"])\n            if key == \"q\":\n                return False\n            elif key in (\"\\x1b[C\", \"\\x1b[D\"):\n                delta = 1 if key == \"\\x1b[C\" else -1\n                state[\"cursor\"] = (state[\"cursor\"] + delta) % max(count, 1)\n            elif key in (\"\\r\", \"\\n\") and state[\"mode\"] == \"dashboard\":\n                state[\"mode\"] = \"popup\"\n            elif key == \"\\x1b\" and state[\"mode\"] == \"popup\":\n                state[\"mode\"] = \"dashboard\"\n            else:\n                return True\n            self._generation += 1\n        return True\n\n    def run(self):\n        self._do_refresh()  # blocking on startup so first frame has data\n\n        layout = Layout()\n        layout.split_column(\n            Layout(name=\"header\", size=3),\n            Layout(name=\"body\"),\n            Layout(name=\"footer\", size=3),\n        )\n\n        fd = sys.stdin.fileno()\n        old = termios.tcgetattr(fd)\n        last_gen = -1\n\n        try:\n            tty.setcbreak(fd)\n            with Live(layout, console=console, screen=True, refresh_per_second=4):\n                while True:\n                    # Only rebuild Rich objects when state actually changed\n                    with self._lock:\n                        gen = self._generation\n                        if gen != last_gen:\n                            snapshot = dict(self._state)  # shallow copy \u2014 fast\n                    if gen != last_gen:\n                        update_layout(layout, snapshot)\n                        last_gen = gen\n\n                    r, _, _ = select.select([sys.stdin], [], [], 0.05)\n                    if not r:\n                        continue\n\n                    key = sys.stdin.read(1)\n                    if key == \"\\x1b\":\n                        r2, _, _ = select.select([sys.stdin], [], [], 0.05)\n                        if r2:\n                            rest = sys.stdin.read(2)\n                            key = key + rest\n\n                    if key == \"q\":\n                        break\n                    elif key == \"r\":\n                        self._refresh_bg()\n                    else:\n                        if not self._handle_key(key):\n                            break\n        finally:\n            termios.tcsetattr(fd, termios.TCSADRAIN, old)"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 318,
+      "timestamp": "2026-05-14T18:37:01.303Z",
+      "assistant_uuid": "351bd662-e6f1-4c7a-836c-96b7ea662400",
+      "tool_use_id": "toolu_01ENSXR288rRWNFyjrYfpccm",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "import select\nimport sys\nimport termios\nimport threading\nimport time\nimport tty",
+        "new_string": "import os\nimport select\nimport sys\nimport termios\nimport threading\nimport time\nimport tty"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 323,
+      "timestamp": "2026-05-14T18:37:08.065Z",
+      "assistant_uuid": "605fc64b-8b00-42e2-9531-25ec4858ec7a",
+      "tool_use_id": "toolu_01AcmozX5PzTxTWj6EYV4Smo",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/github/willow-2.0/social-stats/app.py",
+        "old_string": "                    key = sys.stdin.read(1)\n                    if key == \"\\x1b\":\n                        r2, _, _ = select.select([sys.stdin], [], [], 0.05)\n                        if r2:\n                            rest = sys.stdin.read(2)\n                            key = key + rest",
+        "new_string": "                    key = os.read(fd, 1).decode(\"utf-8\", errors=\"replace\")\n                    if key == \"\\x1b\":\n                        r2, _, _ = select.select([sys.stdin], [], [], 0.05)\n                        if r2:\n                            rest = os.read(fd, 8).decode(\"utf-8\", errors=\"replace\")\n                            key = key + rest"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 338,
+      "timestamp": "2026-05-14T18:39:34.291Z",
+      "assistant_uuid": "395a2164-cd96-4376-8645-2ab50604014f",
+      "tool_use_id": "toolu_01BdSbqteNEGkF9nXjkhGnq5",
+      "tool_name": "Write",
+      "input": {
+        "file_path": "/home/sean-campbell/.claude/projects/-home-sean-campbell-github-willow-1-9/memory/project_social_stats_tracker.md",
+        "content": "---\nname: project-social-stats-tracker\ndescription: Social media stats TUI tracker \u2014 Rich + Postgres, built in willow-2.0 sandbox\nmetadata:\n  type: project\n---\n\nSocial stats TUI tracker built at `/home/sean-campbell/github/willow-2.0/social-stats/`.\n\n**Why:** Standalone dashboard for Reddit, Facebook, LinkedIn account stats + Reddit subreddit mod queue.\n\n**Stack:**\n- Python, Rich TUI (not Textual), psycopg2, praw\n- Venv at `social-stats/.venv`\n- DB: `postgresql:///social_stats` (Unix socket, peer auth \u2014 no password)\n- Run: `DATABASE_URL=postgresql:///social_stats python app.py`\n\n**Files:**\n- `schema.sql` \u2014 accounts, stats_snapshots, posts, subreddits, subreddit_snapshots\n- `db.py` \u2014 all queries (fetch_dashboard, fetch_multi_sparklines, fetch_subreddit_dashboard, etc.)\n- `app.py` \u2014 Rich Live TUI, persistent Layout object, generation counter for dirty rendering\n- `fetch_reddit.py` \u2014 PRAW ingest (needs REDDIT_CLIENT_ID/SECRET/REFRESH_TOKEN/USERNAME + SUBREDDIT env vars)\n- `seed.py` \u2014 fake data seeder (already run)\n\n**Key architecture decisions (hard-won):**\n- `tty.setcbreak` not `tty.setraw` \u2014 raw disables OPOST which breaks ANSI escape sequences\n- Layout object is created ONCE and updated in-place \u2014 rebuilding it every frame causes blank panels\n- Shallow `dict(self._state)` not `deepcopy` \u2014 safe because _refresh replaces whole objects, never mutates\n- Generation counter (`_generation`) \u2014 layout only rebuilds when state actually changes\n- `os.read(fd, 8)` not `sys.stdin.read(2)` for escape sequences \u2014 read(2) can return fewer bytes in cbreak mode\n- Background thread for DB refresh (`_refresh_bg`) \u2014 keeps UI responsive during DB queries\n- `Table.grid(expand=True)` for multi-column layout inside Live \u2014 nested Layout.split_row() causes blank content\n\n**Current state:** Working. Dashboard + popup (Enter to open, Esc to close, \u2190\u2192 to cycle cards in popup). Subreddit mod card in bottom row. Reddit API ingest not yet wired to live credentials.\n\n**Next logical steps:** More platform cards, scheduled auto-refresh, real Reddit API credentials.\n\n**How to apply:** Load this before touching social-stats/. The 6 architecture decisions above are all non-obvious and were each discovered through a broken render.\n"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 342,
+      "timestamp": "2026-05-14T18:39:40.127Z",
+      "assistant_uuid": "09ee7f05-9328-4f73-b62b-18debd82b491",
+      "tool_use_id": "toolu_013dh8dVEdPerxjFVcRCafHi",
+      "tool_name": "Read",
+      "input": {
+        "file_path": "/home/sean-campbell/.claude/projects/-home-sean-campbell-github-willow-1-9/memory/MEMORY.md"
+      },
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "line": 347,
+      "timestamp": "2026-05-14T18:39:48.326Z",
+      "assistant_uuid": "6cf29452-1b37-40bf-80c1-0889189f7ba7",
+      "tool_use_id": "toolu_01VZHQnYxRdkkV5mZ9ExvZj7",
+      "tool_name": "Edit",
+      "input": {
+        "replace_all": false,
+        "file_path": "/home/sean-campbell/.claude/projects/-home-sean-campbell-github-willow-1-9/memory/MEMORY.md",
+        "old_string": "- [feedback_project_seed_atom.md](feedback_project_seed_atom.md) \u2014 Every new project/worktree starts with one KB seed atom: the non-derivable contract a cold agent needs. Not the spec \u2014 the wire format. KB atom 54FF9285.",
+        "new_string": "- [feedback_project_seed_atom.md](feedback_project_seed_atom.md) \u2014 Every new project/worktree starts with one KB seed atom: the non-derivable contract a cold agent needs. Not the spec \u2014 the wire format. KB atom 54FF9285.\n- [project_social_stats_tracker.md](project_social_stats_tracker.md) \u2014 Rich TUI social stats dashboard at willow-2.0/social-stats/. Working. 6 non-obvious architecture decisions documented \u2014 read before touching."
+      },
+      "caller": {
+        "type": "direct"
+      }
+    }
+  ],
+  "tool_results_inline": [
+    {
+      "line": 18,
+      "timestamp": "2026-05-14T17:26:42.453Z",
+      "tool_use_id": "toolu_01QMLZw5eP7FeoFdEX4EBneU",
+      "content_preview": "User has answered your questions: \"Which TUI framework?\"=\"Rich + custom\", \"Which social platforms are we tracking?\"=\"Reddis, Facebook, LinkedIn\", \"What's the main view \u2014 dashboard or drill-down?\"=\"Dashboard first\". You can now continue with the user's answers in mind.",
+      "source_user_uuid": "c6601d41-7c8e-4ea3-aef9-f5a7e94376c0"
+    },
+    {
+      "line": 22,
+      "timestamp": "2026-05-14T17:27:03.295Z",
+      "tool_use_id": "toolu_0187B1mhEgzNSSw2gp4FCCFT",
+      "content_preview": "User has answered your questions: \"Does the PostgreSQL schema already exist, or should I design it?\"=\"Schema exists\". You can now continue with the user's answers in mind.",
+      "source_user_uuid": "959c86a0-026d-40b5-a604-7af1ec177efa"
+    },
+    {
+      "line": 35,
+      "timestamp": "2026-05-14T17:30:30.031Z",
+      "tool_use_id": "toolu_01XzQ7gg9UPsDrNE95e2TaqH",
+      "content_preview": "1\t{\n2\t  \"seed\": {\n3\t    \"version\": \"1.0\",\n4\t    \"created\": \"\",\n5\t    \"session\": \"\",\n6\t    \"checksum\": \"\u0394\u03a3=42\",\n7\t    \"instruction\": \"\"\n8\t  },\n9\t\n10\t  \"persona\": {\n11\t    \"character\": \"\",\n12\t    \"register\": \"\",\n13\t    \"opening\": [],\n14\t    \"voice_rules\": [],\n15\t    \"breaks_voice\": [],\n16\t    \"cast\": ",
+      "source_user_uuid": "df9a320b-469e-4be9-a54c-6e0d04e93fa9"
+    },
+    {
+      "line": 42,
+      "timestamp": "2026-05-14T17:32:31.499Z",
+      "tool_use_id": "toolu_01SS6XWRmkbhxAwtjiD8HJc1",
+      "content_preview": "1\t{\n2\t  \"seed\": {\n3\t    \"version\": \"3.0\",\n4\t    \"created\": \"\",\n5\t    \"type\": \"session_tail\",\n6\t    \"extends\": \"SEED_v2\",\n7\t    \"instruction\": \"\"\n8\t  },\n9\t\n10\t  \"document_count_status\": {\n11\t    \"honest_count\": null,\n12\t    \"files_exported\": [],\n13\t    \"also_exported_not_counted\": [],\n14\t    \"thresho",
+      "source_user_uuid": "39836667-814d-43fb-87dc-5ad50d5e2399"
+    },
+    {
+      "line": 58,
+      "timestamp": "2026-05-14T17:35:03.545Z",
+      "tool_use_id": "toolu_01F7JRzevibPTheqEb97vN2N",
+      "content_preview": "Use Glob tool for file listings \u2014 it supports patterns and integrates with the KB.",
+      "source_user_uuid": "d149420a-5598-4053-a2b0-d01cc6753672"
+    },
+    {
+      "line": 63,
+      "timestamp": "2026-05-14T17:35:06.669Z",
+      "tool_use_id": "toolu_017GPmVNgNgwXehnAD9Xfe3n",
+      "content_preview": "/home/sean-campbell/github/willow-2.0\n/home/sean-campbell/github/willow-2.0/.claude\n/home/sean-campbell/github/willow-2.0/.claude_metadata.json\n/home/sean-campbell/github/willow-2.0/.git\n/home/sean-campbell/github/willow-2.0/.gitignore\n/home/sean-campbell/github/willow-2.0/.mcp.json\n/home/sean-campb",
+      "source_user_uuid": "befb948c-4262-4fe5-9b43-40857e28abe6"
+    },
+    {
+      "line": 66,
+      "timestamp": "2026-05-14T17:35:17.150Z",
+      "tool_use_id": "toolu_01Gedv2reKQkAQ69ZQBtaGUF",
+      "content_preview": "File created successfully at: /home/sean-campbell/github/willow-2.0/social-stats/schema.sql (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "a21f6e66-ab44-4653-b545-6a5509a37231"
+    },
+    {
+      "line": 69,
+      "timestamp": "2026-05-14T17:35:20.929Z",
+      "tool_use_id": "toolu_01FRbvnT47W5dsYgg2RUCvqe",
+      "content_preview": "File created successfully at: /home/sean-campbell/github/willow-2.0/social-stats/requirements.txt (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "c585a34f-3bb3-4d12-9ca3-5bb03d0b1746"
+    },
+    {
+      "line": 72,
+      "timestamp": "2026-05-14T17:35:33.367Z",
+      "tool_use_id": "toolu_01Edqqt3KLZmCgUGLXBqSV21",
+      "content_preview": "File created successfully at: /home/sean-campbell/github/willow-2.0/social-stats/db.py (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "42df6ed4-3cd5-47d3-a72c-5caf89f1cc0f"
+    },
+    {
+      "line": 78,
+      "timestamp": "2026-05-14T17:36:13.170Z",
+      "tool_use_id": "toolu_018Uz4XcRG3hPxP4zPSvjQhG",
+      "content_preview": "File created successfully at: /home/sean-campbell/github/willow-2.0/social-stats/app.py (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "eadfff2d-3fd1-4339-b9e3-440a0a38dde1"
+    },
+    {
+      "line": 81,
+      "timestamp": "2026-05-14T17:36:28.208Z",
+      "tool_use_id": "toolu_01HWTZmEM2SE8HYwqNujf4eL",
+      "content_preview": "File created successfully at: /home/sean-campbell/github/willow-2.0/social-stats/seed.py (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "e4623cd0-2efb-40f8-bee0-011214a36098"
+    },
+    {
+      "line": 89,
+      "timestamp": "2026-05-14T17:39:21.458Z",
+      "tool_use_id": "toolu_01N8zMCz1GUr8kpToGYfG5xR",
+      "content_preview": "Collecting psycopg2-binary>=2.9 (from -r /home/sean-campbell/github/willow-2.0/social-stats/requirements.txt (line 1))\n  Using cached psycopg2_binary-2.9.12-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (4.9 kB)\nCollecting rich>=13.0 (from -r /home/sean-campbell/github/willow-2",
+      "source_user_uuid": "30a8b062-0133-45bd-9641-f00d3ebe41a5"
+    },
+    {
+      "line": 122,
+      "timestamp": "2026-05-14T17:44:40.956Z",
+      "tool_use_id": "toolu_01EvDcS38J97tkJdaECF2J4o",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "09f14f53-aab2-4054-9fa5-a3d3d211d8f6"
+    },
+    {
+      "line": 138,
+      "timestamp": "2026-05-14T17:46:50.938Z",
+      "tool_use_id": "toolu_01JKLXr9uGXKaXzH7cjgpgns",
+      "content_preview": "153\t\n154\t    # footer\n155\t    if mode == \"detail\":\n156\t        keys = \"[esc] back  [\u2190\u2192] switch  [r] refresh  [q] quit\"\n157\t    else:\n158\t        keys = \"[\u2190\u2192] select  [enter] detail  [r] refresh  [q] quit\"\n159\t    layout[\"footer\"].update(\n160\t        Panel(Text(keys, justify=\"center\", style=\"dim\"), b",
+      "source_user_uuid": "a12ece5a-ef84-44bb-aa4a-b02449a6698b"
+    },
+    {
+      "line": 141,
+      "timestamp": "2026-05-14T17:46:55.431Z",
+      "tool_use_id": "toolu_01XjFiUVDAkMqzcAdB2UB2gG",
+      "content_preview": "210\t        self._state = {\n211\t            \"data\": [],\n212\t            \"spark_map\": {},\n213\t            \"posts_map\": {},\n214\t            \"cursor\": 0,\n215\t            \"mode\": \"dashboard\",\n216\t            \"last_updated\": \"\u2500\",\n217\t            \"error\": None,\n218\t        }\n219\t\n220\t    def _refresh(self",
+      "source_user_uuid": "dd1fdb53-f3e8-4c57-825d-5f3bcae7826a"
+    },
+    {
+      "line": 146,
+      "timestamp": "2026-05-14T17:46:58.699Z",
+      "tool_use_id": "toolu_016Yit8ggwFg1NaNSHGfNHYQ",
+      "content_preview": "271\t        fd = sys.stdin.fileno()\n272\t        old = termios.tcgetattr(fd)\n273\t\n274\t        try:\n275\t            tty.setraw(fd)\n276\t            with Live(layout, console=console, screen=True, refresh_per_second=8) as _:\n277\t                while True:\n278\t                    with self._lock:\n279\t  ",
+      "source_user_uuid": "5f327e64-f392-4f29-a5bf-add2afcf6927"
+    },
+    {
+      "line": 148,
+      "timestamp": "2026-05-14T17:47:05.495Z",
+      "tool_use_id": "toolu_01WsVfUYz1t89HTXkRh4shud",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "25da3484-adaa-47b0-9ba0-e20578c4e99e"
+    },
+    {
+      "line": 173,
+      "timestamp": "2026-05-14T18:12:21.747Z",
+      "tool_use_id": "toolu_016e8EvBDxcuFEdmeevKR7Cd",
+      "content_preview": "User has answered your questions: \"How is the subreddit data getting into the system?\"=\"Build the ingest too\", \"Which mod metrics matter most for the card?\"=\"Mod queue\". You can now continue with the user's answers in mind.",
+      "source_user_uuid": "fbea3dd0-00d7-42e7-b8f8-a0ed0faad8ae"
+    },
+    {
+      "line": 177,
+      "timestamp": "2026-05-14T18:12:49.204Z",
+      "tool_use_id": "toolu_01UEemP2CZ4ufV7UQxLg5VYp",
+      "content_preview": "Installing collected packages: websocket-client, urllib3, idna, charset_normalizer, certifi, requests, update_checker, prawcore, praw\n\nSuccessfully installed certifi-2026.4.22 charset_normalizer-3.4.7 idna-3.15 praw-7.8.1 prawcore-2.4.0 requests-2.34.1 update_checker-0.18.0 urllib3-2.7.0 websocket-c",
+      "source_user_uuid": "8f7485ec-5171-4aa1-ba8a-2c70b6a748f3"
+    },
+    {
+      "line": 179,
+      "timestamp": "2026-05-14T18:12:58.587Z",
+      "tool_use_id": "toolu_01DjLhr2zcaBUKJKVRJTAwJ6",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/requirements.txt has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "73f18d01-73ae-455f-8db5-77d01de377e5"
+    },
+    {
+      "line": 182,
+      "timestamp": "2026-05-14T18:13:01.166Z",
+      "tool_use_id": "toolu_01Lo4hu4is7Y8LbYmEugXnt5",
+      "content_preview": "1\tCREATE TABLE IF NOT EXISTS accounts (\n2\t    id          SERIAL PRIMARY KEY,\n3\t    platform    TEXT NOT NULL,\n4\t    handle      TEXT NOT NULL,\n5\t    label       TEXT,\n6\t    created_at  TIMESTAMPTZ DEFAULT now()\n7\t);\n8\t\n9\tCREATE TABLE IF NOT EXISTS stats_snapshots (\n10\t    id          SERIAL PRIMARY",
+      "source_user_uuid": "8ff05c6a-c702-46a7-be55-dd62239e783c"
+    },
+    {
+      "line": 184,
+      "timestamp": "2026-05-14T18:13:09.303Z",
+      "tool_use_id": "toolu_016g4kVF85XZ9mTVnyyUUf8b",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/schema.sql has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "b64ac415-e42d-43f1-9fcb-cc37f16741d7"
+    },
+    {
+      "line": 190,
+      "timestamp": "2026-05-14T18:13:25.218Z",
+      "tool_use_id": "toolu_014zUNtAU6oxj7SWWkVcE1os",
+      "content_preview": "File created successfully at: /home/sean-campbell/github/willow-2.0/social-stats/fetch_reddit.py (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "9f60894d-b646-470d-95b0-45322eeea897"
+    },
+    {
+      "line": 193,
+      "timestamp": "2026-05-14T18:13:36.866Z",
+      "tool_use_id": "toolu_01V2MUY9YyVpHcHR2zSEkWbj",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/db.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "f58d42d0-d991-49fe-a3da-a1301ef09c5f"
+    },
+    {
+      "line": 196,
+      "timestamp": "2026-05-14T18:13:44.984Z",
+      "tool_use_id": "toolu_01DfosQTCoZV6LGt8h7wTT8y",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "bb879f05-7b19-4cef-b3cd-5ea926efc490"
+    },
+    {
+      "line": 202,
+      "timestamp": "2026-05-14T18:13:57.618Z",
+      "tool_use_id": "toolu_01YZ7Sv85fS77H4yanHhLE5j",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "6ead9937-d3b8-47ca-848c-95e2538abf9c"
+    },
+    {
+      "line": 205,
+      "timestamp": "2026-05-14T18:14:02.858Z",
+      "tool_use_id": "toolu_01KHKezsDamsBemgUp6PKWmy",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "14ed61f5-9787-4eee-8764-b7513e228605"
+    },
+    {
+      "line": 208,
+      "timestamp": "2026-05-14T18:14:07.407Z",
+      "tool_use_id": "toolu_015hzmm6NLW57PxN9zxeTVPJ",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "da51a0c2-464a-44ce-a56a-a34501564bbc"
+    },
+    {
+      "line": 211,
+      "timestamp": "2026-05-14T18:14:12.950Z",
+      "tool_use_id": "toolu_01J7kB83yaAoj7SrmYuYCetM",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "3ee125fe-18b5-4c47-afe0-992380046c51"
+    },
+    {
+      "line": 216,
+      "timestamp": "2026-05-14T18:14:20.596Z",
+      "tool_use_id": "toolu_01HXLSC4HXqv9azJu8vnjfSX",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "6566e386-cbd1-4686-be52-52f4690b9283"
+    },
+    {
+      "line": 219,
+      "timestamp": "2026-05-14T18:14:28.638Z",
+      "tool_use_id": "toolu_01Xb114M9QG7fEBcxfSMXZB9",
+      "content_preview": "schema updated",
+      "source_user_uuid": "42575e72-5089-41b3-8901-aa3316b4aec9"
+    },
+    {
+      "line": 221,
+      "timestamp": "2026-05-14T18:14:36.048Z",
+      "tool_use_id": "toolu_01EW1QrKCpBfosyjnSuWVwg9",
+      "content_preview": "<string>:14: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).\nsubreddit seeded",
+      "source_user_uuid": "8b169ecb-bd6e-47b5-b120-c2d9be7114a1"
+    },
+    {
+      "line": 231,
+      "timestamp": "2026-05-14T18:21:29.297Z",
+      "tool_use_id": "toolu_01L5azcwbywbhQR4JW3rggSb",
+      "content_preview": "1\t#!/usr/bin/env python3\n2\t\"\"\"Social stats dashboard \u2014 Rich TUI, cursor-navigable.\"\"\"\n3\t\n4\timport select\n5\timport sys\n6\timport termios\n7\timport threading\n8\timport time\n9\timport tty\n10\t\n11\tfrom rich import box\n12\tfrom rich.columns import Columns\n13\tfrom rich.console import Console, Group\n14\tfrom rich",
+      "source_user_uuid": "f3f8e491-c73a-4076-8cfd-b185ff7b8c60"
+    },
+    {
+      "line": 238,
+      "timestamp": "2026-05-14T18:22:12.590Z",
+      "tool_use_id": "toolu_01QZvLimqX443YXWtqWpHZ2Q",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/db.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "ae0ff214-cacf-47db-aa55-05861b00cb07"
+    },
+    {
+      "line": 243,
+      "timestamp": "2026-05-14T18:22:26.446Z",
+      "tool_use_id": "toolu_01L7Su9PGqcmLdLoGCoUuMme",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "d1a70c2b-a190-4430-9743-221e7511b5b0"
+    },
+    {
+      "line": 250,
+      "timestamp": "2026-05-14T18:22:51.365Z",
+      "tool_use_id": "toolu_01FWfbDrScjPTJGzGrK5p9YK",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "69c60f80-95f0-410c-84e7-76fab6a1a7d6"
+    },
+    {
+      "line": 253,
+      "timestamp": "2026-05-14T18:23:09.051Z",
+      "tool_use_id": "toolu_01F1DX7sJWY81XiMmUGWc1r6",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "01d653ea-e06f-43da-b345-ce7290102fb7"
+    },
+    {
+      "line": 256,
+      "timestamp": "2026-05-14T18:23:15.067Z",
+      "tool_use_id": "toolu_01QKErVpXccu7SyTJ398KRky",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "be442da5-8e9f-417a-9454-21abf607971e"
+    },
+    {
+      "line": 258,
+      "timestamp": "2026-05-14T18:23:21.069Z",
+      "tool_use_id": "toolu_018t1oUGQRxz7emDkbQrBBRP",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "af7740eb-6e3d-40dc-9aa9-3428d17d3654"
+    },
+    {
+      "line": 263,
+      "timestamp": "2026-05-14T18:23:25.867Z",
+      "tool_use_id": "toolu_01MVssTfnsCFcjYcWLgz1yPM",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "54909b42-d041-48dd-8214-99139bd02730"
+    },
+    {
+      "line": 267,
+      "timestamp": "2026-05-14T18:23:31.294Z",
+      "tool_use_id": "toolu_011iKVupspCLnzyZJkozmxaU",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "4817301c-5f67-47f8-981b-be181778a78f"
+    },
+    {
+      "line": 278,
+      "timestamp": "2026-05-14T18:30:01.464Z",
+      "tool_use_id": "toolu_017rUZJCeoiNXJwHXDV9Eq2S",
+      "content_preview": "240\t    )\n241\t\n242\t    title = f\"[{color}]{platform.upper()}[/{color}]  [bold]{handle}[/bold]\"\n243\t    return Panel(body, title=title, border_style=color, padding=(1, 3))\n244\t\n245\t\n246\tdef mod_card(entry: dict) -> Panel:\n247\t    cur = entry[\"current\"]\n248\t    prev = entry.get(\"previous\")\n249\t    nam",
+      "source_user_uuid": "240ec2a5-df6f-43ab-9927-4fd59e581e35"
+    },
+    {
+      "line": 280,
+      "timestamp": "2026-05-14T18:30:05.559Z",
+      "tool_use_id": "toolu_01ERfKFcK42eEzyhrHoznEzt",
+      "content_preview": "320\t        Panel(Text(keys, justify=\"center\", style=\"dim\"), border_style=\"dim\")\n321\t    )\n322\t\n323\t    # body\n324\t    if err:\n325\t        layout[\"body\"].update(Panel(f\"[red]{err}[/red]\", border_style=\"red\"))\n326\t        return\n327\t\n328\t    if not data:\n329\t        layout[\"body\"].update(\n330\t       ",
+      "source_user_uuid": "780a0f02-4fb3-4251-979c-abcc226050ea"
+    },
+    {
+      "line": 285,
+      "timestamp": "2026-05-14T18:30:08.481Z",
+      "tool_use_id": "toolu_01FdqV2jDJk8GfPm3hXUuUha",
+      "content_preview": "390\t            \"mode\": \"dashboard\",\n391\t            \"last_updated\": \"\u2500\",\n392\t            \"error\": None,\n393\t        }\n394\t\n395\t    def _refresh(self):\n396\t        try:\n397\t            data = fetch_dashboard()\n398\t            ids = [e[\"current\"][\"account_id\"] for e in data]\n399\t            spark_map",
+      "source_user_uuid": "6607538e-4390-43e3-b495-e7380c6d944a"
+    },
+    {
+      "line": 289,
+      "timestamp": "2026-05-14T18:31:04.126Z",
+      "tool_use_id": "toolu_01Kma6PZnytGwXoZK2d8BXUC",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "b45a1c5d-54bb-4620-8dbe-efdea5e922c0"
+    },
+    {
+      "line": 292,
+      "timestamp": "2026-05-14T18:31:10.608Z",
+      "tool_use_id": "toolu_01RkF17wQy9YNM1xCWuUW41J",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "4c36b411-244a-480a-9bac-377cf0865523"
+    },
+    {
+      "line": 306,
+      "timestamp": "2026-05-14T18:34:16.363Z",
+      "tool_use_id": "toolu_017u2QUEFc9CdodUoAp7f22y",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "b79563d4-27cd-4224-a909-b3421dd0e138"
+    },
+    {
+      "line": 322,
+      "timestamp": "2026-05-14T18:37:03.465Z",
+      "tool_use_id": "toolu_01ENSXR288rRWNFyjrYfpccm",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "0cf28ba9-1b0b-45ac-8f69-12144b87cb98"
+    },
+    {
+      "line": 324,
+      "timestamp": "2026-05-14T18:37:08.340Z",
+      "tool_use_id": "toolu_01AcmozX5PzTxTWj6EYV4Smo",
+      "content_preview": "The file /home/sean-campbell/github/willow-2.0/social-stats/app.py has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "3b5ff816-dfdb-468e-9602-85e3a62ea251"
+    },
+    {
+      "line": 340,
+      "timestamp": "2026-05-14T18:39:36.722Z",
+      "tool_use_id": "toolu_01BdSbqteNEGkF9nXjkhGnq5",
+      "content_preview": "File created successfully at: /home/sean-campbell/.claude/projects/-home-sean-campbell-github-willow-1-9/memory/project_social_stats_tracker.md (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "0cf1fce2-a934-4d83-ab5d-0884734094c7"
+    },
+    {
+      "line": 343,
+      "timestamp": "2026-05-14T18:39:40.158Z",
+      "tool_use_id": "toolu_013dh8dVEdPerxjFVcRCafHi",
+      "content_preview": "1\t# Memory Index\n2\t\n3\t- [feedback_bash_revoked.md](feedback_bash_revoked.md) \u2014 Bash revoked 2026-05-13; Hanuman is MCP-only; per-use-case Bash requires explicit Sean auth each time\n4\t- [feedback_execution_mindset.md](feedback_execution_mindset.md) \u2014 Don't ask permission to execute. You have it. Ship",
+      "source_user_uuid": "df1f1c39-df08-472b-886f-c3b0a3093688"
+    },
+    {
+      "line": 349,
+      "timestamp": "2026-05-14T18:39:49.967Z",
+      "tool_use_id": "toolu_01VZHQnYxRdkkV5mZ9ExvZj7",
+      "content_preview": "The file /home/sean-campbell/.claude/projects/-home-sean-campbell-github-willow-1-9/memory/MEMORY.md has been updated successfully. (file state is current in your context \u2014 no need to Read it back)",
+      "source_user_uuid": "4f16d7be-5fff-4256-802d-f9bc6d7aa6b4"
+    }
+  ],
+  "totals": {
+    "tool_calls": 52,
+    "tool_results_inline": 52
+  }
+}
