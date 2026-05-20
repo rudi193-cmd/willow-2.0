@@ -38,6 +38,7 @@ agents/hanuman/kb-atoms/
 
 # Python virtual environments
 .venv/
+.venv-dev/
 venv/
 
 # Local overseer run logs (scripts/run_overseer.py)
