@@ -1,6 +1,5 @@
 """Deployment config loader — load, cache, and expose user role helpers."""
 from unittest.mock import patch
-import pytest
 from willow.fylgja.safety.deployment import (
     get_deployment_config,
     get_user_role,

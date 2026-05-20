@@ -8,7 +8,7 @@ import urllib.error
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-import soil
+from core import soil
 from grove.apps.base import App
 from grove import theme
 

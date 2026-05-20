@@ -1,3 +1,5 @@
+<!-- Willow 2.0 live doc. Set WILLOW_PG_URL to willow_20. Tools: kb_get, fleet_status. -->
+
 @markdownai v1.0
 
 @connect willow type="postgres" uri=env.WILLOW_PG_URL

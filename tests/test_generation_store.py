@@ -3,11 +3,9 @@ tests/test_generation_store.py — Generation LRU store unit tests.
 Coverage: counter increment, LRU eviction, persistence, stats.
 """
 
-import pickle
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from willow.memory.generation_store import GenerationLRUStore, get_default_store
 

@@ -156,7 +156,7 @@ def main():
 
         except KeyboardInterrupt:
             save_cursors_to_soil(agent, cursors)
-            print(f"[grove] cursors saved on exit", flush=True)
+            print("[grove] cursors saved on exit", flush=True)
             break
         except Exception as e:
             print(f"[grove_monitor] loop error: {e}", file=sys.stderr, flush=True)

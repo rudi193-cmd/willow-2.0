@@ -139,6 +139,7 @@ def write_text(path: Path, content: str) -> None:
 def _store_overseer_record(
     *, slug: str, goal: str, branch: str, wt_path: Path, run_id: str, repo: Path
 ) -> None:
+    import os
     agent = os.environ.get("WILLOW_AGENT_NAME")
     if not agent:
         print("[overseer] WILLOW_AGENT_NAME not set — skipping store write")

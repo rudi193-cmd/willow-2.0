@@ -6,8 +6,7 @@ per-session metadata to public.session_index in willow_20.
 import json
 import os
 import glob
-import re
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 try:

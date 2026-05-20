@@ -22,7 +22,13 @@ Path to the SAFE manifest directory. Defaults to `~/.willow/safe/` on a normal i
 export WILLOW_SAFE_ROOT=/path/to/safe-manifests
 ```
 
-In CI or on fresh hardware without a live install, point this at `tests/fixtures/safe/` (a stub manifest tree) so the SAFE gate does not fail at boot.
+In CI or on a machine with SAFE installed:
+
+```bash
+export WILLOW_SAFE_ROOT=$HOME/SAFE/Applications
+```
+
+On fresh hardware without SAFE, point at `tests/fixtures/safe/` (stub manifest tree) so the gate does not fail at boot.
 
 A minimal stub directory looks like:
 

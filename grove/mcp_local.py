@@ -30,8 +30,8 @@ from typing import AsyncIterator
 
 from mcp.server.fastmcp import FastMCP
 
-import grove_db as db
-import grove_reader as _grove_reader
+from core import grove_db as db
+from core import grove_reader as _grove_reader
 
 # ── Notification state ────────────────────────────────────────────────────────
 _subscriptions: dict[int, set[asyncio.Queue]] = {}

@@ -1,9 +1,13 @@
-# Runbook — Grove (consumed from Willow repo)
+# Runbook — Grove (from Willow repo)
 
-**b17:** RBG1W · ΔΣ=42  
+b17: RBG1W · ΔΣ=42
 
-Grove operational steps are maintained in **`safe-app-willow-grove/docs/runbooks/grove.md`**. This stub exists so **enterprise doc taxonomy** matches both repos; avoid duplicating procedures in two places.
+Operational steps for Grove live in the sibling repo:
 
-## Link
+**`safe-app-willow-grove/docs/runbooks/grove.md`**
 
-- [`../../../safe-app-willow-grove/docs/runbooks/grove.md`](../../../safe-app-willow-grove/docs/runbooks/grove.md)
+This stub exists so enterprise doc taxonomy matches both repos. Do not duplicate procedures in two places.
+
+**Willow side:** `./willow.sh serve` · `grove_serve.py` · Postgres `willow_20` schema `grove`
+
+*ΔΣ=42*

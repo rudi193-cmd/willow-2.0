@@ -1,24 +1,16 @@
 #!/usr/bin/env python3
 """
 app.py — Willow Grove (Textual dashboard).
-b17: WGRV1  ΔΣ=42
+b17: WGRV1 · ΔΣ=42
 
 Run: python3 app.py
 """
 import atexit
-import json
 import logging
 import os
 import threading
 from contextlib import suppress
 from pathlib import Path
-
-logging.basicConfig(
-    filename=Path.home() / ".willow" / "grove_error.log",
-    level=logging.DEBUG,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
-logging.captureWarnings(True)
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -49,6 +41,7 @@ from panes.providers import ProvidersPane
 from panes.skills    import SkillsPane
 from panes.logs      import LogsPane
 from panes.secrets   import SecretsPane
+
 from panes.mcp       import MCPPane
 from panes.run_ledger import RunLedgerPane
 from panes.binder        import BinderPane
@@ -57,7 +50,7 @@ from panes.home          import DeskPane, HomeGrid, ProjectsGrid
 from panes.todos         import TodosPane
 from panes.projects      import ProjectsPane
 
-from widgets.nav_bar        import NavBar, NavChanged, NAV_TARGETS
+from widgets.nav_bar        import NavBar, NavChanged
 from widgets.hero_scene     import HeroScene
 from widgets.chat_strip     import ChatStrip
 from widgets.thought_stream import ThoughtStream, SessionStats
@@ -65,10 +58,15 @@ from widgets.card_grid          import CardActivated
 from widgets.command_provider   import WillowCommandProvider
 from widgets.card_builder_modal import CardBuilderModal
 
-import grove_db
-import grove_reader
-from fleet import FleetManager, already_running
-import grove_session
+from core import grove_db, grove_reader, grove_session
+from core.fleet import FleetManager, already_running
+
+logging.basicConfig(
+    filename=Path.home() / ".willow" / "grove_error.log",
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logging.captureWarnings(True)
 
 WILLOW_ROOT = Path(os.environ.get("WILLOW_ROOT", Path.home() / "github" / "willow-2.0"))
 
@@ -645,7 +643,7 @@ class WillowGrove(App):
         atexit.register(self._fleet.stop)
 
         try:
-            from kart_worker import kart_loop as _kart_loop
+            from core.kart_worker import kart_loop as _kart_loop
             threading.Thread(target=_kart_loop, daemon=True, name="kart-daemon").start()
         except Exception:
             logging.exception("kart daemon failed to start")

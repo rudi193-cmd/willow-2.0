@@ -20,7 +20,6 @@ Usage:
 
 import argparse
 import json
-import os
 import socket
 import subprocess
 import sys
@@ -462,7 +461,7 @@ def check_fork_audit(repo_path: Path) -> Check:
         detail = f"{len(forks)} worktree(s), {stale_count} stale"
         extra  = "ALL WORKTREES:\n" + "\n".join(lines_out)
         if stale_count:
-            extra += f"\n  → Clean up: `git worktree remove <path>` or merge first"
+            extra += "\n  → Clean up: `git worktree remove <path>` or merge first"
         return Check("Fork audit", level, detail, extra)
 
     except subprocess.TimeoutExpired:

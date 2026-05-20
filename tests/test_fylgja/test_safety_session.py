@@ -1,7 +1,6 @@
 """SAFE protocol session flow — identity, role, stream authorization, consent record."""
 from datetime import date
 from unittest.mock import patch
-import pytest
 from willow.fylgja.safety.session import (
     get_session_user_id,
     get_session_role,

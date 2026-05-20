@@ -860,10 +860,10 @@ class PgBridge:
             params.append(project)
         if not include_invalid:
             filters.append("invalid_at IS NULL")
-        where = " AND ".join(filters)
+        where_template = " AND ".join(f"({f})" for f in filters)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             select_sql, _ = self._knowledge_select_cols(fields=fields, include_embedding=include_embedding)
-            cur.execute(f"SELECT {select_sql} FROM knowledge WHERE {where} LIMIT %s", params + [limit])
+            cur.execute(f"SELECT {select_sql} FROM knowledge WHERE {where_template} LIMIT %s", params + [limit])
             return [dict(r) for r in cur.fetchall()]
 
     def _knowledge_ann(self, vec: list, limit: int,

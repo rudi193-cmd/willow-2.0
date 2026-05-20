@@ -5,9 +5,9 @@ Skins live in SOIL under willow-dashboard/skins.
 Active skin ID is stored in willow-dashboard/config under key active_skin.
 """
 import curses
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
-import soil
+from core import soil
 
 # ── Color pair indices (same as dashboard.py) ────────────────────────────────
 C_DEFAULT  = 0

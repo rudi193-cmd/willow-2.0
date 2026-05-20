@@ -8,7 +8,6 @@ Safe to re-run (upsert logic). Never calls embedder — backfill handles that.
 """
 import hashlib
 import logging
-import sys
 from pathlib import Path
 from typing import Optional
 

@@ -57,7 +57,7 @@ Atom: title="feat(run-ledger): add 12 tests"
 - Test regressions (failures to investigate)
 - Test count growth (productivity metrics)
 
-**File:** `willow/hooks/test_completion.py` → integrated via `tests/conftest.py::pytest_sessionfinish`
+**File:** `willow/hooks/completion_hook.py` → integrated via `tests/conftest.py::pytest_sessionfinish`
 
 **Example:**
 ```
@@ -190,7 +190,7 @@ cat ~/.willow/atom_extraction_state.json
 - `willow/hooks/__init__.py` — Hook package marker
 - `willow/hooks/post_commit.py` — Phase 1 entry point
 - `willow/hooks/post_merge.py` — Phase 1 for merges
-- `willow/hooks/test_completion.py` — Phase 2 entry point
+- `willow/hooks/completion_hook.py` — Phase 2 entry point
 - `willow/hooks/edge_linking.py` — Phase 4 implementation
 - `.git/hooks/post-commit` — Git hook script
 - `.git/hooks/post-merge` — Git hook script

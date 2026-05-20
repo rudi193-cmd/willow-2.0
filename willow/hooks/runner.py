@@ -20,7 +20,7 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from core.pg_bridge import PgBridge
-from willow.hooks.registry import get_active_hooks, get_hook_by_name
+from willow.hooks.registry import get_active_hooks
 
 
 def _hash_content(content: str) -> str:

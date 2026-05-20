@@ -1,4 +1,4 @@
-# Architecture Decision Records — Willow (willow-1.9)
+# Architecture Decision Records — Willow 2.0
 
 **b17:** ADRW1 · ΔΣ=42  
 

@@ -6,7 +6,6 @@ Tests adapt Cinnamonint patterns: subprocess isolation, stall detection, approva
 """
 
 import unittest
-import os
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 import sys

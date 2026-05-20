@@ -14,13 +14,12 @@ Usage:
 """
 
 import atexit
-import contextlib
 import io
 import logging
 import pickle
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 _logger = logging.getLogger("willow.memory.generation_store")
 

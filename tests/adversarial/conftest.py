@@ -3,7 +3,6 @@
 Inherits WILLOW_PG_DB=willow_20_test and init_pg_schema from tests/conftest.py.
 """
 import io
-import os
 import sys
 import tarfile
 from pathlib import Path

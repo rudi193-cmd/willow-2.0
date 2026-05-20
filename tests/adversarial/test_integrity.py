@@ -6,7 +6,6 @@ walks the entire chain in created_at order — stale rows from other tests
 would produce false chain breaks.
 """
 import psycopg2.extras
-import pytest
 from datetime import datetime, timezone, timedelta
 
 

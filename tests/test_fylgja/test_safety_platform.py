@@ -1,6 +1,5 @@
 """Platform hard stop tests — each active stop triggers correctly, clean calls pass through."""
-import pytest
-from willow.fylgja.safety.platform import check_all, HardStop
+from willow.fylgja.safety.platform import check_all
 
 
 # ── HS-001: Child Primacy ─────────────────────────────────────────────────────

@@ -8,7 +8,6 @@ Manages the review queue at ~/.willow/nest-queue.json.
 
 import json
 import shutil
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 

@@ -33,9 +33,7 @@ Usage:
 
 import hashlib
 import json
-import os
 from core.agent_identity import require_agent_name
-import re
 from datetime import datetime, timezone
 from typing import Optional
 

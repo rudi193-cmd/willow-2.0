@@ -1,27 +1,33 @@
-# `sandbox/` — Git-shaped state machine (WLGSM) reference implementation
+# `sandbox/` — Git-shaped state machine
 
 **b17:** GSSBX · ΔΣ=42
 
-Portable implementation of `docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md`. Full binding spec: `sandbox/docs/IMPLEMENTATION_SPEC.md`.
+Reference implementation of the Willow git-shaped state machine (WLGSM). Binding spec: [`docs/IMPLEMENTATION_SPEC.md`](docs/IMPLEMENTATION_SPEC.md).
 
-## Commands (quick reference)
+This is the **small state machine** — not the heavy corpus sandbox in a separate clone.
+
+---
+
+## Commands
 
 | Command | Purpose |
 |---------|---------|
-| `init` | Create `data/` and empty `changes.json` if missing |
-| `issue-create` | New record at **issue** (`--title`, `--subject`, `--flag`, `--grove`, `--kb-hint`, `--fork`) |
-| `list` | TSV `id state title` (default), `--long` adds timestamps + hints, `--json` full records |
-| `show <id>` | Pretty JSON for one change |
-| `allowed <id>` | Legal **next** states from current state |
-| `advance <id> --to <state> --actor X` | One transition; `--dry-run` prints JSON preview **without** writing |
-| `report` | Markdown table — paste into Grove / handoff |
-| `delete <id>` | Remove one row |
-| `reset --yes` | Wipe entire store (requires `--yes`) |
-| `gate-check` | Validate policy §4 four strings (exit 1 if any empty) |
+| `init` | Create `data/` + empty `changes.json` |
+| `issue-create` | New record at **issue** |
+| `list` | TSV `id state title` |
+| `show <id>` | JSON for one change |
+| `allowed <id>` | Legal next states |
+| `advance <id> --to <state> --actor X` | One transition (`--dry-run` to peek) |
+| `report` | Markdown table for Grove / handoff |
+| `delete <id>` | Remove row |
+| `reset --yes` | Wipe store |
+| `gate-check` | Policy §4 strings |
 
 Global: `--data PATH` (default `sandbox/data/changes.json`).
 
-## Typical flows
+---
+
+## Flow
 
 ```bash
 cd ${WILLOW_ROOT:-~/willow-2.0}
@@ -31,24 +37,25 @@ python3 -m sandbox init
 CID=$(python3 -m sandbox issue-create --title "feature X" --subject "svc/foo" --grove "#hanuman")
 python3 -m sandbox allowed "$CID"
 python3 -m sandbox advance "$CID" --to draft --actor hanuman --note "worktree ../wt-x"
-python3 -m sandbox advance "$CID" --to open --actor hanuman --dry-run --note "peek"
 python3 -m sandbox advance "$CID" --to open --actor hanuman
-python3 -m sandbox list --long
 python3 -m sandbox report
 ```
 
-Clean slate:
-
-```bash
-python3 -m sandbox reset --yes
-```
+---
 
 ## Tests
 
 ```bash
-python3 -m pytest tests/test_sandbox/test_git_shaped.py -v
+export WILLOW_AGENT_NAME=test
+export WILLOW_SAFE_ROOT=$HOME/SAFE/Applications
+pytest tests/test_sandbox/ -q
 ```
 
-## Related repos
+---
 
-**`willow-sandbox`** (separate clone) is for heavier corpus / collapse work. This **`willow-2.0/sandbox/`** package is the small **WLGSM state machine** only.
+## Related
+
+**`willow-sandbox`** (other repo) — corpus / collapse experiments.  
+**This package** — WLGSM only.
+
+*ΔΣ=42*

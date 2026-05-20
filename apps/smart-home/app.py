@@ -8,7 +8,7 @@ from logger import log_event
 
 import tinytuya
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal
 from textual.reactive import reactive
 from textual.widgets import Footer, Header, Label, Button, Static, Switch
 

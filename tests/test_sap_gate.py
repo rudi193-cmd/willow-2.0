@@ -2,8 +2,7 @@
 Tests for sap.core.gate — cross-app authorization
 b17: SAPS1
 """
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 from sap.core import gate
 
 

@@ -1,7 +1,40 @@
-## Known gaps (documentation index)
+# Known gaps
 
-These are recorded issues/gaps. This file is intentionally short: it links to the canonical writeups.
+b17: KNOWNG · ΔΣ=42
 
-- **GAP-001**: Postgres bridge silent-failing (historical incident + remaining open items)  
-  `docs/gaps/GAP-001-postgres-bridge-broken.md`
+**As of Willow 2.0 beta (2026-05-19): there are no open engineering gaps in this index.**
 
+The Postgres bridge incident (GAP-001) was fixed in April 2026 and archived May 2026. `_init_pg()` uses `PgBridge()` today; failures log and can post to Grove `#general`. Postmortem: [`../archive/docs/gaps/GAP-001-postgres-bridge-broken.md`](../archive/docs/gaps/GAP-001-postgres-bridge-broken.md).
+
+---
+
+## Where real open work lives
+
+| Kind | Doc |
+|------|-----|
+| Human decisions (R1–R9, legacy DB, SAP dev mode) | [`../wiki/active-decisions.md`](../wiki/active-decisions.md) |
+| Security tracking (P1/P2, some fixed in beta) | [`../SECURITY_AUDIT.md`](../SECURITY_AUDIT.md) |
+| Beta gate (what we fixed for outside users) | [`BETA_AUDIT_REPORT.md`](BETA_AUDIT_REPORT.md) |
+| 1.9 → 2.0 code truth | [`CODE_DIFF_1.9_to_2.0.md`](CODE_DIFF_1.9_to_2.0.md) |
+
+---
+
+## Closed (historical)
+
+| ID | What | Postmortem |
+|----|------|------------|
+| GAP-001 | Postgres MCP tools silent-failing (wrong type, wrong DB, missing methods) | [`../archive/docs/gaps/GAP-001-postgres-bridge-broken.md`](../archive/docs/gaps/GAP-001-postgres-bridge-broken.md) |
+
+---
+
+## Adding a new gap
+
+Only add a row here when something is **still broken in `master`** and blocks or misleads users.
+
+1. File under `docs/gaps/GAP-NNN-short-name.md` with status **Open**
+2. Link in the table above
+3. Optional: `kb_ingest` if the fleet must not forget it
+
+Do not list fixed incidents as active gaps.
+
+*ΔΣ=42*

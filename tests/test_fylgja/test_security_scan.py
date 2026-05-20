@@ -17,8 +17,6 @@ from willow.fylgja.safety.security_scan import (
     worst,
     SEV_CRITICAL,
     SEV_HIGH,
-    SEV_MEDIUM,
-    SEV_LOW,
 )
 
 

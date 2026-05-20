@@ -1,6 +1,10 @@
-# Atom Extraction — Quick Start
+# Atom extraction — quick start
 
-The system automatically creates KB atoms when work lands, so the KB stays in sync with what's actually been built.
+b17: ATMQS · ΔΣ=42
+
+Willow 2.0. When enabled, hooks write KB atoms from commits and session activity so memory tracks what actually shipped.
+
+Ingest path: **`kb_ingest`** · search first with **`kb_search`**.
 
 ## Enable It
 

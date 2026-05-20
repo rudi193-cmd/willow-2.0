@@ -1,6 +1,4 @@
 """tests/test_vault.py — vault read/write tests."""
-import pytest
-from pathlib import Path
 from core.vault import Vault
 
 

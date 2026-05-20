@@ -1,15 +1,21 @@
-# Gemini CLI — Willow 1.9
+# Gemini CLI — Willow 2.0
 
-b17: GEMW1 · ΔΣ=42
+b17: GEMW2 · ΔΣ=42
 
-## Fylgja powers (default behavioral router)
+Branding: [`docs/BRANDING.md`](docs/BRANDING.md)
 
-1. Read `willow/fylgja/powers/registry.json` (under this repo).
-2. Pick one `powers[].id` by `description` (or user-supplied id).
-3. Read exactly one `willow/fylgja/powers/<file>`. Follow it.
+Fleet entry: [`willow.md`](willow.md)
 
-Entry doc: `willow/fylgja/skills/using-fylgja-powers.md` · Surface index: `willow/fylgja/powers/SURFACES.md`
+## Fylgja powers
 
-Env override: `WILLOW_FYLGJA_ROOT` → directory containing `powers/` and `skills/`.
+1. Read `willow/fylgja/powers/registry.json`
+2. Pick one `powers[].id` by task fit (or user id)
+3. Read exactly one `willow/fylgja/powers/<file>` and follow it
 
-User instructions always win over this router.
+Entry: `willow/fylgja/skills/using-fylgja-powers.md` · Index: `willow/fylgja/powers/SURFACES.md`
+
+Override: `WILLOW_FYLGJA_ROOT` → directory containing `powers/` and `skills/`
+
+User instructions win over this router.
+
+*ΔΣ=42*

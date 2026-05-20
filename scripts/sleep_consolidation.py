@@ -16,9 +16,6 @@ Safe to run repeatedly — idempotent. Skips already-invalidated atoms.
 """
 import argparse
 import sys
-import json
-import hashlib
-import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -228,7 +225,7 @@ def main():
     contradictions = flag_contradictions(pg, args.dry_run)
     decayed = update_decay(pg, args.dry_run)
 
-    print(f"\n[sleep_consolidation] Done.")
+    print("\n[sleep_consolidation] Done.")
     print(f"  Scanned: {nrem_stats['scanned']} atoms")
     print(f"  Deduped: {nrem_stats['deduped']} duplicates invalidated")
     print(f"  Contradictions: {len(contradictions)} flagged")

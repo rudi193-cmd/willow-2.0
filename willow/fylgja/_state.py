@@ -3,7 +3,6 @@ _state.py — Session and trust state management.
 All hooks read/write state through here.
 """
 import json
-import os
 from pathlib import Path
 
 from core.agent_identity import require_agent_name

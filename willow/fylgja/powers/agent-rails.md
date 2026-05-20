@@ -1,45 +1,62 @@
 # power: agent-rails
+
 b17: FYLAR · ΔΣ=42
 
-**When:** Any substantive work that touches **Willow MCP**, **Postgres KB**, **Grove**, or **SOIL** — and no narrower power (e.g. `debug`, `tdd`) already owns the turn.
+**When:** Any substantive work touching **Willow MCP**, **KB**, **Grove**, or **SOIL** — and no narrower power (`debug`, `tdd`, `plan`, …) already owns the turn.
 
-**Goal:** Less chat context, more durable knowledge; faster orientation; fewer duplicate writes and silent drift.
+**Goal:** Thin chat context. Thick durable knowledge. Fewer duplicate writes.
+
+---
 
 ## 1. Cold pull (parallel when both apply)
 
-- Default boot path when MCP is available is a compact 7-step loop:
-  1. Read `willow.md` via `markdownai-read_file`.
-  2. Establish local operating context: agent, namespace, repo root, branch, and a compact repo diff summary.
-  3. Pull live system state with **`fleet_status`**.
-  4. Pull session continuity with **`handoff_latest`**.
-  5. Pull fleet continuity with **`grove_get_history`** on the agent channel/inbox.
-  6. Pull task continuity with **`kb_search`** on the current topic.
-  7. If any required base is degraded, **stop** and report; otherwise proceed to act.
-- Keep step 2 compact: branch, clean/dirty, staged/unstaged/untracked counts, ahead/behind if known, and a short diff note. Do not dump a full patch at boot.
-- Treat `session_anchor_*.json` as a cache/fallback. Use `/startup` only for degraded boot, stale context, or deeper continuity recovery.
-- Persistent memory architecture lives in `willow/fylgja/skills/persistent-memory-stack.md`: boot persistence, mid-session persistence, and end-of-session persistence.
+Default boot when MCP is up:
+
+1. `markdownai-read_file("willow.md")`
+2. Local context — agent, namespace, repo root, branch, compact diff (counts only)
+3. `fleet_status`
+4. `handoff_latest`
+5. `grove_get_history` on your channel/inbox
+6. `kb_search` on the task topic
+7. If degraded → **stop** and report
+
+Shell fallback: `./willow.sh fleet_status` · `./willow.sh handoff_latest`
+
+`~/.willow/session_anchor_*.json` is cache, not truth. `/startup` only when boot is broken or stale.
+
+Stack: `willow/fylgja/skills/persistent-memory-stack.md`
+
+---
 
 ## 2. Knowledge before muscle
 
-- Before designing or changing behavior: **`willow_knowledge_search`** (and `store_search` / `store_get` if the map says SOIL holds the record).
-- Before **`willow_knowledge_ingest`**: **`willow_memory_check`**; do not ingest redundant or contradictory atoms without resolving flags.
+- Before design or code: **`kb_search`** (+ `soil_search` / `soil_get` if SOIL holds the record)
+- Before **`kb_ingest`**: **`mem_check`** — do not force past redundant/contradiction without resolving
+
+---
 
 ## 3. Coordination before broadcast
 
-- Before a non-trivial **Grove** post or cross-repo edit intent: **`grove_get_history`** on the relevant channel (or `grove_inbox` / bus receive per skill).
-- Writes stay in **your agent namespace** (Hanuman → `hanuman/`, etc.); archive stale KB (`domain='archived'`), do not delete without Sean.
+- Before a non-trivial Grove post: **`grove_get_history`** on that channel
+- Writes stay in **your namespace**. Stale atoms → `domain='archived'`, not delete
+
+---
 
 ## 4. Execution shape
 
-- **One** fylgja power body per turn unless the loaded power or Sean tells you to escalate.
-- Heavy shell / long jobs: **`willow_task_submit`** to Kart when appropriate — keep the reasoning loop thin.
-- After MCP-layer code edits: **`willow_reload`** with the narrowest target that works; verify per `willow/fylgja/skills/restart-server.md`.
+- **One** power body per turn unless this file or Sean says escalate
+- Heavy shell: **`agent_task_submit`** to Kart
+- After MCP code edits: **`fleet_reload`** (narrowest target); see `skills/restart-server.md`
 
-## Don’t
+---
 
-- Re-derive fleet architecture from chat memory when MCP or KB can answer in one call.
-- Post to Grove or ingest KB “to be helpful” without a pull-first check when another agent may have already decided.
+## Don't
 
-**Escalate:** Task is purely code review → `review-in` / `review-out`; red/green logic → `tdd`; production bug → `debug`; ratified multi-step → `plan` / `execute`.
+- Re-derive the fleet from chat when one MCP call answers it
+- Grove post or KB ingest "to be helpful" without pull-first
 
-**Canonical shape:** Fleet-wide **Issue → PR → Checks → Review → Merge → Archive** mapping lives in `docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md` — new features must declare which transition they add (see §4 gate there).
+**Escalate:** review → `review-in` / `review-out`; logic → `tdd`; bug → `debug`; multi-step → `plan` / `execute`
+
+**Git-shaped work:** `archive/docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md` + `sandbox/`
+
+*ΔΣ=42*

@@ -327,7 +327,7 @@ def authorized(app_id: str) -> bool:
         return False
 
     if _ALLOWED_APP_IDS and app_id not in _ALLOWED_APP_IDS:
-        _log_gap(app_id, f"app_id not in allowlist (WILLOW_ALLOWED_APP_IDS)")
+        _log_gap(app_id, "app_id not in allowlist (WILLOW_ALLOWED_APP_IDS)")
         return False
 
     # Check top-level Applications first, then UTETY/professors/ fallback

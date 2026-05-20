@@ -19,7 +19,6 @@ from willow.sigmap.fallback import (
     FallbackResult,
     fallback_search,
     _level4_ilike,
-    DEFAULT_THRESHOLD,
 )
 
 

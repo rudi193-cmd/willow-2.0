@@ -1,6 +1,5 @@
 """Tests for pg_bridge.py — schema correctness."""
 import os
-import pytest
 import psycopg2
 
 
@@ -87,7 +86,8 @@ def test_knowledge_weight_columns():
 
 def test_routing_decisions_table():
     """routing_decisions table must exist and accept inserts."""
-    import uuid, json
+    import uuid
+    import json
     conn = _conn()
     cur = conn.cursor()
     rid = str(uuid.uuid4())[:8]

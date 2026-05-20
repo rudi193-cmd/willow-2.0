@@ -81,7 +81,7 @@ def pytest_sessionfinish(session, exitstatus):
             json.dump(results, f)
 
         # Trigger atom extraction
-        from willow.hooks.test_completion import main as test_completion_main
+        from willow.hooks.completion_hook import main as test_completion_main
         os.environ["PYTEST_REPORT"] = str(report_path)
         test_completion_main()
 

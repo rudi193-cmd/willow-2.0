@@ -1,11 +1,12 @@
 # Archive
 
-This directory holds legacy, historical, and superseded material that is being
-kept for reference but is not part of the active `willow-2.0` runtime path.
+**Not the install path.** Active docs live at repo root and in `docs/` + `wiki/`.
+
+This tree holds legacy, historical, and superseded material — preserved, not curated for beta defaults.
 
 ## What Lives Here
 
-- `docs/`: historical architecture, technical spec, reports, and prior design/spec work
+- `docs/`: historical architecture, technical spec, reports, gap postmortems (`docs/gaps/`), and prior design/spec work
 - `legacy/`: retired implementation surfaces kept for compatibility archaeology
 - `scripts/`: one-off migration helpers and old schema movers
 - `apps/`: archived app/session artifacts

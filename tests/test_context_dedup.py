@@ -7,7 +7,6 @@ No network, no DB, no filesystem writes for the core logic.
 from __future__ import annotations
 
 import sys
-import time
 from pathlib import Path
 from unittest.mock import patch
 

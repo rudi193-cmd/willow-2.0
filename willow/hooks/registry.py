@@ -164,7 +164,7 @@ def seed_builtin_hooks() -> int:
         {
             'name': 'test_completion',
             'category': 'test_events',
-            'handler_path': 'willow/hooks/test_completion.py',
+            'handler_path': 'willow/hooks/completion_hook.py',
             'destructive': False,
             'approval_required': False,
             'test_path': None,

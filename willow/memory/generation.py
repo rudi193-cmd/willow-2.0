@@ -55,10 +55,8 @@ Usage:
 from __future__ import annotations
 
 import logging
-import os
-from core.agent_identity import require_agent_name
 from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 logger = logging.getLogger("willow.memory.generation")
 

@@ -1,6 +1,5 @@
 import json
 from io import StringIO
-from pathlib import Path
 from unittest.mock import patch
 from willow.fylgja.events.stop import (
     read_turns_since,
@@ -48,7 +47,6 @@ def test_mark_session_clean_skips_on_zero_turns(tmp_path):
 
 
 def _run_stop(stdin_data: dict) -> None:
-    import willow.fylgja.events.stop as s
     inp = StringIO(json.dumps(stdin_data))
     with patch("sys.stdin", inp):
         try:

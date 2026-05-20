@@ -8,7 +8,6 @@ LISTEN helper, and all channel/message/flag/bus/cursor operations.
 
 import os
 import threading
-from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 _pool = None
