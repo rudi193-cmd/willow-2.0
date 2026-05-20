@@ -28,11 +28,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/willow-2.0/orchestrator.py"
+            "command": "python3 ~/willow-2.0/scripts/orchestrator.py"
           },
           {
             "type": "command",
-            "command": "python3 ~/willow-2.0/persona.py"
+            "command": "python3 ~/willow-2.0/scripts/persona.py"
           }
         ]
       }
@@ -42,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/willow-2.0/session_close.py"
+            "command": "python3 ~/willow-2.0/scripts/session_close.py"
           }
         ]
       }
