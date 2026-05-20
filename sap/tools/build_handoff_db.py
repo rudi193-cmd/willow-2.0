@@ -112,6 +112,32 @@ def parse_session_handoff(content: str, filename: str = "") -> dict:
             if questions:
                 result["questions"] = json.dumps(questions)
             break
+    for marker in ("## What We Agreed On",):
+        if marker in content:
+            start = content.find(marker) + len(marker)
+            block = re.split(r"\n(?=##|\n---)", content[start:])[0]
+            items = re.findall(r"^[-*]\s(.+)$", block, re.MULTILINE)
+            if not items:
+                text = block.strip()
+                if text:
+                    items = [text[:500]]
+            if items:
+                result["agreements"] = json.dumps(items)
+            break
+
+    for marker in ("## Capabilities",):
+        if marker in content:
+            start = content.find(marker) + len(marker)
+            block = re.split(r"\n(?=##|\n---)", content[start:])[0]
+            caps = []
+            for row in re.findall(r"^\|([^|]+)\|([^|]+)\|([^|]+)\|", block, re.MULTILINE):
+                cap, loc, status = [c.strip() for c in row]
+                if cap and cap.lower() != "capability" and not set(cap).issubset({"-", " "}):
+                    caps.append({"capability": cap, "location": loc, "status": status})
+            if caps:
+                result["capabilities"] = json.dumps(caps)
+            break
+
     m = re.search(r"\*\*What Happened\*\*\n(.+?)(?=\n\*\*|\n---)", content, re.DOTALL)
     if m:
         result["summary"] = m.group(1).strip()
@@ -221,8 +247,9 @@ def kb_to_sqlite(conn: sqlite3.Connection) -> int:
             INSERT OR IGNORE INTO handoffs
                 (file_id, file_type, session_id, handoff_date,
                  turns, tools_used, last_messages, key_actions,
-                 open_threads, questions, summary, raw_content)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                 open_threads, questions, agreements, capabilities,
+                 summary, raw_content)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             file_id, "session",
             atom_id,
@@ -233,6 +260,8 @@ def kb_to_sqlite(conn: sqlite3.Connection) -> int:
             _jdump(content.get("key_actions")),
             _jdump(content.get("open_threads")),
             _jdump(content.get("next_steps")),
+            _jdump(content.get("agreements")),
+            _jdump(content.get("capabilities")),
             content.get("summary") or summary,
             json.dumps({"id": atom_id, "title": title, "summary": summary, **content}),
         ))
@@ -269,6 +298,8 @@ def build_db():
             key_actions   TEXT,
             open_threads  TEXT,
             questions     TEXT,
+            agreements    TEXT,
+            capabilities  TEXT,
             summary       TEXT,
             raw_content   TEXT
         );
@@ -314,13 +345,15 @@ def build_db():
                 INSERT INTO handoffs
                     (file_id, file_type, session_id, handoff_date, turns,
                      tools_used, last_messages, key_actions, open_threads,
-                     questions, summary, raw_content)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                     questions, agreements, capabilities, summary, raw_content)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (
                 file_id, ftype,
                 parsed.get("session_id"), parsed.get("handoff_date"), parsed.get("turns"),
                 parsed.get("tools_used"), parsed.get("last_messages"), parsed.get("key_actions"),
-                parsed.get("open_threads"), parsed.get("questions"), parsed.get("summary"),
+                parsed.get("open_threads"), parsed.get("questions"),
+                parsed.get("agreements"), parsed.get("capabilities"),
+                parsed.get("summary"),
                 content,
             ))
             handoff_count += 1

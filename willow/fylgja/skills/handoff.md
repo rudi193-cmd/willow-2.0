@@ -19,15 +19,27 @@ Stack position: this skill is the first third of the **end-of-session persistenc
 ```
 # HANDOFF: <title>
 From: {AGENT} (Claude Code, Sonnet 4.6)
+Session: {YYYY-MM-DDx} | Resume: claude --resume {UUID}
 
 ## What I Now Understand
 <2-3 sentences of architectural truth, not task summary>
+
+## What We Agreed On
+<decisions Sean ratified this session — include what was ruled out and why>
+<format: "Decision: X. Ruled out: Y because Z.">
+<omit if session was pure execution with no design conversation>
+
+## Capabilities (persistent — carry forward, update don't rewrite)
+| Capability | Location | Status |
+|------------|----------|--------|
+<what has been built and is available>
 
 ## What Was Done
 <bullet list — high level, no code details>
 
 ## Open Threads
 <anything unfinished, blocked, or requiring a decision next session>
+<do NOT include things already captured in "What We Agreed On">
 
 ## 17 Questions
 Q1–Q16: sequential, specific, bite-sized
@@ -47,6 +59,7 @@ Q17: "What is the next single bite?"
      {
        "summary": "<prose narrative>",
        "open_threads": ["<thread 1>", "..."],
+       "agreements": ["<decision + ruling>", "..."],
        "key_actions": ["<action 1>", "..."],
        "next_steps": ["<Q17>", "<Q16>", "..."],
        "tools_used": ["kb_ingest", "fleet_status", "..."],
@@ -69,6 +82,8 @@ Q17: "What is the next single bite?"
 ## Rules
 
 - "What I Now Understand" = architectural truth, not a task list.
+- "What We Agreed On" = ratified decisions only. If Sean didn't explicitly say yes, it's not here. Ruled-out options belong here too — prevents re-litigation next session.
+- "What We Agreed On" is the section that makes CC CLI sessions legible to the next agent. Without it, design conclusions look like open threads.
 - `open_threads` in the content JSONB is the machine-readable version of the handoff doc —
   these are what `handoff_latest` returns. Keep them precise.
 - Q17 must be a single concrete next bite, not a project description.

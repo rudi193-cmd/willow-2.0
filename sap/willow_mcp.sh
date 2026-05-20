@@ -7,7 +7,7 @@ GROVE_ROOT="${WILLOW_GROVE_ROOT:-${HOME}/github/safe-app-willow-grove}"
 
 export PYTHONPATH="${REPO_ROOT}:${GROVE_ROOT}"
 export WILLOW_ROOT="${REPO_ROOT}"
-export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-heimdallr}"
+export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-agent}"
 export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/SAFE/Applications}"
 export WILLOW_STORE_ROOT="${WILLOW_STORE_ROOT:-${HOME}/.willow/store}"
 export WILLOW_VAULT="${WILLOW_VAULT:-${HOME}/.willow/vault.db}"
