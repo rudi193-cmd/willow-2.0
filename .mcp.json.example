@@ -1,25 +1,12 @@
 {
   "mcpServers": {
-    "markdownai": {
-      "command": "bash",
-      "args": ["/path/to/willow-2.0/sap/markdownai_mcp.sh"]
-    },
     "willow": {
       "command": "bash",
-      "args": ["/path/to/willow-2.0/sap/willow_mcp.sh"],
+      "args": ["/path/to/willow-2.0/sap/unified_mcp.sh"],
       "env": {
         "WILLOW_AGENT_NAME": "your_agent",
-        "WILLOW_STORE_ROOT": "/home/USERNAME/.willow/store",
-        "WILLOW_PG_DB": "willow_20",
-        "WILLOW_PG_USER": "USERNAME"
-      }
-    },
-    "grove": {
-      "command": "bash",
-      "args": ["/path/to/willow-2.0/sap/grove_mcp.sh"],
-      "env": {
         "WILLOW_GROVE_ROOT": "/path/to/safe-app-willow-grove",
-        "WILLOW_AGENT_NAME": "your_agent",
+        "WILLOW_STORE_ROOT": "/home/USERNAME/.willow/store",
         "WILLOW_PG_DB": "willow_20",
         "WILLOW_PG_USER": "USERNAME"
       }
