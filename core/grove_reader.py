@@ -7,7 +7,7 @@ import logging
 import os
 from datetime import datetime, timezone
 
-from . import grove_db
+import grove_db
 
 _log = logging.getLogger("grove_reader")
 
