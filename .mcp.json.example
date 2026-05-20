@@ -15,13 +15,13 @@
       }
     },
     "grove": {
-      "command": "python3",
-      "args": ["-m", "grove.mcp_local"],
-      "cwd": "/path/to/safe-app-willow-grove",
+      "command": "bash",
+      "args": ["/path/to/willow-2.0/sap/grove_mcp.sh"],
       "env": {
+        "WILLOW_GROVE_ROOT": "/path/to/safe-app-willow-grove",
+        "WILLOW_AGENT_NAME": "your_agent",
         "WILLOW_PG_DB": "willow_20",
-        "WILLOW_PG_USER": "USERNAME",
-        "PYTHONPATH": "/path/to/safe-app-willow-grove"
+        "WILLOW_PG_USER": "USERNAME"
       }
     }
   }

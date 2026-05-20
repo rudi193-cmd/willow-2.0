@@ -24,6 +24,15 @@ Copy [`.mcp.json.example`](../.mcp.json.example) → `.mcp.json`:
         "WILLOW_AGENT_NAME": "your_agent",
         "WILLOW_PG_DB": "willow_20"
       }
+    },
+    "grove": {
+      "command": "bash",
+      "args": ["sap/grove_mcp.sh"],
+      "env": {
+        "WILLOW_GROVE_ROOT": "/path/to/safe-app-willow-grove",
+        "WILLOW_AGENT_NAME": "your_agent",
+        "WILLOW_PG_DB": "willow_20"
+      }
     }
   }
 }
@@ -56,9 +65,24 @@ systemctl --user start willow-mcp.service
 
 ## Grove MCP (separate)
 
-Clone `safe-app-willow-grove`. Module `grove.mcp_local` — messaging tools, not KB.
+Grove is a separate repo (`safe-app-willow-grove`). It provides fleet messaging tools (`grove_send_message`, `grove_inbox`, `grove_get_history`, etc.) — not KB or task tools.
 
-See sibling repo `docs/runbooks/mcp.md` when both repos sit side by side.
+**Prerequisites:**
+
+1. Clone `safe-app-willow-grove` alongside this repo.
+2. Set `WILLOW_GROVE_ROOT` to its path (or let `grove_mcp.sh` default to `~/github/safe-app-willow-grove`).
+
+**Launcher:** `sap/grove_mcp.sh` — uses this repo's `.venv-dev` Python and sets `PYTHONPATH` automatically. No separate install needed if `.venv-dev` already has the grove package.
+
+**Env vars:**
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `WILLOW_GROVE_ROOT` | `~/github/safe-app-willow-grove` | Path to grove repo |
+| `WILLOW_AGENT_NAME` | `hanuman` | Sets sender identity |
+| `WILLOW_PG_DB` | `willow_20` | Shared Postgres DB |
+
+Restart the IDE after adding or changing the grove entry.
 
 ---
 

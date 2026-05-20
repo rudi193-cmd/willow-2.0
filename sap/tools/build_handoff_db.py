@@ -33,6 +33,19 @@ SCAN_DIRS = [
 _SKIP = {"build_handoff_db.py", "handoffs.db"}
 
 
+def matches_agent_suffix(filename: str, agent_name: str) -> bool:
+    """Return True if filename ends with _{agent_name}.md."""
+    return filename.lower().endswith(f"_{agent_name.lower()}.md")
+
+
+def has_valid_frontmatter(content: str) -> bool:
+    """Return True if content has a --- delimited frontmatter block."""
+    stripped = content.lstrip()
+    if not stripped.startswith("---"):
+        return False
+    return stripped.find("---", 3) > 3
+
+
 def classify_file(filename: str) -> str:
     name = filename.lower()
     if name.startswith("handoff-") and name.endswith(".md"):
@@ -321,11 +334,25 @@ def build_db():
     files = sorted(all_files, key=lambda f: f.name)
     file_count = 0
     handoff_count = 0
+    skipped_count = 0
     for f in files:
         if not f.is_file() or f.name in _SKIP:
             continue
         stat = f.stat()
         ftype = classify_file(f.name)
+
+        if ftype == "session":
+            if not matches_agent_suffix(f.name, _TOOL_AGENT):
+                skipped_count += 1
+                continue
+            try:
+                _check = f.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                skipped_count += 1
+                continue
+            if not has_valid_frontmatter(_check):
+                skipped_count += 1
+                continue
         mtime = datetime.fromtimestamp(stat.st_mtime).isoformat()
         cur.execute(
             "INSERT INTO files (filename, filepath, file_type, file_size, mtime) VALUES (?,?,?,?,?)",
@@ -367,6 +394,7 @@ def build_db():
     print(f"  {file_count} files indexed")
     print(f"  {handoff_count} handoffs parsed")
     print(f"  {kb_count} KB atoms ingested")
+    print(f"  {skipped_count} session files skipped (agent suffix or frontmatter mismatch)")
     print(f"  DB size: {DB_PATH.stat().st_size / 1024:.1f} KB")
     print(f"  Dirs scanned: {[str(d) for d in SCAN_DIRS if d.exists()]}")
 
