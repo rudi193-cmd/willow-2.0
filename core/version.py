@@ -8,7 +8,6 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _VERSION_FILE = _REPO_ROOT / "VERSION"
-_INSTALLED = Path.home() / ".willow" / "version"
 
 
 def get_version() -> str:
@@ -20,11 +19,17 @@ def get_version() -> str:
 VERSION = get_version()
 
 
+def installed_version_path() -> Path:
+    """Resolved at call time so tests can monkeypatch Path.home()."""
+    return Path.home() / ".willow" / "version"
+
+
 def sync_installed_version() -> str:
     """Write repo VERSION to ~/.willow/version when it differs."""
     v = get_version()
-    _INSTALLED.parent.mkdir(parents=True, exist_ok=True)
-    current = _INSTALLED.read_text().strip() if _INSTALLED.is_file() else ""
+    path = installed_version_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    current = path.read_text().strip() if path.is_file() else ""
     if current != v:
-        _INSTALLED.write_text(v + "\n")
+        path.write_text(v + "\n")
     return v
