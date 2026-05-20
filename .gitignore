@@ -12,6 +12,11 @@ mypy_output.txt
 .mcp.json
 .worktrees/
 
+# .willow/ runtime artifacts — config (mcp.json) is tracked, these are not
+.willow/store/
+.willow/*.db
+.willow/vault.db
+
 # Runtime logs — generated at runtime, not for version control
 sap/log/*.jsonl
 sap/log/*.md
