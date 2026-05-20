@@ -13,8 +13,15 @@ from textual.reactive import reactive
 from textual.widgets import Footer, Header, Label, Button, Static, Switch
 
 HERE = Path(__file__).parent
-DEVICES = json.loads((HERE / "devices.json").read_text())
-KEYS = json.loads((HERE / "keys.json").read_text())
+_DEVICES = HERE / "devices.json"
+_KEYS = HERE / "keys.json"
+if not _DEVICES.is_file() or not _KEYS.is_file():
+    raise SystemExit(
+        "Missing devices.json or keys.json — copy from *.example in apps/smart-home/ "
+        "(see README.md). Do not commit real device data."
+    )
+DEVICES = json.loads(_DEVICES.read_text())
+KEYS = json.loads(_KEYS.read_text())
 LOG = HERE / "debug.log"
 
 def log(msg: str) -> None:

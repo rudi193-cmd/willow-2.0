@@ -7,8 +7,8 @@ Usage:
     python3 -m core.grove_client <host:port> <command> [--token path]
 
 Examples:
-    python3 -m core.grove_client 192.168.12.189:7777 "status-all"
-    python3 -m core.grove_client 192.168.12.189:7777 "health daily"
+    python3 -m core.grove_client 192.168.1.10:7777 "status-all"
+    python3 -m core.grove_client 192.168.1.10:7777 "health daily"
 """
 import hashlib
 import hmac

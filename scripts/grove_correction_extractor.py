@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-grove_correction_extractor.py — Extract Sean's correction events from Grove logs.
+grove_correction_extractor.py — Extract human correction events from Grove logs.
 
 Uses directional triplet signal:
   1. Agent turn (candidate rejected)
-  2. Sean correction (from example-user to agent)
+  2. Human correction (operator → agent)
   3. Agent absorption (acknowledgment or self-correction in next turn)
+
+Set WILLOW_OPERATOR (Grove sender id) or pass --operator.
 
 Output: DPO pairs with _error_type governance labels and session_mode_estimate.
 
@@ -18,6 +20,7 @@ Usage:
 """
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -118,10 +121,12 @@ def classify_error_type(correction_text: str) -> str:
     return "ambiguous"
 
 
-def estimate_session_mode(messages: list[dict], center_idx: int, window: int = 10) -> str:
+def estimate_session_mode(
+    messages: list[dict], center_idx: int, operator: str, window: int = 10,
+) -> str:
     start = max(0, center_idx - window // 2)
     end = min(len(messages), center_idx + window // 2)
-    window_msgs = [m for m in messages[start:end] if m["sender"] == "example-user"]
+    window_msgs = [m for m in messages[start:end] if m["sender"] == operator]
 
     soft_score = 0
     hard_score = 0
@@ -151,7 +156,9 @@ def check_absorption(messages: list[dict], agent_sender: str, correction_idx: in
     return False
 
 
-def extract_corrections(pg: PgBridge, channel: str, since_id: int, until_id: int) -> list[dict]:
+def extract_corrections(
+    pg: PgBridge, channel: str, since_id: int, until_id: int, operator: str,
+) -> list[dict]:
     with pg.conn.cursor() as cur:
         cur.execute("SELECT id FROM grove.channels WHERE name = %s LIMIT 1", (channel,))
         row = cur.fetchone()
@@ -175,7 +182,7 @@ def extract_corrections(pg: PgBridge, channel: str, since_id: int, until_id: int
     pairs = []
 
     for i, msg in enumerate(messages):
-        if msg["sender"] != "example-user":
+        if msg["sender"] != operator:
             continue
 
         # Find preceding agent turn
@@ -203,7 +210,7 @@ def extract_corrections(pg: PgBridge, channel: str, since_id: int, until_id: int
                 continue
 
         absorbed = check_absorption(messages, agent_sender, i)
-        mode = estimate_session_mode(messages, i)
+        mode = estimate_session_mode(messages, i, operator)
 
         pair = {
             "prompt": agent_turn["content"],
@@ -229,10 +236,17 @@ def main():
     parser.add_argument("--since-id", type=int, default=6400)
     parser.add_argument("--until-id", type=int, default=9999)
     parser.add_argument("--output", default=str(Path.home() / ".willow" / "exports" / "grove_20260429.jsonl"))
+    parser.add_argument(
+        "--operator",
+        default=os.environ.get("WILLOW_OPERATOR", "operator"),
+        help="Grove sender id for the human operator (default: WILLOW_OPERATOR or 'operator')",
+    )
     args = parser.parse_args()
 
     pg = PgBridge()
-    pairs = extract_corrections(pg, args.channel, args.since_id, args.until_id)
+    pairs = extract_corrections(
+        pg, args.channel, args.since_id, args.until_id, args.operator,
+    )
 
     out = Path(args.output).expanduser()
     out.parent.mkdir(parents=True, exist_ok=True)

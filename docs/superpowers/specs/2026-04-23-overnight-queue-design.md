@@ -91,15 +91,15 @@ UTETY's `web/index.html` already routes to `localhost:8420/api/utety/chat` when 
 
 ## Track 6 — law-gazelle Active Case Work
 
-Ada's case (WCA 25-01325, L5-L6, Trader Joe's) + Ch.13 bankruptcy (26-10177-j13). law-gazelle has real code now. Case data not loaded. No active work done.
+Operator legal workflows (redacted in public tree). law-gazelle has real code now. Case data not loaded locally in this checkout. No active work done.
 
-**Success:** Sean's case timeline, filings, and Sedgwick correspondence loaded into law-gazelle. Next court date and action items surfaced.
+**Success:** Case timeline, filings, and correspondence loaded into law-gazelle. Next court date and action items surfaced.
 
 ---
 
 ## Track 7 — EdgeE + Corpus Separation
 
-Human attestation system (EdgeE) not built. 13 persona corpora unseparated. SLM training data contaminated with Sean-specific content. This is the data work that feeds Yggdrasil v5+.
+Human attestation system (EdgeE) not built. 13 persona corpora unseparated. SLM training data still mixed with operator-specific content. This is the data work that feeds Yggdrasil v5+.
 
 **Depends on:** Track 1 (KB readable), Track 3 (Kart working).
 

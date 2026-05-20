@@ -1,0 +1,30 @@
+[
+  {
+    "name": "Example Garage",
+    "id": "0000000000000000000000",
+    "ip": "192.168.0.100",
+    "ver": "3.4",
+    "type": "garage",
+    "group": "garage",
+    "dps": {
+      "switch": "1",
+      "contact": "3",
+      "state": "12"
+    }
+  },
+  {
+    "name": "Example Light",
+    "id": "1111111111111111111111",
+    "ip": "192.168.0.101",
+    "ver": "3.5",
+    "type": "light_rgbw",
+    "group": "living_room",
+    "dps": {
+      "switch": "20",
+      "mode": "21",
+      "brightness": "22",
+      "color_temp": "23",
+      "colour": "24"
+    }
+  }
+]

@@ -47,7 +47,7 @@ def test_is_psr_true_when_in_psr_names():
 
 def test_is_psr_false_when_not_in_list():
     config = {**DEFAULT_CONFIG, "psr_names": ["Ruby Campbell"]}
-    profile = {"user_id": "sean", "name": "Sean Campbell", "role": "adult"}
+    profile = {"user_id": "operator", "name": "Example Operator", "role": "adult"}
     with patch("willow.fylgja.safety.deployment.get_deployment_config", return_value=config), \
          patch("willow.fylgja.safety.deployment._load_user_profile", return_value=profile):
         assert is_psr("sean") is False

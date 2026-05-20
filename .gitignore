@@ -22,8 +22,12 @@ sap/log/*.md
 # RLM chunk state — ephemeral, never commit
 .claude/rlm_state/
 
-# Smart home — device credentials and runtime logs
+# Smart home — device credentials and runtime logs (never commit)
 apps/smart-home/keys.json
+apps/smart-home/devices.json
+apps/smart-home/tinytuya.json
+apps/smart-home/tuya-raw.json
+apps/smart-home/snapshot.json
 apps/smart-home/debug.log
 
 # Claude Code runtime artifacts
@@ -38,6 +42,9 @@ venv/
 
 # Local overseer run logs (scripts/run_overseer.py)
 .overseer/
+
+# Operator-specific Grove personas (keep local)
+scripts/sean.md
 
 *.sqlite
 *.sqlite3

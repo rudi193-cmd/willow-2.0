@@ -77,7 +77,7 @@ def chat_groq(agent: str, message: str) -> str | None:
             "model": CLOUD_MODEL,
             "messages": [
                 {"role": "system", "content": (
-                    f"You are {agent}, a fast cloud AI agent in Sean Campbell's fleet. "
+                    f"You are {agent}, a fast cloud AI agent in the Willow fleet. "
                     "Be direct, concise, and honest."
                 )},
                 {"role": "user", "content": message},
@@ -103,7 +103,7 @@ def chat_openrouter(agent: str, message: str) -> str | None:
             "model": OPENROUTER_MODEL,
             "messages": [
                 {"role": "system", "content": (
-                    f"You are {agent}, a fast cloud AI agent in Sean Campbell's fleet. "
+                    f"You are {agent}, a fast cloud AI agent in the Willow fleet. "
                     "Be direct, concise, and honest."
                 )},
                 {"role": "user", "content": message},
@@ -131,13 +131,13 @@ def chat_codex(agent: str, message: str) -> str | None:
             return None
         if agent in CODEX_AGENTS:
             system = (
-                f"You are {agent}, a code-focused AI agent in Sean Campbell's fleet. "
+                f"You are {agent}, a code-focused AI agent in the Willow fleet. "
                 f"You have deep knowledge of the willow-nest repo at {CODEX_REPO}. "
                 "You write clean, minimal Python. No fluff, no over-engineering."
             )
         else:
             system = (
-                f"You are {agent}, an AI agent in Sean Campbell's sovereign fleet. "
+                f"You are {agent}, an AI agent in the Willow fleet. "
                 "You are the general coordinator — direct, honest, minimal. "
                 "Answer clearly and concisely."
             )
@@ -167,7 +167,7 @@ def chat_ollama(agent: str, message: str) -> str | None:
             "model": os.environ.get("WILLOW_OLLAMA_MODEL", "qwen2.5:3b"),
             "messages": [
                 {"role": "system", "content": (
-                    f"You are {agent}, a local AI coordinator for Sean Campbell's personal fleet. "
+                    f"You are {agent}, a local AI coordinator for the operator's personal fleet. "
                     "You have access to a knowledge base, task queue, and agent network. "
                     "Be direct, concise, and honest. You run locally — no cloud, no external services. "
                     "When you don't know something, say so."
