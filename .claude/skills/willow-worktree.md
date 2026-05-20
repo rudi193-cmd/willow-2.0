@@ -9,10 +9,10 @@ A Willow dev project needs two things: a git worktree (isolated branch) and a Wi
 
 ```bash
 # Convention: feat/<short-slug>
-git worktree add ../willow-wt/<slug> -b feat/<slug>
+git worktree add worktrees/<slug> -b feat/<slug>
 ```
 
-Worktrees live alongside the repo at `../willow-wt/<slug>` so they don't clutter the main tree. The `-b` flag creates the branch.
+Worktrees live **inside** the repo at `<repo>/worktrees/<slug>`. `worktrees/` is in `.gitignore` so they don't appear as untracked. The `-b` flag creates the branch.
 
 ## 2. Create the Willow fork
 
@@ -41,13 +41,13 @@ fork_log(
 
 ## 4. Note the worktree path
 
-The worktree is at `../willow-wt/<slug>` (absolute: `${HOME}/willow-wt/<slug>`).
+The worktree is at `<repo>/worktrees/<slug>`.
 Open it in a new Claude Code session or editor window. The Willow MCP server runs from the main repo — the worktree shares it.
 
 ## Teardown (after merge)
 
 ```bash
-git worktree remove ../willow-wt/<slug>
+git worktree remove worktrees/<slug>
 git branch -d feat/<slug>
 ```
 
