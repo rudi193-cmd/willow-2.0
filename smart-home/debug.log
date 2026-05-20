@@ -1,0 +1,444 @@
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': True, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=True
+[garage] _update contact=True ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': True, '2': 0, '3': True, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=True
+[garage] _update contact=True ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': True, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=True
+[garage] _update contact=True ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': True, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=True
+[garage] _update contact=True ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': True, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=True
+[garage] _update contact=True ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
+[garage] polling...
+[garage] status={'dps': {'1': False, '2': 0, '3': False, '4': 10, '5': 300, '12': 'none'}}
+[garage] contact=False
+[garage] _update contact=False ok=True err=
