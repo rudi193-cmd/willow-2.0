@@ -187,7 +187,15 @@ def _init_pg() -> "PgBridge | None":
     try:
         _pg = PgBridge()
         if init_schema:
-            init_schema(_pg.conn)
+            try:
+                init_schema(_pg.conn)
+            except Exception as _schema_err:
+                # Lock timeout during DDL — tables exist from prior boot; safe to continue.
+                logger.warning("[w2] init_schema lock contention at startup, skipping: %s", _schema_err)
+                try:
+                    _pg.conn.rollback()
+                except Exception:
+                    pass
         return _pg
     except Exception as err:
         logger.error("[w2] pg init failed: %s", err)
