@@ -22,7 +22,7 @@ from typing import Any
 
 
 DEFAULT_SOURCE_DIR = Path.home() / ".claude" / "projects" / str(Path(__file__).parent.resolve()).replace("/", "-").replace(".", "-")
-DEFAULT_DB_PATH = Path(os.environ.get("WILLOW_20_DB", str(Path.home() / ".willow" / "willow-2.0.db")))
+DEFAULT_DB_PATH = Path(os.environ.get("WILLOW_20_DB", str(Path.home() / ".willow" / "willow-2.0.db"))).expanduser()
 
 
 def _sha(text: str) -> str:
@@ -51,6 +51,11 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
             rec = {"_line": i, "_parse_error": True, "_raw": line}
         rows.append(rec)
     return rows
+
+
+def _record_type(r: dict[str, Any]) -> str:
+    """Normalize Claude (`type`) and Cursor (`role`) record formats to a common type string."""
+    return r.get("type") or r.get("role") or "unknown"
 
 
 def _assistant_text(message_obj: dict[str, Any]) -> str:
@@ -82,8 +87,8 @@ def _extract_metadata_atoms(session_id: str, source_file: Path, rows: list[dict[
             event_counts["parse_error"] += 1
             continue
 
-        t = r.get("type")
-        if isinstance(t, str):
+        t = _record_type(r)
+        if t != "unknown":
             event_counts[t] += 1
 
         ts = r.get("timestamp")
@@ -207,7 +212,7 @@ def _extract_semantic_candidates(session_id: str, source_file: Path, rows: list[
     seen: set[str] = set()
 
     for r in rows:
-        if r.get("_parse_error") or r.get("type") != "assistant":
+        if r.get("_parse_error") or _record_type(r) != "assistant":
             continue
         msg = r.get("message") if isinstance(r.get("message"), dict) else {}
         text = _assistant_text(msg)
@@ -279,24 +284,36 @@ def _upsert_atoms(conn: sqlite3.Connection, atoms: list[dict[str, Any]]) -> None
         )
 
 
-def _session_files(source_dir: Path, session_ids: set[str] | None) -> list[Path]:
-    files = sorted(source_dir.glob("*.jsonl"))
+def _session_files(source_dir: Path, session_ids: set[str] | None, recursive: bool = False) -> list[Path]:
+    files = sorted(source_dir.rglob("*.jsonl") if recursive else source_dir.glob("*.jsonl"))
     if session_ids:
         files = [p for p in files if p.stem in session_ids]
     return files
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
-    source_dir = Path(args.source_dir)
-    db_path = Path(args.db_path)
+    source_dir = Path(args.source_dir).expanduser()
+    db_path = Path(args.db_path).expanduser()
     session_ids = set(args.session_id) if args.session_id else None
 
     if not source_dir.exists():
         raise FileNotFoundError(f"source dir not found: {source_dir}")
-    if args.write and not db_path.exists():
-        raise FileNotFoundError(f"db not found: {db_path}")
+    if args.write:
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS records (
+                id TEXT PRIMARY KEY,
+                collection TEXT NOT NULL,
+                data TEXT NOT NULL,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.commit()
+        conn.close()
 
-    files = _session_files(source_dir, session_ids)
+    files = _session_files(source_dir, session_ids, recursive=getattr(args, "recursive", False))
     if args.limit > 0:
         files = files[: args.limit]
 
@@ -346,6 +363,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--source-dir", default=str(DEFAULT_SOURCE_DIR), help="Directory containing session JSONL files.")
     ap.add_argument("--db-path", default=str(DEFAULT_DB_PATH), help="SQLite DB path with `records` table.")
     ap.add_argument("--session-id", action="append", help="Specific session id to process (repeatable).")
+    ap.add_argument("--recursive", action="store_true", help="Recurse into subdirectories for JSONL files.")
     ap.add_argument("--limit", type=int, default=0, help="Process at most N sessions (0 = all after filters).")
     ap.add_argument(
         "--max-semantic-candidates",
