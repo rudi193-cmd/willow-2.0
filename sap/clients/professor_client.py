@@ -25,10 +25,12 @@ Usage:
     responses = conf_call(["Oakenscroll", "Riggs", "Consus"], "Is ΔE=0 achievable?")
 """
 
+import hashlib
 import json
 import logging
 import os
 import sqlite3
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -264,54 +266,103 @@ def _ask_fleet(system_prompt: str, user_message: str) -> Optional[str]:
     return None
 
 
-def _ollama_options() -> dict:
-    import os
+# Context window limits per model (chars ≈ tokens × 4, conservative).
+# Used to truncate user_message before it silently overflows the model.
+_MODEL_CTX_CHARS: dict[str, int] = {
+    "llama3.2:1b":  12_000,
+    "llama3.2:3b":  24_000,
+    "mistral:7b":   28_000,   # 8k token window; reserve ~1k for system + reply
+}
+_DEFAULT_CTX_CHARS = 24_000
+
+# In-process result cache: cache_key → (result, expires_at)
+_OLLAMA_CACHE: dict[str, tuple[str, float]] = {}
+_CACHE_TTL = 300  # seconds
+
+
+def _ollama_options(temperature: float = 0.7) -> dict:
     threads = int(os.environ.get("SAP_OLLAMA_THREADS", "4"))
-    return {"num_thread": threads}
+    return {"num_thread": threads, "temperature": temperature}
 
 
-def _ask_ollama(model: str, system_prompt: str, user_message: str) -> Optional[str]:
-    """Call Ollama directly. Falls back to free fleet if unavailable."""
-    options = _ollama_options()
-
+def _ollama_single(
+    model: str,
+    system_prompt: str,
+    user_message: str,
+    options: dict,
+) -> Optional[str]:
+    """One raw Ollama call — library path then HTTP fallback. Returns None on any error."""
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user",   "content": user_message},
+    ]
     try:
         import ollama
         client = ollama.Client(host="http://localhost:11434", timeout=300)
-        response = client.chat(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
-            options=options,
-        )
-        return response["message"]["content"]
+        return client.chat(model=model, messages=messages, options=options)["message"]["content"]
     except ImportError:
         pass
     except Exception as e:
         logger.warning("Ollama library call failed (%s) — trying HTTP", e)
-
     try:
         import requests
         r = requests.post(
             "http://localhost:11434/api/chat",
-            json={
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message},
-                ],
-                "options": options,
-                "stream": False,
-            },
+            json={"model": model, "messages": messages, "options": options, "stream": False},
             timeout=(5, 300),
         )
         if r.ok:
             return r.json()["message"]["content"]
-        logger.warning("Ollama HTTP error %s — falling back to fleet", r.status_code)
+        logger.warning("Ollama HTTP error %s", r.status_code)
     except Exception as e:
-        logger.warning("Ollama HTTP failed (%s) — falling back to fleet", e)
+        logger.warning("Ollama HTTP failed: %s", e)
+    return None
 
+
+def _ask_ollama(
+    model: str,
+    system_prompt: str,
+    user_message: str,
+    *,
+    base_temp: float = 0.7,
+    max_retries: int = 2,
+) -> Optional[str]:
+    """Call Ollama with content-budget enforcement, result caching, and
+    temperature-varied retry.  Falls back to free fleet on total failure.
+
+    Temperature schedule (SmallCode-derived):
+      attempt 0 — base_temp           (baseline)
+      attempt 1 — base_temp - 0.15    (more deterministic → cleaner JSON)
+      attempt 2 — base_temp + 0.15    (explore → different phrasing)
+    """
+    # Enforce context budget: truncate user_message to model's char limit
+    max_chars = _MODEL_CTX_CHARS.get(model, _DEFAULT_CTX_CHARS) - len(system_prompt) - 200
+    if len(user_message) > max_chars:
+        logger.debug("_ask_ollama: truncating user_message %d→%d chars for %s",
+                     len(user_message), max_chars, model)
+        user_message = user_message[:max_chars]
+
+    # Cache check (keyed on model + full prompt content)
+    cache_key = hashlib.md5(
+        f"{model}\x00{system_prompt}\x00{user_message}".encode()
+    ).hexdigest()
+    now = time.monotonic()
+    cached = _OLLAMA_CACHE.get(cache_key)
+    if cached and now < cached[1]:
+        logger.debug("_ask_ollama: cache hit %s", cache_key[:8])
+        return cached[0]
+
+    temps = [base_temp, max(0.0, base_temp - 0.15), min(1.0, base_temp + 0.15)]
+    for attempt, temp in enumerate(temps[: max_retries + 1]):
+        result = _ollama_single(model, system_prompt, user_message, _ollama_options(temp))
+        if result is not None:
+            _OLLAMA_CACHE[cache_key] = (result, now + _CACHE_TTL)
+            if attempt > 0:
+                logger.debug("_ask_ollama: succeeded on retry %d (temp=%.2f)", attempt, temp)
+            return result
+        logger.warning("_ask_ollama: attempt %d failed (temp=%.2f)", attempt, temp)
+
+    logger.warning("_ask_ollama: all attempts failed for %s — falling back to fleet", model)
     return _ask_fleet(system_prompt, user_message)
 
 

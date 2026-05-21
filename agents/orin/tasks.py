@@ -20,28 +20,62 @@ logger = logging.getLogger("orin.tasks")
 
 MODEL = "mistral:7b"
 
+# Conservative char budget for user content passed to mistral:7b.
+# _ask_ollama enforces the hard limit; this controls how much extract()
+# slices before building the full prompt (system + boilerplate adds ~300 chars).
+_EXTRACT_CONTENT_BUDGET = 3_600
+
 
 # ── JSON extraction helpers ───────────────────────────────────────────────────
 
 def _parse_json(text: str) -> dict | list | None:
-    """Try json.loads on full response, then on first JSON block found."""
+    """Parse JSON from LLM output using multiple format fallbacks.
+
+    Handles: raw JSON, ```json fences, bare {}/{[]}, Hermes <tool_call> tags,
+    and XML-wrapped output.  Small models drift format; we catch what we can.
+    """
     text = text.strip()
+
+    # 1. Raw JSON
     try:
         return json.loads(text)
     except Exception:
         pass
+
+    # 2. Fenced code block (```json ... ``` or ``` ... ```)
     m = re.search(r"```(?:json)?\s*([\s\S]+?)```", text)
+    if m:
+        try:
+            return json.loads(m.group(1).strip())
+        except Exception:
+            pass
+
+    # 3. Hermes / function-call format  <tool_call>{"name":...,"arguments":{...}}</tool_call>
+    m = re.search(r"<tool_call>\s*([\s\S]+?)\s*</tool_call>", text)
+    if m:
+        try:
+            obj = json.loads(m.group(1))
+            # Unwrap arguments if present
+            return obj.get("arguments", obj)
+        except Exception:
+            pass
+
+    # 4. XML-wrapped JSON  <result>...</result>  or  <json>...</json>
+    m = re.search(r"<(?:result|json|output)>\s*([\s\S]+?)\s*</(?:result|json|output)>", text)
     if m:
         try:
             return json.loads(m.group(1))
         except Exception:
             pass
+
+    # 5. Bare object/array anywhere in the response
     m = re.search(r"(\{[\s\S]+\}|\[[\s\S]+\])", text)
     if m:
         try:
             return json.loads(m.group(1))
         except Exception:
             pass
+
     return None
 
 
@@ -109,7 +143,7 @@ def extract(content: str, context: str = "") -> dict:
     user = (
         "Extract up to 5 knowledge atoms from the following. "
         "Each atom must be self-contained and factual:\n\n"
-        f"{content[:4000]}"
+        f"{content[:_EXTRACT_CONTENT_BUDGET]}"
     )
     if context:
         user = f"Context:\n{context}\n\n{user}"
