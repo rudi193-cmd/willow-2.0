@@ -37,6 +37,7 @@ export WILLOW_PYTHON
 export WILLOW_STORE_ROOT="${WILLOW_STORE_ROOT:-${HOME}/.willow/store}"
 export WILLOW_VAULT="${WILLOW_VAULT:-${HOME}/.willow/vault.db}"
 export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/SAFE/Applications}"
+export WILLOW_AGENTS_ROOT="${WILLOW_AGENTS_ROOT:-${HOME}/SAFE/Agents}"
 export WILLOW_PGP_FINGERPRINT="${WILLOW_PGP_FINGERPRINT:-}"
 
 # Postgres — Unix socket, willow_20 DB (clean break from 1.7)
