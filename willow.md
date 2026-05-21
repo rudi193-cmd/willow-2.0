@@ -131,6 +131,8 @@ git worktree remove worktrees/<task> && git branch -d <task>
 
 Branch naming: `fix/<slug>`, `feat/<slug>`, `chore/<slug>`.
 
+**Worktree seed** — at worktree creation, before the first code edit, ingest one KB atom: the non-derivable contract (wire format, interface, invariant) a cold agent needs that cannot be read from the code. Record the atom ID in the first Grove post for the task.
+
 **Worktree sync** — remote worktrees are treated as shared work surfaces:
 - Pull remote branches for active worktrees (`git fetch --all`) so any agent can see in-flight work.
 - Local worktrees push their branches to origin (private) so work is backed up and cross-machine accessible.
