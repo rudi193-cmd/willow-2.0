@@ -9,7 +9,7 @@ description: Willow 2.0 boot — anchor, inbox, ledger, KB continuity (config-dr
 
 Default boot with MCP available is the compact 7-step loop: (1) `markdownai-read_file("willow.md")`; (2) establish local operating context with agent, namespace, repo root, branch, and a compact repo diff summary; (3) `fleet_status`; (4) `handoff_latest`; (5) `grove_get_history` on the agent channel/inbox; (6) `kb_search` on the current task/topic; (7) stop on degraded base or proceed to act. Keep step 2 compact: branch, clean/dirty, staged/unstaged/untracked counts, ahead/behind if known, and a short diff note, not a full patch. SessionStart already ran status/handoff/flags and wrote `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`. Re-run the deeper recovery steps below only if the anchor is missing, stale (`written_at` > **2h**), or live MCP boot is degraded.
 
-Stack position: this skill belongs to the **boot persistence** layer described in `willow/fylgja/skills/persistent-memory-stack.md`.
+Stack position: this skill belongs to the **boot persistence** layer. See the Persistent memory section in `willow.md` for the full 4-layer stack.
 
 ## Steps
 

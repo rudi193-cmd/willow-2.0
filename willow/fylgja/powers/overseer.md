@@ -1,7 +1,7 @@
 # power: overseer
 b17: FYLOV · ΔΣ=42
 
-**Branch discipline:** This power file and its **`registry.json`** entry ship from **`wt/overseer`** (worktree **`willow-2.0-wt-overseer`**) until Sean ratifies merge to default branch — **dogfood the rule**.
+**Branch discipline:** This power file and its **`registry.json`** entry ship from a worktree until Sean ratifies merge to default branch — **dogfood the rule**.
 
 **When:** A **bounded initiative** (spike, Phase 1, spec + stub) must stay **off default branch** until Sean ratifies merge — you are the **overseer**: gates, evidence, and closeout — not “helpful sprawl.”
 
@@ -22,7 +22,7 @@ b17: FYLOV · ΔΣ=42
 
 1. Pick **`SLUG`** (`[a-z0-9-]+`). Collision → new slug.
 2. **Worktree:**
-   - `git worktree add -b wt/<SLUG> ../<repo-basename>-wt-<SLUG> HEAD`
+   - `git worktree add worktrees/<SLUG> -b feat/<SLUG>`
 3. **Seed atom** — ingest via `kb_ingest` before touching any file:
    - Content: the **non-derivable contract** a cold agent needs (wire format, interface shape, key invariant). Not the spec — the one fact that would burn an hour if missed.
    - Fields: `title=”<SLUG> — seed contract”`, `summary=<2-3 sentences>`, `domain=<agent>`, `project=<repo>`.
@@ -31,6 +31,7 @@ b17: FYLOV · ΔΣ=42
    - `python3 ${WILLOW_ROOT:-~/willow-2.0}/scripts/wt_create.py <SLUG> <repo-path> --task "<one-line>" --issue "id:area:desc" [...]`
    - This runs `git worktree add`, seeds `wt_project.db` (Test 1: auto-init), and is idempotent on re-run (Test 2: resume).
    - Output includes the Grove post template with a slot for the seed atom ID — fill it after step 3.
+   - Worktrees live **inside** the repo at `<repo>/worktrees/<SLUG>`.
 5. **Grove post** (first message on the task channel):
    - `wt-<SLUG> open on wt/<SLUG> (<short HEAD>). Seed atom <ID> — <one-line contract>. Starting: <first file or step>.`
 6. **All initiative edits** happen only in that worktree until ratified merge.
