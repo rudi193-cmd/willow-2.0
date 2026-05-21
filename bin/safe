@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""safe — SAFE App Store CLI. Wraps Willow MCP app_ tools."""
+
+import argparse
+import json
+import sys
+import os
+
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent.parent))
+
+WILLOW2_ROOT = __import__("pathlib").Path(__file__).parent.parent
+
+
+def _mcp_call(tool: str, **kwargs) -> dict:
+    """Call a Willow MCP tool directly via the Python layer (no subprocess)."""
+    os.environ.setdefault("WILLOW_AGENT_NAME", os.environ.get("WILLOW_AGENT_NAME", "hanuman"))
+    os.environ.setdefault("WILLOW_SAFE_ROOT", str(__import__("pathlib").Path.home() / "SAFE" / "Applications"))
+    os.environ.setdefault("WILLOW_PG_DB", "willow_20")
+
+    import asyncio
+    from sap import sap_mcp as _m
+
+    func = getattr(_m, tool, None)
+    if func is None:
+        print(f"error: tool '{tool}' not found", file=sys.stderr)
+        sys.exit(1)
+
+    kwargs["app_id"] = os.environ["WILLOW_AGENT_NAME"]
+    return asyncio.run(func(**kwargs))
+
+
+def _print_result(result: dict) -> None:
+    if isinstance(result, dict) and "error" in result:
+        print(f"error: {result['error']}", file=sys.stderr)
+        sys.exit(1)
+    print(json.dumps(result, indent=2))
+
+
+def cmd_install(args) -> None:
+    source = "monorepo" if args.monorepo else "standalone"
+    result = _mcp_call("app_install", target_app_id=args.app_id, repo_url=args.repo or "", source=source)
+    _print_result(result)
+
+
+def cmd_uninstall(args) -> None:
+    result = _mcp_call("app_uninstall", target_app_id=args.app_id, remove_code=args.remove_code)
+    _print_result(result)
+
+
+def cmd_list(args) -> None:
+    result = _mcp_call("app_list")
+    if "error" in result:
+        _print_result(result)
+        return
+    apps = result.get("apps", [])
+    if not apps:
+        print("No apps installed.")
+        return
+    print(f"{'APP ID':<25} {'VERSION':<8} {'SOURCE':<12} {'MCP':<6} CODE PATH")
+    print("-" * 80)
+    for a in apps:
+        code = a.get("code_path") or "-"
+        print(f"{a['app_id']:<25} {a.get('version','?'):<8} {a.get('source','?'):<12} {code}")
+
+
+def cmd_status(args) -> None:
+    result = _mcp_call("app_status", target_app_id=args.app_id)
+    _print_result(result)
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        prog="safe",
+        description="SAFE App Store CLI — install, uninstall, list, and check apps",
+    )
+    sub = ap.add_subparsers(dest="command", required=True)
+
+    p_install = sub.add_parser("install", help="Install a SAFE app")
+    p_install.add_argument("app_id", help="App ID (must match safe-app-manifest.json app_id)")
+    p_install.add_argument("--repo", default="", help="Git repo URL (standalone install)")
+    p_install.add_argument("--monorepo", action="store_true", help="Install from local safe-app-store monorepo")
+    p_install.set_defaults(func=cmd_install)
+
+    p_uninstall = sub.add_parser("uninstall", help="Uninstall a SAFE app")
+    p_uninstall.add_argument("app_id", help="App ID to uninstall")
+    p_uninstall.add_argument("--remove-code", action="store_true", help="Also remove standalone code dir")
+    p_uninstall.set_defaults(func=cmd_uninstall)
+
+    p_list = sub.add_parser("list", help="List installed apps")
+    p_list.set_defaults(func=cmd_list)
+
+    p_status = sub.add_parser("status", help="Check install status of an app")
+    p_status.add_argument("app_id", help="App ID to inspect")
+    p_status.set_defaults(func=cmd_status)
+
+    args = ap.parse_args()
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

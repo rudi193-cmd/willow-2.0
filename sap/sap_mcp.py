@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 import sys
@@ -2731,6 +2732,234 @@ async def diagnostic_summary(
         return results
 
     return await loop.run_in_executor(_executor, _diag)
+
+
+# ── Tools — app_ domain (install / uninstall / list / status) ────────────────
+
+_SAFE_APPS_DIR   = Path.home() / "SAFE" / "apps"
+_SAFE_APP_REG    = Path(os.environ.get("WILLOW_SAFE_ROOT", str(Path.home() / "SAFE" / "Applications")))
+_MONOREPO_ROOT   = Path.home() / "safe-app-store" / "apps"
+_WILLOW2_ROOT    = Path(__file__).parent.parent
+_MCP_TEMPLATE    = {
+    "mcpServers": {
+        "willow": {
+            "type": "stdio",
+            "command": "bash",
+            "args": [str(_WILLOW2_ROOT / "sap" / "unified_mcp.sh")],
+            "env": {
+                "WILLOW_AGENT_NAME":   "__APP_ID__",
+                "WILLOW_GROVE_ROOT":   str(Path.home() / "github" / "safe-app-willow-grove"),
+                "WILLOW_PG_DB":        os.environ.get("WILLOW_PG_DB", "willow_20"),
+                "WILLOW_SAFE_ROOT":    str(_SAFE_APP_REG),
+            },
+        }
+    }
+}
+
+
+def _app_code_path(app_id: str) -> Path | None:
+    mono = _MONOREPO_ROOT / app_id
+    if mono.exists():
+        return mono
+    standalone = _SAFE_APPS_DIR / app_id
+    if standalone.exists():
+        return standalone
+    return None
+
+
+def _app_source(app_id: str) -> str:
+    if (_MONOREPO_ROOT / app_id).exists():
+        return "monorepo"
+    if (_SAFE_APPS_DIR / app_id).exists():
+        return "standalone"
+    return "unknown"
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def app_install(
+    app_id:        str,
+    target_app_id: str,
+    repo_url:      str = "",
+    source:        str = "standalone",
+) -> dict:
+    """Install a SAFE app into Willow.
+    app_id: caller identity (for gate auth — use hanuman or your agent id).
+    target_app_id: the app to install.
+    source='standalone': clones repo_url to ~/SAFE/apps/<target_app_id>/.
+    source='monorepo': code already at ~/safe-app-store/apps/<target_app_id>/.
+    Registers manifest in SAFE_ROOT and updates the app's .mcp.json to Willow 2.0."""
+    logger.info("[w2] app_install app_id=%s target=%s source=%s", app_id, target_app_id, source)
+    loop = asyncio.get_running_loop()
+
+    def _install():
+        import subprocess as _sp
+        tid = target_app_id
+
+        if source == "monorepo":
+            code_path = _MONOREPO_ROOT / tid
+            if not code_path.exists():
+                return {"error": f"monorepo path not found: {code_path}"}
+        else:
+            code_path = _SAFE_APPS_DIR / tid
+            if code_path.exists():
+                return {"error": f"already exists at {code_path} — uninstall first or use app_status"}
+            if not repo_url:
+                return {"error": "repo_url required for standalone install"}
+            _SAFE_APPS_DIR.mkdir(parents=True, exist_ok=True)
+            result = _sp.run(
+                ["git", "clone", repo_url, str(code_path)],
+                capture_output=True, text=True, timeout=120,
+            )
+            if result.returncode != 0:
+                return {"error": f"git clone failed: {result.stderr.strip()[:500]}"}
+
+        manifest_src = code_path / "safe-app-manifest.json"
+        if not manifest_src.exists():
+            return {"error": f"safe-app-manifest.json not found in {code_path}"}
+        try:
+            manifest_data = json.loads(manifest_src.read_text())
+        except Exception as e:
+            return {"error": f"manifest parse error: {e}"}
+
+        reg_dir = _SAFE_APP_REG / tid
+        reg_dir.mkdir(parents=True, exist_ok=True)
+        reg_manifest = reg_dir / "safe-app-manifest.json"
+        reg_manifest.write_text(json.dumps(manifest_data, indent=2))
+
+        mcp_cfg = json.loads(json.dumps(_MCP_TEMPLATE))
+        mcp_cfg["mcpServers"]["willow"]["env"]["WILLOW_AGENT_NAME"] = tid
+        mcp_path = code_path / ".mcp.json"
+        mcp_path.write_text(json.dumps(mcp_cfg, indent=2))
+
+        return {
+            "status":    "installed",
+            "app_id":    tid,
+            "code_path": str(code_path),
+            "source":    source,
+            "manifest":  str(reg_manifest),
+            "mcp_json":  str(mcp_path),
+        }
+
+    return await loop.run_in_executor(_executor, _install)
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def app_uninstall(app_id: str, target_app_id: str, remove_code: bool = False) -> dict:
+    """Uninstall a SAFE app from Willow.
+    app_id: caller identity (for gate auth).
+    target_app_id: the app to uninstall.
+    Removes manifest from SAFE_ROOT. remove_code=True also removes standalone code dir."""
+    logger.info("[w2] app_uninstall app_id=%s target=%s remove_code=%s", app_id, target_app_id, remove_code)
+    loop = asyncio.get_running_loop()
+
+    def _uninstall():
+        import shutil as _sh
+        tid = target_app_id
+
+        reg_dir = _SAFE_APP_REG / tid
+        if not reg_dir.exists():
+            return {"error": f"app '{tid}' not registered in SAFE_ROOT"}
+
+        _sh.rmtree(reg_dir)
+        removed = {"manifest_dir": str(reg_dir)}
+
+        if remove_code:
+            src = _app_source(tid)
+            if src == "standalone":
+                code_path = _SAFE_APPS_DIR / tid
+                _sh.rmtree(code_path, ignore_errors=True)
+                removed["code_path"] = str(code_path)
+            elif src == "monorepo":
+                removed["code_note"] = "monorepo app — code left in place (never removed automatically)"
+
+        return {"status": "uninstalled", "app_id": tid, "removed": removed}
+
+    return await loop.run_in_executor(_executor, _uninstall)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def app_list(app_id: str) -> dict:
+    """List all SAFE apps registered in SAFE_ROOT with their code location and source."""
+    logger.info("[w2] app_list app_id=%s", app_id)
+    loop = asyncio.get_running_loop()
+
+    def _list():
+        apps = []
+        if not _SAFE_APP_REG.exists():
+            return {"apps": [], "total": 0}
+        for entry in sorted(_SAFE_APP_REG.iterdir()):
+            manifest_path = entry / "safe-app-manifest.json"
+            if not entry.is_dir() or not manifest_path.exists():
+                continue
+            try:
+                manifest = json.loads(manifest_path.read_text())
+            except Exception:
+                manifest = {}
+            aid      = manifest.get("app_id", entry.name)
+            src      = _app_source(aid)
+            code     = _app_code_path(aid)
+            apps.append({
+                "app_id":      aid,
+                "name":        manifest.get("name", aid),
+                "version":     manifest.get("version", "?"),
+                "source":      src,
+                "code_path":   str(code) if code else None,
+                "permissions": manifest.get("permissions", []),
+            })
+        return {"apps": apps, "total": len(apps)}
+
+    return await loop.run_in_executor(_executor, _list)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def app_status(app_id: str, target_app_id: str = "") -> dict:
+    """Check install status of a SAFE app: manifest, code location, .mcp.json validity."""
+    logger.info("[w2] app_status app_id=%s target=%s", app_id, target_app_id)
+    loop = asyncio.get_running_loop()
+
+    def _status():
+        tid = target_app_id or app_id
+        reg_dir      = _SAFE_APP_REG / tid
+        manifest_path = reg_dir / "safe-app-manifest.json"
+        registered   = manifest_path.exists()
+        manifest     = {}
+        if registered:
+            try:
+                manifest = json.loads(manifest_path.read_text())
+            except Exception:
+                pass
+
+        src       = _app_source(tid)
+        code_path = _app_code_path(tid)
+
+        mcp_ok    = False
+        mcp_note  = "not found"
+        if code_path:
+            mcp_file = code_path / ".mcp.json"
+            if mcp_file.exists():
+                try:
+                    cfg   = json.loads(mcp_file.read_text())
+                    cmd   = cfg.get("mcpServers", {}).get("willow", {}).get("args", [""])[0]
+                    mcp_ok   = "willow-2.0" in cmd or "unified_mcp" in cmd
+                    mcp_note = "willow-2.0" if mcp_ok else f"stale: {cmd}"
+                except Exception as e:
+                    mcp_note = f"parse error: {e}"
+
+        return {
+            "app_id":     tid,
+            "registered": registered,
+            "source":     src,
+            "code_path":  str(code_path) if code_path else None,
+            "mcp_wired":  mcp_ok,
+            "mcp_note":   mcp_note,
+            "manifest":   manifest,
+        }
+
+    return await loop.run_in_executor(_executor, _status)
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

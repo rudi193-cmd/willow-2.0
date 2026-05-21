@@ -151,6 +151,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "fleet_governance", "fleet_persona", "fleet_base17",
         "fleet_reload", "fleet_restart",
         "policy_put", "policy_list", "policy_delete",
+        "app_install", "app_uninstall", "app_list", "app_status",
     }),
     "soul": frozenset({
         "tension_scan", "dream_check", "dream_run",
