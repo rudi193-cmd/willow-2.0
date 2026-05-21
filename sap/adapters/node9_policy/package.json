@@ -1,0 +1,16 @@
+{
+  "name": "@willow/node9-policy-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Spike: SAFE gate → @node9/policy-engine adapter for Willow MCP dispatch",
+  "type": "module",
+  "scripts": {
+    "evaluate": "node evaluate.mjs",
+    "worker": "node worker.mjs",
+    "probe": "node probe.mjs"
+  },
+  "dependencies": {
+    "@node9/policy-engine": "1.5.0"
+  },
+  "license": "Apache-2.0"
+}
