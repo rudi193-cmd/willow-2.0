@@ -20,6 +20,10 @@ def _store(args: argparse.Namespace) -> JsonStore:
     return JsonStore(Path(args.data))
 
 
+def _fleet(args: argparse.Namespace) -> bool:
+    return getattr(args, "fleet", False)
+
+
 def cmd_init(args: argparse.Namespace) -> None:
     p = Path(args.data)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -30,14 +34,24 @@ def cmd_init(args: argparse.Namespace) -> None:
 
 
 def cmd_issue_create(args: argparse.Namespace) -> None:
-    ch = create_issue(
-        args.title,
-        subject=args.subject or "",
-        flag_id=args.flag or "",
-        grove_channel=args.grove or "",
-        kb_seed_hint=args.kb_hint or "",
-        fork_id=args.fork or "",
-    )
+    if _fleet(args):
+        from .fleet import fleet_create
+        ch = fleet_create(
+            args.title,
+            subject=args.subject or "",
+            flag_id=args.flag or "",
+            grove_channel=args.grove or "",
+            kb_seed_hint=args.kb_hint or "",
+        )
+    else:
+        ch = create_issue(
+            args.title,
+            subject=args.subject or "",
+            flag_id=args.flag or "",
+            grove_channel=args.grove or "",
+            kb_seed_hint=args.kb_hint or "",
+            fork_id=args.fork or "",
+        )
     st = _store(args)
     st.upsert(ch)
     print(ch.id)
@@ -71,7 +85,11 @@ def cmd_advance(args: argparse.Namespace) -> None:
         )
         return
     try:
-        advance(ch, to, actor=args.actor, note=args.note or "")
+        if _fleet(args):
+            from .fleet import fleet_advance
+            ch = fleet_advance(ch, to, actor=args.actor, note=args.note or "")
+        else:
+            advance(ch, to, actor=args.actor, note=args.note or "")
     except GitShapedError as e:
         raise SystemExit(str(e)) from e
     st.upsert(ch)
@@ -147,9 +165,20 @@ def cmd_gate_check(args: argparse.Namespace) -> None:
     print("gate_ok")
 
 
+def cmd_ls_fleet(args: argparse.Namespace) -> None:
+    from .fleet import fleet_list
+    rows = fleet_list()
+    if getattr(args, "json", False):
+        print(json.dumps(rows, indent=2, default=str))
+        return
+    for r in sorted(rows, key=lambda x: x.get("updated_at", ""), reverse=True):
+        print(f"{r.get('id','?')}\t{r.get('state','?')}\t{r.get('title','?')}")
+
+
 def main() -> None:
     p = argparse.ArgumentParser(prog="sandbox", description="Git-shaped state machine (WLGSM reference impl)")
     p.add_argument("--data", default=str(_default_store_path()), help="JSON store path")
+    p.add_argument("--fleet", action="store_true", help="Enable Willow fleet binding (SOIL + Postgres side-effects)")
 
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -201,6 +230,10 @@ def main() -> None:
     p_rst = sub.add_parser("reset", help="Delete ALL changes in the store")
     p_rst.add_argument("--yes", action="store_true", required=True, help="required safety flag")
     p_rst.set_defaults(func=cmd_reset)
+
+    p_lsf = sub.add_parser("ls-fleet", help="List changes from SOIL (fleet store)")
+    p_lsf.add_argument("--json", action="store_true", help="JSON output")
+    p_lsf.set_defaults(func=cmd_ls_fleet)
 
     p_gate = sub.add_parser("gate-check", help="Validate §4 new-feature gate answers")
     p_gate.add_argument("--state", required=True)
