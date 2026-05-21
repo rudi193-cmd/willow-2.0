@@ -1,0 +1,20 @@
+{
+  "policy": {
+    "sandboxPaths": [],
+    "dangerousWords": [],
+    "ignoredTools": [],
+    "toolInspection": {
+      "Bash": "command",
+      "Shell": "command",
+      "agent_task_submit": "task"
+    },
+    "smartRules": [],
+    "dlp": {
+      "enabled": true,
+      "scanIgnoredTools": false
+    }
+  },
+  "settings": {
+    "mode": "monitor"
+  }
+}
