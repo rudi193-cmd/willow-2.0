@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: willow-worktree
 description: Set up a git worktree + Willow fork for scoped development work. Use for any bounded feature or multi-session project.

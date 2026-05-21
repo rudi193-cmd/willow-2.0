@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: power
 description: Fylgja-powers — registry + one power body (low-token router); optional id argument

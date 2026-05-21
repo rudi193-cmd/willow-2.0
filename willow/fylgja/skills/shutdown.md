@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: shutdown
 description: Graceful Willow 2.0 session close — audit KB, write handoff, run full pipeline

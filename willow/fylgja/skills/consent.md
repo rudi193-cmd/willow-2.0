@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: consent
 description: Guardian sign-off for CHILD/TEEN users — SAFE protocol session authorization

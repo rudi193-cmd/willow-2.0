@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: restart-server
 description: Hot-reload MCP servers — Willow (in-process) and Grove (systemd). Use after editing any MCP layer file.

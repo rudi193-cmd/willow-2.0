@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 # power: tdd
 b17: FYLP5 · ΔΣ=42
 

@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: willow-fork
 description: Create, join, log, merge, or delete a Willow fork. Check session_anchor_${AGENT}.json for active fork_id first.

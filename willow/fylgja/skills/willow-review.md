@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: willow-review
 description: Code review the current fork's changes — fork-aware, MCP-native.

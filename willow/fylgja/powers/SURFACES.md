@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 # Fylgja powers — where it lives
 
 b17: FYLSF · ΔΣ=42

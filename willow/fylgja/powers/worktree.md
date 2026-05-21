@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 # power: worktree
 b17: FYLP7 · ΔΣ=42
 

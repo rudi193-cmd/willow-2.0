@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: coordinator
 description: Coordinator mode — fan-out tasks to sub-agents, track progress, synthesize results. Run fleet-dashboard first.

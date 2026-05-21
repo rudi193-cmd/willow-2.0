@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: willow-deploy
 description: Push changes to a Grove-connected node and verify.

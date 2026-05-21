@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 # power: agent-rails
 
 b17: FYLAR · ΔΣ=42

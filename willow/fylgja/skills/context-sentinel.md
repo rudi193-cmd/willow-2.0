@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: context-sentinel
 description: Check whether the current session is approaching context limits. Routes to compact or handoff.

@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 # power: execute
 b17: FYLP3 · ΔΣ=42
 

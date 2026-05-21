@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: fleet-dashboard
 description: Live fleet health view — all agents, Postgres, Ollama, open forks, pending tasks, policy rules.

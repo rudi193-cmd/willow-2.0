@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 # power: debug
 b17: FYLP4 · ΔΣ=42
 

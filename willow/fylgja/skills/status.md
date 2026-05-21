@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: status
 description: System status — atoms, edges, ratio, boot health, unpushed work, open threads

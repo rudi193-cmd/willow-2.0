@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: handoff
 description: Write a Willow 2.0 session handoff — structured KB atom + SQLite rebuild
