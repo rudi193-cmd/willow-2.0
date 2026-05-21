@@ -199,12 +199,16 @@ def _subprocess_call(tool_name: str, arguments: dict, timeout: int) -> dict:
             "clientInfo": {"name": "willow-hook", "version": "1"},
         },
     })
+    initialized_notif = json.dumps({
+        "jsonrpc": "2.0",
+        "method": "notifications/initialized",
+    })
     tool_msg = json.dumps({
         "jsonrpc": "2.0", "id": 1,
         "method": "tools/call",
         "params": {"name": tool_name, "arguments": arguments},
     })
-    payload = init_msg + "\n" + tool_msg + "\n"
+    payload = init_msg + "\n" + initialized_notif + "\n" + tool_msg + "\n"
 
     env = os.environ.copy()
     # Ensure auth-critical vars reach the subprocess

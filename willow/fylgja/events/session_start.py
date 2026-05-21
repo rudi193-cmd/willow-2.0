@@ -155,14 +155,30 @@ def _scan_hardware() -> tuple[list[str], list[str]]:
 
 
 def _check_willow_status() -> str:
+    # Try MCP subprocess first; fall back to willow.sh shell call.
     try:
-        result = call("willow_status", {"app_id": AGENT}, timeout=5)
+        result = call("fleet_status", {"app_id": AGENT}, timeout=5)
         pg = result.get("postgres", "unknown")
         if isinstance(pg, dict):
             return "postgres=up"
-        return f"postgres={pg}"
     except Exception:
-        return "postgres=unknown"
+        pass
+    try:
+        repo_root = Path(__file__).parent.parent.parent.parent
+        willow_sh = repo_root / "willow.sh"
+        if willow_sh.exists():
+            r = subprocess.run(
+                ["bash", str(willow_sh), "fleet_status"],
+                capture_output=True, text=True, timeout=8,
+            )
+            if r.returncode == 0:
+                import json as _json
+                data = _json.loads(r.stdout)
+                if isinstance(data.get("postgres"), dict):
+                    return "postgres=up"
+    except Exception:
+        pass
+    return "postgres=unknown"
 
 
 def _register_jeles(session_id: str) -> None:
@@ -291,12 +307,29 @@ def _run_silent_startup() -> dict:
     except Exception as e:
         result["mcp_errors"].append({"step": "handoff", "error": str(e)[:80]})
 
-    # 2. Postgres health
+    # 2. Postgres health — MCP first, shell fallback
     try:
-        s = call("willow_status", {"app_id": AGENT}, timeout=5)
-        result["postgres"] = "up" if isinstance(s.get("postgres"), dict) else "unknown"
+        s = call("fleet_status", {"app_id": AGENT}, timeout=5)
+        if isinstance(s.get("postgres"), dict):
+            result["postgres"] = "up"
     except Exception as e:
         result["mcp_errors"].append({"step": "status", "error": str(e)[:80]})
+    if result["postgres"] == "unknown":
+        try:
+            import json as _json
+            repo_root = Path(__file__).parent.parent.parent.parent
+            willow_sh = repo_root / "willow.sh"
+            if willow_sh.exists():
+                r = subprocess.run(
+                    ["bash", str(willow_sh), "fleet_status"],
+                    capture_output=True, text=True, timeout=8,
+                )
+                if r.returncode == 0:
+                    data = _json.loads(r.stdout)
+                    if isinstance(data.get("postgres"), dict):
+                        result["postgres"] = "up"
+        except Exception:
+            pass
 
     # 3. Next bite from latest session composite — bounded date-key lookup
     try:
