@@ -77,7 +77,22 @@ def _already_promoted(pg: PgBridge) -> set[str]:
     return {row[0] for row in cur.fetchall() if row[0]}
 
 
+def _deduplicate(candidates: list[dict]) -> list[dict]:
+    """Keep the highest-confidence candidate per unique evidence text."""
+    seen: dict[str, dict] = {}
+    for c in candidates:
+        key = c.get("payload", {}).get("evidence", c.get("summary", ""))[:500]
+        if key not in seen or c.get("confidence", 0) > seen[key].get("confidence", 0):
+            seen[key] = c
+    result = list(seen.values())
+    dropped = len(candidates) - len(result)
+    if dropped:
+        print(f"  (deduped: {len(candidates)} → {len(result)} unique, dropped {dropped})")
+    return result
+
+
 def promote(candidates: list[dict], pg: PgBridge, dry_run: bool) -> list[str]:
+    candidates = _deduplicate(candidates)
     already = _already_promoted(pg)
     promoted_ids = []
     skipped = 0
