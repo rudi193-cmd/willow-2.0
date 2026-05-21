@@ -3,14 +3,18 @@ b17: TINT9  ΔΣ=42
 """
 import os
 import psycopg2.extras
+import pytest
 from datetime import datetime, timezone, timedelta
 
 os.environ.setdefault("WILLOW_PG_DB", "willow_20")
 
 
-def _bridge():
+@pytest.fixture
+def bridge():
     from core.pg_bridge import PgBridge
-    return PgBridge()
+    b = PgBridge()
+    yield b
+    b.close()
 
 
 def _put_old(bridge, atom_id, project, title, days_old=90):
@@ -32,9 +36,8 @@ def _put_old(bridge, atom_id, project, title, days_old=90):
 
 # ── W19DR — Draugr ────────────────────────────────────────────────────────────
 
-def test_draugr_scan_finds_old_uncategorized_atoms():
+def test_draugr_scan_finds_old_uncategorized_atoms(bridge):
     from core.intelligence import draugr_scan
-    bridge = _bridge()
     _put_old(bridge, "dr_test_zombie", "test_draugr", "zombie atom title", days_old=90)
 
     found = draugr_scan(bridge, days=60)
@@ -45,9 +48,8 @@ def test_draugr_scan_finds_old_uncategorized_atoms():
     bridge.conn.commit()
 
 
-def test_draugr_scan_ignores_community_nodes():
+def test_draugr_scan_ignores_community_nodes(bridge):
     from core.intelligence import draugr_scan
-    bridge = _bridge()
     bridge.knowledge_put({
         "id": "dr_community_skip",
         "project": "test_draugr2",
@@ -68,9 +70,8 @@ def test_draugr_scan_ignores_community_nodes():
     bridge.conn.commit()
 
 
-def test_draugr_mark_sets_category():
+def test_draugr_mark_sets_category(bridge):
     from core.intelligence import draugr_mark
-    bridge = _bridge()
     _put_old(bridge, "dr_mark_test", "test_draugr3", "mark this zombie", days_old=90)
 
     count = draugr_mark(bridge, ["dr_mark_test"])
@@ -88,9 +89,8 @@ def test_draugr_mark_sets_category():
 
 # ── W19SD — Serendipity ───────────────────────────────────────────────────────
 
-def test_serendipity_surfaces_old_overlap_atoms():
+def test_serendipity_surfaces_old_overlap_atoms(bridge):
     from core.intelligence import serendipity_pass
-    bridge = _bridge()
     now = datetime.now(timezone.utc)
 
     bridge.knowledge_put({
@@ -124,18 +124,16 @@ def test_serendipity_surfaces_old_overlap_atoms():
     bridge.conn.commit()
 
 
-def test_serendipity_returns_empty_when_no_recent():
+def test_serendipity_returns_empty_when_no_recent(bridge):
     from core.intelligence import serendipity_pass
-    bridge = _bridge()
     surfaced = serendipity_pass(bridge, recent_days=0, old_min_days=30, old_max_days=180)
     assert isinstance(surfaced, list)
 
 
 # ── W19DM — Dark Matter ───────────────────────────────────────────────────────
 
-def test_dark_matter_writes_implicit_connection():
+def test_dark_matter_writes_implicit_connection(bridge):
     from core.intelligence import dark_matter_pass
-    bridge = _bridge()
 
     bridge.knowledge_put({
         "id": "dm_atom_a",
@@ -167,9 +165,8 @@ def test_dark_matter_writes_implicit_connection():
     bridge.conn.commit()
 
 
-def test_dark_matter_skips_same_project():
+def test_dark_matter_skips_same_project(bridge):
     from core.intelligence import dark_matter_pass
-    bridge = _bridge()
 
     bridge.knowledge_put({
         "id": "dm_same_a",
@@ -206,9 +203,8 @@ def test_dark_matter_skips_same_project():
 
 # ── W19RV — Revelation ────────────────────────────────────────────────────────
 
-def test_revelation_detects_cross_project_convergence():
+def test_revelation_detects_cross_project_convergence(bridge):
     from core.intelligence import revelation_pass
-    bridge = _bridge()
 
     bridge.knowledge_put({
         "id": "rv_community_a",
@@ -241,9 +237,8 @@ def test_revelation_detects_cross_project_convergence():
     bridge.conn.commit()
 
 
-def test_revelation_ignores_same_project_communities():
+def test_revelation_ignores_same_project_communities(bridge):
     from core.intelligence import revelation_pass
-    bridge = _bridge()
 
     bridge.knowledge_put({
         "id": "rv_same_a",
@@ -278,9 +273,8 @@ def test_revelation_ignores_same_project_communities():
 
 # ── W19MR — Mirror ────────────────────────────────────────────────────────────
 
-def test_mirror_writes_meta_community():
+def test_mirror_writes_meta_community(bridge):
     from core.intelligence import mirror_pass
-    bridge = _bridge()
 
     for i in range(3):
         bridge.knowledge_put({
@@ -307,9 +301,8 @@ def test_mirror_writes_meta_community():
     bridge.conn.commit()
 
 
-def test_mirror_skips_when_too_few_nodes():
+def test_mirror_skips_when_too_few_nodes(bridge):
     from core.intelligence import mirror_pass
-    bridge = _bridge()
     with bridge.conn.cursor() as cur:
         cur.execute("DELETE FROM knowledge WHERE source_type = 'community_detection'")
         cur.execute("DELETE FROM knowledge WHERE project = 'mirror'")
@@ -334,9 +327,8 @@ def test_mirror_skips_when_too_few_nodes():
 
 # ── W19MC — Mycorrhizal ───────────────────────────────────────────────────────
 
-def test_mycorrhizal_feeds_sparse_project():
+def test_mycorrhizal_feeds_sparse_project(bridge):
     from core.intelligence import mycorrhizal_pass
-    bridge = _bridge()
 
     bridge.knowledge_put({
         "id": "mc_donor_community",
@@ -366,9 +358,8 @@ def test_mycorrhizal_feeds_sparse_project():
     bridge.conn.commit()
 
 
-def test_mycorrhizal_skips_non_sparse_projects():
+def test_mycorrhizal_skips_non_sparse_projects(bridge):
     from core.intelligence import mycorrhizal_pass
-    bridge = _bridge()
 
     for j in range(6):
         bridge.knowledge_put({
