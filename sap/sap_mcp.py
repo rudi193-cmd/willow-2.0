@@ -2994,6 +2994,137 @@ async def app_status(app_id: str, target_app_id: str = "") -> dict:
     return await loop.run_in_executor(_executor, _status)
 
 
+# ── Tools — code_graph domain ────────────────────────────────────────────────
+
+_CODE_GRAPH_DB = Path(os.environ.get(
+    "WILLOW_CODE_GRAPH_DB",
+    str(Path.home() / ".willow" / "code_graph.db"),
+))
+_CODE_GRAPH_ROOT = Path(os.environ.get(
+    "WILLOW_CODE_GRAPH_ROOT",
+    str(Path(__file__).resolve().parent.parent),
+))
+
+
+@mcp.tool()
+@sap_gate()
+async def code_graph_index(
+    app_id: str,
+    repo_root: str = "",
+    force: bool = False,
+) -> dict:
+    """Index Python files in repo_root into the symbol graph DB.
+    Must be run once before other code_graph tools.
+    repo_root defaults to WILLOW_CODE_GRAPH_ROOT env var (willow-2.0 root)."""
+    root = Path(repo_root).resolve() if repo_root else _CODE_GRAPH_ROOT
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.code_graph.indexer import index_repo
+        return index_repo(root, _CODE_GRAPH_DB, force=force)
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def code_graph_search(
+    app_id: str,
+    query: str,
+    kinds: list = None,
+    max_results: int = 20,
+) -> dict:
+    """Fuzzy symbol search: exact → prefix → contains → camelCase/snake_case token split.
+    kinds: filter by symbol type — module|class|function|method (default: all)."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.code_graph.fuzzy import search_symbols
+        results = search_symbols(_CODE_GRAPH_DB, query, max_results=max_results, kinds=kinds)
+        return {"query": query, "count": len(results), "results": results}
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def code_graph_explain(app_id: str, symbol: str) -> dict:
+    """Explain a symbol: signature, file location, callers, callees.
+    symbol: name or fully-qualified name (e.g. 'advance' or 'sandbox.engine.advance')."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.code_graph.fuzzy import explain_symbol
+        return explain_symbol(_CODE_GRAPH_DB, symbol)
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def code_graph_walk(
+    app_id: str,
+    anchor: str,
+    hop_depth: int = 2,
+    max_tokens: int = 8000,
+) -> dict:
+    """BFS from anchor symbol, collect context within token budget.
+    Walks import + inheritance edges outward. Deterministic (alphabetical within each hop).
+    anchor: symbol name or fqn. hop_depth: how many hops to walk (default 2).
+    max_tokens: stop collecting when budget hit (default 8000 ≈ ~32k chars)."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.code_graph.walker import walk
+        result = walk(_CODE_GRAPH_DB, anchor, hop_depth=hop_depth, max_tokens=max_tokens)
+        return {
+            "anchor_fqn":     result.anchor_fqn,
+            "hops_traversed": result.hops_traversed,
+            "tokens_returned": result.tokens_returned,
+            "files":          result.files,
+            "symbols":        result.symbols,
+        }
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def code_graph_suggest(
+    app_id: str,
+    task: str,
+    max_results: int = 10,
+) -> dict:
+    """Suggest files most relevant to a task description.
+    Ranks by keyword overlap with symbol names + file paths. No embeddings, no LLM.
+    task: natural language description of what you're about to do."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.code_graph.fuzzy import suggest_files
+        files = suggest_files(_CODE_GRAPH_DB, task, max_results=max_results)
+        return {"task": task[:100], "suggestions": files}
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def code_graph_impact(
+    app_id: str,
+    file_paths: list,
+) -> dict:
+    """Blast radius analysis: which files/symbols import from the given files?
+    file_paths: list of repo-relative paths (e.g. ['sap/sap_mcp.py'])."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.code_graph.walker import analyze_impact
+        return analyze_impact(_CODE_GRAPH_DB, file_paths)
+
+    return await loop.run_in_executor(_executor, _run)
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 def main() -> None:
