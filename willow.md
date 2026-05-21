@@ -82,6 +82,7 @@ Detail: `willow/fylgja/skills/persistent-memory-stack.md`
 | Inference | `infer_chat`, `infer_7b`, `infer_speak`, `infer_imagine` | LLM |
 | Forks | `fork_create`, `fork_status`, `fork_list` | Worktree isolation |
 | Memory | `mem_check`, `mem_ratify`, `mem_jeles_*` | Gate + Jeles |
+| Apps | `app_install`, `app_uninstall`, `app_list`, `app_status` | SAFE app lifecycle |
 | Grove* | `grove_*` | *Grove MCP in sibling repo* |
 
 ---
@@ -101,6 +102,39 @@ The agent is whoever holds `$WILLOW_AGENT_NAME` and boots from this file. The un
 The routing decision is made at dispatch time based on what `fleet_status` reports. The orchestrator does not assume Ollama is running.
 
 **Personas** are optional overlays — the agent operates without one.
+
+---
+
+## Git workflow
+
+### Dev flow
+
+All non-trivial work goes in a worktree on a dedicated branch — no direct master edits.
+
+```
+git worktree add worktrees/<task> -b <task>
+# work, commit
+git merge <task>          # from main worktree, after Sean's OK
+git worktree remove worktrees/<task> && git branch -d <task>
+git push origin master
+```
+
+Branch naming: `fix/<slug>`, `feat/<slug>`, `chore/<slug>`.
+
+**Worktree sync** — remote worktrees are treated as shared work surfaces:
+- Pull remote branches for active worktrees (`git fetch --all`) so any agent can see in-flight work.
+- Local worktrees push their branches to origin (private) so work is backed up and cross-machine accessible.
+
+### Distribution flow
+
+A GitHub Actions bot fires on every push to `master`:
+
+1. Detect which apps changed under `safe-app-store/apps/`.
+2. **PII scan** — reject deploy if scan flags sensitive data.
+3. Deploy clean apps to `~/SAFE/apps/<id>/`.
+4. Notify via Grove when installs complete.
+
+Not yet implemented — bot replaces the local 5-minute cron that was planned.
 
 ---
 
