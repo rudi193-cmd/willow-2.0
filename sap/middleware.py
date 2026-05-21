@@ -276,7 +276,24 @@ async def _emit_policy_warn(app_id: str, tool: str, rule_name: str) -> None:
         pass
 
 
-# ── @sap_gate decorator ──────────────────────────────────────────────────────
+# ── Node9 policy-engine bridge (opt-in) ─────────────────────────────────────
+try:
+    from sap.core.node9_policy_bridge import (
+        enabled as _node9_enabled,
+        evaluate_tool_call as _node9_evaluate,
+        should_block as _node9_should_block,
+        should_review as _node9_should_review,
+    )
+except Exception:
+    def _node9_enabled() -> bool:
+        return False
+    def _node9_evaluate(**_kw):
+        return {"decision": "allow", "skipped": True}
+    def _node9_should_block(_v):
+        return False
+    def _node9_should_review(_v):
+        return False
+
 
 def sap_gate(*, write: bool = False):
     """
@@ -340,6 +357,33 @@ def sap_gate(*, write: bool = False):
                 _executor, sap_permitted, app_id, fn.__name__
             ):
                 return {"error": "not_permitted", "app_id": app_id, "tool": fn.__name__}
+
+            # 4.5. Node9 policy-engine (behavior layer) — WILLOW_NODE9_POLICY=1
+            if _node9_enabled():
+                _n9 = await loop.run_in_executor(
+                    _executor,
+                    lambda: _node9_evaluate(
+                        app_id=app_id,
+                        tool_name=fn.__name__,
+                        args=kwargs,
+                    ),
+                )
+                if _node9_should_block(_n9):
+                    return {
+                        "error": "policy_blocked",
+                        "layer": "node9/policy-engine",
+                        "tool": fn.__name__,
+                        "reason": _n9.get("reason"),
+                        "latency_ms": _n9.get("latency_ms"),
+                    }
+                if _node9_should_review(_n9):
+                    return {
+                        "error": "policy_review",
+                        "layer": "node9/policy-engine",
+                        "tool": fn.__name__,
+                        "reason": _n9.get("reason"),
+                        "latency_ms": _n9.get("latency_ms"),
+                    }
 
             # 5. Write-path injection scan
             if write:
