@@ -67,14 +67,6 @@ def _register_connection(attrs: dict[str, str]) -> None:
     _connections[name] = Connection(name=name, conn_type=conn_type, uri=uri)
 
 
-# ── Fallback sentinel ─────────────────────────────────────────────────────────
-
-@dataclass
-class _FallbackResult:
-    """Returned by _handle_db when the query fails and on-error is set."""
-    value: str
-
-
 # ── Directive handlers ────────────────────────────────────────────────────────
 
 def _handle_env(attrs: dict[str, str], _content: str) -> str:
@@ -87,15 +79,9 @@ def _handle_env(attrs: dict[str, str], _content: str) -> str:
 
 
 def _handle_db(attrs: dict[str, str], _content: str) -> Any:
-    """Execute a SQL query and return rows.
-
-    on-error attr: value to return silently when the query fails.
-    E.g.  @db using="willow" raw="SELECT ..." on-error=""
-    """
+    """Execute a SQL query and return rows."""
     using = attrs.get("using", "default")
     raw_sql = attrs.get("raw", "")
-    # None means no fallback — render the error dict (legacy behaviour)
-    fallback: str | None = attrs.get("on-error", None)
     if not raw_sql:
         return []
 
@@ -124,8 +110,6 @@ def _handle_db(attrs: dict[str, str], _content: str) -> Any:
         _cache[cache_key] = rows
         return rows
     except Exception as e:
-        if fallback is not None:
-            return _FallbackResult(fallback)
         return [{"error": str(e)}]
 
 
@@ -335,8 +319,6 @@ def render(
         db_attrs = parse_attrs(db_attrs_str)
         render_attrs = parse_attrs(render_attrs_str)
         data = _handle_db(db_attrs, "")
-        if isinstance(data, _FallbackResult):
-            return data.value
         return _handle_render(data, render_attrs)
 
     text = re.sub(
@@ -349,8 +331,6 @@ def render(
     def _db_sub(m: re.Match) -> str:
         attrs = parse_attrs(m.group(1))
         data = _handle_db(attrs, "")
-        if isinstance(data, _FallbackResult):
-            return data.value
         return json.dumps(data, default=str)
 
     text = re.sub(r"@db\s+([^\n]+)(?!\s*\|)", _db_sub, text)

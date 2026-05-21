@@ -188,7 +188,7 @@ Grove is the human+agent message bus (`safe-app-willow-grove`, sibling repo). It
 
 **Channels (live):**
 
-@db using="willow" raw="SELECT name, type, COALESCE(description, '') as description FROM grove.channels ORDER BY id" on-error="" | @render type="table"
+@db using="willow" raw="SELECT name, type, COALESCE(description, '') as description FROM grove.channels ORDER BY id" | @render type="table"
 
 Both humans and agents post. The constraint is pull-before-push: read `grove_get_history` before posting or building anything non-trivial. Someone may have already named it, built it, or killed it.
 
