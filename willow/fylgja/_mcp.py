@@ -15,6 +15,7 @@ Tool groups:
 import json
 import os
 import subprocess
+import threading
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).parent.parent.parent  # willow-2.0/
@@ -189,6 +190,19 @@ def _dispatch_grove(tool_name: str, arguments: dict):
 # Sends proper MCP initialize handshake.
 # ---------------------------------------------------------------------------
 
+def _unwrap_tool_response(data: dict) -> dict:
+    """Unwrap MCP content envelope → plain dict."""
+    inner = data.get("result", data)
+    if isinstance(inner, dict) and "content" in inner:
+        for block in inner["content"]:
+            if block.get("type") == "text":
+                try:
+                    return json.loads(block["text"])
+                except Exception:
+                    return {"text": block["text"]}
+    return inner
+
+
 def _subprocess_call(tool_name: str, arguments: dict, timeout: int) -> dict:
     init_msg = json.dumps({
         "jsonrpc": "2.0", "id": 0,
@@ -208,48 +222,79 @@ def _subprocess_call(tool_name: str, arguments: dict, timeout: int) -> dict:
         "method": "tools/call",
         "params": {"name": tool_name, "arguments": arguments},
     })
-    payload = init_msg + "\n" + initialized_notif + "\n" + tool_msg + "\n"
 
     env = os.environ.copy()
-    # Ensure auth-critical vars reach the subprocess
     env.setdefault("WILLOW_SAFE_ROOT", str(Path.home() / "SAFE" / "Applications"))
     env.setdefault("WILLOW_PG_DB", "willow_20")
     env.setdefault("WILLOW_PG_USER", os.environ.get("USER", ""))
 
+    import threading
+
+    def _read_line(stream, wait_secs) -> str | None:
+        """Read one non-empty line from stream with a wall-clock timeout."""
+        box: list = []
+        def _worker():
+            while True:
+                line = stream.readline()
+                if line.strip():
+                    box.append(line.strip())
+                    return
+                if not line:   # EOF
+                    return
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+        t.join(wait_secs)
+        return box[0] if box else None
+
     try:
-        result = subprocess.run(
+        proc = subprocess.Popen(
             [str(_WILLOW_MCP)],
-            input=payload,
-            capture_output=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout,
             env=env,
         )
-        if result.returncode != 0:
-            return {"error": "subprocess_error", "stderr": result.stderr[:200], "tool": tool_name}
-        # stdout has two JSON lines — init response then tool response
-        lines = [l.strip() for l in result.stdout.splitlines() if l.strip()]
-        for line in reversed(lines):
-            try:
-                data = json.loads(line)
-                if data.get("id") == 1:
-                    inner = data.get("result", data)
-                    # Unwrap MCP content envelope if present
-                    if isinstance(inner, dict) and "content" in inner:
-                        for block in inner["content"]:
-                            if block.get("type") == "text":
-                                try:
-                                    return json.loads(block["text"])
-                                except Exception:
-                                    return {"text": block["text"]}
-                    return inner
-            except Exception:
-                continue
-        return {"error": "no_tool_response", "tool": tool_name}
-    except subprocess.TimeoutExpired:
-        return {"error": "timeout", "tool": tool_name}
     except Exception as e:
         return {"error": str(e), "tool": tool_name}
+
+    try:
+        # Step 1 — send initialize, wait for init response
+        proc.stdin.write(init_msg + "\n")
+        proc.stdin.flush()
+        init_line = _read_line(proc.stdout, wait_secs=min(timeout, 8))
+        if not init_line:
+            return {"error": "timeout_on_init", "tool": tool_name}
+
+        # Step 2 — send initialized notification + tool call; keep stdin open until
+        # the response arrives, then close. Closing stdin early triggers FastMCP's
+        # stdio transport shutdown which cancels the in-flight tool handler.
+        proc.stdin.write(initialized_notif + "\n" + tool_msg + "\n")
+        proc.stdin.flush()
+        tool_line = _read_line(proc.stdout, wait_secs=timeout)
+        proc.stdin.close()
+        if not tool_line:
+            return {"error": "no_tool_response", "tool": tool_name}
+
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            pass
+    except Exception as e:
+        return {"error": str(e), "tool": tool_name}
+    finally:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+
+    try:
+        data = json.loads(tool_line)
+        if data.get("id") == 1:
+            return _unwrap_tool_response(data)
+        return {"error": "unexpected_response_id", "raw": tool_line[:200], "tool": tool_name}
+    except Exception as e:
+        return {"error": f"parse_error: {e}", "tool": tool_name}
 
 
 # ---------------------------------------------------------------------------
