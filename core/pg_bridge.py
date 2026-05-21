@@ -422,11 +422,20 @@ def _get_pool() -> "psycopg2.pool.ThreadedConnectionPool":
         if not os.environ.get("WILLOW_PG_SKIP_SCHEMA_INIT"):
             conn = _pool.getconn()
             try:
-                init_schema(conn)
+                with conn.cursor() as _cur:
+                    _cur.execute(
+                        "SELECT 1 FROM information_schema.tables"
+                        " WHERE table_schema='public' AND table_name='knowledge'"
+                    )
+                    _schema_exists = _cur.fetchone() is not None
+                if _schema_exists:
+                    # Tables already exist — skip DDL entirely to avoid lock contention.
+                    conn.rollback()
+                else:
+                    init_schema(conn)
             except Exception as _schema_err:
-                # Lock timeout during DDL — tables exist from prior boot; safe to continue.
                 import sys as _sys
-                print(f"[pg_bridge] init_schema lock contention, skipping: {_schema_err}", file=_sys.stderr, flush=True)
+                print(f"[pg_bridge] init_schema error, skipping: {_schema_err}", file=_sys.stderr, flush=True)
                 try:
                     conn.rollback()
                 except Exception:
