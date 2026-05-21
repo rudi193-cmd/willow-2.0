@@ -16,6 +16,14 @@ Default 7-step boot path:
 
 If `fleet_status` returns degraded: surface it and stop.
 
+## Git workflow
+
+- **Never commit directly to `master`.** All work goes on a feature branch.
+- Branch naming: `<type>/<short-description>` — e.g. `fix/handoff-skip-counts`, `feat/app-install`, `chore/update-deps`.
+- Use `/worktree` for any non-trivial task so it gets an isolated branch automatically.
+- When work is ready: push the branch and open a PR against `master` via `gh pr create`.
+- PRs must have a summary (what changed + why) and a test plan checklist.
+
 Fallbacks when MCP tools are not available yet:
 
 - Use `./willow.sh fleet_status` for the same boot health summary at the shell.
