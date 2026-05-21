@@ -18,17 +18,36 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def _mcp_config_paths(repo: Path) -> list[Path]:
+    candidates = [
+        repo / ".mcp.json",
+        repo / ".willow" / "mcp.json",
+        repo / ".cursor" / "mcp.json",
+    ]
+    seen: set[str] = set()
+    paths: list[Path] = []
+    for path in candidates:
+        try:
+            resolved = path.resolve()
+        except OSError:
+            continue
+        key = str(resolved)
+        if key in seen or not resolved.is_file():
+            continue
+        seen.add(key)
+        paths.append(resolved)
+    return paths
+
+
 def _load_mcp_env(repo: Path) -> dict[str, str]:
-    mcp_path = repo / ".mcp.json"
-    if not mcp_path.is_file():
-        return {}
-    data = json.loads(mcp_path.read_text(encoding="utf-8"))
-    willow = data.get("mcpServers", {}).get("willow", {})
-    env = willow.get("env") or {}
     out: dict[str, str] = {}
-    for k, v in env.items():
-        if isinstance(v, str):
-            out[k] = v
+    for mcp_path in _mcp_config_paths(repo):
+        data = json.loads(mcp_path.read_text(encoding="utf-8"))
+        willow = data.get("mcpServers", {}).get("willow", {})
+        env = willow.get("env") or {}
+        for k, v in env.items():
+            if isinstance(v, str):
+                out.setdefault(k, v)
     return out
 
 

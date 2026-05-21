@@ -20,16 +20,45 @@ Copy [`.mcp.json.example`](../.mcp.json.example) → `.mcp.json`:
       "env": {
         "WILLOW_AGENT_NAME": "your_agent",
         "WILLOW_GROVE_ROOT": "/path/to/safe-app-willow-grove",
-        "WILLOW_PG_DB": "willow_20"
+        "WILLOW_PG_DB": "willow_20",
+        "WILLOW_SAFE_ROOT": "/path/to/SAFE/Applications"
       }
     }
   }
 }
 ```
 
+**Cursor:** symlink or copy MCP config into the project:
+
+```bash
+ln -sf ../.willow/mcp.json .cursor/mcp.json   # per-machine agent in ~/.willow/mcp.json
+python3 -m willow.fylgja.install_cursor       # Fylgja hooks → .cursor/hooks.json
+```
+
+Use an **absolute** path in `args` — Cursor may not launch MCP from the repo root.
+
+**Claude Code:** repo `.mcp.json` + `python3 -m willow.fylgja.install` (writes `~/.claude/settings.json` hooks).
+
 Agents read [`willow.md`](../willow.md) via `mai_read_file` first.
 
-Restart the IDE after changing MCP config or `sap/unified_mcp.sh`.
+Restart the IDE after changing MCP config, hooks, or `sap/unified_mcp.sh`.
+
+---
+
+## Cursor hooks (Fylgja parity)
+
+| Cursor event | Fylgja module | Purpose |
+|--------------|---------------|---------|
+| `sessionStart` | `session_start` | Anchor, handoff boundary, hardware, postgres probe |
+| `beforeSubmitPrompt` | `prompt_submit` | Turn log, dispatch inbox, build-continue |
+| `beforeShellExecution` | `pre_tool` | Bash safety + canon guards |
+| `beforeMCPExecution` | `pre_tool` | MCP write-path guards |
+| `stop` | `stop` | Session composite, affect tagging |
+
+Install: `python3 -m willow.fylgja.install_cursor` (writes `.cursor/hooks.json` — gitignored, machine-local).  
+Adapter: `tools/run_cursor_hook.py` (translates Cursor JSON ↔ Claude hook output).
+
+Debug: Cursor **Output → Hooks** channel.
 
 ---
 
