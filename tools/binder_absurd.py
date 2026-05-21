@@ -273,7 +273,7 @@ def apply_edge(conn, from_id: str, to_id: str, edge_type: str,
         cur.execute("""
             INSERT INTO public.binder_edges (id, agent, source_atom, target_atom, edge_type, status)
             VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (id) DO NOTHING
+            ON CONFLICT (source_atom, target_atom, edge_type) DO NOTHING
         """, (edge_id, "hanuman", from_id, to_id, edge_type, "proposed"))
         conn.commit()
         return cur.rowcount > 0

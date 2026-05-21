@@ -275,9 +275,63 @@ _MODEL_CTX_CHARS: dict[str, int] = {
 }
 _DEFAULT_CTX_CHARS = 24_000
 
-# In-process result cache: cache_key → (result, expires_at)
+# In-process result cache (L1): cache_key → (result, expires_at)
 _OLLAMA_CACHE: dict[str, tuple[str, float]] = {}
 _CACHE_TTL = 300  # seconds
+
+# Persistent cache (L2): ~/.willow/ollama_cache.db
+_CACHE_DB = Path.home() / ".willow" / "ollama_cache.db"
+_cache_db_conn: Optional[sqlite3.Connection] = None
+_cache_db_lock = __import__("threading").Lock()
+
+
+def _cache_db() -> sqlite3.Connection:
+    global _cache_db_conn
+    if _cache_db_conn is None:
+        _CACHE_DB.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(_CACHE_DB), check_same_thread=False, timeout=5)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS ollama_cache "
+            "(cache_key TEXT PRIMARY KEY, result TEXT NOT NULL, expires_at REAL NOT NULL)"
+        )
+        conn.execute("DELETE FROM ollama_cache WHERE expires_at < ?", (time.time(),))
+        conn.commit()
+        _cache_db_conn = conn
+    return _cache_db_conn
+
+
+def _cache_get(key: str) -> Optional[str]:
+    """L1 → L2 lookup. Populates L1 on L2 hit."""
+    now = time.time()
+    hit = _OLLAMA_CACHE.get(key)
+    if hit and now < hit[1]:
+        return hit[0]
+    try:
+        with _cache_db_lock:
+            row = _cache_db().execute(
+                "SELECT result, expires_at FROM ollama_cache WHERE cache_key = ?", (key,)
+            ).fetchone()
+        if row and now < row[1]:
+            _OLLAMA_CACHE[key] = (row[0], row[1])
+            return row[0]
+    except Exception as e:
+        logger.debug("_cache_get L2 miss or error: %s", e)
+    return None
+
+
+def _cache_put(key: str, result: str) -> None:
+    """Write to L1 and L2."""
+    expires_at = time.time() + _CACHE_TTL
+    _OLLAMA_CACHE[key] = (result, expires_at)
+    try:
+        with _cache_db_lock:
+            _cache_db().execute(
+                "INSERT OR REPLACE INTO ollama_cache (cache_key, result, expires_at) VALUES (?,?,?)",
+                (key, result, expires_at),
+            )
+            _cache_db().commit()
+    except Exception as e:
+        logger.debug("_cache_put L2 write failed: %s", e)
 
 
 def _ollama_options(temperature: float = 0.7) -> dict:
@@ -346,17 +400,16 @@ def _ask_ollama(
     cache_key = hashlib.md5(
         f"{model}\x00{system_prompt}\x00{user_message}".encode()
     ).hexdigest()
-    now = time.monotonic()
-    cached = _OLLAMA_CACHE.get(cache_key)
-    if cached and now < cached[1]:
+    cached = _cache_get(cache_key)
+    if cached is not None:
         logger.debug("_ask_ollama: cache hit %s", cache_key[:8])
-        return cached[0]
+        return cached
 
     temps = [base_temp, max(0.0, base_temp - 0.15), min(1.0, base_temp + 0.15)]
     for attempt, temp in enumerate(temps[: max_retries + 1]):
         result = _ollama_single(model, system_prompt, user_message, _ollama_options(temp))
         if result is not None:
-            _OLLAMA_CACHE[cache_key] = (result, now + _CACHE_TTL)
+            _cache_put(cache_key, result)
             if attempt > 0:
                 logger.debug("_ask_ollama: succeeded on retry %d (temp=%.2f)", attempt, temp)
             return result

@@ -143,7 +143,8 @@ CREATE TABLE IF NOT EXISTS binder_edges (
     target_atom TEXT NOT NULL,
     edge_type   TEXT NOT NULL,
     status      TEXT DEFAULT 'proposed',
-    proposed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    proposed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT binder_edges_unique UNIQUE (source_atom, target_atom, edge_type)
 );
 
 CREATE TABLE IF NOT EXISTS ratifications (
@@ -1208,6 +1209,7 @@ class PgBridge:
                     INSERT INTO binder_edges
                         (id, agent, source_atom, target_atom, edge_type)
                     VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (source_atom, target_atom, edge_type) DO NOTHING
                 """, (eid, agent, source_atom, target_atom, edge_type))
             self.conn.commit()
             return {"id": eid, "status": "proposed"}
