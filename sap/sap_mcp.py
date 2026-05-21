@@ -2077,7 +2077,7 @@ async def dream_run(app_id: str, force: bool = False) -> dict:
                             continue
                         seen_pairs.add(pair_key)
                         resp = _ask_ollama(
-                            "mistral:7b",
+                            "llama3.2:3b",
                             "You are a knowledge graph auditor.",
                             (f"A: {atom['title']}\n{atom['summary'][:200]}\n\n"
                              f"B: {nb.get('title','')}\n{(nb.get('summary') or '')[:200]}\n\n"
