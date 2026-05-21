@@ -175,20 +175,13 @@ if not handoff_db.exists():
 
 conn = sqlite3.connect(handoff_db)
 conn.row_factory = sqlite3.Row
-cur = conn.cursor()
-sql_agent = '''
-    SELECT f.filename, f.mtime, h.handoff_date, h.summary, h.open_threads, h.questions
-    FROM handoffs h JOIN files f ON h.file_id = f.id
-    WHERE h.file_type = 'session' AND f.filename LIKE ?
-'''
-sql_any = '''
-    SELECT f.filename, f.mtime, h.handoff_date, h.summary, h.open_threads, h.questions
-    FROM handoffs h JOIN files f ON h.file_id = f.id
-    WHERE h.file_type = 'session'
-'''
-rows = cur.execute(sql_agent, (f'%{agent}%',)).fetchall() if agent else []
+from sap.handoff_index import handoff_select_sql
+base_sql = handoff_select_sql(conn)
+where_agent = ' WHERE h.file_type = ' + repr('session') + ' AND f.filename LIKE ?'
+where_any   = ' WHERE h.file_type = ' + repr('session')
+rows = conn.execute(base_sql + where_agent, (f'%{agent}%',)).fetchall() if agent else []
 if not rows:
-    rows = cur.execute(sql_any).fetchall()
+    rows = conn.execute(base_sql + where_any).fetchall()
 conn.close()
 row = select_latest_handoff(rows)
 
@@ -202,6 +195,8 @@ print(json.dumps({
     'summary': row['summary'],
     'open_threads': json.loads(row['open_threads']) if row['open_threads'] else [],
     'questions': json.loads(row['questions']) if row['questions'] else [],
+    'agreements':   json.loads(row['agreements'])   if row['agreements']   else [],
+    'capabilities': json.loads(row['capabilities']) if row['capabilities'] else [],
 }, indent=2))
 "
         ;;
