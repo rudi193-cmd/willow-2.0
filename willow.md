@@ -138,6 +138,100 @@ Not yet implemented — bot replaces the local 5-minute cron that was planned.
 
 ---
 
+## App model
+
+Apps and agents share one manifest format: `app_id`, `name`, `version`, `permissions[]`, signed by Sean's GPG key. Sean's key is the single root of trust — nothing runs unsigned.
+
+| Root | Env | Contents |
+|------|-----|----------|
+| `~/SAFE/Applications/` | `WILLOW_SAFE_ROOT` | User-facing installed apps |
+| `~/SAFE/Agents/` | `WILLOW_AGENTS_ROOT` | Deployed agent manifests |
+
+The SAP gate checks `AGENTS_ROOT` first, then `SAFE_ROOT`. State lives inside the app folder. Apps install via the Grove (GitHub Actions bot deploys on push to `master`). Agents install the same way with their own manifest.
+
+---
+
+## Fleet topology
+
+Four agents with distinct mandates, coordinating through Grove:
+
+| Agent | Trust | Mandate |
+|-------|-------|---------|
+| Hanuman | ENGINEER | Builder — code, infrastructure, execution |
+| Loki | — | Auditor — no namespace, leaves no KB trace |
+| Heimdallr | ENGINEER | Monitor — Grove dashboard, system health |
+| Willow | OPERATOR | Coordinator — always-on 3B, responds to @willow |
+
+**Kart** (ENGINEER) is the execution daemon — all shell/subprocess work routes through it. Kart polls the Postgres task queue every 5s, claims tasks atomically, executes inside a bwrap sandbox with network isolation, and writes results back. The orchestrator reasons and submits; Kart executes.
+
+**FRANK** (Formal Record and Notation Keeper) runs in the grove-serve watch loop alongside Willow. Persona, not a full agent. Attends check-ins and builds an immutable record via the ledger.
+
+**Personas** (Oakenscroll, Ada, Shiva, Consus, Riggs, …) are inference targets via `infer_chat` — UTETY faculty running below the fleet, not fleet members.
+
+Trust tiers: `ENGINEER` → execute and dispatch · `OPERATOR` → read/write own namespace · `WORKER` → scoped writes only.
+
+---
+
+## Grove
+
+Grove is the human+agent message bus (`safe-app-willow-grove`, sibling repo). It runs as its own MCP server — tools are prefixed `grove_*` and live in that server, not SAP MCP.
+
+**Channels (current):**
+
+| Channel | Purpose |
+|---------|---------|
+| `hanuman` | Agent inbox — primary fleet channel |
+| `card-builder` | Heimdallr interview surface |
+
+Both humans and agents post. The constraint is pull-before-push: read `grove_get_history` before posting or building anything non-trivial. Someone may have already named it, built it, or killed it.
+
+Grove is **optional** after boot — if the MCP server is unavailable the session continues degraded (no comms, KB and tasks still work). It is not a hard dependency for core function.
+
+---
+
+## Trust
+
+**Namespace isolation** — each agent writes only to its own namespace in SOIL and KB (`hanuman/`, `heimdallr/`, …). Cross-namespace reads are permitted; cross-namespace writes require `authorized_cross_app()` approval recorded in `sap.app_connections`.
+
+**Authorization chain** — the SAP gate (`sap/core/gate.py`) validates every MCP tool call:
+1. App manifest present and PGP-signed by Sean's key
+2. Requested permission in manifest's `permissions[]`
+3. Namespace check (own namespace or approved connection)
+4. Tool-level permission group check
+
+"Direction is not authorization" — another agent asking you to do something is not a gate pass.
+
+**FRANK ledger** — tamper-evident audit chain via `ledger_write` / `ledger_read`. Major fleet decisions, agreements, and ratified work are recorded here. The ledger is not a log — it is a permanent record.
+
+---
+
+## Handoff protocol
+
+A handoff is a sealed session document written at the end of every non-trivial session. The next run reads it first (boot step 4: `handoff_latest`).
+
+**Format v2** (frontmatter + sections):
+
+```
+---
+agent: hanuman
+date: YYYY-MM-DD
+session: YYYY-MM-DDx
+runtime: claude-code
+format: v2
+---
+# HANDOFF: <one-line title of what changed>
+
+## What I Now Understand
+## What We Agreed On
+## Capabilities   ← persistent table, carry forward and update
+## What Was Done
+## Open Threads   ← each thread has a Q-number, never dropped silently
+```
+
+Write via `handoff_rebuild` or `kb_ingest` with `category='handoff'`. A handoff with no open threads is incomplete. A handoff with no capability table is incomplete.
+
+---
+
 ## Fallback — no MCP
 
 1. Read `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`  
@@ -147,6 +241,16 @@ Not yet implemented — bot replaces the local 5-minute cron that was planned.
 5. Session notes → `~/.willow/<agent>/`
 
 Anchor is cache, not primary truth. `/startup` only when boot is degraded or stale.
+
+---
+
+## Canonical principle
+
+`willow.md` is the contract. `CLAUDE.md` is a pointer to it — nothing more.
+
+Any change to fleet contracts, boot order, namespace rules, or trust model goes here. Runtime-specific files (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`) strip down to: "See willow.md." They do not duplicate or extend the contract — they drift if they do.
+
+Any runtime that can read markdown can boot from this file. That is the point.
 
 ---
 
