@@ -334,7 +334,8 @@ def build_db():
     files = sorted(all_files, key=lambda f: f.name)
     file_count = 0
     handoff_count = 0
-    skipped_count = 0
+    suffix_skipped: list[str] = []
+    frontmatter_skipped: list[str] = []
     for f in files:
         if not f.is_file() or f.name in _SKIP:
             continue
@@ -343,15 +344,15 @@ def build_db():
 
         if ftype == "session":
             if not matches_agent_suffix(f.name, _TOOL_AGENT):
-                skipped_count += 1
+                suffix_skipped.append(f.name)
                 continue
             try:
                 _check = f.read_text(encoding="utf-8", errors="replace")
             except Exception:
-                skipped_count += 1
+                frontmatter_skipped.append(f.name)
                 continue
             if not has_valid_frontmatter(_check):
-                skipped_count += 1
+                frontmatter_skipped.append(f.name)
                 continue
         mtime = datetime.fromtimestamp(stat.st_mtime).isoformat()
         cur.execute(
@@ -394,7 +395,14 @@ def build_db():
     print(f"  {file_count} files indexed")
     print(f"  {handoff_count} handoffs parsed")
     print(f"  {kb_count} KB atoms ingested")
-    print(f"  {skipped_count} session files skipped (agent suffix or frontmatter mismatch)")
+    print(f"  {len(suffix_skipped)} session files skipped (agent suffix mismatch)")
+    if suffix_skipped:
+        for name in suffix_skipped:
+            print(f"    [suffix] {name}")
+    print(f"  {len(frontmatter_skipped)} session files skipped (missing/invalid frontmatter)")
+    if frontmatter_skipped:
+        for name in frontmatter_skipped:
+            print(f"    [frontmatter] {name}")
     print(f"  DB size: {DB_PATH.stat().st_size / 1024:.1f} KB")
     print(f"  Dirs scanned: {[str(d) for d in SCAN_DIRS if d.exists()]}")
 
