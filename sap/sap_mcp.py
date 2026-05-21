@@ -2810,7 +2810,13 @@ async def app_install(
             _SAFE_APPS_DIR.mkdir(parents=True, exist_ok=True)
             code_path.mkdir(parents=True, exist_ok=True)
 
-            ghgrab = _sp.run(["which", "ghgrab"], capture_output=True, text=True).stdout.strip()
+            import shutil as _sh
+            ghgrab = (
+                _sh.which("ghgrab")
+                or (_sh.which("ghgrab", path=os.path.expanduser("~/.cargo/bin")) and
+                    os.path.expanduser("~/.cargo/bin/ghgrab"))
+                or ""
+            )
             if ghgrab:
                 # Prefer ghgrab: downloads repo files without .git/ history.
                 # Supports GitHub, GitLab, Codeberg, Gitea, Forgejo.
@@ -2830,7 +2836,6 @@ async def app_install(
                     return {"error": f"ghgrab failed: {err_msg[:500]}"}
             else:
                 # Fallback: full git clone (install ghgrab via `cargo install ghgrab` to avoid this)
-                import shutil as _sh
                 _fetcher = "git-clone"
                 result = _sp.run(
                     ["git", "clone", repo_url, str(code_path)],
