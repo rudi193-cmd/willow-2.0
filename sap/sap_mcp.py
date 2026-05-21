@@ -186,8 +186,6 @@ def _init_pg() -> "PgBridge | None":
         return None
     try:
         _pg = PgBridge()
-        if init_schema:
-            init_schema(_pg.conn)
         return _pg
     except Exception as err:
         logger.error("[w2] pg init failed: %s", err)

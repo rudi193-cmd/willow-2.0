@@ -8,7 +8,8 @@
         "WILLOW_GROVE_ROOT": "/path/to/safe-app-willow-grove",
         "WILLOW_STORE_ROOT": "/home/USERNAME/.willow/store",
         "WILLOW_PG_DB": "willow_20",
-        "WILLOW_PG_USER": "USERNAME"
+        "WILLOW_PG_USER": "USERNAME",
+        "WILLOW_SAFE_ROOT": "/path/to/SAFE/Applications"
       }
     }
   }

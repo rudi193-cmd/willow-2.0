@@ -21,6 +21,9 @@ mypy_output.txt
 sap/log/*.jsonl
 sap/log/*.md
 
+# Cursor Fylgja hooks — per-machine absolute paths; run install_cursor
+.cursor/hooks.json
+
 # Claude Code worktrees
 .claude/worktrees/
 

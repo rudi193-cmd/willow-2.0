@@ -40,11 +40,12 @@ def step_telemetry_init() -> None:
 
 
 def step_1_dirs() -> None:
-    """Create ~/.willow/ structure and ~/SAFE/Applications/."""
+    """Create ~/.willow/ structure, ~/SAFE/Applications/, and ~/SAFE/Agents/."""
     home = Path.home()
     for sub in (".willow", ".willow/store", ".willow/secrets", ".willow/logs"):
         (home / sub).mkdir(parents=True, exist_ok=True)
     (home / "SAFE" / "Applications").mkdir(parents=True, exist_ok=True)
+    (home / "SAFE" / "Agents").mkdir(parents=True, exist_ok=True)
 
 
 def step_2_deps() -> None:

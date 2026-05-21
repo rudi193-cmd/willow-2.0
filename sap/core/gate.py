@@ -4,7 +4,7 @@ b17: 0293H
 ΔΣ=42
 
 Authorization chain (all four must pass):
-1. SAFE/Applications/<app_id>/ folder exists
+1. SAFE/Agents/<agent_id>/ folder exists (agents) or SAFE/Applications/<app_id>/ (user apps)
 2. safe-app-manifest.json present and readable
 3. safe-app-manifest.json.sig present
 4. gpg --verify confirms signature against Sean's key
@@ -12,8 +12,7 @@ Authorization chain (all four must pass):
 Any failure → deny + log to sap/log/gaps.jsonl.
 Revocation = delete folder or signature.
 
-Hardened gate for Willow 1.7. Replaces the filesystem-only
-gate in Willow 1.5 / Ashokoa/sap/core/gate.py (b17: 36N22).
+Lookup order: AGENTS_ROOT → SAFE_ROOT (apps) → PROFESSOR_ROOT.
 """
 
 import json
@@ -37,6 +36,12 @@ if not _safe_root_env:
     )
 SAFE_ROOT = Path(_safe_root_env)
 PROFESSOR_ROOT = SAFE_ROOT / "utety-chat" / "professors"
+
+# Agent manifests live separately from user apps.
+# WILLOW_AGENTS_ROOT → ~/SAFE/Agents (signed agent manifests + permissions).
+# WILLOW_SAFE_ROOT   → ~/SAFE/Applications (user-facing apps).
+_agents_root_env = os.environ.get("WILLOW_AGENTS_ROOT", str(Path.home() / "SAFE" / "Agents"))
+AGENTS_ROOT = Path(_agents_root_env)
 LOG_DIR = Path(__file__).parent.parent / "log"
 
 # Dev fallback: search $WILLOW_DEV_SAFE_ROOT/safe-app-<app_id>/ when SAFE_ROOT lacks the folder.
@@ -334,8 +339,12 @@ def authorized(app_id: str) -> bool:
         _log_gap(app_id, "app_id not in allowlist (WILLOW_ALLOWED_APP_IDS)")
         return False
 
-    # Check top-level Applications first, then UTETY/professors/ fallback
-    app_path = _resolve_app_path(SAFE_ROOT, app_id) or _resolve_app_path(PROFESSOR_ROOT, app_id)
+    # Agents root first, then user apps, then UTETY/professors/ fallback
+    app_path = (
+        _resolve_app_path(AGENTS_ROOT, app_id)
+        or _resolve_app_path(SAFE_ROOT, app_id)
+        or _resolve_app_path(PROFESSOR_ROOT, app_id)
+    )
 
     if app_path is not None:
         manifest_path = app_path / "safe-app-manifest.json"
@@ -397,7 +406,8 @@ def get_manifest(app_id: str) -> Optional[dict]:
         return None
 
     app_path = (
-        _resolve_app_path(SAFE_ROOT, app_id)
+        _resolve_app_path(AGENTS_ROOT, app_id)
+        or _resolve_app_path(SAFE_ROOT, app_id)
         or _resolve_app_path(PROFESSOR_ROOT, app_id)
         or _resolve_dev_app_path(app_id)
     )
@@ -427,7 +437,8 @@ def permitted(app_id: str, tool_name: str) -> bool:
         return False
 
     app_path = (
-        _resolve_app_path(SAFE_ROOT, app_id)
+        _resolve_app_path(AGENTS_ROOT, app_id)
+        or _resolve_app_path(SAFE_ROOT, app_id)
         or _resolve_app_path(PROFESSOR_ROOT, app_id)
         or _resolve_dev_app_path(app_id)
     )
@@ -544,13 +555,16 @@ def list_authorized() -> list[str]:
     """
     Return all app_ids that pass the full authorization chain.
     Runs gpg --verify for each candidate — use sparingly.
+    Scans AGENTS_ROOT then SAFE_ROOT; deduplicates by app_id.
     """
-    if not SAFE_ROOT.exists():
-        return []
-
     result = []
-    for entry in sorted(SAFE_ROOT.iterdir()):
-        if entry.is_dir() and (entry / "safe-app-manifest.json").exists():
-            if authorized(entry.name):
-                result.append(entry.name)
+    seen: set[str] = set()
+    for root in (AGENTS_ROOT, SAFE_ROOT):
+        if not root.exists():
+            continue
+        for entry in sorted(root.iterdir()):
+            if entry.is_dir() and (entry / "safe-app-manifest.json").exists():
+                if entry.name not in seen and authorized(entry.name):
+                    result.append(entry.name)
+                    seen.add(entry.name)
     return result

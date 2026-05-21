@@ -38,6 +38,20 @@ def latest_handoff_sort_key(
     )
 
 
+def handoff_select_sql(conn) -> str:
+    """Build SELECT for handoff_latest — tolerates pre-v2 schemas without agreements/capabilities."""
+    cur = conn.cursor()
+    cur.execute("PRAGMA table_info(handoffs)")
+    cols = {row[1] for row in cur.fetchall()}
+    agreements = "h.agreements" if "agreements" in cols else "NULL AS agreements"
+    capabilities = "h.capabilities" if "capabilities" in cols else "NULL AS capabilities"
+    return (
+        "SELECT f.filename, f.mtime, h.handoff_date, h.summary,"
+        f" h.open_threads, h.questions, {agreements}, {capabilities}"
+        " FROM handoffs h JOIN files f ON h.file_id = f.id"
+    )
+
+
 def select_latest_handoff(rows: list[Mapping[str, object]]) -> Mapping[str, object] | None:
     """Return the most recent handoff row from SQLite-style mapping rows."""
     if not rows:
