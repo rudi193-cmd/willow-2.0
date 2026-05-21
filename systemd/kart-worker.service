@@ -1,0 +1,19 @@
+[Unit]
+Description=Kart — Willow task queue daemon (bwrap sandbox executor)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+Environment=WILLOW_AGENT_NAME=kart
+EnvironmentFile=-%h/.willow/env
+ExecStart=%h/willow-2.0/.venv-dev/bin/python3 %h/willow-2.0/scripts/run_kart.py
+WorkingDirectory=%h/willow-2.0
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=kart-worker
+
+[Install]
+WantedBy=default.target
