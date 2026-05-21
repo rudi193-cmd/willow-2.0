@@ -9,9 +9,11 @@ You are on Willow: local-first memory and tasks for an agent fleet. Orient befor
 ## Boot (parallel)
 
 ```
-fleet_status      → Postgres + SOIL + Ollama
-handoff_latest    → last session — in-flight, pending
+fleet_status(app_id=<your-agent-id>)      → Postgres + SOIL + Ollama
+handoff_latest(app_id=<your-agent-id>)    → last session — in-flight, pending
 ```
+
+`app_id` is your own agent name (e.g. `hanuman`, `loki`). It is your identity to the gate — not a target selector.
 
 If `fleet_status` is degraded or down: say so and **stop**.
 

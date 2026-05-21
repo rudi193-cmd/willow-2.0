@@ -54,8 +54,8 @@ Never public/ or another agent's tree without authorization.
 |------|---------|---------|
 | 1 | `markdownai-read_file("willow.md")` | Load this contract |
 | 2 | Local context | Agent, repo root, branch, compact diff (counts only — no full patch unless asked) |
-| 3 | `fleet_status` | Postgres + SOIL + Ollama + manifests |
-| 4 | `handoff_latest` | What was in flight |
+| 3 | `fleet_status(app_id=<your-agent-id>)` | Postgres + SOIL + Ollama + manifests — `app_id` is your own agent name |
+| 4 | `handoff_latest(app_id=<your-agent-id>, agent=<your-agent-id>)` | What was in flight |
 | 5 | `grove_get_history` | Fleet channel / inbox continuity |
 | 6 | `kb_search` | Task topic before design or execution |
 | 7 | Stop or act | If degraded, surface and stop |
