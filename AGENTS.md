@@ -4,6 +4,10 @@ b17: AGNTW · ΔΣ=42
 
 **Fleet boot:** Read [`willow.md`](willow.md) first. Then `fleet_status`, `handoff_latest`, Grove history, `kb_search`. Shell fallback: `./willow.sh fleet_status`.
 
+**Cursor:** `python3 -m willow.fylgja.install_cursor` wires Fylgja hooks to `.cursor/hooks.json`. MCP: `.cursor/mcp.json` → `.willow/mcp.json` (per-machine agent). Use agent name as MCP `app_id`, not `willow-2.0`.
+
+**Claude Code:** `python3 -m willow.fylgja.install` wires hooks to `~/.claude/settings.json`.
+
 **Fylgja-powers:** Read `willow/fylgja/powers/registry.json`, then **one** `willow/fylgja/powers/*.md` chosen by task fit (or user id). Entry: `willow/fylgja/skills/using-fylgja-powers.md`. Index: `willow/fylgja/powers/SURFACES.md`. **Willow stack sessions (MCP/KB/Grove/SOIL)** with no narrower power → **`agent-rails`** (`powers/agent-rails.md`).
 
 Env: `WILLOW_FYLGJA_ROOT` overrides the `willow/fylgja` directory.
