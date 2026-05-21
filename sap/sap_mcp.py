@@ -2796,6 +2796,7 @@ async def app_install(
         import subprocess as _sp
         tid = target_app_id
 
+        _fetcher = "monorepo"
         if source == "monorepo":
             code_path = _MONOREPO_ROOT / tid
             if not code_path.exists():
@@ -2807,12 +2808,37 @@ async def app_install(
             if not repo_url:
                 return {"error": "repo_url required for standalone install"}
             _SAFE_APPS_DIR.mkdir(parents=True, exist_ok=True)
-            result = _sp.run(
-                ["git", "clone", repo_url, str(code_path)],
-                capture_output=True, text=True, timeout=120,
-            )
-            if result.returncode != 0:
-                return {"error": f"git clone failed: {result.stderr.strip()[:500]}"}
+            code_path.mkdir(parents=True, exist_ok=True)
+
+            ghgrab = _sp.run(["which", "ghgrab"], capture_output=True, text=True).stdout.strip()
+            if ghgrab:
+                # Prefer ghgrab: downloads repo files without .git/ history.
+                # Supports GitHub, GitLab, Codeberg, Gitea, Forgejo.
+                _fetcher = "ghgrab"
+                cmd = [ghgrab, "agent", "download", repo_url,
+                       "--repo", "--out", str(code_path), "--no-folder"]
+                token = os.environ.get("GITHUB_TOKEN", "")
+                if token:
+                    cmd += ["--token", token]
+                result = _sp.run(cmd, capture_output=True, text=True, timeout=120)
+                if result.returncode != 0:
+                    try:
+                        err_json = json.loads(result.stdout)
+                        err_msg = err_json.get("error", result.stderr.strip())
+                    except Exception:
+                        err_msg = result.stderr.strip() or result.stdout.strip()
+                    return {"error": f"ghgrab failed: {err_msg[:500]}"}
+            else:
+                # Fallback: full git clone (install ghgrab via `cargo install ghgrab` to avoid this)
+                import shutil as _sh
+                _fetcher = "git-clone"
+                result = _sp.run(
+                    ["git", "clone", repo_url, str(code_path)],
+                    capture_output=True, text=True, timeout=120,
+                )
+                if result.returncode != 0:
+                    _sh.rmtree(code_path, ignore_errors=True)
+                    return {"error": f"git clone failed: {result.stderr.strip()[:500]}"}
 
         manifest_src = code_path / "safe-app-manifest.json"
         if not manifest_src.exists():
@@ -2837,6 +2863,7 @@ async def app_install(
             "app_id":    tid,
             "code_path": str(code_path),
             "source":    source,
+            "fetcher":   _fetcher,
             "manifest":  str(reg_manifest),
             "mcp_json":  str(mcp_path),
         }
