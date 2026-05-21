@@ -21,7 +21,8 @@ Copy [`.mcp.json.example`](../.mcp.json.example) → `.mcp.json`:
         "WILLOW_AGENT_NAME": "your_agent",
         "WILLOW_GROVE_ROOT": "/path/to/safe-app-willow-grove",
         "WILLOW_PG_DB": "willow_20",
-        "WILLOW_SAFE_ROOT": "/path/to/SAFE/Applications"
+        "WILLOW_SAFE_ROOT": "/path/to/SAFE/Applications",
+        "WILLOW_AGENTS_ROOT": "/path/to/SAFE/Agents"
       }
     }
   }
@@ -77,8 +78,10 @@ Debug: Cursor **Output → Hooks** channel.
 | Variable | Default | Notes |
 |----------|---------|-------|
 | `WILLOW_AGENT_NAME` | `agent` | Sets identity for handoff + grove |
-| `WILLOW_GROVE_ROOT` | `~/github/safe-app-willow-grove` | Path to grove repo |
+| `WILLOW_GROVE_ROOT` | `~/github/safe-app-willow-grove` | Path to grove repo (grove tools bundled in unified MCP) |
 | `WILLOW_PG_DB` | `willow_20` | Postgres database name |
+| `WILLOW_SAFE_ROOT` | `~/SAFE/Applications` | Installed app manifests — required for SAP gate |
+| `WILLOW_AGENTS_ROOT` | `~/SAFE/Agents` | Agent manifests — required for agent authorization |
 | `WILLOW_STORE_ROOT` | `~/.willow/store` | SOIL store path |
 
 ---
