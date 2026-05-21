@@ -29,18 +29,21 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def load_candidates(db_path: Path, min_conf: float) -> list[dict]:
+def load_candidates(db_path: Path, min_conf: float, project: str | None = None) -> list[dict]:
     conn = sqlite3.connect(str(db_path))
-    rows = conn.execute(
-        """
+    sql = """
         SELECT id, collection, data FROM records
-        WHERE collection = 'atoms/session_semantic_candidates'
+        WHERE collection IN ('atoms/session_semantic_candidates', 'atoms/session_user_candidates')
           AND json_extract(data, '$.needs_review') = 1
+          AND json_extract(data, '$.promoted_at') IS NULL
           AND json_extract(data, '$.confidence') >= ?
-        ORDER BY json_extract(data, '$.confidence') DESC
-        """,
-        (min_conf,),
-    ).fetchall()
+    """
+    params: list = [min_conf]
+    if project:
+        sql += " AND json_extract(data, '$.payload.source_file') LIKE ?"
+        params.append(f"%{project}%")
+    sql += " ORDER BY json_extract(data, '$.confidence') DESC"
+    rows = conn.execute(sql, params).fetchall()
     conn.close()
     return [{"id": r[0], "collection": r[1], **json.loads(r[2])} for r in rows]
 
@@ -62,9 +65,26 @@ def mark_promoted(db_path: Path, atom_ids: list[str]) -> None:
     conn.close()
 
 
+def _already_promoted(pg: PgBridge) -> set[str]:
+    """Return SQLite atom IDs that already exist in public.knowledge."""
+    cur = pg.conn.cursor()
+    cur.execute("""
+        SELECT content->>'promoted_from'
+        FROM public.knowledge
+        WHERE source_type = 'session_promote'
+          AND content->>'promoted_from' IS NOT NULL
+    """)
+    return {row[0] for row in cur.fetchall() if row[0]}
+
+
 def promote(candidates: list[dict], pg: PgBridge, dry_run: bool) -> list[str]:
+    already = _already_promoted(pg)
     promoted_ids = []
+    skipped = 0
     for c in candidates:
+        if c["id"] in already:
+            skipped += 1
+            continue
         payload = c.get("payload", {})
         evidence = payload.get("evidence", c.get("summary", ""))
         session_id = payload.get("session_id", "unknown")
@@ -113,6 +133,8 @@ def promote(candidates: list[dict], pg: PgBridge, dry_run: bool) -> list[str]:
             pg.conn.rollback()
             print(f"  ❌ [{conf:.2f}] {title[:80]} — {e}")
 
+    if skipped:
+        print(f"  (skipped {skipped} already in KB)")
     return promoted_ids
 
 
@@ -121,11 +143,15 @@ def main():
     ap.add_argument("--db-path", default=str(DEFAULT_DB))
     ap.add_argument("--min-confidence", type=float, default=0.8)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--project", default=None,
+                    help="Filter by project path fragment (matches source_file). "
+                         "E.g. 'willow-2.0' or 'Nest/hanuman'.")
     args = ap.parse_args()
 
     db = Path(args.db_path).expanduser()
-    candidates = load_candidates(db, args.min_confidence)
-    print(f"Found {len(candidates)} candidates >= {args.min_confidence} confidence\n")
+    candidates = load_candidates(db, args.min_confidence, project=args.project)
+    project_note = f" [project~={args.project}]" if args.project else ""
+    print(f"Found {len(candidates)} candidates >= {args.min_confidence} confidence{project_note}\n")
 
     if not candidates:
         return

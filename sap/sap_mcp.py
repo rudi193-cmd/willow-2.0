@@ -2453,10 +2453,12 @@ async def session_review(
     app_id:         str,
     lookback_hours: int  = 24,
     run_tension:    bool = True,
+    model:          str  = "llama3.2:3b",
 ) -> dict:
-    """Review recent session activity using mistral:7b + receipt log.
+    """Review recent session activity using a local Ollama model + receipt log.
     Summarises what was done, what succeeded/failed, and flags tensions.
-    Mirrors /review (local PR diff) but for Willow sessions, not code PRs."""
+    Mirrors /review (local PR diff) but for Willow sessions, not code PRs.
+    model: Ollama model to use (default: llama3.2:3b; mistral:7b for deeper analysis)."""
     logger.info("[w2] session_review app_id=%s hours=%d tension=%s", app_id, lookback_hours, run_tension)
     if not pg:
         return _no_pg()
@@ -2536,11 +2538,11 @@ async def session_review(
             with _cf.ThreadPoolExecutor(max_workers=1) as _llm_ex:
                 _fut = _llm_ex.submit(
                     _ask_ollama,
-                    "mistral:7b",
+                    model,
                     "You are a session analyst. Write concise, actionable reviews.",
                     prompt,
                 )
-                synthesis = _fut.result(timeout=60) or ""
+                synthesis = _fut.result(timeout=120) or ""
         except _cf.TimeoutError:
             synthesis = "[review timed out — Ollama busy, retry later]"
         except Exception as e:

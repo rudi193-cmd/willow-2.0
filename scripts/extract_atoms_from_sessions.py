@@ -69,6 +69,20 @@ def _assistant_text(message_obj: dict[str, Any]) -> str:
     return "\n".join(chunks).strip()
 
 
+def _user_text(message_obj: dict[str, Any]) -> str:
+    """Extract plain text from a user/human message (string or list-of-parts)."""
+    content = message_obj.get("content")
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        chunks: list[str] = []
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "text" and isinstance(part.get("text"), str):
+                chunks.append(part["text"])
+        return "\n".join(chunks).strip()
+    return ""
+
+
 def _extract_metadata_atoms(session_id: str, source_file: Path, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     event_counts: Counter[str] = Counter()
     attachment_counts: Counter[str] = Counter()
@@ -206,6 +220,169 @@ SEMANTIC_PATTERNS = [
     re.compile(r"\b(gap|missing|mismatch|error|failed|drift)\b", re.IGNORECASE),
 ]
 
+# Lines that look like content but are structural noise
+_HEADING_RE    = re.compile(r"^#{1,6}\s+")
+_DIAGRAM_RE    = re.compile(r"(-->|\|\s*yes\s*\||graph\s+[A-Z]{2}|flowchart|subgraph|\[\w+\]-->)")
+_TABLE_ROW_RE  = re.compile(r"^\|.*\|$")
+_MIN_WORDS     = 8
+
+_BOILERPLATE = [
+    "since it was a straightforward",
+    "i went ahead and implemented",
+    "i'm currently verifying",
+    "i'm observing how",
+    "it appears to be a consistent pattern",
+    "i have completed",
+    "let me check",
+    "let me look",
+    "let me see what",
+    "let me see if",
+    "[redacted]",
+    # cross-session meta (avoid circular self-analysis atoms)
+    "semantic candidate",
+    "noise atom",
+    "the root problem: the semantic pattern",
+    "zero semantic candidates",
+    # tool/script output artifacts that land in session text
+    "session files skipped",
+    "handoffs parsed",
+    "kb atoms ingested",
+    "built handoffs.db",
+]
+
+
+def _is_noise(sentence: str) -> bool:
+    """Return True if the sentence is structural noise, not semantic signal."""
+    s = sentence.strip()
+    if _HEADING_RE.match(s):
+        return True
+    if _DIAGRAM_RE.search(s):
+        return True
+    if len(s.split()) < _MIN_WORDS:
+        return True
+    sl = s.lower()
+    if any(bp in sl for bp in _BOILERPLATE):
+        return True
+    return False
+
+
+USER_SEMANTIC_PATTERNS = [
+    # Corrections and rejections — high-value signal
+    re.compile(r"\b(wrong|incorrect|not quite|you missed|that's not|shouldn't|don't do|stop doing)\b", re.IGNORECASE),
+    # Decisions and direction
+    re.compile(r"\b(let's|we should|I want|the right|do it as|fix it|that's right|good call|keep that)\b", re.IGNORECASE),
+    # Willow-specific named things with intent
+    re.compile(r"\b(willow|grove|kart|sap|frank|handoff|kb|soil|praiser|mcp|boot|fleet)\b", re.IGNORECASE),
+    # Root-cause / architectural reasoning
+    re.compile(r"\b(the reason|the issue|the problem|the fix|the gap|because|that's why|this means)\b", re.IGNORECASE),
+]
+
+_USER_BOILERPLATE = [
+    "keep going",
+    "yes",
+    "ok",
+    "sure",
+    "sounds good",
+    "do it",
+    "good",
+    "perfect",
+    "looks good",
+    "great",
+    "thanks",
+    "[request interrupted",
+    "you got stuck",
+    "i stopped it",
+    "i didn't block",
+]
+
+_USER_MIN_WORDS = 4
+# User messages with more than this many newlines are likely context/summary dumps
+_USER_MAX_LINES = 8
+
+
+def _is_user_noise(text: str) -> bool:
+    s = text.strip()
+    sl = s.lower()
+    if len(s.split()) < _USER_MIN_WORDS:
+        return True
+    if any(bp in sl for bp in _USER_BOILERPLATE):
+        return True
+    if sl.startswith("[tool result"):
+        return True
+    return False
+
+
+def _is_context_dump(full_text: str) -> bool:
+    """Return True if this user message looks like an injected context/summary block."""
+    if full_text.count("\n") > _USER_MAX_LINES:
+        return True
+    # Summary context bullets: `- **Term** — description`
+    bullet_bold = sum(1 for line in full_text.splitlines() if re.match(r"^\s*-\s+\*\*", line))
+    if bullet_bold >= 3:
+        return True
+    return False
+
+
+def _extract_user_candidates(session_id: str, source_file: Path, rows: list[dict[str, Any]], max_candidates: int) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    for r in rows:
+        if r.get("_parse_error") or _record_type(r) != "user":
+            continue
+        msg = r.get("message") if isinstance(r.get("message"), dict) else {}
+        text = _user_text(msg)
+        if not text:
+            continue
+        if _is_context_dump(text):
+            continue
+
+        # User messages are usually one block — treat the whole message as the unit
+        for sentence in text.split("\n"):
+            sentence = sentence.strip()
+            if len(sentence) < 15:
+                continue
+            if _is_user_noise(sentence):
+                continue
+            if not any(p.search(sentence) for p in USER_SEMANTIC_PATTERNS):
+                continue
+            key = re.sub(r"\s+", " ", sentence.lower())
+            if key in seen:
+                continue
+            seen.add(key)
+
+            # Corrections get higher confidence; hedged statements lower
+            confidence = 0.70
+            if re.search(r"\b(wrong|incorrect|not quite|shouldn't|don't|stop)\b", sentence, re.IGNORECASE):
+                confidence = 0.82
+            if re.search(r"\b(let's|we should|the right|fix it)\b", sentence, re.IGNORECASE):
+                confidence = 0.78
+            if re.search(r"\b(maybe|might|could|try|perhaps)\b", sentence, re.IGNORECASE):
+                confidence = 0.60
+
+            snippet = sentence[:380]
+            fid = _sha(f"{r.get('_line')}|{snippet}")[:16]
+            atom = {
+                "id": _atom_id(session_id, "user_candidate", fid),
+                "collection": "atoms/session_user_candidates",
+                "title": f"Session {session_id} user signal",
+                "summary": snippet,
+                "confidence": confidence,
+                "needs_review": True,
+                "data": {
+                    "atom_kind": "user_candidate",
+                    "session_id": session_id,
+                    "source_file": str(source_file),
+                    "source_line": r.get("_line"),
+                    "evidence": snippet,
+                    "generated_at": _now_iso(),
+                },
+            }
+            candidates.append(atom)
+            if len(candidates) >= max_candidates:
+                return candidates
+    return candidates
+
 
 def _extract_semantic_candidates(session_id: str, source_file: Path, rows: list[dict[str, Any]], max_candidates: int) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
@@ -222,6 +399,8 @@ def _extract_semantic_candidates(session_id: str, source_file: Path, rows: list[
         for para in text.split("\n"):
             sentence = para.strip()
             if len(sentence) < 30:
+                continue
+            if _is_noise(sentence):
                 continue
             if not any(p.search(sentence) for p in SEMANTIC_PATTERNS):
                 continue
@@ -277,7 +456,11 @@ def _upsert_atoms(conn: sqlite3.Connection, atoms: list[dict[str, Any]]) -> None
             VALUES (?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
               collection=excluded.collection,
-              data=excluded.data,
+              data=json_set(
+                excluded.data,
+                '$.needs_review', COALESCE(json_extract(records.data, '$.needs_review'), 1),
+                '$.promoted_at',  json_extract(records.data, '$.promoted_at')
+              ),
               updated_at=datetime('now')
             """,
             (atom["id"], atom["collection"], json.dumps(payload, ensure_ascii=False)),
@@ -325,7 +508,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         sid = jf.stem
         meta_atoms = _extract_metadata_atoms(sid, jf, rows)
         semantic_atoms = _extract_semantic_candidates(sid, jf, rows, args.max_semantic_candidates)
-        atoms = meta_atoms + semantic_atoms
+        user_atoms = _extract_user_candidates(sid, jf, rows, args.max_user_candidates)
+        atoms = meta_atoms + semantic_atoms + user_atoms
         out_atoms.extend(atoms)
         per_session.append(
             {
@@ -334,6 +518,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 "records": len(rows),
                 "metadata_atoms": len(meta_atoms),
                 "semantic_candidates": len(semantic_atoms),
+                "user_candidates": len(user_atoms),
                 "total_atoms": len(atoms),
             }
         )
@@ -370,6 +555,12 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=25,
         help="Max semantic candidate atoms per session.",
+    )
+    ap.add_argument(
+        "--max-user-candidates",
+        type=int,
+        default=20,
+        help="Max user-prompt candidate atoms per session.",
     )
     ap.add_argument(
         "--write",

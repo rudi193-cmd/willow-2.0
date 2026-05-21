@@ -4,15 +4,22 @@ scripts/propose_edges.py — Propose KB edges between session_promote atoms and 
 
 Outputs a JSON list of proposed edges to stdout.
 Usage:
-    python3 scripts/propose_edges.py [--dry-run]
+    python3 scripts/propose_edges.py [--dry-run] [--sqlite-db PATH]
+
+--sqlite-db: also load unreviewed user candidates from a local willow-2.0.db
+             so they get edge proposals before promotion.
 """
 import json
+import os
 import re
+import sqlite3
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.pg_bridge import PgBridge
+
+_DEFAULT_SQLITE = Path(os.environ.get("WILLOW_20_DB", "~/.willow/willow-2.0.db")).expanduser()
 
 # ── Edge type vocabulary ──────────────────────────────────────────────────────
 REFERENCES  = "references"
@@ -66,6 +73,39 @@ def load_atoms(pg) -> list[dict]:
             "id": r[0], "title": r[1], "summary": r[2] or "",
             "category": r[3] or "", "source_type": r[4] or "",
             "evidence": content.get("evidence", ""),
+        })
+    return atoms
+
+
+def load_sqlite_user_candidates(db_path: Path) -> list[dict]:
+    """Load unreviewed user candidates from local SQLite DB as synthetic atoms."""
+    if not db_path.exists():
+        print(f"[propose_edges] sqlite-db not found: {db_path}", file=sys.stderr)
+        return []
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro&immutable=1", uri=True)
+    rows = conn.execute(
+        """
+        SELECT id, data FROM records
+        WHERE collection = 'atoms/session_user_candidates'
+          AND json_extract(data, '$.needs_review') = 1
+          AND json_extract(data, '$.promoted_at') IS NULL
+        """
+    ).fetchall()
+    conn.close()
+    atoms = []
+    for row_id, data_str in rows:
+        try:
+            d = json.loads(data_str)
+        except Exception:
+            continue
+        payload = d.get("payload", {})
+        atoms.append({
+            "id": row_id,
+            "title": d.get("title", ""),
+            "summary": d.get("summary", ""),
+            "category": "session_user_candidate",
+            "source_type": "session_promote",  # treated same as promoted for edge logic
+            "evidence": payload.get("evidence", d.get("summary", "")),
         })
     return atoms
 
@@ -153,9 +193,25 @@ def propose_edges(atoms: list[dict]) -> list[dict]:
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser(description="Propose KB edges.")
+    ap.add_argument("--sqlite-db", default=None,
+                    help="Path to local willow-2.0.db to also cover unreviewed user candidates.")
+    args = ap.parse_args()
+
     pg = PgBridge()
     atoms = load_atoms(pg)
-    print(f"Loaded {len(atoms)} atoms", file=sys.stderr)
+    print(f"Loaded {len(atoms)} Postgres atoms", file=sys.stderr)
+
+    if args.sqlite_db:
+        sqlite_candidates = load_sqlite_user_candidates(Path(args.sqlite_db).expanduser())
+        print(f"Loaded {len(sqlite_candidates)} SQLite user candidates", file=sys.stderr)
+        atoms = atoms + sqlite_candidates
+    elif _DEFAULT_SQLITE.exists():
+        sqlite_candidates = load_sqlite_user_candidates(_DEFAULT_SQLITE)
+        print(f"Loaded {len(sqlite_candidates)} SQLite user candidates (default db)", file=sys.stderr)
+        atoms = atoms + sqlite_candidates
+
     edges = propose_edges(atoms)
     print(f"Proposed {len(edges)} edges", file=sys.stderr)
     print(json.dumps(edges, indent=2))
