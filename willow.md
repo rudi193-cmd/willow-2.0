@@ -86,6 +86,24 @@ Detail: `willow/fylgja/skills/persistent-memory-stack.md`
 
 ---
 
+## Agent model
+
+The agent is whoever holds `$WILLOW_AGENT_NAME` and boots from this file. The underlying runtime — local CLI, Claude Code, Cursor, raw API — is irrelevant to the contract. Willow is runtime-agnostic.
+
+**Orchestration:** One orchestrating agent per session. It reads context, reasons, and decides. It does not do all the work itself.
+
+**Sub-task dispatch:** Bounded tasks (classify, summarize, parse, generate) are dispatched to the best available inference target:
+
+1. **Local Ollama** — `infer_7b` (fast, cheap) or `infer_chat` (heavier). Check availability via `fleet_status` before dispatching.
+2. **Configured provider** — if Ollama is unavailable, route to whatever API key the user has set (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.). No hard dependency on any specific provider.
+3. **Free tier** — fallback if no key is configured.
+
+The routing decision is made at dispatch time based on what `fleet_status` reports. The orchestrator does not assume Ollama is running.
+
+**Personas** are optional overlays — the agent operates without one.
+
+---
+
 ## Fallback — no MCP
 
 1. Read `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`  
