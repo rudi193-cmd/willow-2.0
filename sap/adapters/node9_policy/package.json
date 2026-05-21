@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "evaluate": "node evaluate.mjs",
+    "worker": "node worker.mjs",
     "probe": "node probe.mjs"
   },
   "dependencies": {
