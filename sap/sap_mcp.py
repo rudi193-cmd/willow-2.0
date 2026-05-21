@@ -39,7 +39,7 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from sap.handoff_index import select_latest_handoff
+from sap.handoff_index import handoff_select_sql, select_latest_handoff
 from typing import AsyncIterator
 
 # ── Path setup ────────────────────────────────────────────────────────────────
@@ -1718,18 +1718,9 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
         conn = _sql.connect(HANDOFF_DB)
         conn.row_factory = _sql.Row
         cur  = conn.cursor()
-        sql_agent = """
-            SELECT f.filename, f.mtime, h.handoff_date, h.summary,
-                   h.open_threads, h.questions, h.agreements, h.capabilities
-            FROM handoffs h JOIN files f ON h.file_id = f.id
-            WHERE h.file_type = 'session' AND f.filename LIKE ?
-        """
-        sql_any = """
-            SELECT f.filename, f.mtime, h.handoff_date, h.summary,
-                   h.open_threads, h.questions, h.agreements, h.capabilities
-            FROM handoffs h JOIN files f ON h.file_id = f.id
-            WHERE h.file_type = 'session'
-        """
+        base_sql = handoff_select_sql(conn)
+        sql_agent = f"{base_sql} WHERE h.file_type = 'session' AND f.filename LIKE ?"
+        sql_any = f"{base_sql} WHERE h.file_type = 'session'"
         rows = cur.execute(sql_agent, (f"%{agent_filter}%",)).fetchall() if agent_filter else []
         if not rows:
             rows = cur.execute(sql_any).fetchall()
@@ -1802,8 +1793,9 @@ async def handoff_rebuild(app_id: str) -> dict:
         if not Path(script).exists():
             return {"error": f"build script not found: {script}"}
         env = os.environ.copy()
-        env["WILLOW_HANDOFF_DB"]   = HANDOFF_DB
-        env["WILLOW_HANDOFF_DIRS"] = HANDOFF_DIRS
+        env["WILLOW_HANDOFF_DB"]        = HANDOFF_DB
+        env["WILLOW_HANDOFF_DIRS"]      = HANDOFF_DIRS
+        env["WILLOW_PG_SKIP_SCHEMA_INIT"] = "1"
         proc = _sp.run(
             [sys.executable, script], capture_output=True, text=True, timeout=60, env=env,
         )

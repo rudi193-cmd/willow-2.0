@@ -419,9 +419,10 @@ def _get_pool() -> "psycopg2.pool.ThreadedConnectionPool":
     if _pool is None:
         from psycopg2 import pool as _pg_pool
         _pool = _pg_pool.ThreadedConnectionPool(minconn=1, maxconn=10, **_pg_kwargs())
-        conn = _pool.getconn()
-        init_schema(conn)
-        _pool.putconn(conn)
+        if not os.environ.get("WILLOW_PG_SKIP_SCHEMA_INIT"):
+            conn = _pool.getconn()
+            init_schema(conn)
+            _pool.putconn(conn)
     return _pool
 
 
