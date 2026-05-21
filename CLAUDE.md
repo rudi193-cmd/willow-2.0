@@ -15,11 +15,3 @@ Default 7-step boot path:
 7. If any required base is degraded, surface it and stop; otherwise proceed to act.
 
 If `fleet_status` returns degraded: surface it and stop.
-
-Fallbacks when MCP tools are not available yet:
-
-- Use `./willow.sh fleet_status` for the same boot health summary at the shell.
-- Use `./willow.sh handoff_latest` for the latest session handoff.
-- Use `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json` only as a cache/fallback when MCP is unavailable.
-- Use `/startup` only for degraded boot, stale context, or deeper continuity recovery.
-- Refresh or restart the MCP servers after `.cursor/mcp.json`, `sap/willow_mcp.sh`, or `sap/markdownai_mcp.sh` changes.
