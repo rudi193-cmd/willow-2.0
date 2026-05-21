@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: shutdown
 description: Graceful Willow 2.0 session close — audit KB, write handoff, run full pipeline
@@ -5,11 +7,11 @@ description: Graceful Willow 2.0 session close — audit KB, write handoff, run 
 
 # /shutdown — Willow 2.0 Graceful Close
 
-Stack position: this skill completes the **end-of-session persistence** layer described in `willow/fylgja/skills/persistent-memory-stack.md`.
+Stack position: this skill completes the **end-of-session persistence** layer. See the Persistent memory section in `willow.md` for the full 4-layer stack.
 
 ## Sequence
 
-1. **Resolve open process flags** — call `soil_list` with prefix `flags/` and filter for any
+1. **Resolve open process flags** — call `soil_list(app_id, collection="{AGENT}/flags")` and filter for any
    record where `flag_state` is `running`, `open`, or `awaiting authorization` and the `id`
    starts with `process-`. For each one: check whether the process completed this session by
    reading its log file (the flag's `note` field usually contains the log path) or checking

@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: restart-server
 description: Hot-reload MCP servers — Willow (in-process) and Grove (systemd). Use after editing any MCP layer file.
@@ -10,35 +12,16 @@ Reload Willow and Grove MCP servers. Willow reloads in-process; Grove requires a
 ## TOOL PRE-LOAD (first action after invocation)
 
 ```
-ToolSearch query: "select:fleet_reload,willow_chat,willow_system_status"
+ToolSearch query: "select:fleet_reload,fleet_system_status"
 ```
 
 ## Sequence
 
 1. **Reload Willow** — call `mcp__willow__fleet_reload` with target `"all"`
-2. **Restart Grove** — run Bash below. Grove is a persistent streamable-HTTP server (port 8765) — in-process reload is not possible. **Do not** rely on a single `sleep 2` then `is-active`: systemd can still report **`activating`** (non-active) while the unit binds and loads; polling avoids a false failure and races with follow-on MCP checks.
-
-```bash
-systemctl --user restart grove-mcp.service || exit $?
-deadline=30
-for i in $(seq 1 "$deadline"); do
-  if systemctl --user is-active --quiet grove-mcp.service 2>/dev/null; then
-    echo "grove-mcp: active (${i}s)"
-    break
-  fi
-  echo "grove-mcp: waiting $(systemctl --user is-active grove-mcp.service 2>/dev/null || echo unknown) — ${i}/${deadline}s"
-  sleep 1
-  if [ "$i" -eq "$deadline" ]; then
-    echo "grove-mcp: TIMEOUT after ${deadline}s"
-    systemctl --user status grove-mcp.service --no-pager -l || true
-    exit 1
-  fi
-done
-```
-
-3. **Report both results** — which Willow modules reloaded, Grove active/failed (include how many seconds until active).
-4+5. **Verify in parallel** — call `mcp__willow__willow_chat` (ping) and `mcp__willow__willow_system_status` simultaneously **only after** step 2 shows **active** (or accept transient MCP errors if you verify again after a few seconds).
-6. **Report status** — Willow fleet + Postgres, Grove active. Remind user to run `/mcp` to reconnect Grove tools in this session.
+2. **Restart Grove** — Grove tools are bundled in `sap/unified_mcp.sh` for Claude Code sessions. Restarting the unified server is all that's needed. For standalone grove-serve (Felix/remote nodes), restart `grove-mcp.service` separately. In Claude Code: exit and relaunch the session or run `/mcp` after reload.
+3. **Report reload results** — which Willow modules reloaded, any errors.
+4. **Verify** — call `mcp__willow__fleet_system_status` after reload confirms active.
+5. **Report status** — Willow fleet + Postgres. Remind user to run `/mcp` to reconnect tools if the MCP process was fully restarted.
 
 ## Targets (Willow only)
 
@@ -48,10 +31,10 @@ done
 - `store` — reinitialize WillowStore
 
 ## When to use
-- After editing `willow_store_mcp.py`, `pg_bridge.py`, or any Willow fleet module
-- After editing `grove/mcp_local.py` or `grove_db.py`
+- After editing `sap/sap_mcp.py`, `core/pg_bridge.py`, or any Willow fleet module
+- After editing `grove_db.py` in the grove repo
 - After fixing a bug in either MCP layer
-- When `willow_chat` returns "Inference unavailable"
+- When grove tools error or disappear from the tool list
 - When Postgres connection goes stale
 - When new Grove tools don't appear after `/mcp`
 

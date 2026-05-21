@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: willow-worktree
 description: Set up a git worktree + Willow fork for scoped development work. Use for any bounded feature or multi-session project.
@@ -12,7 +14,7 @@ A Willow dev project needs two things: a git worktree (isolated branch) and a Wi
 git worktree add worktrees/<slug> -b feat/<slug>
 ```
 
-Worktrees live **inside** the repo at `<repo>/worktrees/<slug>`. `worktrees/` is in `.gitignore` so they don't appear as untracked. The `-b` flag creates the branch.
+Worktrees live **inside** the repo at `<repo>/worktrees/<slug>`. The directory is untracked by git (not in `.gitignore` by default — add it if needed). The `-b` flag creates the branch.
 
 ## 2. Create the Willow fork
 

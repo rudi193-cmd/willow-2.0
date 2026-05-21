@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 # power: plan
 b17: FYLP2 · ΔΣ=42
 

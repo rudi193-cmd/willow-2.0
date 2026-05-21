@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: learn
 description: Extract a reusable pattern and weave it into the knowledge graph via edges

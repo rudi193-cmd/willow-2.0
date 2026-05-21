@@ -1,6 +1,8 @@
+@markdownai v1.0
+
 ---
 name: grove-persistent-monitor
-description: Canonical pattern for the Grove LISTEN/NOTIFY monitor used at session boot. Referenced by /startup step 8.
+description: Canonical pattern for the Grove LISTEN/NOTIFY monitor used at session boot. Referenced by /startup step 5.
 ---
 
 # Grove Persistent Monitor — Canonical Pattern
