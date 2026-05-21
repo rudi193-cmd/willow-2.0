@@ -412,11 +412,16 @@ def _connect() -> "psycopg2.connection":
 # ThreadPoolExecutor, so multiple threads share this pool concurrently.
 # SimpleConnectionPool is explicitly documented as not thread-safe.
 _pool: Optional["psycopg2.pool.ThreadedConnectionPool"] = None
+_pool_lock = threading.Lock()
 
 
 def _get_pool() -> "psycopg2.pool.ThreadedConnectionPool":
     global _pool
-    if _pool is None:
+    if _pool is not None:
+        return _pool
+    with _pool_lock:
+        if _pool is not None:  # re-check after acquiring lock
+            return _pool
         from psycopg2 import pool as _pg_pool
         _pool = _pg_pool.ThreadedConnectionPool(minconn=1, maxconn=10, **_pg_kwargs())
         if not os.environ.get("WILLOW_PG_SKIP_SCHEMA_INIT"):
