@@ -161,6 +161,10 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
     "soul": frozenset({
         "tension_scan", "dream_check", "dream_run",
     }),
+    "code_graph": frozenset({
+        "code_graph_index", "code_graph_search", "code_graph_explain",
+        "code_graph_suggest", "code_graph_walk", "code_graph_impact",
+    }),
 }
 
 # If set, only these app_ids are accepted (comma-separated). INFRA IDs are always exempt.
