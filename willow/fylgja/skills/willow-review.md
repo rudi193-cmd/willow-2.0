@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: willow-review
 description: Code review the current fork's changes — fork-aware, MCP-native.
@@ -9,6 +11,6 @@ description: Code review the current fork's changes — fork-aware, MCP-native.
    - No TBD/TODO/not implemented placeholders
    - No security issues (injection, unvalidated external input, hardcoded secrets)
    - Follows existing patterns in this repo
-3. willow_fork_log(fork_id, "hanuman", "review", "passed" or "failed:<reason>", app_id="hanuman")
+3. fork_log(fork_id, "hanuman", "review", "passed" or "failed:<reason>", app_id="hanuman")
 4. If passed: report clean, suggest merge if Sean approves
 5. If failed: list specific files and lines that need fixing before merge

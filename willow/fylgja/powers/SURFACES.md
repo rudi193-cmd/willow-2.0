@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 # Fylgja powers — where it lives
 
 b17: FYLSF · ΔΣ=42
@@ -10,7 +12,7 @@ Override: **`WILLOW_FYLGJA_ROOT`** must contain `powers/` and `skills/`.
 |--------|------|
 | Registry | `willow/fylgja/powers/registry.json` |
 | Power bodies | `willow/fylgja/powers/*.md` |
-| Entry skill | `willow/fylgja/skills/using-fylgja-powers.md` |
+| Entry skill | `willow/fylgja/skills/power.md` |
 | Fleet boot | [`willow.md`](../../willow.md) (repo root) |
 | Personas | `willow/fylgja/personas/` |
 | `AGENTS.md` / `GEMINI.md` | Repo root pointers |

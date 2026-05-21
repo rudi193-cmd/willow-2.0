@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: iterative-retrieval
 description: Progressively refine a search across Willow KB, store, and JELES before reading files

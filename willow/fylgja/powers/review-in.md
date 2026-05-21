@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 # power: review-in
 b17: FYLP8 · ΔΣ=42
 

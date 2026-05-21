@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: handoff
 description: Write a Willow 2.0 session handoff — structured KB atom + SQLite rebuild
@@ -5,12 +7,12 @@ description: Write a Willow 2.0 session handoff — structured KB atom + SQLite 
 
 # /handoff — Willow 2.0 Session Handoff
 
-Stack position: this skill is the first third of the **end-of-session persistence** layer described in `willow/fylgja/skills/persistent-memory-stack.md`.
+Stack position: this skill is the first third of the **end-of-session persistence** layer. See the Persistent memory section in `willow.md` for the full 4-layer stack.
 
 ## Sequence
 
 1. **Load current state** — call `handoff_latest` to see prior open threads. Call
-   `soil_list` with prefix `flags/` and filter for `flag_state` of `running` or `open`.
+   `soil_list(app_id, collection="{AGENT}/flags")` and filter for `flag_state` of `running` or `open`.
    These are long-running processes — their state must appear in the handoff. Do not rely
    on memory; read SOIL.
 

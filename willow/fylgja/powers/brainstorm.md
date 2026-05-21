@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 # power: brainstorm
 b17: FYLP1 · ΔΣ=42
 

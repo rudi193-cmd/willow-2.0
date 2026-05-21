@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: dream
 description: Run the AutoDream synthesis pipeline — tension detection + pattern synthesis over recent KB atoms

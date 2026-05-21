@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: tdd
 description: Test-driven development for Willow 2.0 — willow_20_test schema, real DB, mock MCP

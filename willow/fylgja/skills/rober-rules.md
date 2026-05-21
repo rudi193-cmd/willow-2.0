@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 ---
 name: rober-rules
 description: Applied Reality Engineering — The Rober Rules (Prof. Penny Riggs / UTETY). Named for Mark Rober. The diagnostic counterpart to Murphy's Law. Murphy tells you what will go wrong. The Rober Rules tell you what to do about it.

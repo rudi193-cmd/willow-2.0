@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 # Grove Quorum — parliament/fleet coordination primitive
 
 Use this skill when you need a fleet-wide decision: a proposal that requires N agents to ack before proceeding.

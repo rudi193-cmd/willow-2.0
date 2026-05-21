@@ -1,3 +1,5 @@
+@markdownai v1.0
+
 # power: verify
 b17: FYLP6 · ΔΣ=42
 
