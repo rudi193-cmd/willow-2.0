@@ -9,9 +9,9 @@ state transition; it logs to stderr and continues.
 State → Willow action:
   issue      → soil_put  (hanuman/gitshaped_changes)
   → draft    → fork  row in Postgres forks table; fork_id written to record
-  → open     → KB seed atom; kb_seed_hint written to record
+  → open     → KB seed atom; kb_seed_hint written to record + Grove post
   → checks   → soil_update only (Kart task wiring: future)
-  → review   → soil_update only
+  → review   → Grove post
   → merged   → fork row marked merged in Postgres
   → release  → FRANK ledger_write
   → archived → KB atom (domain=archived) + SOIL soft-delete
@@ -30,6 +30,39 @@ from sandbox.engine import GitShapedError, advance as _advance
 
 AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
 COLLECTION = f"{AGENT}/gitshaped_changes"
+
+
+_GROVE_FALLBACK_CHANNEL = "fleet"
+
+
+# ── Grove helper ──────────────────────────────────────────────────────────────
+
+def _grove_post(change, state_label: str) -> None:
+    """Post a structured state-change message to the change's Grove channel."""
+    channel = change.grove_channel or _GROVE_FALLBACK_CHANNEL
+    lines = [
+        f"[wlgsm] {change.id} {state_label}",
+        f"Title: {change.title}",
+    ]
+    if change.subject:
+        lines.append(f"Subject: {change.subject}")
+    if change.fork_id:
+        lines.append(f"Fork: {change.fork_id}")
+    content = "\n".join(lines)
+
+    try:
+        from core.grove_db import get_connection, release_connection, list_channels, create_channel, send_message
+        conn = get_connection()
+        try:
+            channels = list_channels(conn)
+            ch = next((c for c in channels if c["name"] == channel), None)
+            if not ch:
+                ch = create_channel(conn, name=channel, channel_type="group")
+            send_message(conn, channel_id=ch["id"], sender=AGENT, content=content)
+        finally:
+            release_connection(conn)
+    except Exception as e:
+        sys.stderr.write(f"[fleet] grove_post failed (channel={channel}): {e}\n")
 
 
 # ── SOIL helpers ──────────────────────────────────────────────────────────────
@@ -103,6 +136,8 @@ def fleet_advance(
             _on_draft(change, actor)
         elif to_state == ShapeState.open:
             _on_open(change)
+        elif to_state == ShapeState.review:
+            _on_review(change)
         elif to_state == ShapeState.merged:
             _on_merged(change, actor, note)
         elif to_state == ShapeState.release:
@@ -136,20 +171,24 @@ def _on_draft(change: ChangeRecord, actor: str) -> None:
 
 
 def _on_open(change: ChangeRecord) -> None:
-    if change.kb_seed_hint:
-        return
-    from core.pg_bridge import PgBridge
-    pg = PgBridge()
-    atom_id = pg.ingest_atom(
-        title=f"[wlgsm:{change.id}] {change.title}",
-        summary=f"Open change — subject: {change.subject or 'n/a'}. Grove: {change.grove_channel or 'n/a'}.",
-        source_type="wlgsm",
-        source_id=change.id,
-        category="change/open",
-    )
-    if atom_id:
-        change.kb_seed_hint = atom_id
-        sys.stderr.write(f"[fleet] KB seed atom: {atom_id}\n")
+    if not change.kb_seed_hint:
+        from core.pg_bridge import PgBridge
+        pg = PgBridge()
+        atom_id = pg.ingest_atom(
+            title=f"[wlgsm:{change.id}] {change.title}",
+            summary=f"Open change — subject: {change.subject or 'n/a'}. Grove: {change.grove_channel or 'n/a'}.",
+            source_type="wlgsm",
+            source_id=change.id,
+            category="change/open",
+        )
+        if atom_id:
+            change.kb_seed_hint = atom_id
+            sys.stderr.write(f"[fleet] KB seed atom: {atom_id}\n")
+    _grove_post(change, "opened")
+
+
+def _on_review(change: ChangeRecord) -> None:
+    _grove_post(change, "review")
 
 
 def _on_merged(change: ChangeRecord, actor: str, note: str) -> None:
