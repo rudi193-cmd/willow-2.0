@@ -225,6 +225,16 @@ CREATE TABLE IF NOT EXISTS compact_contexts (
     expires_at  TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS routines (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL UNIQUE,
+    token       TEXT NOT NULL,
+    description TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_by  TEXT,
+    last_fired  TIMESTAMPTZ
+);
+
 CREATE TABLE IF NOT EXISTS routing_decisions (
     id          TEXT PRIMARY KEY,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -324,6 +334,14 @@ _MIGRATIONS = [
     "ALTER TABLE knowledge ADD COLUMN IF NOT EXISTS tier TEXT",
     "ALTER TABLE knowledge ADD COLUMN IF NOT EXISTS confidence FLOAT",
     "ALTER TABLE knowledge ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ",
+    # Routines integration
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS goal TEXT",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS routine_session_id TEXT",
+    """CREATE TABLE IF NOT EXISTS routines (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, token TEXT NOT NULL,
+        description TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        created_by TEXT, last_fired TIMESTAMPTZ
+    )""",
 ]
 
 _INDEXES = """
@@ -1253,19 +1271,57 @@ class PgBridge:
     # ── Tasks ────────────────────────────────────────────────────────────────
 
     def submit_task(self, task: str, submitted_by: str = "ganesha",
-                    agent: str = "kart") -> Optional[str]:
+                    agent: str = "kart", goal: Optional[str] = None) -> Optional[str]:
         self._ensure_conn()
         try:
             task_id = self.gen_id(8)
             with self.conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO tasks (id, task, submitted_by, agent)
-                    VALUES (%s, %s, %s, %s)
-                """, (task_id, task, submitted_by, agent))
+                    INSERT INTO tasks (id, task, submitted_by, agent, goal)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (task_id, task, submitted_by, agent, goal))
             self.conn.commit()
             return task_id
         except Exception:
             return None
+
+    # ── Routines ──────────────────────────────────────────────────────────────
+
+    def routine_register(self, name: str, routine_id: str, token: str,
+                         description: str = "", created_by: str = "") -> dict:
+        self._ensure_conn()
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO routines (id, name, token, description, created_by)"
+                " VALUES (%s, %s, %s, %s, %s)"
+                " ON CONFLICT (name) DO UPDATE SET id=EXCLUDED.id, token=EXCLUDED.token,"
+                " description=EXCLUDED.description",
+                (routine_id, name, token, description, created_by),
+            )
+        self.conn.commit()
+        return {"registered": True, "name": name, "id": routine_id}
+
+    def routine_get(self, name: str) -> Optional[dict]:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM routines WHERE name=%s", (name,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def routine_list(self) -> list:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id, name, description, created_by, created_at, last_fired"
+                        " FROM routines ORDER BY name ASC")
+            return [dict(r) for r in cur.fetchall()]
+
+    def routine_mark_fired(self, name: str, session_id: str) -> None:
+        self._ensure_conn()
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "UPDATE routines SET last_fired=now() WHERE name=%s", (name,)
+            )
+        self.conn.commit()
 
     def task_status(self, task_id: str) -> Optional[dict]:
         self._ensure_conn()

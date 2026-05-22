@@ -2852,6 +2852,98 @@ async def kb_backup(app_id: str, label: str = "") -> dict:
     return await loop.run_in_executor(_executor, _backup)
 
 
+# ── Tools — routines domain ───────────────────────────────────────────────────
+
+@mcp.tool()
+@sap_gate(write=True)
+async def routine_register(
+    app_id:      str,
+    name:        str,
+    routine_id:  str,
+    token:       str,
+    description: str = "",
+) -> dict:
+    """Register a Claude Code Routine credential in the DB.
+    routine_id: the Anthropic routine ID (from claude.ai/code/routines).
+    token: the bearer token shown once at creation — store it now.
+    Upserts on name, so re-registering with a new token rotates the credential."""
+    logger.info("[w2] routine_register app_id=%s name=%s", app_id, name)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor, pg.routine_register, name, routine_id, token, description, app_id
+    )
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def routine_list(app_id: str) -> dict:
+    """List all registered routines (IDs and metadata, no tokens)."""
+    logger.info("[w2] routine_list app_id=%s", app_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    rows = await loop.run_in_executor(_executor, pg.routine_list)
+    return {"routines": rows, "total": len(rows)}
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def routine_fire(
+    app_id:  str,
+    name:    str,
+    context: str = "",
+) -> dict:
+    """Fire a registered Claude Code Routine by name via the Anthropic API.
+    context: optional freeform text passed as the 'text' field to the Routine.
+    Returns: {session_id, session_url} on success."""
+    logger.info("[w2] routine_fire app_id=%s name=%s", app_id, name)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+
+    routine = await loop.run_in_executor(_executor, pg.routine_get, name)
+    if not routine:
+        return {"error": f"routine '{name}' not registered — call routine_register first"}
+
+    def _fire():
+        import urllib.request
+        import json as _json
+
+        routine_id = routine["id"]
+        token      = routine["token"]
+        url        = f"https://api.anthropic.com/v1/claude_code/routines/{routine_id}/fire"
+        payload    = _json.dumps({"text": context}).encode()
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={
+                "Authorization":  f"Bearer {token}",
+                "anthropic-beta": "experimental-cc-routine-2026-04-01",
+                "anthropic-version": "2023-06-01",
+                "Content-Type":   "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                body = _json.loads(resp.read())
+            session_id  = body.get("claude_code_session_id", "")
+            session_url = body.get("claude_code_session_url", "")
+            pg.routine_mark_fired(name, session_id)
+            return {
+                "fired":       True,
+                "name":        name,
+                "session_id":  session_id,
+                "session_url": session_url,
+            }
+        except Exception as e:
+            return {"error": str(e), "name": name}
+
+    return await loop.run_in_executor(_executor, _fire)
+
+
 # ── Tools — nest_ domain ──────────────────────────────────────────────────────
 
 @mcp.tool(annotations={"readOnlyHint": True})

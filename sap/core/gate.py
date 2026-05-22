@@ -173,6 +173,9 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
     "context_manage": frozenset({
         "context_save", "context_get", "context_list", "context_expire",
     }),
+    "routine_manage": frozenset({
+        "routine_register", "routine_list", "routine_fire",
+    }),
     # All read-only Postgres-backed tools added since postgres_read was first cut.
     "postgres_read_ext": frozenset({
         "pg_edge_list", "mem_jeles_get", "mem_ratify_list",
