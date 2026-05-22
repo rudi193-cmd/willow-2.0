@@ -403,6 +403,13 @@ _MIGRATIONS = [
         description TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         created_by TEXT, last_fired TIMESTAMPTZ
     )""",
+    # Expand knowledge.tier check constraint to include new tier vocabulary
+    """DO $$ BEGIN
+        ALTER TABLE knowledge DROP CONSTRAINT IF EXISTS knowledge_tier_check;
+        ALTER TABLE knowledge ADD CONSTRAINT knowledge_tier_check CHECK (
+            tier IN ('hypothesis','observed','validated','frontier','contested','canonical','superseded')
+        );
+    EXCEPTION WHEN others THEN NULL; END $$""",
     # Outcomes API — rename agent_name → outcome_agent_id if table was created before this migration
     """DO $$ BEGIN
         IF EXISTS (SELECT 1 FROM information_schema.columns
@@ -666,14 +673,18 @@ def init_schema(conn: "psycopg2.connection") -> None:
 
 def run_migrations(conn: "psycopg2.connection") -> None:
     """Run only the _MIGRATIONS list against an existing schema.
-    Safe to call repeatedly — all statements use IF NOT EXISTS / IF EXISTS guards."""
+    Safe to call repeatedly — all statements use IF NOT EXISTS / IF EXISTS guards.
+    Uses a 5s lock_timeout so DDL never hangs indefinitely (e.g. in CI under contention)."""
     with conn.cursor() as cur:
-        for stmt in _MIGRATIONS:
-            try:
-                cur.execute(stmt)
-            except Exception:
-                conn.rollback()
+        cur.execute("SET lock_timeout = '5s'")
     conn.commit()
+    for stmt in _MIGRATIONS:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(stmt)
+            conn.commit()
+        except Exception:
+            conn.rollback()
 
 
 def _rrf_merge(ann_results: list, ilike_results: list, k: int = 60) -> list:

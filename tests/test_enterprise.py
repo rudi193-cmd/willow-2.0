@@ -46,25 +46,36 @@ def test_kart_queue_drain_under_load(pg):
     N = 50
     tag = f"KART-{pg.gen_id(6)}"
 
+    # Clean up stale pending tasks from previous runs so the queue is hermetic
+    with pg.conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM tasks WHERE submitted_by = 'enterprise_test' AND status = 'pending'"
+        )
+    pg.conn.commit()
+
     # Submit all tasks
-    task_ids = []
+    task_ids = set()
     for i in range(N):
         tid = pg.submit_task(f"echo {tag}-{i}", submitted_by="enterprise_test", agent="kart")
         assert tid is not None
-        task_ids.append(tid)
+        task_ids.add(tid)
 
     assert len(task_ids) == N
 
     # Drain — simulate what kart_poll.py does
     drained = 0
+    remaining = set(task_ids)
     for _ in range(10):  # max 10 poll cycles
-        batch = pg.pending_tasks(agent="kart", limit=10)
+        if not remaining:
+            break
+        batch = pg.pending_tasks(agent="kart", limit=N)
         if not batch:
             break
         for t in batch:
-            if t["id"] not in task_ids:
-                continue  # skip tasks from other test runs
+            if t["id"] not in remaining:
+                continue
             pg.task_complete(t["id"], {"ok": True}, "completed")
+            remaining.discard(t["id"])
             drained += 1
 
     assert drained == N, f"drained {drained}/{N} — queue leaked"

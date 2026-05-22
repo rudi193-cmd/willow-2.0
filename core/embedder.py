@@ -5,9 +5,9 @@ import requests
 
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
 MODEL = "nomic-embed-text"
-TIMEOUT_S = 60
-_RETRIES = 3
-_RETRY_DELAY_S = 5
+TIMEOUT_S = 10
+_RETRIES = 2
+_RETRY_DELAY_S = 2
 MAX_CHARS = 4_000      # conservative limit — progress-bar/tokenizer content can hit 0.5 chars/token
 MAX_CHARS_CJK = 1_500  # safe for CJK (~1500 tokens at 1 char/token)
 MAX_BYTES = 16_000     # nomic-embed-text hard byte limit (conservative)
