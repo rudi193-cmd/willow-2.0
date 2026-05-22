@@ -107,7 +107,11 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "index_ingest", "index_feedback_write", "index_journal",
     }),
     "jeles_fetch": frozenset({
-        "mem_jeles_extract", "mem_jeles_register",
+        "mem_jeles_extract", "mem_jeles_register", "mem_jeles_search", "mem_jeles_web_search",
+        "mem_jeles_invalidate",
+    }),
+    "intake": frozenset({
+        "intake_write",
     }),
     "nest": frozenset({
         "nest_scan", "nest_queue", "nest_file",
@@ -116,6 +120,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "agent_create",
         "mem_jeles_register", "mem_jeles_extract",
         "mem_binder_file", "mem_binder_edge", "mem_ratify",
+        "intake_write",
         "fleet_base17", "handoff_rebuild",
         "fleet_reload", "fleet_restart",
     }),

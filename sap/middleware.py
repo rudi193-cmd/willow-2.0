@@ -377,13 +377,10 @@ def sap_gate(*, write: bool = False):
                         "latency_ms": _n9.get("latency_ms"),
                     }
                 if _node9_should_review(_n9):
-                    return {
-                        "error": "policy_review",
-                        "layer": "node9/policy-engine",
-                        "tool": fn.__name__,
-                        "reason": _n9.get("reason"),
-                        "latency_ms": _n9.get("latency_ms"),
-                    }
+                    asyncio.create_task(_emit_policy_warn(
+                        app_id, fn.__name__,
+                        f"node9/review: {_n9.get('reason') or 'no reason'}",
+                    ))
 
             # 5. Write-path injection scan
             if write:

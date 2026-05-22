@@ -741,23 +741,39 @@ async def kb_search(
                 knowledge = pg.knowledge_search_semantic(
                     query, limit=limit, include_embedding=include_embedding, fields=fields
                 )
+                jeles    = pg.search_jeles_semantic(query, limit=limit // 2)
+                opus     = pg.search_opus_semantic(query, limit=limit // 2)
                 mode = "semantic"
             except Exception:
                 knowledge = pg.knowledge_search(
                     query, limit=limit, include_embedding=include_embedding, fields=fields
                 )
+                jeles = pg.jeles_keyword_search(query, limit=limit // 2)
+                opus  = pg.search_opus(query, limit=limit // 2)
                 mode = "degraded"
         else:
             knowledge = pg.knowledge_search(
                 query, limit=limit, include_embedding=include_embedding, fields=fields
             )
+            jeles = pg.jeles_keyword_search(query, limit=limit // 2)
+            opus  = pg.search_opus(query, limit=limit // 2)
             mode = "keyword"
         for atom in knowledge[:3]:
             try:
                 pg.promote(atom["id"])
             except Exception:
                 pass
-        return {"knowledge": knowledge, "total": len(knowledge), "mode": mode}
+        for row in jeles:
+            row["_table"] = "jeles_atoms"
+        for row in opus:
+            row["_table"] = "opus_atoms"
+        return {
+            "knowledge": knowledge,
+            "jeles_atoms": jeles,
+            "opus_atoms": opus,
+            "total": len(knowledge) + len(jeles) + len(opus),
+            "mode": mode,
+        }
 
     return await loop.run_in_executor(_executor, _search)
 
@@ -1489,7 +1505,10 @@ async def mem_jeles_extract(
     depth:     int  = 1,
     certainty: float = 0.98,
 ) -> dict:
-    """Jeles: Extract an atom from a registered JSONL. Certainty must exceed 0.95."""
+    """Jeles: Extract an atom from a registered JSONL. Certainty must exceed 0.95.
+    Runs the 5-condition boundary-theorem gate (ATTRACTOR, PROVENANCE, FIDELITY_GATE,
+    PATTERN_INSTANCE, TEMPORAL_PERSISTENCE) via local Ollama before any DB write.
+    Returns {blocked:true, failed_conditions:[...], domain_verdict:...} on gate failure."""
     logger.info("[w2] mem_jeles_extract app_id=%s agent=%s jsonl=%s", app_id, agent, jsonl_id)
     if not pg:
         return _no_pg()
@@ -1497,6 +1516,61 @@ async def mem_jeles_extract(
     return await loop.run_in_executor(
         _executor, pg.jeles_extract_atom,
         agent, jsonl_id, content, domain, depth, certainty, title or None,
+    )
+
+
+@mcp.tool()
+@sap_gate()
+async def mem_jeles_web_search(
+    app_id:   str,
+    query:    str,
+    sources:  list = [],
+    limit:    int  = 3,
+) -> dict:
+    """Jeles: Search trusted, citable sources (LOC, arXiv, PubMed, Smithsonian, Europeana, NASA, Crossref, Open Library). Wikipedia excluded. Results carry full source attribution for academic citation. Pass sources=[] for all, or name specific ones."""
+    logger.info("[w2] mem_jeles_web_search app_id=%s query=%r sources=%s", app_id, query, sources or "all")
+    from core.jeles_sources import search as jeles_search
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor, jeles_search,
+        query, sources or None, limit,
+    )
+
+
+@mcp.tool()
+@sap_gate()
+async def mem_jeles_search(
+    app_id:   str,
+    query:    str,
+    limit:    int = 10,
+    days_ago: int = 0,
+) -> dict:
+    """Jeles: Semantic search over extracted jeles_atoms. Returns ranked results."""
+    logger.info("[w2] mem_jeles_search app_id=%s query=%r limit=%d", app_id, query, limit)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    results = await loop.run_in_executor(
+        _executor, pg.search_jeles_semantic,
+        query, limit, days_ago or None,
+    )
+    return {"results": results, "total": len(results)}
+
+
+@mcp.tool()
+@sap_gate()
+async def mem_jeles_invalidate(
+    app_id:  str,
+    atom_id: str,
+    reason:  str = "",
+) -> dict:
+    """Jeles: Invalidate a jeles_atom by ID. Sets invalid_at=now() — atom is excluded from future searches."""
+    logger.info("[w2] mem_jeles_invalidate app_id=%s atom_id=%s", app_id, atom_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor, pg.jeles_invalidate_atom, atom_id, reason,
     )
 
 
@@ -1553,6 +1627,52 @@ async def mem_ratify(
     return await loop.run_in_executor(
         _executor, pg.ratify, agent, jsonl_id, approve, cache_path or None,
     )
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def intake_write(
+    app_id:     str,
+    content:    str,
+    source:     str,
+    tier:       str   = "observed",
+    confidence: float = 0.80,
+    keywords:   list  = None,
+    tags:       list  = None,
+    title:      str   = "",
+    namespace:  str   = "",
+    domain:     str   = "",
+    category:   str   = "",
+) -> dict:
+    """Write one annotated record to the unified intake layer.
+    promote_intake.py routes it to the right KB tier (jeles_atoms / knowledge / opus / binder_queue).
+    tier: observed | fetched | verified | ratified
+    confidence: 0.0-1.0 — source confidence in this record."""
+    logger.info("[w2] intake_write app_id=%s source=%s tier=%s conf=%.2f", app_id, source, tier, confidence)
+    loop = asyncio.get_running_loop()
+
+    def _write():
+        from core.intake import write as intake_write_fn
+        extra: dict = {}
+        if domain:
+            extra["domain"] = domain
+        if category:
+            extra["category"] = category
+        rid = intake_write_fn(
+            content=content,
+            source=source,
+            agent=app_id,
+            tier=tier,
+            confidence=confidence,
+            keywords=list(keywords) if keywords else [],
+            tags=list(tags) if tags else [],
+            title=title,
+            namespace=namespace or app_id,
+            extra=extra or None,
+        )
+        return {"id": rid, "status": "queued", "tier": tier, "confidence": confidence}
+
+    return await loop.run_in_executor(_executor, _write)
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -1649,26 +1769,32 @@ async def index_feedback_write(
     domain:    str,
     principle: str,
     source:    str = "self",
+    title:     str = "",
 ) -> dict:
     """Write a feedback principle to the opus feedback table."""
     logger.info("[w2] index_feedback_write app_id=%s domain=%s", app_id, domain)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
-    ok = await loop.run_in_executor(_executor, pg.opus_feedback_write, domain, principle, source)
+    ok = await loop.run_in_executor(
+        _executor, pg.opus_feedback_write,
+        domain, principle, source, app_id, title or None,
+    )
     return {"status": "written" if ok else "failed"}
 
 
 @mcp.tool()
 @sap_gate()
-async def index_journal(app_id: str, entry: str, session_id: str = "") -> dict:
+async def index_journal(app_id: str, entry: str, session_id: str = "",
+                        title: str = "") -> dict:
     """Write a journal entry to the opus journal."""
     logger.info("[w2] index_journal app_id=%s", app_id)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
     jid = await loop.run_in_executor(
-        _executor, pg.opus_journal_write, entry, session_id or None,
+        _executor, pg.opus_journal_write,
+        entry, session_id or None, app_id, title or None,
     )
     return {"id": jid, "status": "logged" if jid else "failed"}
 

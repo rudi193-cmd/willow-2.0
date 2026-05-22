@@ -33,6 +33,8 @@ _SCHEMA = """
 CREATE TABLE IF NOT EXISTS knowledge (
     id          TEXT PRIMARY KEY,
     project     TEXT NOT NULL DEFAULT 'global',
+    agent       TEXT,
+    domain      TEXT,
     valid_at    TEXT NOT NULL DEFAULT (datetime('now')),
     invalid_at  TEXT,
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
@@ -57,6 +59,8 @@ CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_fts USING fts5(
 
 CREATE TABLE IF NOT EXISTS cmb_atoms (
     id         TEXT PRIMARY KEY,
+    agent      TEXT,
+    title      TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     content    TEXT NOT NULL
 );
@@ -77,7 +81,8 @@ CREATE TABLE IF NOT EXISTS agents (
     role        TEXT,
     trust       TEXT DEFAULT 'WORKER',
     folder_root TEXT,
-    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at  TEXT DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
@@ -93,23 +98,31 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 CREATE TABLE IF NOT EXISTS opus_atoms (
     id             TEXT PRIMARY KEY,
+    agent          TEXT,
+    title          TEXT,
+    summary        TEXT,
     content        TEXT NOT NULL,
     domain         TEXT DEFAULT 'meta',
     depth          INTEGER DEFAULT 1,
+    confidence     REAL DEFAULT 1.0,
     source_session TEXT,
     created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS feedback (
     id         TEXT PRIMARY KEY,
+    agent      TEXT,
+    title      TEXT,
     domain     TEXT DEFAULT 'meta',
-    principle  TEXT NOT NULL,
+    content    TEXT NOT NULL,     -- renamed from principle (Wave 3)
     source     TEXT DEFAULT 'self',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS journal (
     id         TEXT PRIMARY KEY,
+    agent      TEXT,
+    title      TEXT,
     entry      TEXT NOT NULL,
     session_id TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -123,18 +136,19 @@ CREATE TABLE IF NOT EXISTS jeles_sessions (
     cwd           TEXT,
     turn_count    INTEGER DEFAULT 0,
     file_size     INTEGER DEFAULT 0,
-    registered_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS jeles_atoms (
     id         TEXT PRIMARY KEY,
     jsonl_id   TEXT NOT NULL,
     agent      TEXT NOT NULL,
+    title      TEXT,
+    summary    TEXT,
     content    TEXT NOT NULL,
     domain     TEXT DEFAULT 'meta',
     depth      INTEGER DEFAULT 1,
-    certainty  REAL DEFAULT 0.98,
-    title      TEXT,
+    confidence REAL DEFAULT 0.98,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -143,7 +157,7 @@ CREATE TABLE IF NOT EXISTS binder_files (
     agent      TEXT NOT NULL,
     jsonl_id   TEXT NOT NULL,
     dest_path  TEXT NOT NULL,
-    filed_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS binder_edges (
@@ -153,7 +167,8 @@ CREATE TABLE IF NOT EXISTS binder_edges (
     target_atom TEXT NOT NULL,
     edge_type   TEXT NOT NULL,
     status      TEXT DEFAULT 'proposed',
-    proposed_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at  TEXT DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS ratifications (
@@ -162,7 +177,7 @@ CREATE TABLE IF NOT EXISTS ratifications (
     jsonl_id    TEXT NOT NULL,
     approved    INTEGER NOT NULL,
     cache_path  TEXT,
-    ratified_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS compact_contexts (
@@ -178,6 +193,7 @@ CREATE TABLE IF NOT EXISTS forks (
     id           TEXT PRIMARY KEY,
     title        TEXT NOT NULL,
     created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at   TEXT DEFAULT (datetime('now')),
     created_by   TEXT NOT NULL,
     topic        TEXT,
     status       TEXT NOT NULL DEFAULT 'open',
@@ -520,13 +536,16 @@ class SqliteBridge:
         )
 
     def ingest_opus_atom(self, content: str, domain: str = "meta",
-                         depth: int = 1, source_session: Optional[str] = None) -> Optional[str]:
+                         depth: int = 1, source_session: Optional[str] = None,
+                         agent: Optional[str] = None, title: Optional[str] = None,
+                         summary: Optional[str] = None,
+                         confidence: float = 1.0) -> Optional[str]:
         try:
             atom_id = self.gen_id(8)
             self._exec(
-                "INSERT INTO opus_atoms (id, content, domain, depth, source_session) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (atom_id, content, domain, depth, source_session),
+                "INSERT INTO opus_atoms (id, agent, title, summary, content, domain, depth, confidence, source_session) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (atom_id, agent, title, summary, content, domain, depth, confidence, source_session),
             )
             return atom_id
         except Exception:
@@ -541,23 +560,26 @@ class SqliteBridge:
         return self._query("SELECT * FROM feedback ORDER BY created_at DESC LIMIT 50")
 
     def opus_feedback_write(self, domain: str, principle: str,
-                            source: str = "self") -> bool:
+                            source: str = "self", agent: Optional[str] = None,
+                            title: Optional[str] = None) -> bool:
         try:
             self._exec(
-                "INSERT INTO feedback (id, domain, principle, source) VALUES (?, ?, ?, ?)",
-                (self.gen_id(8), domain, principle, source),
+                "INSERT INTO feedback (id, agent, title, domain, content, source) VALUES (?, ?, ?, ?, ?, ?)",
+                (self.gen_id(8), agent, title, domain, principle, source),
             )
             return True
         except Exception:
             return False
 
     def opus_journal_write(self, entry: str,
-                           session_id: Optional[str] = None) -> Optional[str]:
+                           session_id: Optional[str] = None,
+                           agent: Optional[str] = None,
+                           title: Optional[str] = None) -> Optional[str]:
         try:
             jid = self.gen_id(8)
             self._exec(
-                "INSERT INTO journal (id, entry, session_id) VALUES (?, ?, ?)",
-                (jid, entry, session_id),
+                "INSERT INTO journal (id, agent, title, entry, session_id) VALUES (?, ?, ?, ?, ?)",
+                (jid, agent, title, entry, session_id),
             )
             return jid
         except Exception:
@@ -604,7 +626,7 @@ class SqliteBridge:
             aid = self.gen_id(8)
             self._exec(
                 "INSERT INTO jeles_atoms "
-                "(id, jsonl_id, agent, content, domain, depth, certainty, title) "
+                "(id, jsonl_id, agent, content, domain, depth, confidence, title) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (aid, jsonl_id, agent, content, domain, depth, certainty, title),
             )

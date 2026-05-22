@@ -42,15 +42,13 @@ def _task_allows_network(task_text: str) -> bool:
 
 def _bwrap_prefix(allow_net: bool = False) -> list[str]:
     home = os.path.expanduser("~")
-    sandbox_tmp = os.path.join(home, ".willow", "tmp")
-    os.makedirs(sandbox_tmp, exist_ok=True)
     args = [
         "bwrap",
         "--ro-bind", "/usr", "/usr",
         "--ro-bind", "/etc", "/etc",
         "--dev", "/dev",
         "--proc", "/proc",
-        "--bind", sandbox_tmp, "/tmp",
+        "--bind", "/tmp", "/tmp",
         "--unshare-pid",
         "--die-with-parent",
         "--bind", str(Path(__file__).parent.parent), str(Path(__file__).parent.parent),

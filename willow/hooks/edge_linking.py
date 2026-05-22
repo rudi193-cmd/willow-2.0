@@ -47,10 +47,10 @@ class EdgeLinker:
             # Create edge
             cur = self.bridge.conn.cursor()
             cur.execute("""
-                INSERT INTO edges (from_id, to_id, relation, context)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO edges (id, from_id, to_id, relation, context)
+                VALUES (%s, %s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
-            """, (from_id, to_id, relation, context))
+            """, (self.bridge.gen_id(8), from_id, to_id, relation, context))
 
             self.bridge.conn.commit()
             return True
@@ -110,10 +110,11 @@ class EdgeLinker:
             for to_id, to_title in cur.fetchall():
                 try:
                     cur.execute("""
-                        INSERT INTO edges (from_id, to_id, relation, context)
-                        VALUES (%s, %s, %s, %s)
+                        INSERT INTO edges (id, from_id, to_id, relation, context)
+                        VALUES (%s, %s, %s, %s, %s)
                         ON CONFLICT DO NOTHING
                     """, (
+                        self.bridge.gen_id(8),
                         from_id,
                         to_id,
                         "relates_to",

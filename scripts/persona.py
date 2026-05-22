@@ -143,7 +143,7 @@ def main() -> int:
     parts  = []
 
     if not active:
-        parts.append(render_picker(active))
+        pass  # picker shown at end of boot by agent, not on every prompt
     else:
         parts.append(render_status(active))
         context = load_persona(active)

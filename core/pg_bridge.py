@@ -32,6 +32,8 @@ _SCHEMA = """
 CREATE TABLE IF NOT EXISTS knowledge (
     id          TEXT PRIMARY KEY,
     project     TEXT NOT NULL DEFAULT 'global',
+    agent       TEXT,
+    domain      TEXT,
     valid_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     invalid_at  TIMESTAMPTZ,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -49,6 +51,8 @@ CREATE TABLE IF NOT EXISTS knowledge (
 
 CREATE TABLE IF NOT EXISTS cmb_atoms (
     id          TEXT PRIMARY KEY,
+    agent       TEXT,
+    title       TEXT,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     content     JSONB NOT NULL
 );
@@ -69,7 +73,8 @@ CREATE TABLE IF NOT EXISTS agents (
     role        TEXT,
     trust       TEXT DEFAULT 'WORKER',
     folder_root TEXT,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
@@ -85,23 +90,31 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 CREATE TABLE IF NOT EXISTS opus_atoms (
     id             TEXT PRIMARY KEY,
+    agent          TEXT,
+    title          TEXT,
+    summary        TEXT,
     content        TEXT NOT NULL,
     domain         TEXT DEFAULT 'meta',
     depth          INTEGER DEFAULT 1,
+    confidence     FLOAT DEFAULT 1.0,
     source_session TEXT,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS feedback (
     id         TEXT PRIMARY KEY,
+    agent      TEXT,
+    title      TEXT,
     domain     TEXT DEFAULT 'meta',
-    principle  TEXT NOT NULL,
+    content    TEXT NOT NULL,     -- renamed from principle (Wave 3)
     source     TEXT DEFAULT 'self',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS journal (
     id         TEXT PRIMARY KEY,
+    agent      TEXT,
+    title      TEXT,
     entry      TEXT NOT NULL,
     session_id TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -115,19 +128,22 @@ CREATE TABLE IF NOT EXISTS jeles_sessions (
     cwd         TEXT,
     turn_count  INTEGER DEFAULT 0,
     file_size   INTEGER DEFAULT 0,
-    registered_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS jeles_atoms (
     id         TEXT PRIMARY KEY,
     jsonl_id   TEXT NOT NULL,
     agent      TEXT NOT NULL,
+    title      TEXT,
+    summary    TEXT,
     content    TEXT NOT NULL,
     domain     TEXT DEFAULT 'meta',
     depth      INTEGER DEFAULT 1,
-    certainty  FLOAT DEFAULT 0.98,
-    title      TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    confidence FLOAT DEFAULT 0.98,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    valid_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    invalid_at TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS binder_files (
@@ -135,7 +151,7 @@ CREATE TABLE IF NOT EXISTS binder_files (
     agent      TEXT NOT NULL,
     jsonl_id   TEXT NOT NULL,
     dest_path  TEXT NOT NULL,
-    filed_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS binder_edges (
@@ -145,7 +161,8 @@ CREATE TABLE IF NOT EXISTS binder_edges (
     target_atom TEXT NOT NULL,
     edge_type   TEXT NOT NULL,
     status      TEXT DEFAULT 'proposed',
-    proposed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now(),
     CONSTRAINT binder_edges_unique UNIQUE (source_atom, target_atom, edge_type)
 );
 
@@ -155,7 +172,7 @@ CREATE TABLE IF NOT EXISTS ratifications (
     jsonl_id    TEXT NOT NULL,
     approved    BOOLEAN NOT NULL,
     cache_path  TEXT,
-    ratified_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS dispatch_tasks (
@@ -200,6 +217,7 @@ CREATE TABLE IF NOT EXISTS forks (
     id           TEXT PRIMARY KEY,
     title        TEXT NOT NULL,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ DEFAULT now(),
     created_by   TEXT NOT NULL,
     topic        TEXT,
     status       TEXT NOT NULL DEFAULT 'open',
@@ -211,10 +229,11 @@ CREATE TABLE IF NOT EXISTS forks (
 );
 
 CREATE TABLE IF NOT EXISTS edges (
-    id          SERIAL PRIMARY KEY,
+    id          TEXT PRIMARY KEY,
     from_id     TEXT NOT NULL,
     to_id       TEXT NOT NULL,
     relation    TEXT NOT NULL,
+    agent       TEXT,
     context     TEXT,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE(from_id, to_id, relation)
@@ -255,7 +274,8 @@ CREATE TABLE IF NOT EXISTS policy_rules (
     action      TEXT NOT NULL DEFAULT 'warn',
     created_by  TEXT NOT NULL DEFAULT '',
     active      BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now()
 );
 """
 
@@ -978,7 +998,7 @@ class PgBridge:
             return []
         self._ensure_conn()
         vec_str = str(vec)
-        filters = ["embedding IS NOT NULL"]
+        filters = ["embedding IS NOT NULL", "invalid_at IS NULL"]
         params: list = [vec_str, limit]
         if days_ago is not None:
             filters.append(f"created_at > now() - interval '{days_ago} days'")
@@ -989,6 +1009,27 @@ class PgBridge:
                 f" FROM jeles_atoms WHERE {where}"
                 f" ORDER BY distance ASC LIMIT %s",
                 params,
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def jeles_keyword_search(self, query: str, limit: int = 20) -> list:
+        """Keyword search across jeles_atoms (title + content ILIKE)."""
+        self._ensure_conn()
+        words = list(dict.fromkeys(query.split()))[:20]
+        if not words:
+            with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT id, title, domain, confidence, created_at FROM jeles_atoms ORDER BY created_at DESC LIMIT %s", (limit,))
+                return [dict(r) for r in cur.fetchall()]
+        filters = []
+        params: list = []
+        for word in words:
+            filters.append("(title ILIKE %s OR content ILIKE %s)")
+            params.extend([f"%{word}%", f"%{word}%"])
+        where = " AND ".join(f"({f})" for f in filters)
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                f"SELECT id, title, domain, confidence, created_at FROM jeles_atoms WHERE {where} ORDER BY created_at DESC LIMIT %s",
+                params + [limit],
             )
             return [dict(r) for r in cur.fetchall()]
 
@@ -1080,17 +1121,21 @@ class PgBridge:
             return [dict(r) for r in cur.fetchall()]
 
     def ingest_opus_atom(self, content: str, domain: str = "meta",
-                         depth: int = 1, source_session: Optional[str] = None) -> Optional[str]:
+                         depth: int = 1, source_session: Optional[str] = None,
+                         agent: Optional[str] = None, title: Optional[str] = None,
+                         summary: Optional[str] = None,
+                         confidence: float = 1.0) -> Optional[str]:
         self._ensure_conn()
         try:
             atom_id = self.gen_id(8)
-            vec = embed(content)
+            vec = embed(f"{title or ''} {content}")
             vec_str = str(vec) if vec is not None else None
             with self.conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO opus_atoms (id, content, domain, depth, source_session, embedding)
-                    VALUES (%s, %s, %s, %s, %s, %s::vector)
-                """, (atom_id, content, domain, depth, source_session, vec_str))
+                    INSERT INTO opus_atoms
+                        (id, agent, title, summary, content, domain, depth, confidence, source_session, embedding)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector)
+                """, (atom_id, agent, title, summary, content, domain, depth, confidence, source_session, vec_str))
             self.conn.commit()
             return atom_id
         except Exception:
@@ -1109,30 +1154,33 @@ class PgBridge:
             return [dict(r) for r in cur.fetchall()]
 
     def opus_feedback_write(self, domain: str, principle: str,
-                            source: str = "self") -> bool:
+                            source: str = "self", agent: Optional[str] = None,
+                            title: Optional[str] = None) -> bool:
         self._ensure_conn()
         try:
             fid = self.gen_id(8)
             with self.conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO feedback (id, domain, principle, source)
-                    VALUES (%s, %s, %s, %s)
-                """, (fid, domain, principle, source))
+                    INSERT INTO feedback (id, agent, title, domain, content, source)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (fid, agent, title, domain, principle, source))
             self.conn.commit()
             return True
         except Exception:
             return False
 
     def opus_journal_write(self, entry: str,
-                           session_id: Optional[str] = None) -> Optional[str]:
+                           session_id: Optional[str] = None,
+                           agent: Optional[str] = None,
+                           title: Optional[str] = None) -> Optional[str]:
         self._ensure_conn()
         try:
             jid = self.gen_id(8)
             with self.conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO journal (id, entry, session_id)
-                    VALUES (%s, %s, %s)
-                """, (jid, entry, session_id))
+                    INSERT INTO journal (id, agent, title, entry, session_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (jid, agent, title, entry, session_id))
             self.conn.commit()
             return jid
         except Exception:
@@ -1152,7 +1200,8 @@ class PgBridge:
                     ON CONFLICT (name) DO UPDATE SET
                         role = EXCLUDED.role,
                         trust = EXCLUDED.trust,
-                        folder_root = EXCLUDED.folder_root
+                        folder_root = EXCLUDED.folder_root,
+                        updated_at = now()
                     RETURNING id
                 """, (agent_id, name, role, trust, folder_root))
                 row = cur.fetchone()
@@ -1181,23 +1230,144 @@ class PgBridge:
         except Exception as e:
             return {"error": str(e)}
 
+    # ── Jeles boundary-theorem gate ──────────────────────────────────────────
+
+    _JELES_GATE_SYSTEM = (
+        "You are the Jeles boundary-theorem gate. "
+        "Evaluate whether a candidate knowledge atom satisfies all five conditions "
+        "for Jeles ingestibility. Return ONLY valid JSON — no prose, no markdown fences.\n\n"
+        "CONDITION NAMES and what counts as PASSING each one:\n\n"
+        "ATTRACTOR — A stable canonical form exists; the claim is the same across independent "
+        "sources. PASSES if: the claim is a named law, equation, model, or principle that "
+        "recurs across textbooks, papers, or institutions.\n\n"
+        "PROVENANCE — Traceable to a specific verifiable origin. PASSES if: the content names "
+        "an author AND a year, OR names a publication/institution. A rough date ('1941', '1494') "
+        "plus an author name is sufficient. Does NOT require a URL or DOI.\n\n"
+        "FIDELITY_GATE — An external mechanism filtered false instances. PASSES if any one of: "
+        "peer-reviewed publication, mathematical proof, legal/regulatory codification, repeated "
+        "experimental replication across independent labs, or adoption by a standards body.\n\n"
+        "PATTERN_INSTANCE — The pattern (the law/rule/equation) is separable from any specific "
+        "realization. PASSES if: the content describes a general rule, not a single event or "
+        "measurement. FAILS only if the atom IS the instance (e.g. one specific trajectory, "
+        "one stock price, one patient's data).\n\n"
+        "TEMPORAL_PERSISTENCE — The canonical form has been stable over time. PASSES if: the "
+        "content implies the claim is decades old and still current (e.g. '700 years unchanged', "
+        "'canonical since 1941', 'still the standard'). Does NOT require an explicit duration "
+        "statement if the domain context makes longevity obvious (classical physics, law, accounting).\n\n"
+        "EXAMPLES:\n"
+        "Input: 'Kolmogorov 1941 predicts E(k)~k^(-5/3), confirmed in wind tunnels and ocean "
+        "currents.' → "
+        '{"passed":["ATTRACTOR","PROVENANCE","FIDELITY_GATE","PATTERN_INSTANCE","TEMPORAL_PERSISTENCE"],'
+        '"failed":[],"domain_verdict":"POSITIVE","verdict":"K41 scaling law satisfies all five conditions."}\n\n'
+        "Input: 'Today AAPL closed at $213.42.' → "
+        '{"passed":[],"failed":["ATTRACTOR","PROVENANCE","FIDELITY_GATE","PATTERN_INSTANCE","TEMPORAL_PERSISTENCE"],'
+        '"failed":[],"domain_verdict":"NEGATIVE","verdict":"A single stock price is ephemeral, instance-only, and has no attractor."}\n\n'
+        "Use ONLY these condition names in passed/failed arrays: "
+        "ATTRACTOR, PROVENANCE, FIDELITY_GATE, PATTERN_INSTANCE, TEMPORAL_PERSISTENCE\n\n"
+        "Return JSON exactly:\n"
+        '{"passed":["..."],"failed":["..."],'
+        '"domain_verdict":"POSITIVE|PARTIAL|NEGATIVE",'
+        '"verdict":"one sentence"}'
+        "\n\ndomain_verdict: POSITIVE=all 5 pass, PARTIAL=3-4 pass, NEGATIVE=0-2 pass."
+    )
+
+    def _jeles_gate_check(self, title: str, content: str, domain: str) -> dict:
+        """Run the 5-condition boundary-theorem gate via local Ollama.
+        Returns {"passed": True} or {"passed": False, "failed_conditions": [...], ...}.
+        Soft-fails open (logs warning) if Ollama is unavailable."""
+        import logging as _log
+        _logger = _log.getLogger(__name__)
+        try:
+            from sap.clients.professor_client import _ask_ollama
+        except ImportError:
+            _logger.warning("[jeles_gate] professor_client unavailable — gate skipped")
+            return {"passed": True, "gate_skipped": True, "reason": "professor_client not importable"}
+
+        user_msg = (
+            f"Title: {title or '(none)'}\n"
+            f"Domain: {domain}\n"
+            f"Content:\n{content}"
+        )
+        try:
+            raw = _ask_ollama("llama3.2:3b", self._JELES_GATE_SYSTEM, user_msg, base_temp=0.1)
+        except Exception as exc:
+            _logger.warning("[jeles_gate] Ollama call failed (%s) — gate skipped", exc)
+            return {"passed": True, "gate_skipped": True, "reason": str(exc)}
+
+        if not raw:
+            _logger.warning("[jeles_gate] empty Ollama response — gate skipped")
+            return {"passed": True, "gate_skipped": True, "reason": "empty response"}
+
+        try:
+            # Strip accidental markdown fences
+            cleaned = raw.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("```")[1]
+                if cleaned.startswith("json"):
+                    cleaned = cleaned[4:]
+            verdict = json.loads(cleaned)
+        except (json.JSONDecodeError, IndexError) as parse_err:
+            _logger.warning("[jeles_gate] JSON parse failed (%s) raw=%r — gate skipped", parse_err, raw[:200])
+            return {"passed": True, "gate_skipped": True, "reason": f"parse error: {parse_err}"}
+
+        failed = verdict.get("failed", [])
+        domain_verdict = verdict.get("domain_verdict", "UNKNOWN")
+
+        if failed or domain_verdict != "POSITIVE":
+            return {
+                "passed": False,
+                "failed_conditions": failed,
+                "domain_verdict": domain_verdict,
+                "verdict": verdict.get("verdict", ""),
+                "passed_conditions": verdict.get("passed", []),
+            }
+        return {"passed": True, "domain_verdict": "POSITIVE", "verdict": verdict.get("verdict", "")}
+
     def jeles_extract_atom(self, agent: str, jsonl_id: str, content: str,
                            domain: str = "meta", depth: int = 1,
                            certainty: float = 0.98,
                            title: Optional[str] = None) -> dict:
         self._ensure_conn()
         try:
+            gate = self._jeles_gate_check(title or "", content, domain)
+            if not gate.get("passed", True):
+                return {
+                    "blocked": True,
+                    "failed_conditions": gate.get("failed_conditions", []),
+                    "domain_verdict": gate.get("domain_verdict", "NEGATIVE"),
+                    "verdict": gate.get("verdict", ""),
+                    "passed_conditions": gate.get("passed_conditions", []),
+                }
+
             aid = self.gen_id(8)
             vec = embed(f"{title or ''} {content}")
             vec_str = str(vec) if vec is not None else None
             with self.conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO jeles_atoms
-                        (id, jsonl_id, agent, content, domain, depth, certainty, title, embedding)
+                        (id, jsonl_id, agent, content, domain, depth, confidence, title, embedding)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector)
                 """, (aid, jsonl_id, agent, content, domain, depth, certainty, title, vec_str))
             self.conn.commit()
-            return {"id": aid, "status": "extracted"}
+            out = {"id": aid, "status": "extracted"}
+            if gate.get("gate_skipped"):
+                out["gate_skipped"] = True
+            return out
+        except Exception as e:
+            return {"error": str(e)}
+
+    def jeles_invalidate_atom(self, atom_id: str, reason: str = "") -> dict:
+        self._ensure_conn()
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE jeles_atoms SET invalid_at=now() WHERE id=%s AND invalid_at IS NULL",
+                    (atom_id,),
+                )
+            self.conn.commit()
+            if cur.rowcount == 0:
+                return {"invalidated": False, "reason": "not found or already invalid"}
+            return {"invalidated": True, "id": atom_id, "reason": reason}
         except Exception as e:
             return {"error": str(e)}
 
