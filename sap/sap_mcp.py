@@ -2852,6 +2852,133 @@ async def kb_backup(app_id: str, label: str = "") -> dict:
     return await loop.run_in_executor(_executor, _backup)
 
 
+# ── Tools — workflow engine ───────────────────────────────────────────────────
+
+@mcp.tool()
+@sap_gate(write=True)
+async def workflow_define(
+    app_id:     str,
+    name:       str,
+    definition: str,
+) -> dict:
+    """Define or update a workflow. definition is a JSON string with shape:
+    {"phases": {"phase_name": {"prompt": "...", "depends_on": [], "output_schema": {}, "model": "..."}}}
+    Phases with no depends_on run first. Phases whose depends_on are all completed run next.
+    Parallel phases (same depends_on set) run concurrently.
+    output_schema: JSON schema dict for structured LLM output (optional).
+    model: per-phase model override (default: claude-haiku-4-5-20251001)."""
+    logger.info("[w2] workflow_define app_id=%s name=%s", app_id, name)
+    if not pg:
+        return _no_pg()
+    try:
+        defn = json.loads(definition) if isinstance(definition, str) else definition
+    except Exception as e:
+        return {"error": f"definition must be valid JSON: {e}"}
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_executor, pg.workflow_define, name, defn, app_id)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def workflow_list(app_id: str) -> dict:
+    """List all defined workflows."""
+    logger.info("[w2] workflow_list app_id=%s", app_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    rows = await loop.run_in_executor(_executor, pg.workflow_list)
+    return {"workflows": rows, "total": len(rows)}
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def workflow_run(
+    app_id: str,
+    name:   str,
+    input:  str = "{}",
+) -> dict:
+    """Start a workflow run. input is a JSON string of variables available as {{input.key}} in prompts.
+    Queues the first phase(s) immediately as kart tasks.
+    Returns: {run_id, phases_queued}."""
+    logger.info("[w2] workflow_run app_id=%s name=%s", app_id, name)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+
+    wf = await loop.run_in_executor(_executor, pg.workflow_get, name)
+    if not wf:
+        return {"error": f"workflow '{name}' not defined — call workflow_define first"}
+
+    try:
+        input_data = json.loads(input) if isinstance(input, str) else input
+    except Exception:
+        input_data = {}
+
+    def _start():
+        import re as _re
+        run_id = pg.workflow_run_create(wf["id"], input_data, app_id)
+        phases = wf["definition"].get("phases", {})
+
+        # Queue phases with no dependencies
+        queued = 0
+        for phase_name, phase_def in phases.items():
+            if phase_def.get("depends_on", []):
+                continue  # blocked, will be queued when deps complete
+            prompt = phase_def.get("prompt", "")
+            # Resolve {{input.x}} substitutions for first phase
+            def _sub(m):
+                expr = m.group(1).strip().split(".")
+                if expr[0] == "input":
+                    val = input_data
+                    for p in expr[1:]:
+                        val = val.get(p, "") if isinstance(val, dict) else ""
+                    return str(val)
+                return m.group(0)
+            prompt = _re.sub(r"\{\{([^}]+)\}\}", _sub, prompt)
+
+            phase_input = {
+                "prompt":        prompt,
+                "model":         phase_def.get("model", "claude-haiku-4-5-20251001"),
+                "output_schema": phase_def.get("output_schema", {}),
+                "phase_name":    phase_name,
+            }
+            payload = json.dumps({
+                "type":        "workflow_phase",
+                "run_id":      run_id,
+                "phase_name":  phase_name,
+                "phase_input": phase_input,
+            })
+            task_id = pg.submit_task(payload, submitted_by=app_id, agent="kart")
+            pg.workflow_phase_create(run_id, phase_name, phase_input, task_id)
+            queued += 1
+
+        return {"run_id": run_id, "workflow": name, "phases_queued": queued}
+
+    return await loop.run_in_executor(_executor, _start)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def workflow_status(app_id: str, run_id: str) -> dict:
+    """Get the status of a workflow run — all phases, their outputs, current state."""
+    logger.info("[w2] workflow_status app_id=%s run_id=%s", app_id, run_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_executor, pg.workflow_status, run_id)
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def workflow_cancel(app_id: str, run_id: str) -> dict:
+    """Cancel a running or pending workflow run. Pending phases are skipped."""
+    logger.info("[w2] workflow_cancel app_id=%s run_id=%s", app_id, run_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_executor, pg.workflow_cancel, run_id)
+
+
 # ── Tools — routines domain ───────────────────────────────────────────────────
 
 @mcp.tool()

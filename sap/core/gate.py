@@ -176,6 +176,10 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
     "routine_manage": frozenset({
         "routine_register", "routine_list", "routine_fire",
     }),
+    "workflow_manage": frozenset({
+        "workflow_define", "workflow_list", "workflow_run",
+        "workflow_status", "workflow_cancel",
+    }),
     # All read-only Postgres-backed tools added since postgres_read was first cut.
     "postgres_read_ext": frozenset({
         "pg_edge_list", "mem_jeles_get", "mem_ratify_list",

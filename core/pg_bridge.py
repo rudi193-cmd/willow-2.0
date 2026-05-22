@@ -235,6 +235,40 @@ CREATE TABLE IF NOT EXISTS routines (
     last_fired  TIMESTAMPTZ
 );
 
+CREATE TABLE IF NOT EXISTS workflows (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL UNIQUE,
+    definition  JSONB NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_by  TEXT,
+    version     INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS workflow_runs (
+    id          TEXT PRIMARY KEY,
+    workflow_id TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'pending',
+    input       JSONB,
+    error       TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    started_at  TIMESTAMPTZ,
+    ended_at    TIMESTAMPTZ,
+    created_by  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS workflow_phases (
+    id          TEXT PRIMARY KEY,
+    run_id      TEXT NOT NULL,
+    phase_name  TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'pending',
+    input       JSONB,
+    output      JSONB,
+    error       TEXT,
+    task_id     TEXT,
+    started_at  TIMESTAMPTZ,
+    ended_at    TIMESTAMPTZ
+);
+
 CREATE TABLE IF NOT EXISTS routing_decisions (
     id          TEXT PRIMARY KEY,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -341,6 +375,23 @@ _MIGRATIONS = [
         id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, token TEXT NOT NULL,
         description TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         created_by TEXT, last_fired TIMESTAMPTZ
+    )""",
+    # Workflow engine
+    """CREATE TABLE IF NOT EXISTS workflows (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, definition JSONB NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(), created_by TEXT,
+        version INTEGER NOT NULL DEFAULT 1
+    )""",
+    """CREATE TABLE IF NOT EXISTS workflow_runs (
+        id TEXT PRIMARY KEY, workflow_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending', input JSONB, error TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(), started_at TIMESTAMPTZ,
+        ended_at TIMESTAMPTZ, created_by TEXT
+    )""",
+    """CREATE TABLE IF NOT EXISTS workflow_phases (
+        id TEXT PRIMARY KEY, run_id TEXT NOT NULL, phase_name TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending', input JSONB, output JSONB,
+        error TEXT, task_id TEXT, started_at TIMESTAMPTZ, ended_at TIMESTAMPTZ
     )""",
 ]
 
@@ -1322,6 +1373,130 @@ class PgBridge:
                 "UPDATE routines SET last_fired=now() WHERE name=%s", (name,)
             )
         self.conn.commit()
+
+    # ── Workflow engine ───────────────────────────────────────────────────────
+
+    def workflow_define(self, name: str, definition: dict, created_by: str = "") -> dict:
+        """Store or update a workflow definition."""
+        self._ensure_conn()
+        wf_id = self.gen_id(8)
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO workflows (id, name, definition, created_by)"
+                " VALUES (%s, %s, %s, %s)"
+                " ON CONFLICT (name) DO UPDATE SET definition=EXCLUDED.definition,"
+                " version=workflows.version+1",
+                (wf_id, name, psycopg2.extras.Json(definition), created_by),
+            )
+        self.conn.commit()
+        return {"id": wf_id, "name": name}
+
+    def workflow_get(self, name: str) -> Optional[dict]:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM workflows WHERE name=%s", (name,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def workflow_list(self) -> list:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id, name, version, created_at, created_by FROM workflows ORDER BY name")
+            return [dict(r) for r in cur.fetchall()]
+
+    def workflow_run_create(self, workflow_id: str, input_data: dict,
+                             created_by: str = "") -> str:
+        self._ensure_conn()
+        run_id = self.gen_id(10)
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO workflow_runs (id, workflow_id, input, created_by)"
+                " VALUES (%s, %s, %s, %s)",
+                (run_id, workflow_id, psycopg2.extras.Json(input_data), created_by),
+            )
+        self.conn.commit()
+        return run_id
+
+    def workflow_run_get(self, run_id: str) -> Optional[dict]:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM workflow_runs WHERE id=%s", (run_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def workflow_run_update(self, run_id: str, status: str, error: str = "") -> None:
+        self._ensure_conn()
+        with self.conn.cursor() as cur:
+            if status == "running":
+                cur.execute(
+                    "UPDATE workflow_runs SET status=%s, started_at=now() WHERE id=%s",
+                    (status, run_id))
+            elif status in ("completed", "failed", "cancelled"):
+                cur.execute(
+                    "UPDATE workflow_runs SET status=%s, ended_at=now(), error=%s WHERE id=%s",
+                    (status, error or None, run_id))
+            else:
+                cur.execute("UPDATE workflow_runs SET status=%s WHERE id=%s", (status, run_id))
+        self.conn.commit()
+
+    def workflow_phase_create(self, run_id: str, phase_name: str,
+                               input_data: dict, task_id: str) -> str:
+        self._ensure_conn()
+        ph_id = self.gen_id(10)
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO workflow_phases (id, run_id, phase_name, input, task_id)"
+                " VALUES (%s, %s, %s, %s, %s)",
+                (ph_id, run_id, phase_name, psycopg2.extras.Json(input_data), task_id),
+            )
+        self.conn.commit()
+        return ph_id
+
+    def workflow_phase_complete(self, phase_id: str, output: dict,
+                                 status: str = "completed", error: str = "") -> None:
+        self._ensure_conn()
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "UPDATE workflow_phases SET status=%s, output=%s, error=%s, ended_at=now()"
+                " WHERE id=%s",
+                (status, psycopg2.extras.Json(output), error or None, phase_id),
+            )
+        self.conn.commit()
+
+    def workflow_phases_for_run(self, run_id: str) -> list:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM workflow_phases WHERE run_id=%s ORDER BY started_at ASC NULLS FIRST",
+                (run_id,))
+            return [dict(r) for r in cur.fetchall()]
+
+    def workflow_status(self, run_id: str) -> dict:
+        """Return run + all phases in one call."""
+        run = self.workflow_run_get(run_id)
+        if not run:
+            return {"error": "run not found"}
+        phases = self.workflow_phases_for_run(run_id)
+        return {
+            "run":    run,
+            "phases": {p["phase_name"]: p for p in phases},
+            "total":  len(phases),
+            "done":   sum(1 for p in phases if p["status"] in ("completed", "failed", "skipped")),
+        }
+
+    def workflow_cancel(self, run_id: str) -> dict:
+        self._ensure_conn()
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "UPDATE workflow_runs SET status='cancelled', ended_at=now()"
+                " WHERE id=%s AND status IN ('pending','running')", (run_id,))
+            updated = cur.rowcount > 0
+            if updated:
+                cur.execute(
+                    "UPDATE workflow_phases SET status='skipped'"
+                    " WHERE run_id=%s AND status='pending'", (run_id,))
+        self.conn.commit()
+        return {"cancelled": updated, "run_id": run_id}
 
     def task_status(self, task_id: str) -> Optional[dict]:
         self._ensure_conn()
