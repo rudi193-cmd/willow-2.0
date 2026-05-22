@@ -2700,6 +2700,122 @@ async def dream_run(app_id: str, force: bool = False) -> dict:
     return await loop.run_in_executor(_executor, _run)
 
 
+# ── Tools — intelligence passes (P4.1/P4.2/P4.3) ─────────────────────────────
+
+@mcp.tool()
+@sap_gate(write=True)
+async def kb_intelligence_run(
+    app_id:   str,
+    enabled:  bool = False,
+    dry_run:  bool = True,
+    passes:   list = None,
+) -> dict:
+    """Trigger KB intelligence consolidation passes (NREM/sleep_consolidation).
+    DISABLED BY DEFAULT — must pass enabled=True to actually run.
+    dry_run=True (default) reports what would run without writing.
+    passes: list of passes to run — ['dedup', 'contradictions', 'decay', 'sqlite']
+            defaults to all four. 'intelligence' (insight_pass+chunk_pass) skipped
+            unless explicitly requested and PMEM modules are available."""
+    logger.info("[w2] kb_intelligence_run app_id=%s enabled=%s dry_run=%s", app_id, enabled, dry_run)
+    if not enabled:
+        return {
+            "status": "disabled",
+            "note": "Pass enabled=True to run. dry_run=True by default for safety.",
+        }
+    if not pg:
+        return _no_pg()
+
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        import sys
+        script = str(_SAP_ROOT.parent / "scripts" / "sleep_consolidation.py")
+        cmd = [sys.executable, script]
+        if dry_run:
+            cmd.append("--dry-run")
+        if passes and "intelligence" not in (passes or []):
+            cmd.append("--skip-intelligence")
+
+        import subprocess
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        return {
+            "returncode": proc.returncode,
+            "stdout":     proc.stdout.strip()[-3000:],
+            "stderr":     proc.stderr.strip()[-500:],
+            "dry_run":    dry_run,
+        }
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def kb_extract_from_session(
+    app_id:      str,
+    commit_hash: str = "",
+    source_type: str = "commit",
+    write:       bool = False,
+) -> dict:
+    """Extract KB atoms from a git commit or recent session using atom_extractor.
+    commit_hash: SHA to extract from (source_type=commit or merge).
+    write=False (default) — returns the atom without persisting; write=True writes to KB."""
+    logger.info("[w2] kb_extract_from_session app_id=%s hash=%s write=%s", app_id, commit_hash, write)
+    loop = asyncio.get_running_loop()
+
+    def _extract():
+        from core.atom_extractor import extract_commit_atom, extract_merge_atom
+
+        if not commit_hash:
+            # Pull the latest commit hash
+            import subprocess
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"], capture_output=True, text=True
+            )
+            if result.returncode != 0:
+                return {"error": "no commit_hash provided and git HEAD unavailable"}
+            target = result.stdout.strip()
+        else:
+            target = commit_hash
+
+        if source_type == "merge":
+            atom = extract_merge_atom(target, "")
+        else:
+            atom = extract_commit_atom(target)
+
+        if atom is None:
+            return {"error": "atom extraction failed", "commit_hash": target}
+
+        atom_dict = atom.to_dict()
+
+        if write and pg:
+            atom_id = pg.ingest_atom(
+                title=atom.title,
+                summary=atom.summary,
+                source_type=atom.source_type,
+                source_id=target,
+                category=atom.category,
+                tier="frontier",
+                confidence=0.85,
+            )
+            atom_dict["written_id"] = atom_id
+
+        return {"atom": atom_dict, "written": write and pg is not None}
+
+    return await loop.run_in_executor(_executor, _extract)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def kb_backup(app_id: str) -> dict:
+    """Placeholder — Valhalla archive (kb_backup/restore) not yet implemented.
+    Returns the intended design so tooling can discover it exists."""
+    return {
+        "status": "not_implemented",
+        "note": "Valhalla archive tools are planned but disabled. "
+                "Use pg_dump / sqlite3 .dump for manual backups.",
+    }
+
+
 # ── Tools — nest_ domain ──────────────────────────────────────────────────────
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -2891,9 +3007,31 @@ async def routing_log_read(app_id: str, session_id: str = "", limit: int = 20) -
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
 async def fleet_governance(app_id: str) -> dict:
-    """Governance status. Dual Commit proposals live in governance/commits/."""
-    return {"status": "portless_mode",
-            "note": "Governance runs via Dual Commit proposals in governance/commits/"}
+    """Governance status: active policy rules from the policy_rules table + proposal directory."""
+    logger.info("[w2] fleet_governance app_id=%s", app_id)
+    loop = asyncio.get_running_loop()
+
+    def _governance():
+        active_rules = []
+        if pg:
+            try:
+                active_rules = pg.policy_list(active_only=True)
+            except Exception:
+                pass
+
+        proposals_dir = _SAP_ROOT.parent / "governance" / "commits"
+        proposals = []
+        if proposals_dir.exists():
+            proposals = [p.name for p in sorted(proposals_dir.glob("*.md"))[:20]]
+
+        return {
+            "active_rules":  active_rules,
+            "rule_count":    len(active_rules),
+            "proposals_dir": str(proposals_dir),
+            "proposals":     proposals,
+        }
+
+    return await loop.run_in_executor(_executor, _governance)
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
