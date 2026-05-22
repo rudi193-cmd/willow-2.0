@@ -214,6 +214,17 @@ CREATE INDEX IF NOT EXISTS idx_jeles_atoms_jsonl    ON jeles_atoms (jsonl_id);
 CREATE INDEX IF NOT EXISTS idx_forks_status         ON forks (status);
 """
 
+# Columns added after initial deployment — each wrapped in try/except for compat.
+_MIGRATIONS = [
+    # knowledge parity with PgBridge
+    "ALTER TABLE knowledge ADD COLUMN tier TEXT",
+    "ALTER TABLE knowledge ADD COLUMN confidence REAL",
+    "ALTER TABLE knowledge ADD COLUMN updated_at TEXT",
+    # jeles_atoms parity with PgBridge
+    "ALTER TABLE jeles_atoms ADD COLUMN valid_at TEXT",
+    "ALTER TABLE jeles_atoms ADD COLUMN invalid_at TEXT",
+]
+
 _FTS_TRIGGERS = """
 CREATE TRIGGER IF NOT EXISTS knowledge_ai AFTER INSERT ON knowledge BEGIN
     INSERT INTO knowledge_fts(rowid, id, title, summary)
@@ -274,6 +285,11 @@ def _open_db(path: Path) -> sqlite3.Connection:
     conn.executescript(_SCHEMA)
     conn.executescript(_INDEXES)
     conn.executescript(_FTS_TRIGGERS)
+    for stmt in _MIGRATIONS:
+        try:
+            conn.execute(stmt)
+        except sqlite3.OperationalError:
+            pass  # column already exists
     conn.commit()
     return conn
 
@@ -365,8 +381,9 @@ class SqliteBridge:
         record = {**record, "id": atom_id}
         self._exec("""
             INSERT INTO knowledge
-                (id, project, valid_at, invalid_at, title, summary, content, source_type, category)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (id, project, valid_at, invalid_at, title, summary, content,
+                 source_type, category, tier, confidence, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 project     = excluded.project,
                 valid_at    = excluded.valid_at,
@@ -374,7 +391,10 @@ class SqliteBridge:
                 summary     = excluded.summary,
                 content     = excluded.content,
                 source_type = excluded.source_type,
-                category    = excluded.category
+                category    = excluded.category,
+                tier        = excluded.tier,
+                confidence  = excluded.confidence,
+                updated_at  = excluded.updated_at
         """, (
             atom_id,
             record.get("project", "global"),
@@ -385,12 +405,17 @@ class SqliteBridge:
             _jdump(record.get("content")),
             record.get("source_type"),
             record.get("category"),
+            record.get("tier"),
+            record.get("confidence"),
+            record.get("updated_at", _now()),
         ))
         return atom_id
 
     def ingest_atom(self, title: str, summary: str, source_type: str = "mcp",
                     source_id: str = "", category: str = "general",
-                    domain: Optional[str] = None) -> Optional[str]:
+                    domain: Optional[str] = None,
+                    tier: str = "frontier",
+                    confidence: float = 0.80) -> Optional[str]:
         try:
             self._last_ingest_error = None
             atom_id = self.gen_id(8)
@@ -402,11 +427,23 @@ class SqliteBridge:
                 "source_type": source_type,
                 "content":     {"source_id": source_id},
                 "category":    category,
+                "tier":        tier,
+                "confidence":  confidence,
             })
             return atom_id
         except Exception as e:
             self._last_ingest_error = str(e)
             return None
+
+    def promote_knowledge_tier(self, atom_id: str, new_tier: str) -> dict:
+        try:
+            self._exec(
+                "UPDATE knowledge SET tier=?, updated_at=? WHERE id=? AND invalid_at IS NULL",
+                (new_tier, _now(), atom_id),
+            )
+            return {"promoted": True, "id": atom_id, "tier": new_tier}
+        except Exception as e:
+            return {"error": str(e)}
 
     def knowledge_close(self, old_id: str, new_valid_at: datetime) -> None:
         self._exec(
@@ -428,7 +465,8 @@ class SqliteBridge:
     def knowledge_search(self, query: str, project: Optional[str] = None,
                          include_invalid: bool = False, limit: int = 20,
                          include_embedding: bool = False,
-                         fields: Optional[list] = None) -> list:
+                         fields: Optional[list] = None,
+                         tier: Optional[str] = None) -> list:
         # Try FTS5 first, fall back to LIKE
         try:
             fts_sql = """
@@ -442,6 +480,9 @@ class SqliteBridge:
                 params.append(project)
             if not include_invalid:
                 fts_sql += " AND k.invalid_at IS NULL"
+            if tier:
+                fts_sql += " AND k.tier = ?"
+                params.append(tier)
             fts_sql += " ORDER BY rank LIMIT ?"
             params.append(limit)
             results = self._query(fts_sql, params)
@@ -462,6 +503,9 @@ class SqliteBridge:
             params.append(project)
         if not include_invalid:
             like_sql += " AND invalid_at IS NULL"
+        if tier:
+            like_sql += " AND tier = ?"
+            params.append(tier)
         like_sql += " ORDER BY weight DESC, visit_count DESC LIMIT ?"
         params.append(limit)
         return self._query(like_sql, params)
@@ -634,6 +678,21 @@ class SqliteBridge:
         except Exception as e:
             return {"error": str(e)}
 
+    def jeles_atom_get(self, atom_id: str) -> Optional[dict]:
+        return self._query_one(
+            "SELECT * FROM jeles_atoms WHERE id = ?", (atom_id,)
+        )
+
+    def jeles_invalidate_atom(self, atom_id: str, reason: str = "") -> dict:
+        try:
+            self._exec(
+                "UPDATE jeles_atoms SET invalid_at=? WHERE id=? AND invalid_at IS NULL",
+                (_now(), atom_id),
+            )
+            return {"invalidated": True, "id": atom_id, "reason": reason}
+        except Exception as e:
+            return {"error": str(e)}
+
     # ── Binder ────────────────────────────────────────────────────────────────
 
     def binder_file(self, agent: str, jsonl_id: str, dest_path: str) -> dict:
@@ -660,6 +719,41 @@ class SqliteBridge:
         except Exception as e:
             return {"error": str(e)}
 
+    def binder_files_list(self, agent: Optional[str] = None, limit: int = 50) -> list:
+        if agent:
+            return self._query(
+                "SELECT * FROM binder_files WHERE agent=? ORDER BY created_at DESC LIMIT ?",
+                (agent, limit),
+            )
+        return self._query(
+            "SELECT * FROM binder_files ORDER BY created_at DESC LIMIT ?", (limit,)
+        )
+
+    def binder_edges_list(self, agent: Optional[str] = None,
+                          status: Optional[str] = None, limit: int = 50) -> list:
+        where_clauses, params = [], []
+        if agent:
+            where_clauses.append("agent=?")
+            params.append(agent)
+        if status:
+            where_clauses.append("status=?")
+            params.append(status)
+        where = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+        params.append(limit)
+        return self._query(
+            f"SELECT * FROM binder_edges {where} ORDER BY created_at DESC LIMIT ?", params
+        )
+
+    def binder_edge_update_status(self, edge_id: str, status: str) -> dict:
+        try:
+            self._exec(
+                "UPDATE binder_edges SET status=?, updated_at=? WHERE id=?",
+                (status, _now(), edge_id),
+            )
+            return {"updated": True, "id": edge_id, "status": status}
+        except Exception as e:
+            return {"error": str(e)}
+
     # ── Ratify ────────────────────────────────────────────────────────────────
 
     def ratify(self, agent: str, jsonl_id: str, approve: bool = True,
@@ -674,6 +768,21 @@ class SqliteBridge:
             return {"id": rid, "approved": approve, "status": "ratified"}
         except Exception as e:
             return {"error": str(e)}
+
+    def ratifications_list(self, agent: Optional[str] = None, limit: int = 50) -> list:
+        if agent:
+            return self._query(
+                "SELECT * FROM ratifications WHERE agent=? ORDER BY created_at DESC LIMIT ?",
+                (agent, limit),
+            )
+        return self._query(
+            "SELECT * FROM ratifications ORDER BY created_at DESC LIMIT ?", (limit,)
+        )
+
+    # ── Agents registry ───────────────────────────────────────────────────────
+
+    def agents_list_from_db(self) -> list:
+        return self._query("SELECT * FROM agents ORDER BY name ASC")
 
     # ── Ledger ────────────────────────────────────────────────────────────────
 

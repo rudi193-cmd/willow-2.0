@@ -181,14 +181,21 @@ def _kill_stale_instances() -> None:
             logger.warning("[w2] pg cleanup after stale kill failed: %s", err)
 
 
-def _init_pg() -> "PgBridge | None":
+def _init_pg():
+    """Return PgBridge, or SqliteBridge if Postgres is unavailable, or None on total failure."""
     if PgBridge is None:
-        return None
+        # pg_bridge import failed — fall directly to SQLite
+        try:
+            from core.sqlite_bridge import SqliteBridge
+            logger.warning("[w2] pg_bridge unavailable — using SQLite fallback")
+            return SqliteBridge()
+        except Exception:
+            return None
     try:
         _pg = PgBridge()
         return _pg
     except Exception as err:
-        logger.error("[w2] pg init failed: %s", err)
+        logger.error("[w2] pg init failed: %s — falling back to SQLite", err)
         try:
             flag = Path.home() / ".willow" / "pg_failure.flag"
             flag.parent.mkdir(parents=True, exist_ok=True)
@@ -210,7 +217,13 @@ def _init_pg() -> "PgBridge | None":
             gc.close()
         except Exception:
             pass
-        return None
+        # SQLite fallback
+        try:
+            from core.sqlite_bridge import SqliteBridge
+            logger.warning("[w2] Postgres down — using SQLite fallback")
+            return SqliteBridge()
+        except Exception:
+            return None
 
 
 def _startup_backfill_check() -> None:

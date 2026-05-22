@@ -146,6 +146,86 @@ def test_feedback_write_and_read(db):
     assert any(f["content"] == "Never mock the database" for f in feedback)
 
 
+# ── Tier / schema parity (P2.1 + P2.2) ────────────────────────────────────────
+
+def test_ingest_atom_tier_confidence(db):
+    atom_id = db.ingest_atom("Tier test", "summary", tier="canonical", confidence=0.95)
+    results = db.knowledge_search("Tier test")
+    row = next(r for r in results if r["id"] == atom_id)
+    assert row["tier"] == "canonical"
+    assert row["confidence"] == pytest.approx(0.95)
+
+
+def test_knowledge_search_tier_filter(db):
+    db.ingest_atom("Frontier atom", "f summary", tier="frontier")
+    db.ingest_atom("Canonical atom", "c summary", tier="canonical")
+    frontier = db.knowledge_search("atom", tier="frontier")
+    ids = [r["id"] for r in frontier]
+    assert all(db.knowledge_search("atom", tier="frontier")[0]["tier"] == "frontier" for r in frontier)
+    canonical = db.knowledge_search("atom", tier="canonical")
+    assert all(r["tier"] == "canonical" for r in canonical)
+
+
+def test_promote_knowledge_tier(db):
+    atom_id = db.ingest_atom("Promote me", "summary", tier="frontier")
+    result = db.promote_knowledge_tier(atom_id, "canonical")
+    assert result["promoted"] is True
+    row = db.knowledge_get(atom_id)
+    assert row["tier"] == "canonical"
+
+
+def test_jeles_atom_get(db):
+    result = db.jeles_register_jsonl("hanuman", "/tmp/x.jsonl", "sess-xyz")
+    db.jeles_extract_atom("hanuman", result["id"], "atom content", title="Test Atom")
+    atoms = db._query("SELECT id FROM jeles_atoms LIMIT 1")
+    atom_id = atoms[0]["id"]
+    fetched = db.jeles_atom_get(atom_id)
+    assert fetched is not None
+    assert fetched["id"] == atom_id
+
+
+def test_jeles_invalidate_atom(db):
+    db.jeles_register_jsonl("hanuman", "/tmp/y.jsonl", "sess-abc")
+    sessions = db._query("SELECT id FROM jeles_sessions LIMIT 1")
+    db.jeles_extract_atom("hanuman", sessions[0]["id"], "invalidate me")
+    atoms = db._query("SELECT id FROM jeles_atoms ORDER BY created_at DESC LIMIT 1")
+    atom_id = atoms[0]["id"]
+    result = db.jeles_invalidate_atom(atom_id, "test reason")
+    assert result["invalidated"] is True
+    row = db.jeles_atom_get(atom_id)
+    assert row["invalid_at"] is not None
+
+
+def test_binder_list_files(db):
+    db.binder_file("hanuman", "jsonl-001", "/tmp/dest")
+    files = db.binder_files_list(agent="hanuman")
+    assert len(files) >= 1
+
+
+def test_binder_list_and_update_edges(db):
+    db.binder_propose_edge("hanuman", "A1", "B1", "relates_to")
+    edges = db.binder_edges_list(agent="hanuman")
+    assert len(edges) >= 1
+    edge_id = edges[0]["id"]
+    result = db.binder_edge_update_status(edge_id, "approved")
+    assert result["updated"] is True
+    updated = db.binder_edges_list(status="approved")
+    assert any(e["id"] == edge_id for e in updated)
+
+
+def test_ratifications_list(db):
+    db.ratify("hanuman", "jsonl-ratify", approve=True)
+    rows = db.ratifications_list(agent="hanuman")
+    assert len(rows) >= 1
+    assert rows[0]["agent"] == "hanuman"
+
+
+def test_agents_list_from_db(db):
+    db.agent_create("test_agent", trust="WORKER", role="test")
+    agents = db.agents_list_from_db()
+    assert any(a["name"] == "test_agent" for a in agents)
+
+
 # ── Context manager ────────────────────────────────────────────────────────────
 
 def test_context_manager(tmp_path):
