@@ -921,25 +921,31 @@ async def kb_get(
 @mcp.tool()
 @sap_gate(write=True)
 async def kb_ingest(
-    app_id:      str,
-    title:       str,
-    summary:     str,
-    source_type: str = "mcp",
-    source_id:   str = "",
-    category:    str = "general",
-    domain:      str = "",
-    force:       bool = False,
-    keywords:    list = None,
-    tags:        list = None,
-    tier:        str  = "observed",
-    confidence:  float = 1.0,
+    app_id:         str,
+    title:          str,
+    summary:        str,
+    source_type:    str = "mcp",
+    source_id:      str = "",
+    category:       str = "general",
+    domain:         str = "",
+    force:          bool = False,
+    keywords:       list = None,
+    tags:           list = None,
+    tier:           str  = "observed",
+    confidence:     float = 1.0,
+    quality_gate:   bool = False,
+    quality_rubric: str  = "",
 ) -> dict:
     """Add a knowledge atom to Willow's Postgres KB.
     Gates on REDUNDANT/CONTRADICTION — returns {blocked:true} if a duplicate or conflict
     is detected. Pass force=true to override the gate and write anyway.
     keywords/tags are stored in content JSONB for retrieval.
-    tier: frontier|contested|canonical|superseded (legacy: hypothesis|observed|validated — auto-mapped)."""
-    logger.info("[w2] kb_ingest app_id=%s title=%r force=%s", app_id, title, force)
+    tier: frontier|contested|canonical|superseded (legacy: hypothesis|observed|validated — auto-mapped).
+    quality_gate=true: runs summary through the Groq rubric evaluator before ingestion.
+      Rewrites content to meet the rubric if it fails (up to 2 iterations).
+      quality_rubric: custom rubric; omit to use the default KB quality rubric."""
+    logger.info("[w2] kb_ingest app_id=%s title=%r force=%s quality_gate=%s",
+                app_id, title, force, quality_gate)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
@@ -947,6 +953,34 @@ async def kb_ingest(
     clean_summary   = _normalize_local_paths(summary)
     clean_source_id = _normalize_local_paths(source_id)
     effective_domain = domain or _MCP_AGENT
+
+    # ── Quality gate: evaluate + refine before touching the KB ────────────────
+    quality_result: dict = {}
+    if quality_gate:
+        try:
+            import core.outcomes as _outcomes
+            qr = await loop.run_in_executor(
+                _executor,
+                lambda: _outcomes.refine_content(clean_summary, quality_rubric),
+            )
+            quality_result = {
+                "satisfied":   qr["satisfied"],
+                "iterations":  qr["iterations"],
+                "explanation": qr["explanation"],
+                "refined":     qr["refined"],
+            }
+            if not qr["satisfied"]:
+                return {
+                    "blocked":        True,
+                    "reason":         "quality_gate",
+                    "quality":        quality_result,
+                    "hint":           "Content failed the quality rubric after rewriting. "
+                                      "Revise manually or pass quality_gate=false to bypass.",
+                }
+            clean_summary = qr["content"]  # use refined version if rewritten
+        except Exception as qe:
+            logger.warning("[w2] kb_ingest quality_gate failed: %s", qe)
+            quality_result = {"error": str(qe)}
 
     def _ingest():
         retired: list[str] = []
@@ -1000,9 +1034,14 @@ async def kb_ingest(
             out["forced"] = True
         if retired:
             out["retired"] = retired
+        if quality_result:
+            out["quality"] = quality_result
         return out
 
-    return await loop.run_in_executor(_executor, _ingest)
+    result = await loop.run_in_executor(_executor, _ingest)
+    if quality_result and "quality" not in result:
+        result["quality"] = quality_result
+    return result
 
 
 @mcp.tool(annotations={"readOnlyHint": True})

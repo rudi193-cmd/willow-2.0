@@ -195,6 +195,62 @@ def poll_outcome(session_id: str,
     return {"result": "timeout", "explanation": f"exceeded {timeout_s}s poll window"}
 
 
+_KB_DEFAULT_RUBRIC = """\
+- Must be factual and specific — no vague language ("things", "various", "could be")
+- Must be self-contained — a reader with no prior context should understand the main point
+- Must focus on a single clear topic; no stream-of-consciousness or tangents
+- Must not contain placeholder text, "TODO", incomplete thoughts, or raw code dumps
+- Must be under 400 words
+- Must use precise terminology relevant to the subject matter""".strip()
+
+
+def refine_content(content: str, rubric: str = "", max_iterations: int = 2) -> dict:
+    """Grade content against a rubric and rewrite if it fails.
+
+    Returns:
+        {content, original_content, satisfied, iterations, explanation, refined}
+        refined=True means Groq rewrote the content.
+    """
+    effective_rubric = rubric or _KB_DEFAULT_RUBRIC
+    original         = content
+    last_grade: dict = {}
+
+    for iteration in range(1, max_iterations + 1):
+        last_grade = _grade(content, effective_rubric)
+
+        if last_grade.get("satisfied"):
+            return {
+                "content":          content,
+                "original_content": original,
+                "satisfied":        True,
+                "iterations":       iteration,
+                "explanation":      last_grade.get("feedback", ""),
+                "refined":          content != original,
+            }
+
+        # Ask Groq to rewrite to meet the rubric
+        rewrite_prompt = (
+            f"The following content does not meet the required rubric.\n\n"
+            f"RUBRIC:\n{effective_rubric}\n\n"
+            f"ISSUE:\n{last_grade.get('feedback', '')}\n\n"
+            f"ORIGINAL CONTENT:\n{content}\n\n"
+            f"Rewrite the content so it satisfies all rubric criteria. "
+            f"Return only the rewritten content — no preamble, no explanation."
+        )
+        content = _groq_chat([{"role": "user", "content": rewrite_prompt}])
+
+    # One last grade on final rewrite
+    last_grade = _grade(content, effective_rubric)
+    return {
+        "content":          content,
+        "original_content": original,
+        "satisfied":        last_grade.get("satisfied", False),
+        "iterations":       max_iterations,
+        "explanation":      last_grade.get("feedback", ""),
+        "refined":          content != original,
+    }
+
+
 def run_outcome(agent_id: str, environment_id: str, prompt: str, rubric: str,
                 max_iterations: int = 3, title: str = "",
                 timeout_s: int = _TIMEOUT_S) -> dict:
