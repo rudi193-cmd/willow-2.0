@@ -176,7 +176,7 @@ def main() -> int:
         (
             "ratifications",
             "ratifications_required",
-            "SELECT 100.0 * count(*) FILTER (WHERE agent IS NOT NULL AND jsonl_id IS NOT NULL AND ratified_at IS NOT NULL) "
+            "SELECT 100.0 * count(*) FILTER (WHERE agent IS NOT NULL AND jsonl_id IS NOT NULL AND created_at IS NOT NULL) "
             "/ NULLIF(count(*), 0), '(' || count(*)::text || ' rows)' FROM public.ratifications",
         ),
     ]

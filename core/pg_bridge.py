@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS jeles_sessions (
     cwd         TEXT,
     turn_count  INTEGER DEFAULT 0,
     file_size   INTEGER DEFAULT 0,
-    registered_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS jeles_atoms (
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS jeles_atoms (
     content    TEXT NOT NULL,
     domain     TEXT DEFAULT 'meta',
     depth      INTEGER DEFAULT 1,
-    certainty  FLOAT DEFAULT 0.98,
+    confidence FLOAT DEFAULT 0.98,
     title      TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS binder_files (
     agent      TEXT NOT NULL,
     jsonl_id   TEXT NOT NULL,
     dest_path  TEXT NOT NULL,
-    filed_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS binder_edges (
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS binder_edges (
     target_atom TEXT NOT NULL,
     edge_type   TEXT NOT NULL,
     status      TEXT DEFAULT 'proposed',
-    proposed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT binder_edges_unique UNIQUE (source_atom, target_atom, edge_type)
 );
 
@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS ratifications (
     jsonl_id    TEXT NOT NULL,
     approved    BOOLEAN NOT NULL,
     cache_path  TEXT,
-    ratified_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS dispatch_tasks (
@@ -1188,7 +1188,7 @@ class PgBridge:
             with self.conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO jeles_atoms
-                        (id, jsonl_id, agent, content, domain, depth, certainty, title, embedding)
+                        (id, jsonl_id, agent, content, domain, depth, confidence, title, embedding)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector)
                 """, (aid, jsonl_id, agent, content, domain, depth, certainty, title, vec_str))
             self.conn.commit()

@@ -167,3 +167,4 @@
 |------|
 | `sap/adapters` |
 | `sap/mcp_registry.json` |
+| `schema_dump.txt` |

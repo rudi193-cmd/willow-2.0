@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS jeles_sessions (
     cwd           TEXT,
     turn_count    INTEGER DEFAULT 0,
     file_size     INTEGER DEFAULT 0,
-    registered_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS jeles_atoms (
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS jeles_atoms (
     content    TEXT NOT NULL,
     domain     TEXT DEFAULT 'meta',
     depth      INTEGER DEFAULT 1,
-    certainty  REAL DEFAULT 0.98,
+    confidence REAL DEFAULT 0.98,
     title      TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS binder_files (
     agent      TEXT NOT NULL,
     jsonl_id   TEXT NOT NULL,
     dest_path  TEXT NOT NULL,
-    filed_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS binder_edges (
@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS binder_edges (
     target_atom TEXT NOT NULL,
     edge_type   TEXT NOT NULL,
     status      TEXT DEFAULT 'proposed',
-    proposed_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS ratifications (
@@ -162,7 +162,7 @@ CREATE TABLE IF NOT EXISTS ratifications (
     jsonl_id    TEXT NOT NULL,
     approved    INTEGER NOT NULL,
     cache_path  TEXT,
-    ratified_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS compact_contexts (
@@ -604,7 +604,7 @@ class SqliteBridge:
             aid = self.gen_id(8)
             self._exec(
                 "INSERT INTO jeles_atoms "
-                "(id, jsonl_id, agent, content, domain, depth, certainty, title) "
+                "(id, jsonl_id, agent, content, domain, depth, confidence, title) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (aid, jsonl_id, agent, content, domain, depth, certainty, title),
             )

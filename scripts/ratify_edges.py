@@ -25,7 +25,7 @@ def load_proposed(pg: PgBridge) -> list[dict]:
             SELECT id, source_atom, target_atom, edge_type
             FROM binder_edges
             WHERE status = 'proposed'
-            ORDER BY proposed_at
+            ORDER BY created_at
         """)
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, row)) for row in cur.fetchall()]
