@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS knowledge (
     valid_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     invalid_at  TIMESTAMPTZ,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ,
     title       TEXT,
     summary     TEXT,
     content     JSONB,
@@ -322,6 +323,7 @@ _MIGRATIONS = [
     "ALTER TABLE knowledge ADD COLUMN IF NOT EXISTS fork_id TEXT",
     "ALTER TABLE knowledge ADD COLUMN IF NOT EXISTS tier TEXT",
     "ALTER TABLE knowledge ADD COLUMN IF NOT EXISTS confidence FLOAT",
+    "ALTER TABLE knowledge ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ",
 ]
 
 _INDEXES = """
@@ -1129,6 +1131,90 @@ class PgBridge:
         except Exception:
             return None
 
+    def cmb_get(self, atom_id: str) -> Optional[dict]:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM cmb_atoms WHERE id=%s", (atom_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def cmb_list(self, agent: Optional[str] = None, limit: int = 20) -> list:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            if agent:
+                cur.execute("SELECT * FROM cmb_atoms WHERE agent=%s ORDER BY created_at DESC LIMIT %s",
+                            (agent, limit))
+            else:
+                cur.execute("SELECT * FROM cmb_atoms ORDER BY created_at DESC LIMIT %s", (limit,))
+            return [dict(r) for r in cur.fetchall()]
+
+    def cmb_search(self, query: str, limit: int = 20) -> list:
+        self._ensure_conn()
+        pattern = f"%{query}%"
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM cmb_atoms WHERE title ILIKE %s OR content::text ILIKE %s"
+                " ORDER BY created_at DESC LIMIT %s",
+                (pattern, pattern, limit),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def journal_read(self, agent: Optional[str] = None,
+                     session_id: Optional[str] = None, limit: int = 20) -> list:
+        self._ensure_conn()
+        filters, params = [], []
+        if agent:
+            filters.append("agent=%s"); params.append(agent)
+        if session_id:
+            filters.append("session_id=%s"); params.append(session_id)
+        where = ("WHERE " + " AND ".join(filters)) if filters else ""
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(f"SELECT * FROM journal {where} ORDER BY created_at DESC LIMIT %s",
+                        params + [limit])
+            return [dict(r) for r in cur.fetchall()]
+
+    def compact_context_list(self, agent: Optional[str] = None, limit: int = 20) -> list:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            if agent:
+                cur.execute(
+                    "SELECT * FROM compact_contexts WHERE agent=%s AND expires_at > now()"
+                    " ORDER BY created_at DESC LIMIT %s", (agent, limit))
+            else:
+                cur.execute(
+                    "SELECT * FROM compact_contexts WHERE expires_at > now()"
+                    " ORDER BY created_at DESC LIMIT %s", (limit,))
+            return [dict(r) for r in cur.fetchall()]
+
+    def compact_context_get(self, ctx_id: str) -> Optional[dict]:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM compact_contexts WHERE id=%s", (ctx_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def compact_context_expire(self, ctx_id: str) -> dict:
+        self._ensure_conn()
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "UPDATE compact_contexts SET expires_at=now() WHERE id=%s AND expires_at > now()",
+                (ctx_id,))
+        self.conn.commit()
+        return {"expired": cur.rowcount > 0, "id": ctx_id}
+
+    def routing_decisions_read(self, session_id: Optional[str] = None,
+                                limit: int = 20) -> list:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            if session_id:
+                cur.execute(
+                    "SELECT * FROM routing_decisions WHERE session_id=%s"
+                    " ORDER BY created_at DESC LIMIT %s", (session_id, limit))
+            else:
+                cur.execute(
+                    "SELECT * FROM routing_decisions ORDER BY created_at DESC LIMIT %s", (limit,))
+            return [dict(r) for r in cur.fetchall()]
+
     # ── Tasks ────────────────────────────────────────────────────────────────
 
     def submit_task(self, task: str, submitted_by: str = "ganesha",
@@ -1534,3 +1620,151 @@ class PgBridge:
                 return {"valid": False, "broken_at": record_id, "count": len(rows)}
             prev = stored_hash
         return {"valid": True, "broken_at": None, "count": len(rows)}
+
+    # ── Postgres Edges ───────────────────────────────────────────────────────────
+
+    def edge_add(self, from_id: str, to_id: str, relation: str,
+                 agent: Optional[str] = None, context: Optional[str] = None) -> dict:
+        self._ensure_conn()
+        try:
+            eid = self.gen_id(8)
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO edges (id, from_id, to_id, relation, agent, context)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (from_id, to_id, relation) DO NOTHING
+                """, (eid, from_id, to_id, relation, agent, context))
+            self.conn.commit()
+            return {"id": eid, "status": "added", "from_id": from_id, "to_id": to_id}
+        except Exception as e:
+            return {"error": str(e)}
+
+    def edge_list(self, from_id: Optional[str] = None,
+                  to_id: Optional[str] = None, limit: int = 50) -> list:
+        self._ensure_conn()
+        filters: list[str] = []
+        params: list = []
+        if from_id:
+            filters.append("from_id = %s")
+            params.append(from_id)
+        if to_id:
+            filters.append("to_id = %s")
+            params.append(to_id)
+        where = f"WHERE {' AND '.join(filters)}" if filters else ""
+        params.append(limit)
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                f"SELECT * FROM edges {where} ORDER BY created_at DESC LIMIT %s", params
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    # ── Agents registry ──────────────────────────────────────────────────────────
+
+    def agents_list_from_db(self) -> list:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM agents ORDER BY name ASC")
+            return [dict(r) for r in cur.fetchall()]
+
+    # ── Jeles atom read ──────────────────────────────────────────────────────────
+
+    def jeles_atom_get(self, atom_id: str) -> Optional[dict]:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM jeles_atoms WHERE id = %s", (atom_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    # ── Binder reads ─────────────────────────────────────────────────────────────
+
+    def binder_files_list(self, agent: Optional[str] = None, limit: int = 50) -> list:
+        self._ensure_conn()
+        filters: list[str] = []
+        params: list = []
+        if agent:
+            filters.append("agent = %s")
+            params.append(agent)
+        where = f"WHERE {' AND '.join(filters)}" if filters else ""
+        params.append(limit)
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                f"SELECT * FROM binder_files {where} ORDER BY created_at DESC LIMIT %s", params
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def binder_edges_list(self, agent: Optional[str] = None,
+                          status: Optional[str] = None, limit: int = 50) -> list:
+        self._ensure_conn()
+        filters: list[str] = []
+        params: list = []
+        if agent:
+            filters.append("agent = %s")
+            params.append(agent)
+        if status:
+            filters.append("status = %s")
+            params.append(status)
+        where = f"WHERE {' AND '.join(filters)}" if filters else ""
+        params.append(limit)
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                f"SELECT * FROM binder_edges {where} ORDER BY created_at DESC LIMIT %s", params
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def binder_edge_update_status(self, edge_id: str, status: str) -> dict:
+        self._ensure_conn()
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE binder_edges SET status=%s, updated_at=now() WHERE id=%s",
+                    (status, edge_id),
+                )
+            self.conn.commit()
+            if cur.rowcount == 0:
+                return {"updated": False, "reason": "not found"}
+            return {"updated": True, "id": edge_id, "status": status}
+        except Exception as e:
+            return {"error": str(e)}
+
+    # ── Ratifications ────────────────────────────────────────────────────────────
+
+    def ratifications_list(self, agent: Optional[str] = None, limit: int = 50) -> list:
+        self._ensure_conn()
+        filters: list[str] = []
+        params: list = []
+        if agent:
+            filters.append("agent = %s")
+            params.append(agent)
+        where = f"WHERE {' AND '.join(filters)}" if filters else ""
+        params.append(limit)
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                f"SELECT * FROM ratifications {where} ORDER BY created_at DESC LIMIT %s", params
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    # ── Hook registry ────────────────────────────────────────────────────────────
+
+    def hook_registry_list(self, active_only: bool = True) -> list:
+        self._ensure_conn()
+        where = "WHERE active = TRUE" if active_only else ""
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                f"SELECT * FROM hook_registry {where} ORDER BY priority ASC, name ASC"
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def hook_executions_read(self, hook_name: Optional[str] = None, limit: int = 50) -> list:
+        self._ensure_conn()
+        filters: list[str] = []
+        params: list = []
+        if hook_name:
+            filters.append("hook_name = %s")
+            params.append(hook_name)
+        where = f"WHERE {' AND '.join(filters)}" if filters else ""
+        params.append(limit)
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                f"SELECT * FROM hook_executions {where} ORDER BY started_at DESC LIMIT %s", params
+            )
+            return [dict(r) for r in cur.fetchall()]

@@ -31,7 +31,8 @@ from typing import Any, Optional
 
 _INTAKE_ROOT = Path(os.environ.get("WILLOW_INTAKE_ROOT", Path.home() / ".willow" / "intake"))
 
-TIERS = {"observed", "fetched", "verified", "ratified"}
+TIERS = {"observed", "fetched", "verified", "ratified",
+         "frontier", "contested", "canonical", "superseded"}
 
 
 def _agent_dir(agent: str) -> Path:
@@ -58,8 +59,13 @@ def write(
     extra: Optional[dict[str, Any]] = None,
 ) -> str:
     """Write one annotated intake record. Returns record ID."""
+    try:
+        from core.pg_bridge import normalize_tier
+        tier = normalize_tier(tier)
+    except ImportError:
+        pass
     if tier not in TIERS:
-        tier = "observed"
+        tier = "frontier"
 
     created_at = datetime.now(timezone.utc).isoformat()
     record_id = _record_id(content, created_at)

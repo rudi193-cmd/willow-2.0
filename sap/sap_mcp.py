@@ -467,22 +467,20 @@ async def fleet_system_status(app_id: str) -> dict:
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
 async def fleet_agents(app_id: str) -> dict:
-    """List registered Willow agents and their trust levels."""
+    """List registered Willow agents and their trust levels. Queries the agents DB table first; falls back to the built-in static list."""
     logger.info("[w2] fleet_agents app_id=%s", app_id)
-    agents = [
-        # Claude Code CLI — ENGINEER tier
+
+    # Static fallback list — used when DB has no agent rows
+    _static_agents = [
         {"name": "heimdallr",   "trust": "ENGINEER", "role": "Watchman, gatekeeper. Claude Code CLI."},
         {"name": "hanuman",     "trust": "ENGINEER", "role": "Bridge-builder. Corpus indexer. Migration engine."},
         {"name": "opus",        "trust": "ENGINEER", "role": "Post-obstacle builder. Claude Code CLI."},
-        # OPERATOR tier
         {"name": "willow",      "trust": "OPERATOR", "role": "Primary interface"},
         {"name": "ada",         "trust": "OPERATOR", "role": "Systems admin, continuity"},
         {"name": "steve",       "trust": "OPERATOR", "role": "Prime node, coordinator"},
-        # ENGINEER tier
         {"name": "kart",        "trust": "ENGINEER", "role": "Infrastructure, multi-step tasks"},
         {"name": "shiva",       "trust": "ENGINEER", "role": "Bridge Ring, SAFE face"},
         {"name": "ganesha",     "trust": "ENGINEER", "role": "Diagnostic, obstacle removal"},
-        # WORKER tier — professors
         {"name": "gerald",      "trust": "WORKER",   "role": "Acting Dean, philosophical"},
         {"name": "riggs",       "trust": "WORKER",   "role": "Applied reality engineering"},
         {"name": "pigeon",      "trust": "WORKER",   "role": "Carrier, connector"},
@@ -497,6 +495,24 @@ async def fleet_agents(app_id: str) -> dict:
         {"name": "jane",        "trust": "WORKER",   "role": "Research, documentation"},
         {"name": "ofshield",    "trust": "WORKER",   "role": "Keeper of the Gate"},
     ]
+
+    agents = []
+    source = "static"
+
+    # Query DB first
+    if pg:
+        try:
+            loop = asyncio.get_running_loop()
+            db_agents = await loop.run_in_executor(_executor, pg.agents_list_from_db)
+            if db_agents:
+                agents = db_agents
+                source = "db"
+        except Exception:
+            pass
+
+    if not agents:
+        agents = list(_static_agents)
+
     # Merge locally registered agents from ~/.willow/agents.json
     try:
         import json as _json
@@ -508,7 +524,7 @@ async def fleet_agents(app_id: str) -> dict:
                     agents.append(entry)
     except Exception:
         pass
-    return {"agents": agents, "count": len(agents)}
+    return {"agents": agents, "count": len(agents), "source": source}
 
 
 @mcp.tool(annotations={"destructiveHint": True})
@@ -700,6 +716,45 @@ async def soil_add_edge(
         return out
 
     return await loop.run_in_executor(_executor, _add)
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def pg_edge_add(
+    app_id:   str,
+    from_id:  str,
+    to_id:    str,
+    relation: str,
+    context:  str = "",
+) -> dict:
+    """Add a directed edge to the Postgres edges table (durable KB graph).
+    Distinct from SOIL graph — use soil_add_edge for in-session working graph."""
+    logger.info("[w2] pg_edge_add app_id=%s %s→%s rel=%s", app_id, from_id, to_id, relation)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor, pg.edge_add, from_id, to_id, relation, app_id, context or None,
+    )
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def pg_edge_list(
+    app_id:  str,
+    from_id: str = "",
+    to_id:   str = "",
+    limit:   int = 50,
+) -> dict:
+    """List edges from the Postgres edges table. Filter by from_id or to_id (or both)."""
+    logger.info("[w2] pg_edge_list app_id=%s from=%s to=%s", app_id, from_id, to_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    edges = await loop.run_in_executor(
+        _executor, pg.edge_list, from_id or None, to_id or None, limit,
+    )
+    return {"edges": edges, "count": len(edges)}
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -1085,9 +1140,10 @@ async def agent_dispatch_result(
         atom_id = None
         try:
             b = PgBridge()
-            atom_id = b.ingest_knowledge(
+            atom_id = b.ingest_atom(
                 title=f"Dispatch result: {dispatch_id}",
                 summary=result, source_type="dispatch_result", domain=app_id,
+                tier="frontier",
             )
             b.conn.close()
         except Exception:
@@ -1117,39 +1173,19 @@ async def agent_task_submit(
     agent:        str = "kart",
     submitted_by: str = "ganesha",
 ) -> dict:
-    """Queue a shell command for execution. Pass the full command string.
-    Executes inline and returns stdout/stderr (120s timeout)."""
+    """Queue a task in the Postgres tasks table. Returns task_id immediately.
+    For inline shell execution use agent_dispatch instead."""
     logger.info("[w2] agent_task_submit app_id=%s agent=%s", app_id, agent)
+    if not pg:
+        return _no_pg()
     loop = asyncio.get_running_loop()
 
     def _submit():
-        import subprocess
-        import uuid
-        import time
-        import shlex
-        task_id = uuid.uuid4().hex[:8].upper()
-        started = time.time()
+        task_id = pg.submit_task(task, submitted_by=submitted_by or app_id, agent=agent)
+        if not task_id:
+            return {"error": "failed to submit task"}
         _rl_log_event("task_submit", ref=task_id)
-        try:
-            proc    = subprocess.run(
-                shlex.split(task), shell=False, capture_output=True, text=True, timeout=120,
-            )
-            elapsed = round(time.time() - started, 2)
-            status  = "completed" if proc.returncode == 0 else "failed"
-            _rl_log_event(f"task_{status}", ref=task_id)
-            return {
-                "task_id":    task_id, "status":     status,
-                "returncode": proc.returncode,
-                "stdout":     proc.stdout.strip()[-2000:] if proc.stdout else "",
-                "stderr":     proc.stderr.strip()[-500:]  if proc.stderr else "",
-                "elapsed_s":  elapsed,
-            }
-        except subprocess.TimeoutExpired:
-            _rl_log_event("task_timeout", ref=task_id)
-            return {"task_id": task_id, "status": "timeout", "error": "exceeded 120s"}
-        except Exception as te:
-            _rl_log_event("task_error", ref=task_id)
-            return {"task_id": task_id, "status": "error", "error": str(te)}
+        return {"task_id": task_id, "status": "pending", "agent": agent}
 
     return await loop.run_in_executor(_executor, _submit)
 
@@ -1157,8 +1193,15 @@ async def agent_task_submit(
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
 async def agent_task_status(app_id: str, task_id: str) -> dict:
-    """Check status of a submitted task. Tasks execute inline — this is a stub."""
-    return {"error": "not_applicable", "reason": "tasks execute inline — no status to poll"}
+    """Check status of a task in the Postgres tasks table."""
+    logger.info("[w2] agent_task_status app_id=%s task_id=%s", app_id, task_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    row = await loop.run_in_executor(_executor, pg.task_status, task_id)
+    if row is None:
+        return {"error": "not found", "task_id": task_id}
+    return row
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -1610,6 +1653,20 @@ async def mem_jeles_invalidate(
     )
 
 
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def mem_jeles_get(app_id: str, atom_id: str) -> dict:
+    """Jeles: Fetch a single jeles_atom by ID."""
+    logger.info("[w2] mem_jeles_get app_id=%s atom_id=%s", app_id, atom_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    atom = await loop.run_in_executor(_executor, pg.jeles_atom_get, atom_id)
+    if atom is None:
+        return {"error": "not found", "id": atom_id}
+    return atom
+
+
 @mcp.tool()
 @sap_gate()
 async def mem_binder_file(
@@ -1662,6 +1719,70 @@ async def mem_ratify(
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(
         _executor, pg.ratify, agent, jsonl_id, approve, cache_path or None,
+    )
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def mem_ratify_list(app_id: str, agent: str = "", limit: int = 50) -> dict:
+    """List ratification records, optionally filtered by agent."""
+    logger.info("[w2] mem_ratify_list app_id=%s agent=%s", app_id, agent)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    rows = await loop.run_in_executor(
+        _executor, pg.ratifications_list, agent or None, limit,
+    )
+    return {"ratifications": rows, "count": len(rows)}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def mem_binder_list_files(app_id: str, agent: str = "", limit: int = 50) -> dict:
+    """Binder: List filed JSONL records, optionally filtered by agent."""
+    logger.info("[w2] mem_binder_list_files app_id=%s agent=%s", app_id, agent)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    rows = await loop.run_in_executor(
+        _executor, pg.binder_files_list, agent or None, limit,
+    )
+    return {"files": rows, "count": len(rows)}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def mem_binder_list_edges(
+    app_id: str,
+    agent:  str = "",
+    status: str = "",
+    limit:  int = 50,
+) -> dict:
+    """Binder: List proposed edges, optionally filtered by agent or status (proposed/approved/rejected)."""
+    logger.info("[w2] mem_binder_list_edges app_id=%s agent=%s status=%s", app_id, agent, status)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    rows = await loop.run_in_executor(
+        _executor, pg.binder_edges_list, agent or None, status or None, limit,
+    )
+    return {"edges": rows, "count": len(rows)}
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def mem_binder_edge_update(
+    app_id:  str,
+    edge_id: str,
+    status:  str,
+) -> dict:
+    """Binder: Update the status of a proposed edge (proposed → approved | rejected)."""
+    logger.info("[w2] mem_binder_edge_update app_id=%s edge=%s status=%s", app_id, edge_id, status)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor, pg.binder_edge_update_status, edge_id, status,
     )
 
 
@@ -1870,6 +1991,44 @@ async def ledger_read(app_id: str, project: str = "", limit: int = 20) -> dict:
     return {"entries": entries, "count": len(entries)}
 
 
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def ledger_verify(app_id: str) -> dict:
+    """Verify the FRANK ledger hash chain. Returns valid=True and entry count, or broken_at=<id> on failure."""
+    logger.info("[w2] ledger_verify app_id=%s", app_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_executor, pg.ledger_verify)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def hook_list(app_id: str, active_only: bool = True) -> dict:
+    """List registered hooks from the hook_registry table.
+    active_only=True (default) filters to enabled hooks."""
+    logger.info("[w2] hook_list app_id=%s active_only=%s", app_id, active_only)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    rows = await loop.run_in_executor(_executor, pg.hook_registry_list, active_only)
+    return {"hooks": rows, "count": len(rows)}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def hook_log_read(app_id: str, hook_name: str = "", limit: int = 50) -> dict:
+    """Read hook execution log, optionally filtered by hook_name."""
+    logger.info("[w2] hook_log_read app_id=%s hook=%s", app_id, hook_name)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    rows = await loop.run_in_executor(
+        _executor, pg.hook_executions_read, hook_name or None, limit,
+    )
+    return {"executions": rows, "count": len(rows)}
+
+
 # ── Tools — handoff_ domain ───────────────────────────────────────────────────
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -1988,7 +2147,7 @@ async def tension_scan(
     write_kb: bool = False,
     limit:    int  = 30,
 ) -> dict:
-    """Scan KB hypothesis/observed atoms for semantic tensions or redundancies.
+    """Scan KB frontier/contested atoms for semantic tensions or redundancies.
     Uses nomic-embed for neighbour search and mistral:7b for pair classification.
     write_kb=True saves findings as a KB atom (category='tension')."""
     logger.info("[w2] tension_scan app_id=%s write_kb=%s", app_id, write_kb)
@@ -2009,7 +2168,7 @@ async def tension_scan(
                     SELECT id, title, summary, tier, confidence
                     FROM knowledge
                     WHERE invalid_at IS NULL
-                      AND tier IN ('hypothesis', 'observed')
+                      AND (tier IN ('frontier', 'contested', 'hypothesis', 'observed') OR tier IS NULL)
                       AND summary IS NOT NULL AND summary != ''
                     ORDER BY valid_at DESC
                     LIMIT 60
@@ -2400,6 +2559,104 @@ async def kb_journal(app_id: str, entry: str, domain: str = "meta") -> dict:
         return {"status": "logged_local", "id": rid}
 
     return await loop.run_in_executor(_executor, _journal)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cmb_get(app_id: str, atom_id: str) -> dict:
+    """Fetch a cmb_atom by ID."""
+    logger.info("[w2] cmb_get app_id=%s atom_id=%s", app_id, atom_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(_executor, pg.cmb_get, atom_id)
+    return result or {"error": "not found"}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cmb_list(app_id: str, agent: str = "", limit: int = 20) -> dict:
+    """List cmb_atoms (journal entries). Filter by agent if provided."""
+    logger.info("[w2] cmb_list app_id=%s agent=%s", app_id, agent)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    results = await loop.run_in_executor(_executor, pg.cmb_list, agent or None, limit)
+    return {"results": results, "total": len(results)}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cmb_search(app_id: str, query: str, limit: int = 20) -> dict:
+    """Search cmb_atoms by content or title."""
+    logger.info("[w2] cmb_search app_id=%s q=%r", app_id, query)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    results = await loop.run_in_executor(_executor, pg.cmb_search, query, limit)
+    return {"results": results, "total": len(results)}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def journal_read(app_id: str, agent: str = "", session_id: str = "",
+                       limit: int = 20) -> dict:
+    """Read journal entries. Filter by agent and/or session_id."""
+    logger.info("[w2] journal_read app_id=%s agent=%s", app_id, agent)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    results = await loop.run_in_executor(
+        _executor, pg.journal_read, agent or None, session_id or None, limit)
+    return {"results": results, "total": len(results)}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def context_list(app_id: str, agent: str = "", limit: int = 20) -> dict:
+    """List non-expired compact_contexts. Filter by agent if provided."""
+    logger.info("[w2] context_list app_id=%s agent=%s", app_id, agent)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    results = await loop.run_in_executor(_executor, pg.compact_context_list, agent or None, limit)
+    return {"results": results, "total": len(results)}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def context_get(app_id: str, ctx_id: str) -> dict:
+    """Fetch a compact_context by ID."""
+    logger.info("[w2] context_get app_id=%s ctx_id=%s", app_id, ctx_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(_executor, pg.compact_context_get, ctx_id)
+    return result or {"error": "not found"}
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def context_expire(app_id: str, ctx_id: str) -> dict:
+    """Expire a compact_context immediately (sets expires_at=now())."""
+    logger.info("[w2] context_expire app_id=%s ctx_id=%s", app_id, ctx_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_executor, pg.compact_context_expire, ctx_id)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def routing_log_read(app_id: str, session_id: str = "", limit: int = 20) -> dict:
+    """Read routing_decisions log. Filter by session_id if provided."""
+    logger.info("[w2] routing_log_read app_id=%s session=%s", app_id, session_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    results = await loop.run_in_executor(
+        _executor, pg.routing_decisions_read, session_id or None, limit)
+    return {"results": results, "total": len(results)}
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
