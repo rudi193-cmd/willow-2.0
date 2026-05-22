@@ -3,6 +3,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Source local secrets (not tracked). Create ~/.willow/secrets.sh with:
+#   export ANTHROPIC_API_KEY="sk-ant-..."
+if [[ -f "${HOME}/.willow/secrets.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "${HOME}/.willow/secrets.sh"
+fi
 GROVE_ROOT="${WILLOW_GROVE_ROOT:-${HOME}/github/safe-app-willow-grove}"
 
 export PYTHONPATH="${REPO_ROOT}:${GROVE_ROOT}"
