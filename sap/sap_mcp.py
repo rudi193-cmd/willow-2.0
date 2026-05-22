@@ -1593,6 +1593,52 @@ async def mem_ratify(
     )
 
 
+@mcp.tool()
+@sap_gate(write=True)
+async def intake_write(
+    app_id:     str,
+    content:    str,
+    source:     str,
+    tier:       str   = "observed",
+    confidence: float = 0.80,
+    keywords:   list  = None,
+    tags:       list  = None,
+    title:      str   = "",
+    namespace:  str   = "",
+    domain:     str   = "",
+    category:   str   = "",
+) -> dict:
+    """Write one annotated record to the unified intake layer.
+    promote_intake.py routes it to the right KB tier (jeles_atoms / knowledge / opus / binder_queue).
+    tier: observed | fetched | verified | ratified
+    confidence: 0.0-1.0 — source confidence in this record."""
+    logger.info("[w2] intake_write app_id=%s source=%s tier=%s conf=%.2f", app_id, source, tier, confidence)
+    loop = asyncio.get_running_loop()
+
+    def _write():
+        from core.intake import write as intake_write_fn
+        extra: dict = {}
+        if domain:
+            extra["domain"] = domain
+        if category:
+            extra["category"] = category
+        rid = intake_write_fn(
+            content=content,
+            source=source,
+            agent=app_id,
+            tier=tier,
+            confidence=confidence,
+            keywords=list(keywords) if keywords else [],
+            tags=list(tags) if tags else [],
+            title=title,
+            namespace=namespace or app_id,
+            extra=extra or None,
+        )
+        return {"id": rid, "status": "queued", "tier": tier, "confidence": confidence}
+
+    return await loop.run_in_executor(_executor, _write)
+
+
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
 async def mem_check(

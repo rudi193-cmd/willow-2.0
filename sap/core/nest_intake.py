@@ -168,6 +168,25 @@ def confirm_review(item_id: int, override_dest: str | None = None) -> dict:
     item["confirmed_at"] = datetime.now(timezone.utc).isoformat()
     _save_queue(queue)
 
+    # Human confirmation is the highest confidence tier — write to intake
+    try:
+        from core.intake import write as intake_write
+        import os
+        agent = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+        intake_write(
+            content=f"Nest confirmed: {item['filename']} → {final_dest}",
+            source="nest/confirm",
+            agent=agent,
+            tier="verified",
+            confidence=1.0,
+            keywords=[item["track"], item["filename"]],
+            tags=["nest", "confirmed", item["track"]],
+            title=f"Nest: {item['filename']}",
+            extra={"track": item["track"], "final_dest": str(final_dest)},
+        )
+    except Exception:
+        pass  # intake write is best-effort — never block file ops
+
     return {
         "status": "confirmed",
         "item_id": item_id,
