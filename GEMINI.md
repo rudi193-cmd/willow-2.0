@@ -4,7 +4,7 @@ b17: GEMW2 · ΔΣ=42
 
 Branding: [`docs/BRANDING.md`](docs/BRANDING.md)
 
-Fleet entry: [`willow.md`](willow.md)
+**Contract:** [`willow.md`](willow.md) — read it first. Boot: run `/boot` — steps in [`willow/fylgja/skills/boot.md`](willow/fylgja/skills/boot.md).
 
 ## Fylgja powers
 
