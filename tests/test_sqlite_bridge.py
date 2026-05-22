@@ -143,7 +143,7 @@ def test_jeles_register(db):
 def test_feedback_write_and_read(db):
     db.opus_feedback_write("test", "Never mock the database")
     feedback = db.opus_feedback(domain="test")
-    assert any(f["principle"] == "Never mock the database" for f in feedback)
+    assert any(f["content"] == "Never mock the database" for f in feedback)
 
 
 # ── Context manager ────────────────────────────────────────────────────────────

@@ -139,7 +139,9 @@ CREATE TABLE IF NOT EXISTS jeles_atoms (
     domain     TEXT DEFAULT 'meta',
     depth      INTEGER DEFAULT 1,
     confidence FLOAT DEFAULT 0.98,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    valid_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    invalid_at TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS binder_files (
