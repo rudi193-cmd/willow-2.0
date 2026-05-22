@@ -2991,6 +2991,26 @@ async def context_expire(app_id: str, ctx_id: str) -> dict:
     return await loop.run_in_executor(_executor, pg.compact_context_expire, ctx_id)
 
 
+@mcp.tool()
+@sap_gate(write=True)
+async def context_save(
+    app_id:    str,
+    content:   str,
+    category:  str = "handoff",
+    ttl_hours: int = 48,
+) -> dict:
+    """Save a compact context summary to the DB.
+    Call this when context depth is high — pass the structured summary as `content`.
+    The saved context survives session resets and is loaded by handoff_latest / context_list.
+    Returns: {id, agent, category} on success."""
+    logger.info("[w2] context_save app_id=%s category=%s ttl=%d", app_id, category, ttl_hours)
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(
+        _executor, pg.compact_context_write, app_id, content, category, ttl_hours
+    )
+    return result
+
+
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
 async def routing_log_read(app_id: str, session_id: str = "", limit: int = 20) -> dict:

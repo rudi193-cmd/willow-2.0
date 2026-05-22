@@ -789,6 +789,50 @@ class SqliteBridge:
             "SELECT * FROM ratifications ORDER BY created_at DESC LIMIT ?", (limit,)
         )
 
+    # ── Compact contexts ──────────────────────────────────────────────────────
+
+    def compact_context_write(self, agent: str, content: str,
+                               category: str = "handoff",
+                               ttl_hours: int = 48) -> dict:
+        ctx_id = str(uuid.uuid4())[:10]
+        expires = (datetime.utcnow() + timedelta(hours=ttl_hours)).isoformat()
+        with _lock:
+            self.conn.execute(
+                "INSERT INTO compact_contexts (id, content, category, agent, expires_at)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (ctx_id, content, category, agent, expires),
+            )
+            self.conn.commit()
+        return {"id": ctx_id, "agent": agent, "category": category}
+
+    def compact_context_list(self, agent: Optional[str] = None, limit: int = 20) -> list:
+        now = datetime.utcnow().isoformat()
+        if agent:
+            return self._query(
+                "SELECT * FROM compact_contexts WHERE agent=? AND expires_at > ?"
+                " ORDER BY created_at DESC LIMIT ?",
+                (agent, now, limit),
+            )
+        return self._query(
+            "SELECT * FROM compact_contexts WHERE expires_at > ?"
+            " ORDER BY created_at DESC LIMIT ?",
+            (now, limit),
+        )
+
+    def compact_context_get(self, ctx_id: str) -> Optional[dict]:
+        rows = self._query("SELECT * FROM compact_contexts WHERE id=?", (ctx_id,))
+        return rows[0] if rows else None
+
+    def compact_context_expire(self, ctx_id: str) -> dict:
+        now = datetime.utcnow().isoformat()
+        with _lock:
+            cur = self.conn.execute(
+                "UPDATE compact_contexts SET expires_at=? WHERE id=? AND expires_at > ?",
+                (now, ctx_id, now),
+            )
+            self.conn.commit()
+        return {"expired": cur.rowcount > 0, "id": ctx_id}
+
     # ── Agents registry ───────────────────────────────────────────────────────
 
     def agents_list_from_db(self) -> list:

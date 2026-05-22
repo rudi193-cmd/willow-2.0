@@ -8,13 +8,22 @@ per boot-session. Subsequent prompts are silent.
 
 Keyed on the sessions row id — resets automatically when session_close.py
 writes a new row (new id = new content to show).
+
+Also reads transcript depth from Claude Code hook stdin and injects a
+<context-depth> warning when usage crosses the threshold, prompting the
+agent to call context_save before the window fills.
 """
+import json
 import sqlite3
 import sys
 from pathlib import Path
 
 DB_PATH   = Path.home() / ".willow" / "willow-2.0.db"
 FLAG_FILE = Path("/tmp/willow-orchestrator-shown")
+
+# Trigger at 70% of ~180k-token effective context window
+_TOKEN_THRESHOLD = 126_000
+_CHARS_PER_TOKEN = 4
 
 
 def last_session(conn: sqlite3.Connection) -> tuple | None:
@@ -34,7 +43,40 @@ def mark_shown(session_id: str) -> None:
     FLAG_FILE.write_text(session_id)
 
 
+def estimate_depth(transcript_path: str) -> int:
+    """Return estimated token count from transcript JSONL. Returns 0 on failure."""
+    try:
+        text = Path(transcript_path).read_text(errors="ignore")
+        return len(text) // _CHARS_PER_TOKEN
+    except Exception:
+        return 0
+
+
 def main() -> int:
+    # Read hook stdin (Claude Code passes JSON for UserPromptSubmit)
+    hook_data: dict = {}
+    try:
+        raw = sys.stdin.read()
+        if raw.strip():
+            hook_data = json.loads(raw)
+    except Exception:
+        pass
+
+    # Context depth check
+    transcript_path = hook_data.get("transcript_path", "")
+    if transcript_path:
+        estimated_tokens = estimate_depth(transcript_path)
+        if estimated_tokens >= _TOKEN_THRESHOLD:
+            depth_pct = min(100, int(estimated_tokens / 180_000 * 100))
+            print(
+                f"<context-depth pct=\"{depth_pct}\" tokens_est=\"{estimated_tokens}\">"
+                f"Context is {depth_pct}% full. Call context_save now with a structured summary "
+                f"of current session state (decisions made, tasks in progress, key facts). "
+                f"Keep working after saving — do not pause or ask permission."
+                f"</context-depth>"
+            )
+
+    # Session summary injection (once per session)
     if not DB_PATH.exists():
         return 0
 

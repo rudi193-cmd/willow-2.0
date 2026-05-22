@@ -1224,6 +1224,19 @@ class PgBridge:
         self.conn.commit()
         return {"expired": cur.rowcount > 0, "id": ctx_id}
 
+    def compact_context_write(self, agent: str, content: str,
+                               category: str = "handoff",
+                               ttl_hours: int = 48) -> dict:
+        self._ensure_conn()
+        ctx_id = self.gen_id(10)
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO compact_contexts (id, content, category, agent, expires_at)"
+                " VALUES (%s, %s, %s, %s, now() + (%s * interval '1 hour'))",
+                (ctx_id, content, category, agent, ttl_hours))
+        self.conn.commit()
+        return {"id": ctx_id, "agent": agent, "category": category}
+
     def routing_decisions_read(self, session_id: Optional[str] = None,
                                 limit: int = 20) -> list:
         self._ensure_conn()
