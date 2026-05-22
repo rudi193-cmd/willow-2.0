@@ -1502,6 +1502,24 @@ async def mem_jeles_extract(
 
 @mcp.tool()
 @sap_gate()
+async def mem_jeles_web_search(
+    app_id:   str,
+    query:    str,
+    sources:  list = [],
+    limit:    int  = 3,
+) -> dict:
+    """Jeles: Search trusted, citable sources (LOC, arXiv, PubMed, Smithsonian, Europeana, NASA, Crossref, Open Library). Wikipedia excluded. Results carry full source attribution for academic citation. Pass sources=[] for all, or name specific ones."""
+    logger.info("[w2] mem_jeles_web_search app_id=%s query=%r sources=%s", app_id, query, sources or "all")
+    from core.jeles_sources import search as jeles_search
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor, jeles_search,
+        query, sources or None, limit,
+    )
+
+
+@mcp.tool()
+@sap_gate()
 async def mem_jeles_search(
     app_id:   str,
     query:    str,
