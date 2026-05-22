@@ -1505,7 +1505,10 @@ async def mem_jeles_extract(
     depth:     int  = 1,
     certainty: float = 0.98,
 ) -> dict:
-    """Jeles: Extract an atom from a registered JSONL. Certainty must exceed 0.95."""
+    """Jeles: Extract an atom from a registered JSONL. Certainty must exceed 0.95.
+    Runs the 5-condition boundary-theorem gate (ATTRACTOR, PROVENANCE, FIDELITY_GATE,
+    PATTERN_INSTANCE, TEMPORAL_PERSISTENCE) via local Ollama before any DB write.
+    Returns {blocked:true, failed_conditions:[...], domain_verdict:...} on gate failure."""
     logger.info("[w2] mem_jeles_extract app_id=%s agent=%s jsonl=%s", app_id, agent, jsonl_id)
     if not pg:
         return _no_pg()
@@ -1552,6 +1555,23 @@ async def mem_jeles_search(
         query, limit, days_ago or None,
     )
     return {"results": results, "total": len(results)}
+
+
+@mcp.tool()
+@sap_gate()
+async def mem_jeles_invalidate(
+    app_id:  str,
+    atom_id: str,
+    reason:  str = "",
+) -> dict:
+    """Jeles: Invalidate a jeles_atom by ID. Sets invalid_at=now() — atom is excluded from future searches."""
+    logger.info("[w2] mem_jeles_invalidate app_id=%s atom_id=%s", app_id, atom_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor, pg.jeles_invalidate_atom, atom_id, reason,
+    )
 
 
 @mcp.tool()

@@ -991,7 +991,7 @@ class PgBridge:
             return []
         self._ensure_conn()
         vec_str = str(vec)
-        filters = ["embedding IS NOT NULL"]
+        filters = ["embedding IS NOT NULL", "invalid_at IS NULL"]
         params: list = [vec_str, limit]
         if days_ago is not None:
             filters.append(f"created_at > now() - interval '{days_ago} days'")
@@ -1223,12 +1223,115 @@ class PgBridge:
         except Exception as e:
             return {"error": str(e)}
 
+    # ── Jeles boundary-theorem gate ──────────────────────────────────────────
+
+    _JELES_GATE_SYSTEM = (
+        "You are the Jeles boundary-theorem gate. "
+        "Evaluate whether a candidate knowledge atom satisfies all five conditions "
+        "for Jeles ingestibility. Return ONLY valid JSON — no prose, no markdown fences.\n\n"
+        "CONDITION NAMES and what counts as PASSING each one:\n\n"
+        "ATTRACTOR — A stable canonical form exists; the claim is the same across independent "
+        "sources. PASSES if: the claim is a named law, equation, model, or principle that "
+        "recurs across textbooks, papers, or institutions.\n\n"
+        "PROVENANCE — Traceable to a specific verifiable origin. PASSES if: the content names "
+        "an author AND a year, OR names a publication/institution. A rough date ('1941', '1494') "
+        "plus an author name is sufficient. Does NOT require a URL or DOI.\n\n"
+        "FIDELITY_GATE — An external mechanism filtered false instances. PASSES if any one of: "
+        "peer-reviewed publication, mathematical proof, legal/regulatory codification, repeated "
+        "experimental replication across independent labs, or adoption by a standards body.\n\n"
+        "PATTERN_INSTANCE — The pattern (the law/rule/equation) is separable from any specific "
+        "realization. PASSES if: the content describes a general rule, not a single event or "
+        "measurement. FAILS only if the atom IS the instance (e.g. one specific trajectory, "
+        "one stock price, one patient's data).\n\n"
+        "TEMPORAL_PERSISTENCE — The canonical form has been stable over time. PASSES if: the "
+        "content implies the claim is decades old and still current (e.g. '700 years unchanged', "
+        "'canonical since 1941', 'still the standard'). Does NOT require an explicit duration "
+        "statement if the domain context makes longevity obvious (classical physics, law, accounting).\n\n"
+        "EXAMPLES:\n"
+        "Input: 'Kolmogorov 1941 predicts E(k)~k^(-5/3), confirmed in wind tunnels and ocean "
+        "currents.' → "
+        '{"passed":["ATTRACTOR","PROVENANCE","FIDELITY_GATE","PATTERN_INSTANCE","TEMPORAL_PERSISTENCE"],'
+        '"failed":[],"domain_verdict":"POSITIVE","verdict":"K41 scaling law satisfies all five conditions."}\n\n'
+        "Input: 'Today AAPL closed at $213.42.' → "
+        '{"passed":[],"failed":["ATTRACTOR","PROVENANCE","FIDELITY_GATE","PATTERN_INSTANCE","TEMPORAL_PERSISTENCE"],'
+        '"failed":[],"domain_verdict":"NEGATIVE","verdict":"A single stock price is ephemeral, instance-only, and has no attractor."}\n\n'
+        "Use ONLY these condition names in passed/failed arrays: "
+        "ATTRACTOR, PROVENANCE, FIDELITY_GATE, PATTERN_INSTANCE, TEMPORAL_PERSISTENCE\n\n"
+        "Return JSON exactly:\n"
+        '{"passed":["..."],"failed":["..."],'
+        '"domain_verdict":"POSITIVE|PARTIAL|NEGATIVE",'
+        '"verdict":"one sentence"}'
+        "\n\ndomain_verdict: POSITIVE=all 5 pass, PARTIAL=3-4 pass, NEGATIVE=0-2 pass."
+    )
+
+    def _jeles_gate_check(self, title: str, content: str, domain: str) -> dict:
+        """Run the 5-condition boundary-theorem gate via local Ollama.
+        Returns {"passed": True} or {"passed": False, "failed_conditions": [...], ...}.
+        Soft-fails open (logs warning) if Ollama is unavailable."""
+        import logging as _log
+        _logger = _log.getLogger(__name__)
+        try:
+            from sap.clients.professor_client import _ask_ollama
+        except ImportError:
+            _logger.warning("[jeles_gate] professor_client unavailable — gate skipped")
+            return {"passed": True, "gate_skipped": True, "reason": "professor_client not importable"}
+
+        user_msg = (
+            f"Title: {title or '(none)'}\n"
+            f"Domain: {domain}\n"
+            f"Content:\n{content}"
+        )
+        try:
+            raw = _ask_ollama("llama3.2:3b", self._JELES_GATE_SYSTEM, user_msg, base_temp=0.1)
+        except Exception as exc:
+            _logger.warning("[jeles_gate] Ollama call failed (%s) — gate skipped", exc)
+            return {"passed": True, "gate_skipped": True, "reason": str(exc)}
+
+        if not raw:
+            _logger.warning("[jeles_gate] empty Ollama response — gate skipped")
+            return {"passed": True, "gate_skipped": True, "reason": "empty response"}
+
+        try:
+            # Strip accidental markdown fences
+            cleaned = raw.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("```")[1]
+                if cleaned.startswith("json"):
+                    cleaned = cleaned[4:]
+            verdict = json.loads(cleaned)
+        except (json.JSONDecodeError, IndexError) as parse_err:
+            _logger.warning("[jeles_gate] JSON parse failed (%s) raw=%r — gate skipped", parse_err, raw[:200])
+            return {"passed": True, "gate_skipped": True, "reason": f"parse error: {parse_err}"}
+
+        failed = verdict.get("failed", [])
+        domain_verdict = verdict.get("domain_verdict", "UNKNOWN")
+
+        if failed or domain_verdict != "POSITIVE":
+            return {
+                "passed": False,
+                "failed_conditions": failed,
+                "domain_verdict": domain_verdict,
+                "verdict": verdict.get("verdict", ""),
+                "passed_conditions": verdict.get("passed", []),
+            }
+        return {"passed": True, "domain_verdict": "POSITIVE", "verdict": verdict.get("verdict", "")}
+
     def jeles_extract_atom(self, agent: str, jsonl_id: str, content: str,
                            domain: str = "meta", depth: int = 1,
                            certainty: float = 0.98,
                            title: Optional[str] = None) -> dict:
         self._ensure_conn()
         try:
+            gate = self._jeles_gate_check(title or "", content, domain)
+            if not gate.get("passed", True):
+                return {
+                    "blocked": True,
+                    "failed_conditions": gate.get("failed_conditions", []),
+                    "domain_verdict": gate.get("domain_verdict", "NEGATIVE"),
+                    "verdict": gate.get("verdict", ""),
+                    "passed_conditions": gate.get("passed_conditions", []),
+                }
+
             aid = self.gen_id(8)
             vec = embed(f"{title or ''} {content}")
             vec_str = str(vec) if vec is not None else None
@@ -1239,7 +1342,25 @@ class PgBridge:
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector)
                 """, (aid, jsonl_id, agent, content, domain, depth, certainty, title, vec_str))
             self.conn.commit()
-            return {"id": aid, "status": "extracted"}
+            out = {"id": aid, "status": "extracted"}
+            if gate.get("gate_skipped"):
+                out["gate_skipped"] = True
+            return out
+        except Exception as e:
+            return {"error": str(e)}
+
+    def jeles_invalidate_atom(self, atom_id: str, reason: str = "") -> dict:
+        self._ensure_conn()
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE jeles_atoms SET invalid_at=now() WHERE id=%s AND invalid_at IS NULL",
+                    (atom_id,),
+                )
+            self.conn.commit()
+            if cur.rowcount == 0:
+                return {"invalidated": False, "reason": "not found or already invalid"}
+            return {"invalidated": True, "id": atom_id, "reason": reason}
         except Exception as e:
             return {"error": str(e)}
 

@@ -108,6 +108,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
     }),
     "jeles_fetch": frozenset({
         "mem_jeles_extract", "mem_jeles_register", "mem_jeles_search", "mem_jeles_web_search",
+        "mem_jeles_invalidate",
     }),
     "intake": frozenset({
         "intake_write",

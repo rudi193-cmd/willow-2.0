@@ -47,7 +47,7 @@ _SOURCE_CONFIDENCE: dict[str, float] = {
     "nasa": 0.92, "ndl": 0.92, "gallica": 0.92, "smithsonian": 0.92,
     "pubmed": 0.90, "arxiv": 0.90, "crossref": 0.90, "europepmc": 0.90,
     "openalex": 0.85, "core": 0.88, "doaj": 0.88, "hal": 0.88,
-    "zenodo": 0.88, "datacite": 0.88, "scielo": 0.88, "usgs": 0.90,
+    "zenodo": 0.65, "datacite": 0.88, "scielo": 0.88, "usgs": 0.90,  # zenodo: open deposit, no peer review — kept in cache, blocked from auto-promotion
     "europeana": 0.88, "rijksmuseum": 0.90,
     "openlibrary": 0.82, "internet_archive": 0.80, "wikidata": 0.80,
     "chronicling_america": 0.85, "dpla": 0.83, "semantic_scholar": 0.87,
