@@ -217,13 +217,41 @@ def _run_workflow_phase(pg, task_id: str, payload: dict):
     my_phase = next((p for p in existing if p["phase_name"] == phase_name), None)
     phase_id = my_phase["id"] if my_phase else None
 
-    # Call LLM
+    # Call LLM — or Outcomes API if the phase definition includes a rubric
+    phase_def = phases.get(phase_name, {})
+    rubric    = phase_def.get("rubric") or phase_input.get("rubric")
+
     try:
-        output = _call_llm(
-            phase_input["prompt"],
-            phase_input.get("model", "claude-haiku-4-5-20251001"),
-            phase_input.get("output_schema", {}),
-        )
+        if rubric:
+            agent_name = phase_def.get("outcome_agent") or phase_input.get("outcome_agent")
+            if not agent_name:
+                raise ValueError("phase has rubric but no outcome_agent specified")
+            from core.pg_bridge import PgBridge as _PgBridge  # already imported above
+            agent_rec = pg.outcome_agent_get(agent_name)
+            if not agent_rec:
+                raise ValueError(f"outcome agent '{agent_name}' not registered")
+            import core.outcomes as _outcomes
+            outcome = _outcomes.run_outcome(
+                agent_id=agent_rec["agent_id"],
+                environment_id=agent_rec["environment_id"],
+                prompt=phase_input["prompt"],
+                rubric=rubric,
+                max_iterations=phase_def.get("max_iterations", 3),
+                title=f"{wf.get('name','workflow')}/{phase_name}",
+            )
+            output = {
+                "result":      outcome["result"],
+                "explanation": outcome.get("explanation", ""),
+                "success":     outcome.get("success", False),
+                "iterations":  outcome.get("iterations", 0),
+                "session_id":  outcome.get("session_id"),
+            }
+        else:
+            output = _call_llm(
+                phase_input["prompt"],
+                phase_input.get("model", "claude-haiku-4-5-20251001"),
+                phase_input.get("output_schema", {}),
+            )
         elapsed = round(time.time() - started, 2)
         output["_elapsed_s"] = elapsed
 

@@ -58,10 +58,11 @@ def test_workflow_define_and_get(pg):
 
 
 def test_workflow_define_upserts_version(pg):
+    initial = (pg.workflow_get("test_versioned") or {}).get("version", 0)
     pg.workflow_define("test_versioned", {"phases": {"a": {"prompt": "v1", "depends_on": []}}})
     pg.workflow_define("test_versioned", {"phases": {"a": {"prompt": "v2", "depends_on": []}}})
     wf = pg.workflow_get("test_versioned")
-    assert wf["version"] == 2
+    assert wf["version"] == initial + 2
     assert wf["definition"]["phases"]["a"]["prompt"] == "v2"
 
 

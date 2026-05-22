@@ -225,6 +225,33 @@ CREATE TABLE IF NOT EXISTS compact_contexts (
     expires_at  TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS outcome_agents (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL UNIQUE,
+    agent_id        TEXT NOT NULL,
+    environment_id  TEXT NOT NULL,
+    description     TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_by      TEXT
+);
+
+CREATE TABLE IF NOT EXISTS outcome_runs (
+    id                  TEXT PRIMARY KEY,
+    outcome_agent_id    TEXT NOT NULL,
+    session_id          TEXT,
+    status              TEXT NOT NULL DEFAULT 'pending',
+    prompt              TEXT NOT NULL,
+    rubric              TEXT NOT NULL,
+    max_iterations      INTEGER NOT NULL DEFAULT 3,
+    result              TEXT,
+    explanation         TEXT,
+    iterations_used     INTEGER,
+    error               TEXT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ended_at            TIMESTAMPTZ,
+    created_by          TEXT
+);
+
 CREATE TABLE IF NOT EXISTS routines (
     id          TEXT PRIMARY KEY,
     name        TEXT NOT NULL UNIQUE,
@@ -375,6 +402,25 @@ _MIGRATIONS = [
         id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, token TEXT NOT NULL,
         description TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         created_by TEXT, last_fired TIMESTAMPTZ
+    )""",
+    # Outcomes API — rename agent_name → outcome_agent_id if table was created before this migration
+    """DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name='outcome_runs' AND column_name='agent_name') THEN
+            ALTER TABLE outcome_runs RENAME COLUMN agent_name TO outcome_agent_id;
+        END IF;
+    END $$""",
+    """CREATE TABLE IF NOT EXISTS outcome_agents (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE,
+        agent_id TEXT NOT NULL, environment_id TEXT NOT NULL,
+        description TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), created_by TEXT
+    )""",
+    """CREATE TABLE IF NOT EXISTS outcome_runs (
+        id TEXT PRIMARY KEY, outcome_agent_id TEXT NOT NULL, session_id TEXT,
+        status TEXT NOT NULL DEFAULT 'pending', prompt TEXT NOT NULL, rubric TEXT NOT NULL,
+        max_iterations INTEGER NOT NULL DEFAULT 3, result TEXT, explanation TEXT,
+        iterations_used INTEGER, error TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(), ended_at TIMESTAMPTZ, created_by TEXT
     )""",
     # Workflow engine
     """CREATE TABLE IF NOT EXISTS workflows (
@@ -1385,11 +1431,13 @@ class PgBridge:
                 "INSERT INTO workflows (id, name, definition, created_by)"
                 " VALUES (%s, %s, %s, %s)"
                 " ON CONFLICT (name) DO UPDATE SET definition=EXCLUDED.definition,"
-                " version=workflows.version+1",
+                " version=workflows.version+1"
+                " RETURNING id",
                 (wf_id, name, psycopg2.extras.Json(definition), created_by),
             )
+            actual_id = cur.fetchone()[0]
         self.conn.commit()
-        return {"id": wf_id, "name": name}
+        return {"id": actual_id, "name": name}
 
     def workflow_get(self, name: str) -> Optional[dict]:
         self._ensure_conn()
@@ -1497,6 +1545,71 @@ class PgBridge:
                     " WHERE run_id=%s AND status='pending'", (run_id,))
         self.conn.commit()
         return {"cancelled": updated, "run_id": run_id}
+
+    # ── Outcomes API ──────────────────────────────────────────────────────────
+
+    def outcome_agent_register(self, name: str, agent_id: str,
+                                environment_id: str, description: str = "",
+                                created_by: str = "") -> dict:
+        self._ensure_conn()
+        oa_id = self.gen_id(8)
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO outcome_agents (id, name, agent_id, environment_id,"
+                " description, created_by) VALUES (%s,%s,%s,%s,%s,%s)"
+                " ON CONFLICT (name) DO UPDATE SET agent_id=EXCLUDED.agent_id,"
+                " environment_id=EXCLUDED.environment_id, description=EXCLUDED.description",
+                (oa_id, name, agent_id, environment_id, description, created_by),
+            )
+        self.conn.commit()
+        return self.outcome_agent_get(name)
+
+    def outcome_agent_get(self, name: str) -> Optional[dict]:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM outcome_agents WHERE name=%s", (name,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def outcome_run_create(self, outcome_agent_id: str, prompt: str, rubric: str,
+                            max_iterations: int = 3, created_by: str = "") -> str:
+        self._ensure_conn()
+        run_id = self.gen_id(10)
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO outcome_runs (id, outcome_agent_id, prompt, rubric,"
+                " max_iterations, created_by) VALUES (%s,%s,%s,%s,%s,%s)",
+                (run_id, outcome_agent_id, prompt, rubric, max_iterations, created_by),
+            )
+        self.conn.commit()
+        return run_id
+
+    def outcome_run_update(self, run_id: str, **kwargs) -> None:
+        self._ensure_conn()
+        allowed = {"session_id", "status", "result", "explanation",
+                   "iterations_used", "error"}
+        sets, vals = [], []
+        for k, v in kwargs.items():
+            if k in allowed:
+                sets.append(f"{k}=%s")
+                vals.append(v)
+        if not sets:
+            return
+        if kwargs.get("status") in ("completed", "failed", "cancelled"):
+            sets.append("ended_at=now()")
+        with self.conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE outcome_runs SET {', '.join(sets)} WHERE id=%s",
+                vals + [run_id],
+            )
+        self.conn.commit()
+
+    def outcome_run_get(self, run_id: str) -> Optional[dict]:
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM outcome_runs WHERE id=%s", (run_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
 
     def task_status(self, task_id: str) -> Optional[dict]:
         self._ensure_conn()

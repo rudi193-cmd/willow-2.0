@@ -200,6 +200,9 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "intake_promote", "intake_schedule",
         "kb_promote",
     }),
+    "outcome_manage": frozenset({
+        "outcome_agent_register", "outcome_run", "outcome_status",
+    }),
 }
 
 # If set, only these app_ids are accepted (comma-separated). INFRA IDs are always exempt.

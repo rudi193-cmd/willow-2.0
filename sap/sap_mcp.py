@@ -2979,6 +2979,115 @@ async def workflow_cancel(app_id: str, run_id: str) -> dict:
     return await loop.run_in_executor(_executor, pg.workflow_cancel, run_id)
 
 
+# ── Tools — outcomes domain ───────────────────────────────────────────────────
+
+@mcp.tool()
+@sap_gate(write=True)
+async def outcome_agent_register(
+    app_id:         str,
+    name:           str,
+    agent_id:       str,
+    environment_id: str,
+    description:    str = "",
+) -> dict:
+    """Register a Managed Agent for use with the Outcomes API.
+
+    agent_id and environment_id come from the Anthropic Console.
+    name is a local alias (e.g. 'kb-writer', 'summarizer').
+    """
+    logger.info("[w2] outcome_agent_register app_id=%s name=%s", app_id, name)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor, pg.outcome_agent_register, name, agent_id, environment_id, description, app_id
+    )
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def outcome_run(
+    app_id:         str,
+    agent_name:     str,
+    prompt:         str,
+    rubric:         str,
+    max_iterations: int = 3,
+    title:          str = "",
+    timeout_s:      int = 600,
+) -> dict:
+    """Run an Outcomes flow against a registered Managed Agent.
+
+    prompt      — what the agent should accomplish (user.define_outcome description).
+    rubric      — markdown criteria the grader uses to evaluate success.
+    Returns {outcome_run_id, session_id, result, explanation, success, iterations}.
+    """
+    logger.info("[w2] outcome_run app_id=%s agent=%s", app_id, agent_name)
+    if not pg:
+        return _no_pg()
+
+    loop = asyncio.get_running_loop()
+    agent = await loop.run_in_executor(_executor, pg.outcome_agent_get, agent_name)
+    if not agent:
+        return {"error": f"agent '{agent_name}' not registered — call outcome_agent_register first"}
+
+    run_id = await loop.run_in_executor(
+        _executor, pg.outcome_run_create, agent["id"], prompt, rubric, max_iterations, app_id
+    )
+
+    try:
+        import core.outcomes as _outcomes
+        _agent_id  = agent["agent_id"]
+        _env_id    = agent["environment_id"]
+        _title     = title or prompt[:60]
+        result = await loop.run_in_executor(
+            _executor,
+            lambda: _outcomes.run_outcome(
+                agent_id=_agent_id,
+                environment_id=_env_id,
+                prompt=prompt,
+                rubric=rubric,
+                max_iterations=max_iterations,
+                title=_title,
+                timeout_s=timeout_s,
+            ),
+        )
+        _res = result
+        await loop.run_in_executor(
+            _executor,
+            lambda: pg.outcome_run_update(
+                run_id,
+                status=_res["result"],
+                result=_res["result"],
+                explanation=_res.get("explanation", ""),
+                session_id=_res.get("session_id"),
+                iterations_used=_res.get("iterations", 0),
+            ),
+        )
+        return {"outcome_run_id": run_id, **result}
+    except Exception as exc:
+        logger.error("[w2] outcome_run failed: %s", exc)
+        _err = str(exc)
+        await loop.run_in_executor(
+            _executor,
+            lambda: pg.outcome_run_update(run_id, status="failed", error=_err),
+        )
+        return {"outcome_run_id": run_id, "error": _err}
+
+
+@mcp.tool()
+@sap_gate(write=False)
+async def outcome_status(app_id: str, run_id: str) -> dict:
+    """Get the status and result of a previously started outcome run."""
+    logger.info("[w2] outcome_status app_id=%s run_id=%s", app_id, run_id)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    row = await loop.run_in_executor(_executor, pg.outcome_run_get, run_id)
+    if not row:
+        return {"error": f"outcome run {run_id!r} not found"}
+    return row
+
+
 # ── Tools — routines domain ───────────────────────────────────────────────────
 
 @mcp.tool()
