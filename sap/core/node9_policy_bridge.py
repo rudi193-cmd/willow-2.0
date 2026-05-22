@@ -39,6 +39,8 @@ _worker_proc: subprocess.Popen[str] | None = None
 def enabled() -> bool:
     if not _ENABLED:
         return False
+    if not (_ADAPTER_DIR / "node_modules" / "@node9" / "policy-engine").is_dir():
+        return False
     if _USE_SUBPROCESS:
         return _EVALUATE_JS.is_file()
     return _WORKER_JS.is_file()
@@ -153,8 +155,8 @@ def _ensure_worker() -> subprocess.Popen[str]:
 
 
 def _evaluate_worker(payload: dict[str, Any]) -> dict[str, Any]:
-    t0 = time.monotonic()
     with _worker_lock:
+        t0 = time.monotonic()
         try:
             proc = _ensure_worker()
             assert proc.stdin is not None
