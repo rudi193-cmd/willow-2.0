@@ -46,7 +46,7 @@ _SOURCE_CONFIDENCE: dict[str, float] = {
     "loc": 0.92, "met": 0.92, "cleveland": 0.92, "vam": 0.92,
     "nasa": 0.92, "ndl": 0.92, "gallica": 0.92, "smithsonian": 0.92,
     "pubmed": 0.90, "arxiv": 0.90, "crossref": 0.90, "europepmc": 0.90,
-    "openalex": 0.88, "core": 0.88, "doaj": 0.88, "hal": 0.88,
+    "openalex": 0.85, "core": 0.88, "doaj": 0.88, "hal": 0.88,
     "zenodo": 0.88, "datacite": 0.88, "scielo": 0.88, "usgs": 0.90,
     "europeana": 0.88, "rijksmuseum": 0.90,
     "openlibrary": 0.82, "internet_archive": 0.80, "wikidata": 0.80,

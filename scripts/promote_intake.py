@@ -56,7 +56,7 @@ ROUTE_CONTEXT = (
 
 # Confidence thresholds for fallback (no-LLM) routing
 _VERIFIED_MIN   = 0.95
-_FETCHED_MIN    = 0.90
+_FETCHED_MIN    = 0.85
 _OBSERVED_MIN   = 0.85
 
 
