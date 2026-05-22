@@ -37,8 +37,22 @@ from typing import Optional
 log = logging.getLogger("jeles.sources")
 
 _CREDS_PATH = Path.home() / ".willow" / "secrets" / "credentials.json"
+_CACHE_DIR  = Path.home() / ".willow" / "jeles_cache"
 _TIMEOUT = 15
 _UA = "Willow-Jeles/2.0 (academic librarian; mailto:rudi193@gmail.com)"
+
+# Confidence by source tier — primary institutions > peer-reviewed > aggregators
+_SOURCE_CONFIDENCE: dict[str, float] = {
+    "loc": 0.92, "met": 0.92, "cleveland": 0.92, "vam": 0.92,
+    "nasa": 0.92, "ndl": 0.92, "gallica": 0.92, "smithsonian": 0.92,
+    "pubmed": 0.90, "arxiv": 0.90, "crossref": 0.90, "europepmc": 0.90,
+    "openalex": 0.88, "core": 0.88, "doaj": 0.88, "hal": 0.88,
+    "zenodo": 0.88, "datacite": 0.88, "scielo": 0.88, "usgs": 0.90,
+    "europeana": 0.88, "rijksmuseum": 0.90,
+    "openlibrary": 0.82, "internet_archive": 0.80, "wikidata": 0.80,
+    "chronicling_america": 0.85, "dpla": 0.83, "semantic_scholar": 0.87,
+    "pubchem": 0.92,
+}
 
 
 def _load_creds() -> dict:
@@ -56,6 +70,42 @@ def _get(url: str, headers: dict | None = None) -> Optional[dict | list]:
     except Exception as e:
         log.warning("GET %s failed: %s", url[:80], e)
         return None
+
+
+def _write_cache(query: str, results: dict[str, list]) -> None:
+    """Append search results to daily JSONL cache with annotation fields."""
+    import hashlib
+    from datetime import datetime, timezone
+    try:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        cache_file = _CACHE_DIR / f"{today}.jsonl"
+        fetched_at = datetime.now(timezone.utc).isoformat()
+        query_words = [w.lower() for w in query.split() if len(w) > 3]
+        with cache_file.open("a", encoding="utf-8") as fh:
+            for source_id, hits in results.items():
+                confidence = _SOURCE_CONFIDENCE.get(source_id, 0.80)
+                src_cfg = SOURCES.get(source_id, {})
+                domain_tags = src_cfg.get("domain", [])
+                for hit in hits:
+                    url = hit.get("url", "")
+                    cache_id = hashlib.md5(url.encode()).hexdigest()[:8] if url else ""
+                    keywords = list(dict.fromkeys(query_words + [source_id] + domain_tags))[:10]
+                    tags = [source_id, f"query:{hashlib.md5(query.encode()).hexdigest()[:8]}"] + domain_tags
+                    record = {
+                        **hit,
+                        "id": cache_id,
+                        "query": query,
+                        "keywords": keywords,
+                        "tags": tags,
+                        "tier": "fetched",
+                        "confidence": confidence,
+                        "fetched_at": fetched_at,
+                        "promoted": False,
+                    }
+                    fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as e:
+        log.warning("jeles cache write failed: %s", e)
 
 
 def _result(title: str, url: str, source: str, institution: str,
@@ -1000,6 +1050,8 @@ def search(
             log.warning("Source %s failed: %s", sid, e)
 
     total = sum(len(v) for v in out.values())
+    if out:
+        _write_cache(query, out)
     return {
         "query": query,
         "sources_queried": active,
