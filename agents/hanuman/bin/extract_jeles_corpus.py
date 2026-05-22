@@ -34,6 +34,8 @@ def _iter_professor_turns(jsonl_path: str) -> list[dict]:
     """Return assistant text blocks mentioning professors from one JSONL file."""
     hits = []
     try:
+        if not Path(jsonl_path).is_file():
+            return hits
         with open(jsonl_path, encoding="utf-8", errors="replace") as fh:
             for line in fh:
                 try:
