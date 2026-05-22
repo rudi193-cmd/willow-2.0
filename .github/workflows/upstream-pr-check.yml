@@ -31,7 +31,9 @@ jobs:
 
       - name: Run update script
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # gh search prs returns empty in Actions; GraphQL needs a user-scoped token.
+          # Add repo secret UPSTREAM_TRACKER_PAT (classic PAT, public_repo scope) if unset.
+          GH_TOKEN: ${{ secrets.UPSTREAM_TRACKER_PAT || github.token }}
         run: python .github/scripts/update_tracker.py
 
       - name: Commit and push changes
