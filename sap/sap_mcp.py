@@ -1502,6 +1502,26 @@ async def mem_jeles_extract(
 
 @mcp.tool()
 @sap_gate()
+async def mem_jeles_search(
+    app_id:   str,
+    query:    str,
+    limit:    int = 10,
+    days_ago: int = 0,
+) -> dict:
+    """Jeles: Semantic search over extracted jeles_atoms. Returns ranked results."""
+    logger.info("[w2] mem_jeles_search app_id=%s query=%r limit=%d", app_id, query, limit)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    results = await loop.run_in_executor(
+        _executor, pg.search_jeles_semantic,
+        query, limit, days_ago or None,
+    )
+    return {"results": results, "total": len(results)}
+
+
+@mcp.tool()
+@sap_gate()
 async def mem_binder_file(
     app_id:    str,
     agent:     str,
