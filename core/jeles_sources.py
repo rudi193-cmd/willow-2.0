@@ -8,12 +8,13 @@ Each source function returns list[dict] with standard citation fields:
 Wikipedia is explicitly excluded. Every result here can appear in an academic bibliography.
 Sources requiring API keys load from credentials.json.
 
-Sources (25 total):
+Sources (29 total):
   Academic:  OpenAlex, CORE, DOAJ, Europe PMC, Semantic Scholar, Crossref, PubMed, arXiv
   Data/Sci:  Zenodo, DataCite, Wikidata, PubChem, USGS, NASA
   Museums:   Met Museum, Cleveland Museum of Art, V&A Museum, Rijksmuseum (key required)
   Libraries: Library of Congress, Open Library, Chronicling America, Internet Archive, DPLA (key required)
   Heritage:  Smithsonian (key required), Europeana (key required)
+  Intl:      Gallica (BnF/France), HAL (France), SciELO (Latin America/Iberia), NDL (Japan)
 
 Keys go in ~/.willow/secrets/credentials.json:
   RIJKSMUSEUM_API_KEY  — register at data.rijksmuseum.nl
@@ -584,6 +585,148 @@ def search_rijksmuseum(query: str, limit: int = 5) -> list[dict]:
     return results
 
 
+# ── INTERNATIONAL ─────────────────────────────────────────────────────────────
+
+def search_gallica(query: str, limit: int = 5) -> list[dict]:
+    """Gallica (BnF) — Bibliothèque nationale de France digital collections. No key required."""
+    url = (
+        "https://gallica.bnf.fr/SRU?operation=searchRetrieve"
+        "&query=dc.subject+all+" + urllib.parse.quote(f'"{query}"')
+        + f"&maximumRecords={limit}&version=1.2"
+    )
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": _UA})
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
+            raw = r.read()
+    except Exception as e:
+        log.warning("Gallica failed: %s", e)
+        return []
+    ns_dc = "http://purl.org/dc/elements/1.1/"
+    ns_srw = "http://www.loc.gov/zing/srw/"
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError:
+        return []
+    results = []
+    for record in root.findall(f".//{{{ns_srw}}}recordData"):
+        titles = record.findall(f"{{{ns_dc}}}title")
+        identifiers = record.findall(f"{{{ns_dc}}}identifier")
+        dates = record.findall(f"{{{ns_dc}}}date")
+        descriptions = record.findall(f"{{{ns_dc}}}description")
+        url_val = next((i.text for i in identifiers if i.text and i.text.startswith("http")), "")
+        results.append(_result(
+            title=titles[0].text if titles else "",
+            url=url_val,
+            source="gallica",
+            institution="Gallica / Bibliothèque nationale de France",
+            snippet=descriptions[0].text if descriptions else "",
+            date=dates[0].text if dates else "",
+            rid=url_val.split("/")[-1] if url_val else "",
+        ))
+    return results[:limit]
+
+
+def search_hal(query: str, limit: int = 5) -> list[dict]:
+    """HAL — French open access scientific archive. No key required."""
+    url = (
+        "https://api.archives-ouvertes.fr/search/?q="
+        + urllib.parse.quote(query)
+        + f"&rows={limit}&fl=title_s,uri_s,authFullName_s,producedDate_tdate,journalTitle_s&wt=json"
+    )
+    data = _get(url)
+    if not data:
+        return []
+    results = []
+    for item in ((data.get("response") or {}).get("docs") or [])[:limit]:
+        titles = item.get("title_s") or [""]
+        results.append(_result(
+            title=titles[0] if titles else "",
+            url=item.get("uri_s", ""),
+            source="hal",
+            institution=item.get("journalTitle_s", "HAL / archives-ouvertes.fr"),
+            snippet=", ".join(item.get("authFullName_s") or []),
+            date=(item.get("producedDate_tdate") or "")[:10],
+            rid=item.get("uri_s", "").split("/")[-1],
+        ))
+    return results
+
+
+def search_scielo(query: str, limit: int = 5) -> list[dict]:
+    """SciELO — Latin American, Iberian & South African science. OAI-PMH, no key required."""
+    # Use ArticleMeta search (JSON) for keyword search
+    url = (
+        "https://articlemeta.scielo.org/api/v1/article/identifiers/"
+        "?collection=scl&limit=" + str(limit)
+    )
+    data = _get(url)
+    if not data:
+        return []
+    pids = [obj.get("code") for obj in (data.get("objects") or []) if obj.get("code")][:limit]
+    results = []
+    for pid in pids[:limit]:
+        art = _get(f"https://articlemeta.scielo.org/api/v1/article/?code={pid}&collection=scl")
+        if not art:
+            continue
+        # SciELO uses internal ISIS field codes; v977=title, v10=authors, v30=journal
+        title = ""
+        for section in (art.get("article", {}).get("v977") or []):
+            title = section.get("_", "")
+            if title:
+                break
+        results.append(_result(
+            title=title,
+            url=f"https://www.scielo.br/j/{pid.split('S')[1][:4].lower()}/a/{pid}/",
+            source="scielo",
+            institution="SciELO / FAPESP",
+            snippet="",
+            date="",
+            rid=pid,
+        ))
+    return [r for r in results if r["title"]]
+
+
+def search_ndl(query: str, limit: int = 5) -> list[dict]:
+    """National Diet Library (Japan) — largest library in Japan. SRU, no key required."""
+    url = (
+        "https://iss.ndl.go.jp/api/sru?operation=searchRetrieve"
+        "&query=title%3D" + urllib.parse.quote(f'"{query}"')
+        + f"&maximumRecords={limit}&recordSchema=dcndl"
+    )
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": _UA})
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
+            raw = r.read()
+    except Exception as e:
+        log.warning("NDL failed: %s", e)
+        return []
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError:
+        return []
+    ns_dc = "http://purl.org/dc/elements/1.1/"
+    ns_dcterms = "http://purl.org/dc/terms/"
+    results = []
+    for record in root.findall(".//{http://www.loc.gov/zing/srw/}recordData"):
+        titles = record.findall(f".//{{{ns_dcterms}}}title") or record.findall(f".//{{{ns_dc}}}title")
+        dates = record.findall(f".//{{{ns_dcterms}}}issued") or record.findall(f".//{{{ns_dc}}}date")
+        publishers = record.findall(f".//{{{ns_dcterms}}}publisher") or record.findall(f".//{{{ns_dc}}}publisher")
+        ids = record.findall(f".//{{{ns_dc}}}identifier")
+        url_val = next((i.text for i in ids if i.text and i.text.startswith("http")), "")
+        title_text = titles[0].text if titles else ""
+        if not title_text:
+            continue
+        results.append(_result(
+            title=title_text,
+            url=url_val,
+            source="ndl",
+            institution="National Diet Library / Japan",
+            snippet=publishers[0].text if publishers else "",
+            date=dates[0].text if dates else "",
+            rid=url_val.split("/")[-1] if url_val else "",
+        ))
+    return results[:limit]
+
+
 # ── LIBRARIES & ARCHIVES ──────────────────────────────────────────────────────
 
 def search_loc(query: str, limit: int = 5) -> list[dict]:
@@ -807,6 +950,11 @@ SOURCES: dict[str, dict] = {
     # Heritage
     "smithsonian":      {"name": "Smithsonian",             "domain": ["art", "history", "science"],         "fn": search_smithsonian,      "key_required": True},
     "europeana":        {"name": "Europeana",               "domain": ["art", "culture", "history"],         "fn": search_europeana,        "key_required": True},
+    # International
+    "gallica":          {"name": "Gallica (BnF)",           "domain": ["humanities", "history", "france"],   "fn": search_gallica,          "key_required": False},
+    "hal":              {"name": "HAL Open Access",         "domain": ["academic", "science", "france"],     "fn": search_hal,              "key_required": False},
+    "scielo":           {"name": "SciELO",                  "domain": ["science", "latin_america", "iberia"],"fn": search_scielo,           "key_required": False},
+    "ndl":              {"name": "National Diet Library",   "domain": ["general", "japan", "asia"],          "fn": search_ndl,              "key_required": False},
 }
 
 NO_WIKIPEDIA_NOTE = (
