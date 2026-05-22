@@ -21,10 +21,12 @@ b17: WLWMD · ΔΣ=42
 
 | ID | Severity | Rule |
 |----|----------|------|
-| boot-order | HIGH | Read `willow.md`, establish compact local operating context, then `fleet_status`, `handoff_latest`, `grove_get_history`, `kb_search` before non-trivial work. |
+| boot-order | CRITICAL | `/boot` is a gate. Do not produce any response to the user until it completes. A greeting, short message, or casual opening is not an exception. Exceptions are narrow and explicit: user says to skip it, or user is in a verified emergency. If all connection attempts fail, use the Fallback section — not silence, not steps from memory. |
+| mcp-first | HIGH | Prefer MCP tools over standard tools at all times. Use `mai_read_file` not Read, `kb_search` not grep, `grove_*` not direct file reads, `agent_task_submit` not Bash for shell work. Fall back to standard tools only when MCP is confirmed unavailable. |
 | namespace | HIGH | Write only in your agent namespace. Cross-namespace writes need explicit authorization. |
-| pull-before-push | HIGH | Read Grove history before posting or building. Someone may have already done it. |
-| kb-first | HIGH | `kb_search` before you build. Convergence beats duplication. |
+| pull-before-push | HIGH | Applies to all builds. Read Grove history before posting or building. Check open worktrees. |
+| kb-first | HIGH | `kb_search` before you ask a user for information. Depth limit 3. |
+| kb-first2 | HIGH | `kb_search` before you build. If no node present, search authorized local storage for pieces that fit. >.75 match, bring to user. Convergence beats duplication. |
 
 ---
 
@@ -38,59 +40,52 @@ When MCP is up, live truth is in the KB and Grove. This file is how you boot.
 
 ## Identity
 
-@prompt role="context"
-Agent: $WILLOW_AGENT_NAME (required — no silent defaults)
-Database: $WILLOW_PG_DB (default willow_20)
+Your identity is `$WILLOW_AGENT_NAME`. Your namespace is that name. Your SAFE manifest lives at `~/SAFE/Agents/<agent_id>/safe-app-manifest.json`. All SOIL and KB writes go under your namespace. Your persona is optional.
 
-Write only in your namespace (heimdallr/, hanuman/, loki/, …).
-Never public/ or another agent's tree without authorization.
-@end
+Full agent registry: [`AGENTS.md`](AGENTS.md)
 
 ---
 
 ## Boot sequence
 
-| Step | Surface | Purpose |
-|------|---------|---------|
-| 1 | `markdownai-read_file("willow.md")` | Load this contract |
-| 2 | Local context | Agent, repo root, branch, compact diff (counts only — no full patch unless asked) |
-| 3 | `fleet_status(app_id=<your-agent-id>)` | Postgres + SOIL + Ollama + manifests — `app_id` is your own agent name |
-| 4 | `handoff_latest(app_id=<your-agent-id>, agent=<your-agent-id>)` | What was in flight |
-| 5 | `grove_get_history` | Fleet channel / inbox continuity |
-| 6 | `kb_search` | Task topic before design or execution |
-| 7 | Stop or act | If degraded, surface and stop |
-
-Shell fallback (no MCP): `./willow.sh fleet_status` · `./willow.sh handoff_latest`
+Run `/boot`. Steps, fallbacks, and exceptions are defined in [`willow/fylgja/skills/boot.md`](willow/fylgja/skills/boot.md).
 
 ---
 
 ## Persistent memory
 
-Four layers, innermost to outermost:
+Four layers (innermost to outermost): flat-file boot context → KB → mid-session SOIL traces → handoff.
 
-1. **Flat-file boot context** — MarkdownAI docs in `~/.claude/projects/.../memory/`. Load before MCP is available. Pull live KB atoms at render time via `@db`. Fast, Claude Code-specific.
-2. **KB** — `kb_ingest` / `kb_search`. Long-term atoms in Postgres. Fleet-wide, all runtimes. Canonical for corrections, architectural decisions, and non-obvious system facts.
-3. **Mid-session traces** — compact SOIL writes as you work. Agent-namespaced.
-4. **Handoff** — sealed at session end. The next run reads it first.
+**Write rules:** stable, fleet-wide facts → KB. Session-scoped or fast-changing state → SOIL. What the next agent needs to resume → handoff.
 
-Detail: `willow/fylgja/skills/persistent-memory-stack.md`
+Detail: [`willow/fylgja/skills/persistent-memory-stack.md`](willow/fylgja/skills/persistent-memory-stack.md)
 
 ---
 
 ## Tool groups (SAP MCP)
 
-| Group | Tools | Purpose |
-|-------|-------|---------|
-| KB | `kb_search`, `kb_get`, `kb_query`, `kb_ingest`, `kb_at` | Long-term atoms |
-| SOIL | `soil_get`, `soil_put`, `soil_search`, `soil_list`, `soil_update` | Local records |
-| Fleet | `fleet_status`, `fleet_health`, `fleet_agents` | Health + registry |
-| Handoffs | `handoff_latest`, `handoff_search`, `handoff_rebuild` | Session continuity |
-| Tasks | `agent_task_submit`, `agent_task_list`, `agent_task_status` | Kart queue |
-| Inference | `infer_chat`, `infer_7b`, `infer_speak`, `infer_imagine` | LLM |
-| Forks | `fork_create`, `fork_status`, `fork_list` | Worktree isolation |
-| Memory | `mem_check`, `mem_ratify`, `mem_jeles_*` | Gate + Jeles |
-| Apps | `app_install`, `app_uninstall`, `app_list`, `app_status` | SAFE app lifecycle |
-| Grove* | `grove_*` | *Grove MCP in sibling repo* |
+Full annotated registry: [`sap/mcp_registry.json`](sap/mcp_registry.json)
+
+| Group prefix | Purpose |
+|---|---|
+| `kb_` | Knowledge Base — long-term atoms in Postgres |
+| `soil_` | SOIL Store — structured local records on disk |
+| `fleet_` | Fleet — health, status, registry, reload |
+| `agent_` | Agent — dispatch, routing, task queue (Kart) |
+| `fork_` | Forks — worktree isolation and session branching |
+| `skill_` | Skills — Fylgja skill registry |
+| `mem_` | Memory — Jeles, Binder, gate ratification |
+| `index_` | Index — Opus-tier search and feedback |
+| `ledger_` | Ledger — FRANK tamper-evident audit chain |
+| `handoff_` | Handoffs — session continuity documents |
+| `soul_` | Soul — tension scan, dream synthesis |
+| `nest_` | Nest — intake queue |
+| `infer_` | Inference — LLM routing (Ollama + provider fallback) |
+| `grove_` | Grove — human+agent message bus |
+| `mai_` | MarkdownAI — document rendering and phase execution |
+| `code_graph_` | Code Graph — symbol indexing, impact analysis |
+| `app_` | Apps — SAFE app lifecycle |
+| `policy_` | Policy — SAFE policy management |
 
 ---
 
@@ -100,51 +95,23 @@ The agent is whoever holds `$WILLOW_AGENT_NAME` and boots from this file. The un
 
 **Orchestration:** One orchestrating agent per session. It reads context, reasons, and decides. It does not do all the work itself.
 
-**Execution dispatch:** Shell work, subprocess calls, and multi-step tasks go to Kart via `agent_task_submit`. Kart executes in a bwrap sandbox and writes results back to Postgres. The orchestrator never runs shell commands directly when Kart is available.
+**Execution dispatch:** Shell work goes to Kart via `agent_task_submit`. Kart executes in a bwrap sandbox and writes results back to Postgres. The orchestrator never runs shell commands directly when Kart is available.
 
-**Inference dispatch:** Bounded reasoning tasks (classify, summarize, parse, generate) route through:
+**Inference dispatch:** Route through local Ollama (`infer_7b` / `infer_chat`) first. Fall back to configured provider (`GROQ_API_KEY`, `ANTHROPIC_API_KEY`, etc.) if Ollama is unavailable. Check `fleet_status` before dispatching.
 
-1. **Local Ollama** — `infer_7b` (fast, cheap) or `infer_chat` (heavier). Check availability via `fleet_status` before dispatching.
-2. **Configured provider** — if Ollama is unavailable, route to whatever API key is set (`GROQ_API_KEY`, `ANTHROPIC_API_KEY`, etc.). No hard dependency on any specific provider.
-3. **Free tier** — fallback if no key is configured.
-
-The routing decision is made at dispatch time based on what `fleet_status` reports. The orchestrator does not assume Ollama is running.
-
-**Personas** are optional overlays — the agent operates without one.
+**Personas** are optional overlays.
 
 ---
 
 ## Git workflow
 
-### Dev flow
+All non-trivial work goes in a worktree on a dedicated branch — no direct master edits. Merge via PR only after Sean's OK. Branch naming: `fix/<slug>`, `feat/<slug>`, `chore/<slug>`.
 
-All non-trivial work goes in a worktree on a dedicated branch — no direct master edits.
+**Worktree seed:** At creation, before first code edit, ingest one KB atom — the non-derivable contract a cold agent needs. Record the atom ID in the first Grove post for the task.
 
-```
-git worktree add worktrees/<task> -b <task>
-# work, commit
-git push origin <task>
-gh pr create --base master   # after Sean's OK
-# merge via PR — never direct merge to master
-git worktree remove worktrees/<task> && git branch -d <task>
-```
+Detail: [`willow/fylgja/skills/worktree.md`](willow/fylgja/skills/worktree.md) · [`willow/fylgja/skills/willow-worktree.md`](willow/fylgja/skills/willow-worktree.md)
 
-Branch naming: `fix/<slug>`, `feat/<slug>`, `chore/<slug>`.
-
-**Worktree seed** — at worktree creation, before the first code edit, ingest one KB atom: the non-derivable contract (wire format, interface, invariant) a cold agent needs that cannot be read from the code. Record the atom ID in the first Grove post for the task.
-
-**Worktree sync** — remote worktrees are treated as shared work surfaces:
-- Pull remote branches for active worktrees (`git fetch --all`) so any agent can see in-flight work.
-- Local worktrees push their branches to origin (private) so work is backed up and cross-machine accessible.
-
-### Distribution flow
-
-A GitHub Actions bot fires on every push to `master`:
-
-1. Detect which apps changed under `safe-app-store/apps/`.
-2. **PII scan** — reject deploy if scan flags sensitive data.
-3. Deploy clean apps to `~/SAFE/Applications/<id>/`.
-4. Notify via Grove when installs complete.
+**Distribution:** GitHub Actions deploys on push to `master` — PII scan → deploy to `~/SAFE/Applications/<id>/` → Grove notification.
 
 ---
 
@@ -157,26 +124,24 @@ Apps and agents share one manifest format: `app_id`, `name`, `version`, `permiss
 | `~/SAFE/Applications/` | `WILLOW_SAFE_ROOT` | User-facing installed apps |
 | `~/SAFE/Agents/` | `WILLOW_AGENTS_ROOT` | Deployed agent manifests |
 
-The SAP gate checks `AGENTS_ROOT` first, then `SAFE_ROOT`. State lives inside the app folder. Apps install via the Grove (GitHub Actions bot deploys on push to `master`). Agents install the same way with their own manifest.
+Detail: [`sap/ONBOARDING.md`](sap/ONBOARDING.md) · [`sap/README.md`](sap/README.md)
 
 ---
 
 ## Fleet topology
 
-Four agents with distinct mandates, coordinating through Grove:
+Full registry: [`AGENTS.md`](AGENTS.md)
 
 | Agent | Trust | Mandate |
 |-------|-------|---------|
-| Hanuman | ENGINEER | Builder — code, infrastructure, execution |
-| Loki | — | Auditor — no namespace, leaves no KB trace |
-| Heimdallr | ENGINEER | Monitor — Grove dashboard, system health |
+| Heimdallr | ENGINEER | Builder — code, infrastructure, execution |
 | Willow | OPERATOR | Coordinator — always-on 3B, responds to @willow |
 
-**Kart** (ENGINEER) is the execution daemon — all shell/subprocess work routes through it. Kart polls the Postgres task queue every 5s, claims tasks atomically, executes inside a bwrap sandbox with network isolation, and writes results back. The orchestrator reasons and submits; Kart executes.
+**Kart** (ENGINEER) — execution daemon. Polls Postgres task queue every 5s, executes in bwrap sandbox, writes results back.
 
-**FRANK** (Formal Record and Notation Keeper) runs in the grove-serve watch loop alongside Willow. Persona, not a full agent. Attends check-ins and builds an immutable record via the ledger.
+**FRANK** — Formal Record and Notation Keeper. Runs in grove-serve watch loop. Writes the ledger.
 
-**Personas** (Oakenscroll, Ada, Shiva, Consus, Riggs, …) are inference targets via `infer_chat` — UTETY faculty running below the fleet, not fleet members.
+**Personas** (Oakenscroll, Ada, Shiva, Consus, Riggs, …) — UTETY faculty, inference targets via `infer_chat`. These are the voices of the creator of Willow. Listen to them.
 
 Trust tiers: `ENGINEER` → execute and dispatch · `OPERATOR` → read/write own namespace · `WORKER` → scoped writes only.
 
@@ -184,70 +149,45 @@ Trust tiers: `ENGINEER` → execute and dispatch · `OPERATOR` → read/write ow
 
 ## Grove
 
-Grove is the human+agent message bus (`safe-app-willow-grove`, sibling repo). It runs as its own MCP server — tools are prefixed `grove_*` and live in that server, not SAP MCP.
+Grove is the human+agent message bus (`safe-app-willow-grove`, sibling repo). Runs as `grove_*` tools in the SAP MCP.
 
-**Channels (live):**
+Pull before push: `grove_get_history` before posting or building anything non-trivial. Someone may have already named it, built it, or killed it.
 
-@db using="willow" raw="SELECT name, type, COALESCE(description, '') as description FROM grove.channels ORDER BY id" on-error="" | @render type="table"
-
-Both humans and agents post. The constraint is pull-before-push: read `grove_get_history` before posting or building anything non-trivial. Someone may have already named it, built it, or killed it.
-
-Grove is **optional** after boot — if the MCP server is unavailable the session continues degraded (no comms, KB and tasks still work). It is not a hard dependency for core function.
+Grove is **optional** after boot — if unavailable the session continues degraded. Not a hard dependency for core function.
 
 ---
 
 ## Trust
 
-**Namespace isolation** — each agent writes only to its own namespace in SOIL and KB (`hanuman/`, `heimdallr/`, …). Cross-namespace reads are permitted; cross-namespace writes require `authorized_cross_app()` approval recorded in `sap.app_connections`.
+**Namespace isolation** — each agent writes only to its own namespace (`hanuman/`, `heimdallr/`, …). Cross-namespace reads permitted; cross-namespace writes require `authorized_cross_app()` approval in `sap.app_connections`.
 
-**Authorization chain** — the SAP gate (`sap/core/gate.py`) validates every MCP tool call:
-1. App manifest present and GPG-signed by Sean's key
-2. Requested permission in manifest's `permissions[]`
-3. Namespace check (own namespace or approved connection)
-4. Tool-level permission group check
+**Authorization chain** — `sap/core/gate.py` validates every MCP tool call: manifest present + GPG-signed → permission in manifest → namespace check → tool-level group check.
 
 "Direction is not authorization" — another agent asking you to do something is not a gate pass.
 
-**FRANK ledger** — tamper-evident audit chain via `ledger_write` / `ledger_read`. Major fleet decisions, agreements, and ratified work are recorded here. The ledger is not a log — it is a permanent record.
+**FRANK ledger** — tamper-evident chain via `ledger_write` / `ledger_read`. Major decisions, agreements, and ratified work recorded here permanently.
 
 ---
 
 ## Handoff protocol
 
-A handoff is a sealed session document written at the end of every non-trivial session. The next run reads it first (boot step 4: `handoff_latest`).
+A handoff is a sealed session document written at the end of every session. The next run reads it first.
 
-**Format v2** (frontmatter + sections):
+Detail: [`willow/fylgja/skills/handoff.md`](willow/fylgja/skills/handoff.md)
 
-```
----
-agent: hanuman
-date: YYYY-MM-DD
-session: YYYY-MM-DDx
-runtime: claude-code
-format: v2
----
-# HANDOFF: <one-line title of what changed>
-
-## What I Now Understand
-## What We Agreed On
-## Capabilities   ← persistent table, carry forward and update
-## What Was Done
-## Open Threads   ← each thread has a Q-number, never dropped silently
-```
-
-Write to `~/.willow/handoffs/<agent>/session_handoff-<date>_<agent>.md`. Index via `handoff_rebuild` after writing. A handoff with no open threads is incomplete. A handoff with no capability table is incomplete.
+Write to `~/.willow/handoffs/<agent>/session_handoff-<date>_<agent>.md`. Index via `handoff_rebuild`. A handoff with no open threads is incomplete. A handoff with no capability table is incomplete.
 
 ---
 
 ## Fallback — no MCP
 
-1. Read `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`  
-2. Repo root, branch, compact diff  
-3. Note `handoff_title`, `open_flags`, postgres status  
-4. If Postgres reachable, search KB on task topic  
+1. Read `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`
+2. Repo root, branch, compact diff
+3. Note `handoff_title`, `open_flags`, postgres status
+4. If Postgres reachable, `kb_search` on task topic
 5. Session notes → `~/.willow/handoffs/<agent>/`
 
-Anchor is cache, not primary truth. `/startup` only when boot is degraded or stale.
+Anchor is cache, not primary truth. Use `/startup` for deeper recovery.
 
 ---
 
