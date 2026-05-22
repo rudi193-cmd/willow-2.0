@@ -278,6 +278,55 @@ def _scan_personal_signal(session_id: str) -> None:
         pass
 
 
+def _promote_session_to_kb(session_id: str, affect: str, session_traces: list) -> None:
+    """Annotate session with infer_7b and write one atom to the knowledge table."""
+    if call is None or not session_traces:
+        return
+
+    trace_text = " | ".join(
+        t.get("summary", t.get("tool", "")) for t in session_traces[:10]
+        if t.get("summary") or t.get("tool")
+    )[:500]
+    if not trace_text.strip():
+        return
+
+    one_line = ""
+    keywords: list = []
+    try:
+        result = call("infer_7b", {
+            "app_id": _AGENT,
+            "task_type": "summarize",
+            "content": trace_text,
+        }, timeout=15)
+        one_line = (result.get("one_line") or "").strip()
+        bullets = result.get("bullets") or []
+        keywords = [str(b)[:60] for b in bullets[:5]]
+    except Exception:
+        pass
+
+    if not one_line:
+        one_line = trace_text[:120]
+
+    tags = [affect, "session", _AGENT, f"session:{session_id[:8]}"]
+    confidence = 0.9 if affect == "clean" else 0.7
+
+    try:
+        call("kb_ingest", {
+            "app_id":      _AGENT,
+            "title":       f"session {session_id[:8]} · {affect}",
+            "summary":     one_line,
+            "source_type": "hook_stop",
+            "source_id":   session_id,
+            "category":    "session",
+            "keywords":    keywords,
+            "tags":        tags,
+            "tier":        "observed",
+            "confidence":  confidence,
+        }, timeout=12)
+    except Exception:
+        pass
+
+
 def _is_isolated_directory() -> bool:
     """Return True if CWD is a sandbox/isolated directory — skip all fleet hooks."""
     mcp = Path.cwd() / ".mcp.json"
@@ -339,6 +388,12 @@ def main():
     # Personal signal scan → personal/candidates (Loki reviews → sean.db)
     try:
         _scan_personal_signal(session_id)
+    except Exception:
+        pass
+
+    # Promote session to KB — infer_7b annotation → knowledge table
+    try:
+        _promote_session_to_kb(session_id, affect, session_traces)
     except Exception:
         pass
 

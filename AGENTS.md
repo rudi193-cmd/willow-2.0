@@ -16,4 +16,17 @@ Do not load bulk skill packs when a single power id matches.
 
 **Worktree seed:** At worktree creation, before the first code edit, ingest one KB seed atom — the non-derivable contract (wire format, interface, or invariant) a cold agent needs that cannot be read from the code. Record the atom ID in the first Grove post for the task. No build starts without it.
 
-**Branding:** New docs and modules follow [`docs/BRANDING.md`](docs/BRANDING.md) (`b17: … · ΔΣ=42`; SAP uses `b20: SAPMCP2`).
+***Default 7-step boot path:***
+Run at the beginning of every session, no matter the users first prompt. The only exceptions are if: the user appears in a state of a emergency, or, if user explicitly states not to run startup. 
+
+1. Read `willow.md` via `markdownai-read_file`.
+2. Establish local operating context: agent, namespace, repo root, branch, and a compact repo diff summary.
+3. Call `fleet_status(app_id=<your-agent-id>)` — agent ID is your own name (e.g. `hanuman`), not `"willow"`.
+4. Call `handoff_latest(app_id=<your-agent-id>, agent=<your-agent-id>)`.
+5. Call `grove_get_history` for the agent channel/inbox.
+6. Call `kb_search` on the current task/topic.
+7. If any required base is degraded, surface it and stop; otherwise proceed to act.
+
+If `fleet_status` returns degraded: surface it and stop.
+
+**safe-app-willow-grove Branding:** New docs and modules follow [`docs/BRANDING.md`](docs/BRANDING.md) (`b17: … · ΔΣ=42`; SAP uses `b20: SAPMCP2`).
