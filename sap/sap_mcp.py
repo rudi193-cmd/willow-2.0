@@ -810,10 +810,15 @@ async def kb_ingest(
     category:    str = "general",
     domain:      str = "",
     force:       bool = False,
+    keywords:    list = None,
+    tags:        list = None,
+    tier:        str  = "observed",
+    confidence:  float = 1.0,
 ) -> dict:
     """Add a knowledge atom to Willow's Postgres KB.
     Gates on REDUNDANT/CONTRADICTION — returns {blocked:true} if a duplicate or conflict
-    is detected. Pass force=true to override the gate and write anyway."""
+    is detected. Pass force=true to override the gate and write anyway.
+    keywords/tags are stored in content JSONB for retrieval. tier: hypothesis|observed|validated."""
     logger.info("[w2] kb_ingest app_id=%s title=%r force=%s", app_id, title, force)
     if not pg:
         return _no_pg()
@@ -863,6 +868,10 @@ async def kb_ingest(
             title=title, summary=clean_summary,
             source_type=source_type, source_id=clean_source_id,
             category=category, domain=effective_domain or None,
+            keywords=keywords or [],
+            tags=tags or [],
+            tier=tier,
+            confidence=confidence,
         )
         out: dict = {"id": atom_id, "status": "ingested" if atom_id else "failed"}
         if not atom_id:

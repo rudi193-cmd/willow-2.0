@@ -746,11 +746,11 @@ class PgBridge:
             cur.execute("""
                 INSERT INTO knowledge
                     (id, project, valid_at, invalid_at, title, summary, content,
-                     source_type, category, embedding)
+                     source_type, category, embedding, tier, confidence)
                 VALUES
                     (%(id)s, %(project)s, %(valid_at)s, %(invalid_at)s,
                      %(title)s, %(summary)s, %(content)s, %(source_type)s, %(category)s,
-                     %(embedding)s::vector)
+                     %(embedding)s::vector, %(tier)s, %(confidence)s)
                 ON CONFLICT (id) DO UPDATE SET
                     project     = EXCLUDED.project,
                     valid_at    = EXCLUDED.valid_at,
@@ -759,7 +759,9 @@ class PgBridge:
                     content     = EXCLUDED.content,
                     source_type = EXCLUDED.source_type,
                     category    = EXCLUDED.category,
-                    embedding   = EXCLUDED.embedding
+                    embedding   = EXCLUDED.embedding,
+                    tier        = EXCLUDED.tier,
+                    confidence  = EXCLUDED.confidence
             """, {
                 "id":          record["id"],
                 "project":     record.get("project", "global"),
@@ -771,25 +773,36 @@ class PgBridge:
                 "source_type": record.get("source_type"),
                 "category":    record.get("category"),
                 "embedding":   vec_str,
+                "tier":        record.get("tier", "observed"),
+                "confidence":  record.get("confidence", 1.0),
             })
         self.conn.commit()
         return record["id"]
 
     def ingest_atom(self, title: str, summary: str, source_type: str = "mcp",
                     source_id: str = "", category: str = "general",
-                    domain: Optional[str] = None) -> Optional[str]:
+                    domain: Optional[str] = None, keywords: Optional[list] = None,
+                    tags: Optional[list] = None, tier: str = "observed",
+                    confidence: float = 1.0) -> Optional[str]:
         """sap_mcp.py compatibility wrapper for willow_knowledge_ingest."""
         try:
             self._last_ingest_error = None
             atom_id = self.gen_id(8)
+            content: dict = {"source_id": source_id}
+            if keywords:
+                content["keywords"] = keywords
+            if tags:
+                content["tags"] = tags
             self.knowledge_put({
                 "id":          atom_id,
                 "project":     domain or "global",
                 "title":       title,
                 "summary":     summary,
                 "source_type": source_type,
-                "content":     {"source_id": source_id},
+                "content":     content,
                 "category":    category,
+                "tier":        tier,
+                "confidence":  confidence,
             })
             return atom_id
         except Exception as e:

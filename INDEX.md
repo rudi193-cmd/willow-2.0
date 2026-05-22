@@ -6,7 +6,6 @@
 
 | Path | Description |
 |------|-------------|
-| `.mcp.json` | MCP server configuration (per-machine, gitignored) |
 | `AGENTS.md` | Agent registry and personas |
 | `CLAUDE.md` | Claude Code pointer → willow.md |
 | `GEMINI.md` | Gemini runtime pointer → willow.md |
@@ -84,7 +83,6 @@
 | Path | Description |
 |------|-------------|
 | `grove/` | Grove UI layouts and local frontend assets |
-| `store/` | SOIL structured local store — agent-namespaced collections on disk |
 
 ## Infrastructure
 
@@ -96,7 +94,6 @@
 | `app.py` | Application entry point |
 | `bin/` | Executables |
 | `core/` | Shared core utilities — pg_bridge, config, helpers |
-| `gaps.db` | SQLite gaps tracking database |
 | `migrations/` | Database migrations |
 | `pyproject.toml` | Python project config |
 | `requirements.txt` | Python dependencies |
@@ -148,12 +145,6 @@
 | `sandbox/` | Experimental and scratch area |
 | `tests/` | Test suite |
 | `wiki/` | Wiki content |
-
-## External
-
-| Path | Description |
-|------|-------------|
-| `awesome-claude-skills/` | Submodule — community Claude skills collection |
 
 ## Archive (deprecated)
 
