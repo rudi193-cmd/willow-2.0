@@ -37,7 +37,7 @@ DEFAULT_SOURCES = [
 SNIPPET_LEN = 200
 
 
-def _score_relevance(topic: str, hit: dict) -> float:
+def _score_relevance(topic: str, hit: dict, model: str | None = None) -> float:
     """Score whether a single search hit is relevant to the topic.
 
     Uses orin classify. Falls back to 0.5 (neutral) if orin is unavailable.
@@ -47,8 +47,10 @@ def _score_relevance(topic: str, hit: dict) -> float:
     content = f"Topic: {topic}\n\nResult title: {title}\nSnippet: {snippet}"
 
     try:
-        from agents.orin.tasks import classify
-        result = classify(
+        import agents.orin.tasks as orin_tasks
+        if model:
+            orin_tasks.MODEL = model
+        result = orin_tasks.classify(
             content,
             ["relevant", "unrelated"],
             context=(
@@ -80,6 +82,8 @@ def main() -> int:
                         help="Search and classify but do not write to intake")
     parser.add_argument("--no-llm",           action="store_true",
                         help="Skip orin classify — accept all hits above 0 results")
+    parser.add_argument("--model",            default=None,
+                        help="Ollama model for orin classify (default: mistral:7b)")
     parser.add_argument("--agent",            default="hanuman",
                         help="Agent name for intake write (default: hanuman)")
     args = parser.parse_args()
@@ -107,7 +111,7 @@ def main() -> int:
             if args.no_llm:
                 score = confidence_base
             else:
-                score = _score_relevance(args.topic, hit)
+                score = _score_relevance(args.topic, hit, model=args.model)
 
             url = hit.get("url", "")
             snippet = hit.get("snippet", "")[:SNIPPET_LEN]
