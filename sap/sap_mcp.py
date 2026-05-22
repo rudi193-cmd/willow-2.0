@@ -726,16 +726,19 @@ async def kb_search(
     semantic:          bool = False,
     include_embedding: bool = False,
     fields:            list = None,
+    tier:              str  = "",
 ) -> dict:
     """Search Willow's Postgres knowledge graph before building anything.
     Returns atoms by title and summary. Search first — another agent may have already
-    solved or decided this. Use kb_get to fetch the full atom."""
-    logger.info("[w2] kb_search app_id=%s q=%r semantic=%s", app_id, query, semantic)
+    solved or decided this. Use kb_get to fetch the full atom.
+    tier: filter to frontier|contested|canonical|superseded (omit for all tiers)."""
+    logger.info("[w2] kb_search app_id=%s q=%r semantic=%s tier=%r", app_id, query, semantic, tier)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
 
     def _search():
+        tier_filter = tier or None
         if semantic:
             try:
                 knowledge = pg.knowledge_search_semantic(
@@ -746,14 +749,16 @@ async def kb_search(
                 mode = "semantic"
             except Exception:
                 knowledge = pg.knowledge_search(
-                    query, limit=limit, include_embedding=include_embedding, fields=fields
+                    query, limit=limit, include_embedding=include_embedding,
+                    fields=fields, tier=tier_filter,
                 )
                 jeles = pg.jeles_keyword_search(query, limit=limit // 2)
                 opus  = pg.search_opus(query, limit=limit // 2)
                 mode = "degraded"
         else:
             knowledge = pg.knowledge_search(
-                query, limit=limit, include_embedding=include_embedding, fields=fields
+                query, limit=limit, include_embedding=include_embedding,
+                fields=fields, tier=tier_filter,
             )
             jeles = pg.jeles_keyword_search(query, limit=limit // 2)
             opus  = pg.search_opus(query, limit=limit // 2)
@@ -776,6 +781,36 @@ async def kb_search(
         }
 
     return await loop.run_in_executor(_executor, _search)
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def kb_promote(
+    app_id:  str,
+    atom_id: str,
+    tier:    str,
+    reason:  str = "",
+) -> dict:
+    """Promote or demote a knowledge atom to a new lifecycle tier.
+    tier: frontier → contested → canonical → superseded
+    Records the transition in FRANK. Accepts legacy values (hypothesis/observed/validated) — auto-mapped."""
+    logger.info("[w2] kb_promote app_id=%s atom=%s tier=%s", app_id, atom_id, tier)
+    if not pg:
+        return _no_pg()
+    from core.pg_bridge import KNOWLEDGE_TIERS, normalize_tier
+    canonical = normalize_tier(tier)
+    if canonical not in KNOWLEDGE_TIERS:
+        return {"error": f"invalid tier {tier!r} — valid: {KNOWLEDGE_TIERS}"}
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(_executor, pg.promote_knowledge_tier, atom_id, tier, app_id, reason)
+    if result.get("promoted"):
+        try:
+            pg.ledger_append("willow", "kb_tier_promotion", {
+                "atom_id": atom_id, "tier": canonical, "agent": app_id, "reason": reason,
+            })
+        except Exception:
+            pass
+    return result
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -834,7 +869,8 @@ async def kb_ingest(
     """Add a knowledge atom to Willow's Postgres KB.
     Gates on REDUNDANT/CONTRADICTION — returns {blocked:true} if a duplicate or conflict
     is detected. Pass force=true to override the gate and write anyway.
-    keywords/tags are stored in content JSONB for retrieval. tier: hypothesis|observed|validated."""
+    keywords/tags are stored in content JSONB for retrieval.
+    tier: frontier|contested|canonical|superseded (legacy: hypothesis|observed|validated — auto-mapped)."""
     logger.info("[w2] kb_ingest app_id=%s title=%r force=%s", app_id, title, force)
     if not pg:
         return _no_pg()
@@ -1646,7 +1682,7 @@ async def intake_write(
 ) -> dict:
     """Write one annotated record to the unified intake layer.
     promote_intake.py routes it to the right KB tier (jeles_atoms / knowledge / opus / binder_queue).
-    tier: observed | fetched | verified | ratified
+    tier: frontier|contested|canonical|superseded (legacy: observed|fetched|verified|ratified — auto-mapped)
     confidence: 0.0-1.0 — source confidence in this record."""
     logger.info("[w2] intake_write app_id=%s source=%s tier=%s conf=%.2f", app_id, source, tier, confidence)
     loop = asyncio.get_running_loop()

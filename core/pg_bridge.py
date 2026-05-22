@@ -28,6 +28,27 @@ except ImportError:
         return None
 
 
+# ── Knowledge lifecycle tiers ────────────────────────────────────────────────
+# Canonical vocabulary for knowledge.tier — ordered by epistemic maturity.
+KNOWLEDGE_TIERS: tuple[str, ...] = ("frontier", "contested", "canonical", "superseded")
+
+# Maps legacy tier values to canonical ones so old atoms stay queryable.
+_TIER_COMPAT: dict[str, str] = {
+    "hypothesis": "frontier",
+    "observed":   "frontier",
+    "fetched":    "frontier",
+    "verified":   "contested",
+    "validated":  "canonical",
+    "ratified":   "canonical",
+}
+
+
+def normalize_tier(tier: str) -> str:
+    """Normalise a tier value to the canonical vocabulary, falling back to 'frontier'."""
+    t = (tier or "frontier").lower().strip()
+    return _TIER_COMPAT.get(t, t if t in KNOWLEDGE_TIERS else "frontier")
+
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS knowledge (
     id          TEXT PRIMARY KEY,
@@ -905,7 +926,8 @@ class PgBridge:
     def knowledge_search(self, query: str, project: Optional[str] = None,
                          include_invalid: bool = False, limit: int = 20,
                          include_embedding: bool = False,
-                         fields: Optional[list] = None) -> list:
+                         fields: Optional[list] = None,
+                         tier: Optional[str] = None) -> list:
         self._ensure_conn()
         # Split multi-word queries into AND-ed ILIKE terms so "grove fleet"
         # finds atoms containing both words, not the exact phrase.
@@ -923,11 +945,43 @@ class PgBridge:
             params.append(project)
         if not include_invalid:
             filters.append("invalid_at IS NULL")
+        if tier:
+            canonical = normalize_tier(tier)
+            # Also match legacy values that map to the same canonical tier.
+            legacy = [k for k, v in _TIER_COMPAT.items() if v == canonical]
+            all_values = [canonical] + legacy
+            placeholders = ",".join(["%s"] * len(all_values))
+            filters.append(f"tier IN ({placeholders})")
+            params.extend(all_values)
         where_template = " AND ".join(f"({f})" for f in filters)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             select_sql, _ = self._knowledge_select_cols(fields=fields, include_embedding=include_embedding)
             cur.execute(f"SELECT {select_sql} FROM knowledge WHERE {where_template} LIMIT %s", params + [limit])
             return [dict(r) for r in cur.fetchall()]
+
+    def promote_knowledge_tier(self, atom_id: str, new_tier: str,
+                                agent: str = "", reason: str = "") -> dict:
+        """Move a knowledge atom to a new lifecycle tier.
+        Accepts canonical values (frontier/contested/canonical/superseded)
+        and legacy values (hypothesis/observed/validated etc)."""
+        self._ensure_conn()
+        tier = normalize_tier(new_tier)
+        if tier not in KNOWLEDGE_TIERS:
+            return {"error": f"invalid tier {new_tier!r} — valid: {KNOWLEDGE_TIERS}"}
+        try:
+            with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(
+                    "UPDATE knowledge SET tier=%s, updated_at=now()"
+                    " WHERE id=%s AND invalid_at IS NULL RETURNING id, tier",
+                    (tier, atom_id),
+                )
+                row = cur.fetchone()
+            self.conn.commit()
+            if not row:
+                return {"promoted": False, "reason": "atom not found or already invalidated"}
+            return {"promoted": True, "id": atom_id, "tier": tier, "reason": reason}
+        except Exception as e:
+            return {"error": str(e)}
 
     def _knowledge_ann(self, vec: list, limit: int,
                        project: Optional[str] = None,
