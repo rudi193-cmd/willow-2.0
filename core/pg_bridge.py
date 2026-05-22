@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS feedback (
     agent      TEXT,
     title      TEXT,
     domain     TEXT DEFAULT 'meta',
-    principle  TEXT NOT NULL,
+    content    TEXT NOT NULL,     -- renamed from principle (Wave 3)
     source     TEXT DEFAULT 'self',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -1133,7 +1133,7 @@ class PgBridge:
             fid = self.gen_id(8)
             with self.conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO feedback (id, agent, title, domain, principle, source)
+                    INSERT INTO feedback (id, agent, title, domain, content, source)
                     VALUES (%s, %s, %s, %s, %s, %s)
                 """, (fid, agent, title, domain, principle, source))
             self.conn.commit()

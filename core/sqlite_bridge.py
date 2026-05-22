@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS feedback (
     agent      TEXT,
     title      TEXT,
     domain     TEXT DEFAULT 'meta',
-    principle  TEXT NOT NULL,
+    content    TEXT NOT NULL,     -- renamed from principle (Wave 3)
     source     TEXT DEFAULT 'self',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -564,7 +564,7 @@ class SqliteBridge:
                             title: Optional[str] = None) -> bool:
         try:
             self._exec(
-                "INSERT INTO feedback (id, agent, title, domain, principle, source) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO feedback (id, agent, title, domain, content, source) VALUES (?, ?, ?, ?, ?, ?)",
                 (self.gen_id(8), agent, title, domain, principle, source),
             )
             return True
