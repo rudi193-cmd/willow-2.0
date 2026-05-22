@@ -32,6 +32,8 @@ _SCHEMA = """
 CREATE TABLE IF NOT EXISTS knowledge (
     id          TEXT PRIMARY KEY,
     project     TEXT NOT NULL DEFAULT 'global',
+    agent       TEXT,
+    domain      TEXT,
     valid_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     invalid_at  TIMESTAMPTZ,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -47,6 +49,8 @@ CREATE TABLE IF NOT EXISTS knowledge (
 
 CREATE TABLE IF NOT EXISTS cmb_atoms (
     id          TEXT PRIMARY KEY,
+    agent       TEXT,
+    title       TEXT,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     content     JSONB NOT NULL
 );
@@ -67,7 +71,8 @@ CREATE TABLE IF NOT EXISTS agents (
     role        TEXT,
     trust       TEXT DEFAULT 'WORKER',
     folder_root TEXT,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
@@ -83,15 +88,21 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 CREATE TABLE IF NOT EXISTS opus_atoms (
     id             TEXT PRIMARY KEY,
+    agent          TEXT,
+    title          TEXT,
+    summary        TEXT,
     content        TEXT NOT NULL,
     domain         TEXT DEFAULT 'meta',
     depth          INTEGER DEFAULT 1,
+    confidence     FLOAT DEFAULT 1.0,
     source_session TEXT,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS feedback (
     id         TEXT PRIMARY KEY,
+    agent      TEXT,
+    title      TEXT,
     domain     TEXT DEFAULT 'meta',
     principle  TEXT NOT NULL,
     source     TEXT DEFAULT 'self',
@@ -100,6 +111,8 @@ CREATE TABLE IF NOT EXISTS feedback (
 
 CREATE TABLE IF NOT EXISTS journal (
     id         TEXT PRIMARY KEY,
+    agent      TEXT,
+    title      TEXT,
     entry      TEXT NOT NULL,
     session_id TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -120,11 +133,12 @@ CREATE TABLE IF NOT EXISTS jeles_atoms (
     id         TEXT PRIMARY KEY,
     jsonl_id   TEXT NOT NULL,
     agent      TEXT NOT NULL,
+    title      TEXT,
+    summary    TEXT,
     content    TEXT NOT NULL,
     domain     TEXT DEFAULT 'meta',
     depth      INTEGER DEFAULT 1,
     confidence FLOAT DEFAULT 0.98,
-    title      TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -144,6 +158,7 @@ CREATE TABLE IF NOT EXISTS binder_edges (
     edge_type   TEXT NOT NULL,
     status      TEXT DEFAULT 'proposed',
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now(),
     CONSTRAINT binder_edges_unique UNIQUE (source_atom, target_atom, edge_type)
 );
 
@@ -198,6 +213,7 @@ CREATE TABLE IF NOT EXISTS forks (
     id           TEXT PRIMARY KEY,
     title        TEXT NOT NULL,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ DEFAULT now(),
     created_by   TEXT NOT NULL,
     topic        TEXT,
     status       TEXT NOT NULL DEFAULT 'open',
@@ -213,6 +229,7 @@ CREATE TABLE IF NOT EXISTS edges (
     from_id     TEXT NOT NULL,
     to_id       TEXT NOT NULL,
     relation    TEXT NOT NULL,
+    agent       TEXT,
     context     TEXT,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE(from_id, to_id, relation)
@@ -253,7 +270,8 @@ CREATE TABLE IF NOT EXISTS policy_rules (
     action      TEXT NOT NULL DEFAULT 'warn',
     created_by  TEXT NOT NULL DEFAULT '',
     active      BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now()
 );
 """
 
@@ -1075,17 +1093,21 @@ class PgBridge:
             return [dict(r) for r in cur.fetchall()]
 
     def ingest_opus_atom(self, content: str, domain: str = "meta",
-                         depth: int = 1, source_session: Optional[str] = None) -> Optional[str]:
+                         depth: int = 1, source_session: Optional[str] = None,
+                         agent: Optional[str] = None, title: Optional[str] = None,
+                         summary: Optional[str] = None,
+                         confidence: float = 1.0) -> Optional[str]:
         self._ensure_conn()
         try:
             atom_id = self.gen_id(8)
-            vec = embed(content)
+            vec = embed(f"{title or ''} {content}")
             vec_str = str(vec) if vec is not None else None
             with self.conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO opus_atoms (id, content, domain, depth, source_session, embedding)
-                    VALUES (%s, %s, %s, %s, %s, %s::vector)
-                """, (atom_id, content, domain, depth, source_session, vec_str))
+                    INSERT INTO opus_atoms
+                        (id, agent, title, summary, content, domain, depth, confidence, source_session, embedding)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector)
+                """, (atom_id, agent, title, summary, content, domain, depth, confidence, source_session, vec_str))
             self.conn.commit()
             return atom_id
         except Exception:
@@ -1104,30 +1126,33 @@ class PgBridge:
             return [dict(r) for r in cur.fetchall()]
 
     def opus_feedback_write(self, domain: str, principle: str,
-                            source: str = "self") -> bool:
+                            source: str = "self", agent: Optional[str] = None,
+                            title: Optional[str] = None) -> bool:
         self._ensure_conn()
         try:
             fid = self.gen_id(8)
             with self.conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO feedback (id, domain, principle, source)
-                    VALUES (%s, %s, %s, %s)
-                """, (fid, domain, principle, source))
+                    INSERT INTO feedback (id, agent, title, domain, principle, source)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (fid, agent, title, domain, principle, source))
             self.conn.commit()
             return True
         except Exception:
             return False
 
     def opus_journal_write(self, entry: str,
-                           session_id: Optional[str] = None) -> Optional[str]:
+                           session_id: Optional[str] = None,
+                           agent: Optional[str] = None,
+                           title: Optional[str] = None) -> Optional[str]:
         self._ensure_conn()
         try:
             jid = self.gen_id(8)
             with self.conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO journal (id, entry, session_id)
-                    VALUES (%s, %s, %s)
-                """, (jid, entry, session_id))
+                    INSERT INTO journal (id, agent, title, entry, session_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (jid, agent, title, entry, session_id))
             self.conn.commit()
             return jid
         except Exception:
@@ -1147,7 +1172,8 @@ class PgBridge:
                     ON CONFLICT (name) DO UPDATE SET
                         role = EXCLUDED.role,
                         trust = EXCLUDED.trust,
-                        folder_root = EXCLUDED.folder_root
+                        folder_root = EXCLUDED.folder_root,
+                        updated_at = now()
                     RETURNING id
                 """, (agent_id, name, role, trust, folder_root))
                 row = cur.fetchone()

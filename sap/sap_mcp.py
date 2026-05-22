@@ -1733,26 +1733,32 @@ async def index_feedback_write(
     domain:    str,
     principle: str,
     source:    str = "self",
+    title:     str = "",
 ) -> dict:
     """Write a feedback principle to the opus feedback table."""
     logger.info("[w2] index_feedback_write app_id=%s domain=%s", app_id, domain)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
-    ok = await loop.run_in_executor(_executor, pg.opus_feedback_write, domain, principle, source)
+    ok = await loop.run_in_executor(
+        _executor, pg.opus_feedback_write,
+        domain, principle, source, app_id, title or None,
+    )
     return {"status": "written" if ok else "failed"}
 
 
 @mcp.tool()
 @sap_gate()
-async def index_journal(app_id: str, entry: str, session_id: str = "") -> dict:
+async def index_journal(app_id: str, entry: str, session_id: str = "",
+                        title: str = "") -> dict:
     """Write a journal entry to the opus journal."""
     logger.info("[w2] index_journal app_id=%s", app_id)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
     jid = await loop.run_in_executor(
-        _executor, pg.opus_journal_write, entry, session_id or None,
+        _executor, pg.opus_journal_write,
+        entry, session_id or None, app_id, title or None,
     )
     return {"id": jid, "status": "logged" if jid else "failed"}
 
