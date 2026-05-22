@@ -24,7 +24,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 
 from core.jeles_sources import search as jeles_search, SOURCES, _SOURCE_CONFIDENCE
-from core.intake import write_intake
+from core.intake import write as intake_write
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [jxsd] %(message)s")
 log = logging.getLogger("jxsd")
@@ -139,17 +139,19 @@ def main() -> int:
                 seeded += 1
                 continue
 
-            write_intake(
+            intake_write(
                 content=content,
-                title=title,
                 source=url or source_id,
                 agent=args.agent,
                 tier="fetched",
                 confidence=round(min(confidence_base, score), 4),
+                title=title,
                 keywords=[w.lower() for w in args.topic.split() if len(w) > 3][:8],
                 tags=[source_id, "jeles", "track1", f"topic:{args.topic[:40]}"],
-                domain=",".join(SOURCES.get(source_id, {}).get("domain", [source_id])[:2]),
-                category="jeles_seed",
+                extra={
+                    "domain": ",".join(SOURCES.get(source_id, {}).get("domain", [source_id])[:2]),
+                    "category": "jeles_seed",
+                },
             )
             seeded += 1
 
