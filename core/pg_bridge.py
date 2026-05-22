@@ -42,7 +42,9 @@ CREATE TABLE IF NOT EXISTS knowledge (
     category    TEXT,
     visit_count INTEGER NOT NULL DEFAULT 0,
     weight      FLOAT NOT NULL DEFAULT 1.0,
-    last_visited TIMESTAMPTZ
+    last_visited TIMESTAMPTZ,
+    tier        TEXT,
+    confidence  FLOAT
 );
 
 CREATE TABLE IF NOT EXISTS cmb_atoms (
@@ -277,6 +279,8 @@ _MIGRATIONS = [
     "ALTER TABLE knowledge ADD COLUMN IF NOT EXISTS weight FLOAT NOT NULL DEFAULT 1.0",
     "ALTER TABLE knowledge ADD COLUMN IF NOT EXISTS last_visited TIMESTAMPTZ",
     "ALTER TABLE knowledge ADD COLUMN IF NOT EXISTS fork_id TEXT",
+    "ALTER TABLE knowledge ADD COLUMN IF NOT EXISTS tier TEXT",
+    "ALTER TABLE knowledge ADD COLUMN IF NOT EXISTS confidence FLOAT",
 ]
 
 _INDEXES = """
@@ -300,6 +304,7 @@ CREATE INDEX IF NOT EXISTS idx_knowledge_visit ON knowledge (visit_count DESC);
 CREATE INDEX IF NOT EXISTS idx_forks_status ON forks (status);
 CREATE INDEX IF NOT EXISTS idx_forks_created_at ON forks (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_knowledge_fork_id ON knowledge (fork_id) WHERE fork_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS knowledge_tier_idx ON knowledge (tier) WHERE tier IS NOT NULL;
 CREATE INDEX IF NOT EXISTS knowledge_embedding_hnsw
     ON knowledge USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS opus_atoms_embedding_hnsw
