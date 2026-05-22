@@ -225,7 +225,7 @@ CREATE TABLE IF NOT EXISTS forks (
 );
 
 CREATE TABLE IF NOT EXISTS edges (
-    id          SERIAL PRIMARY KEY,
+    id          TEXT PRIMARY KEY,
     from_id     TEXT NOT NULL,
     to_id       TEXT NOT NULL,
     relation    TEXT NOT NULL,
