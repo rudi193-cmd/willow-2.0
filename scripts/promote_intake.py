@@ -61,19 +61,35 @@ _OBSERVED_MIN   = 0.85
 
 
 def _fallback_route(rec: dict) -> str:
-    """Route without LLM — uses tier + confidence only."""
+    """Route without LLM — uses tier + confidence only.
+    Handles both legacy tiers (observed/fetched/verified/ratified) and canonical
+    tiers (frontier/contested/canonical/superseded)."""
     tier       = rec.get("tier", "observed")
     confidence = float(rec.get("confidence", 0.0))
     source     = rec.get("source", "")
 
-    if tier in ("verified", "ratified"):
+    # canonical / ratified / verified → high-trust knowledge
+    if tier in ("canonical", "verified", "ratified"):
         return "knowledge" if confidence >= _VERIFIED_MIN else "binder_queue"
+
+    # contested → knowledge if confidence is solid
+    if tier == "contested":
+        return "knowledge" if confidence >= _FETCHED_MIN else "binder_queue"
+
+    # fetched → external source → jeles
     if tier == "fetched":
         return "jeles_atoms" if confidence >= _FETCHED_MIN else "binder_queue"
-    if tier == "observed":
-        if "opus" in source or "feedback" in source or "reasoning" in source:
+
+    # frontier / observed → new claims; route by source signals
+    if tier in ("frontier", "observed"):
+        if any(k in source for k in ("opus", "feedback", "reasoning")):
             return "opus" if confidence >= _OBSERVED_MIN else "binder_queue"
         return "knowledge" if confidence >= _OBSERVED_MIN else "binder_queue"
+
+    # superseded → archive to binder for human review
+    if tier == "superseded":
+        return "binder_queue"
+
     return "binder_queue"
 
 

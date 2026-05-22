@@ -1229,6 +1229,94 @@ async def agent_task_list(app_id: str, agent: str = "kart", limit: int = 10) -> 
     return {"pending": tasks, "count": len(tasks)}
 
 
+@mcp.tool()
+@sap_gate()
+async def kart_task_run(
+    app_id: str,
+    agent:  str = "kart",
+    limit:  int = 5,
+) -> dict:
+    """Pull pending tasks from the tasks table and execute them (subprocess, 120s timeout each).
+    Updates status to completed/failed in the DB. agent: defaults to kart."""
+    logger.info("[w2] kart_task_run app_id=%s agent=%s limit=%d", app_id, agent, limit)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        import subprocess
+        import shlex
+        import time
+
+        tasks = pg.pending_tasks(agent=agent, limit=limit)
+        results = []
+        for t in tasks:
+            task_id = t["id"]
+            cmd     = t["task"]
+            started = time.time()
+            _rl_log_event("kart_run", ref=task_id)
+            try:
+                proc = subprocess.run(
+                    shlex.split(cmd), shell=False, capture_output=True,
+                    text=True, timeout=120,
+                )
+                elapsed = round(time.time() - started, 2)
+                status  = "completed" if proc.returncode == 0 else "failed"
+                result  = {
+                    "returncode": proc.returncode,
+                    "stdout":     proc.stdout.strip()[-2000:],
+                    "stderr":     proc.stderr.strip()[-500:],
+                    "elapsed_s":  elapsed,
+                }
+            except subprocess.TimeoutExpired:
+                status = "failed"
+                result = {"error": "timeout", "elapsed_s": 120}
+            except Exception as e:
+                status = "failed"
+                result = {"error": str(e)}
+            pg.task_complete(task_id, result, status)
+            _rl_log_event(f"kart_{status}", ref=task_id)
+            results.append({"task_id": task_id, "status": status, "cmd": cmd[:80]})
+        return {"executed": len(results), "results": results}
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def intake_schedule(
+    app_id:  str,
+    agent:   str = "",
+    days:    int = 7,
+    limit:   int = 0,
+    no_llm:  bool = True,
+) -> dict:
+    """Queue a promote_intake run as a Kart task. Returns task_id.
+    Call kart_task_run() afterwards to execute it, or let Kart poll automatically.
+    no_llm=True (default) uses fallback routing; False routes via orin (requires Ollama)."""
+    logger.info("[w2] intake_schedule app_id=%s agent=%s days=%d", app_id, agent or app_id, days)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+
+    def _schedule():
+        import sys
+        target  = agent or app_id
+        script  = str(_SAP_ROOT.parent / "scripts" / "promote_intake.py")
+        cmd_parts = [sys.executable, script, f"--days={days}", f"--agent={target}"]
+        if no_llm:
+            cmd_parts.append("--no-llm")
+        if limit:
+            cmd_parts.append(f"--limit={limit}")
+        cmd = " ".join(cmd_parts)
+        task_id = pg.submit_task(cmd, submitted_by=app_id, agent="kart")
+        if not task_id:
+            return {"error": "failed to submit task"}
+        return {"task_id": task_id, "status": "queued", "cmd": cmd}
+
+    return await loop.run_in_executor(_executor, _schedule)
+
+
 # ── Tools — infer_ domain ─────────────────────────────────────────────────────
 
 @mcp.tool()

@@ -570,6 +570,16 @@ class SqliteBridge:
             (agent, limit),
         )
 
+    def task_complete(self, task_id: str, result: dict, status: str = "completed") -> bool:
+        try:
+            self._exec(
+                "UPDATE tasks SET status=?, result=?, updated_at=? WHERE id=?",
+                (status, _jdump(result), _now(), task_id),
+            )
+            return True
+        except Exception:
+            return False
+
     # ── Opus ──────────────────────────────────────────────────────────────────
 
     def search_opus(self, query: str, limit: int = 20) -> list:

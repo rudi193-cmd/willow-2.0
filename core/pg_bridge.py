@@ -1248,6 +1248,19 @@ class PgBridge:
             """, (agent, limit))
             return [dict(r) for r in cur.fetchall()]
 
+    def task_complete(self, task_id: str, result: dict, status: str = "completed") -> bool:
+        self._ensure_conn()
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE tasks SET status=%s, result=%s, updated_at=now()
+                    WHERE id=%s
+                """, (status, psycopg2.extras.Json(result), task_id))
+            self.conn.commit()
+            return cur.rowcount > 0
+        except Exception:
+            return False
+
     # ── Opus ─────────────────────────────────────────────────────────────────
 
     def search_opus(self, query: str, limit: int = 20) -> list:
