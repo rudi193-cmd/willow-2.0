@@ -1005,6 +1005,27 @@ class PgBridge:
             )
             return [dict(r) for r in cur.fetchall()]
 
+    def jeles_keyword_search(self, query: str, limit: int = 20) -> list:
+        """Keyword search across jeles_atoms (title + content ILIKE)."""
+        self._ensure_conn()
+        words = list(dict.fromkeys(query.split()))[:20]
+        if not words:
+            with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SELECT id, title, domain, confidence, created_at FROM jeles_atoms ORDER BY created_at DESC LIMIT %s", (limit,))
+                return [dict(r) for r in cur.fetchall()]
+        filters = []
+        params: list = []
+        for word in words:
+            filters.append("(title ILIKE %s OR content ILIKE %s)")
+            params.extend([f"%{word}%", f"%{word}%"])
+        where = " AND ".join(f"({f})" for f in filters)
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                f"SELECT id, title, domain, confidence, created_at FROM jeles_atoms WHERE {where} ORDER BY created_at DESC LIMIT %s",
+                params + [limit],
+            )
+            return [dict(r) for r in cur.fetchall()]
+
     def knowledge_at(self, query: str, at_time: datetime,
                      project: Optional[str] = None, limit: int = 20) -> list:
         self._ensure_conn()

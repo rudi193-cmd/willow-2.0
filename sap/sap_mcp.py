@@ -741,23 +741,39 @@ async def kb_search(
                 knowledge = pg.knowledge_search_semantic(
                     query, limit=limit, include_embedding=include_embedding, fields=fields
                 )
+                jeles    = pg.search_jeles_semantic(query, limit=limit // 2)
+                opus     = pg.search_opus_semantic(query, limit=limit // 2)
                 mode = "semantic"
             except Exception:
                 knowledge = pg.knowledge_search(
                     query, limit=limit, include_embedding=include_embedding, fields=fields
                 )
+                jeles = pg.jeles_keyword_search(query, limit=limit // 2)
+                opus  = pg.search_opus(query, limit=limit // 2)
                 mode = "degraded"
         else:
             knowledge = pg.knowledge_search(
                 query, limit=limit, include_embedding=include_embedding, fields=fields
             )
+            jeles = pg.jeles_keyword_search(query, limit=limit // 2)
+            opus  = pg.search_opus(query, limit=limit // 2)
             mode = "keyword"
         for atom in knowledge[:3]:
             try:
                 pg.promote(atom["id"])
             except Exception:
                 pass
-        return {"knowledge": knowledge, "total": len(knowledge), "mode": mode}
+        for row in jeles:
+            row["_table"] = "jeles_atoms"
+        for row in opus:
+            row["_table"] = "opus_atoms"
+        return {
+            "knowledge": knowledge,
+            "jeles_atoms": jeles,
+            "opus_atoms": opus,
+            "total": len(knowledge) + len(jeles) + len(opus),
+            "mode": mode,
+        }
 
     return await loop.run_in_executor(_executor, _search)
 
