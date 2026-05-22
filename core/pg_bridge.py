@@ -549,6 +549,18 @@ def init_schema(conn: "psycopg2.connection") -> None:
     conn.commit()
 
 
+def run_migrations(conn: "psycopg2.connection") -> None:
+    """Run only the _MIGRATIONS list against an existing schema.
+    Safe to call repeatedly — all statements use IF NOT EXISTS / IF EXISTS guards."""
+    with conn.cursor() as cur:
+        for stmt in _MIGRATIONS:
+            try:
+                cur.execute(stmt)
+            except Exception:
+                conn.rollback()
+    conn.commit()
+
+
 def _rrf_merge(ann_results: list, ilike_results: list, k: int = 60) -> list:
     scores = {}
     for rank, row in enumerate(ann_results):
@@ -879,13 +891,23 @@ class PgBridge:
         allowed = [
             "id",
             "project",
+            "agent",
+            "domain",
             "valid_at",
             "invalid_at",
+            "created_at",
+            "updated_at",
             "title",
             "summary",
             "content",
             "source_type",
             "category",
+            "tier",
+            "confidence",
+            "visit_count",
+            "weight",
+            "last_visited",
+            "fork_id",
             "embedding",
         ]
         if fields is None:
