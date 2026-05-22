@@ -170,6 +170,29 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "code_graph_index", "code_graph_search", "code_graph_explain",
         "code_graph_suggest", "code_graph_walk", "code_graph_impact",
     }),
+    "context_manage": frozenset({
+        "context_save", "context_get", "context_list", "context_expire",
+    }),
+    # All read-only Postgres-backed tools added since postgres_read was first cut.
+    "postgres_read_ext": frozenset({
+        "pg_edge_list", "mem_jeles_get", "mem_ratify_list",
+        "mem_binder_list_files", "mem_binder_list_edges",
+        "hook_list", "hook_log_read", "ledger_verify",
+        "routing_log_read",
+        "cmb_get", "cmb_list", "cmb_search",
+        "journal_read",
+        "intake_list",
+        "kart_task_run",
+        "kb_extract_from_session", "kb_intelligence_run", "kb_backup",
+        "fleet_system_status",
+    }),
+    # Write tools added since knowledge_write was first cut.
+    "knowledge_write_ext": frozenset({
+        "pg_edge_add",
+        "mem_binder_edge", "mem_binder_edge_update", "mem_binder_file",
+        "intake_promote", "intake_schedule",
+        "kb_promote",
+    }),
 }
 
 # If set, only these app_ids are accepted (comma-separated). INFRA IDs are always exempt.
