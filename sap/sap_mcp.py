@@ -1847,6 +1847,134 @@ async def intake_write(
 
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
+async def intake_list(
+    app_id: str,
+    agent:  str = "",
+    days:   int = 7,
+) -> dict:
+    """List pending (not yet promoted) intake records for an agent.
+    agent: defaults to app_id. days: look-back window (default 7)."""
+    logger.info("[w2] intake_list app_id=%s agent=%s days=%d", app_id, agent or app_id, days)
+    loop = asyncio.get_running_loop()
+
+    def _list():
+        from core.intake import read_pending
+        target = agent or app_id
+        records = read_pending(target, days=days)
+        return {"records": records, "count": len(records), "agent": target}
+
+    return await loop.run_in_executor(_executor, _list)
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def intake_promote(
+    app_id:  str,
+    agent:   str = "",
+    days:    int = 7,
+    limit:   int = 0,
+    no_llm:  bool = True,
+) -> dict:
+    """Run the fallback-routing promote pass on pending intake records.
+    Routes each record to jeles_atoms / knowledge / opus / binder_queue based on
+    tier + confidence. no_llm=True (default) uses deterministic routing only.
+    For LLM-assisted routing run promote_intake.py directly."""
+    logger.info("[w2] intake_promote app_id=%s agent=%s days=%d limit=%d", app_id, agent or app_id, days, limit)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+
+    def _promote():
+        from core.intake import read_pending, mark_promoted
+
+        _VERIFIED_MIN = 0.95
+        _FETCHED_MIN  = 0.85
+        _OBSERVED_MIN = 0.85
+
+        def _fallback_route(rec: dict) -> str:
+            tier       = rec.get("tier", "observed")
+            confidence = float(rec.get("confidence", 0.0))
+            source     = rec.get("source", "")
+            if tier in ("verified", "ratified", "canonical"):
+                return "knowledge" if confidence >= _VERIFIED_MIN else "binder_queue"
+            if tier in ("fetched",):
+                return "jeles_atoms" if confidence >= _FETCHED_MIN else "binder_queue"
+            if tier in ("observed", "frontier"):
+                if any(k in source for k in ("opus", "feedback", "reasoning")):
+                    return "opus" if confidence >= _OBSERVED_MIN else "binder_queue"
+                return "knowledge" if confidence >= _OBSERVED_MIN else "binder_queue"
+            return "binder_queue"
+
+        target  = agent or app_id
+        records = read_pending(target, days=days)
+        if limit:
+            records = records[:limit]
+
+        routed   = {"jeles_atoms": 0, "knowledge": 0, "opus": 0, "binder_queue": 0}
+        promoted = 0
+        failed   = 0
+
+        for rec in records:
+            rec_id  = rec.get("id", "")
+            content = rec.get("content", "")
+            title   = rec.get("title", "") or content[:80]
+            rec_agent = rec.get("agent", target)
+            tier    = _fallback_route(rec)
+
+            try:
+                ok = False
+                if tier == "jeles_atoms":
+                    jid = rec.get("extra", {}).get("jeles_session_id", rec_id) if isinstance(rec.get("extra"), dict) else rec_id
+                    result = pg.jeles_extract_atom(
+                        agent=rec_agent, jsonl_id=jid, content=content,
+                        domain=(rec.get("extra") or {}).get("domain", "meta"),
+                        certainty=float(rec.get("confidence", 0.90)), title=title or None,
+                    )
+                    ok = "id" in result
+                elif tier == "knowledge":
+                    atom_id = pg.ingest_atom(
+                        title=title, summary=content, source_type="intake",
+                        source_id=rec_id,
+                        category=(rec.get("extra") or {}).get("category", "general"),
+                        domain=(rec.get("extra") or {}).get("domain", ""),
+                    )
+                    ok = bool(atom_id)
+                elif tier == "opus":
+                    atom_id = pg.ingest_opus_atom(
+                        content=content,
+                        domain=(rec.get("extra") or {}).get("domain", "meta"),
+                    )
+                    ok = bool(atom_id)
+                elif tier == "binder_queue":
+                    result = pg.jeles_register_jsonl(
+                        agent=rec_agent,
+                        jsonl_path=str(Path.home() / ".willow" / "intake" / rec_agent),
+                        session_id=f"binder-{rec_id}",
+                        cwd="",
+                        file_size=len(content),
+                    )
+                    ok = "id" in result
+
+                routed[tier] += 1
+                if ok:
+                    mark_promoted(target, rec_id, tier)
+                    promoted += 1
+                else:
+                    failed += 1
+            except Exception as e:
+                failed += 1
+                logger.warning("[w2] intake_promote failed for %s: %s", rec_id, e)
+
+        return {
+            "promoted": promoted, "failed": failed,
+            "routed": routed, "agent": target,
+        }
+
+    return await loop.run_in_executor(_executor, _promote)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
 async def mem_check(
     app_id:     str,
     title:      str,
