@@ -418,7 +418,7 @@ def cb_state() -> dict:
 
 # ── Pool capacity monitor ─────────────────────────────────────────────────────
 _POOL_WARN_THRESHOLD = float(os.environ.get("WILLOW_POOL_WARN", "0.8"))  # 80%
-_pool_maxconn = 10
+_pool_maxconn = int(os.environ.get("WILLOW_PG_POOL_MAX", "25"))
 
 
 def _pool_warn_if_near_capacity() -> None:
@@ -472,7 +472,7 @@ def _get_pool() -> "psycopg2.pool.ThreadedConnectionPool":
         if _pool is not None:  # re-check after acquiring lock
             return _pool
         from psycopg2 import pool as _pg_pool
-        _pool = _pg_pool.ThreadedConnectionPool(minconn=1, maxconn=10, **_pg_kwargs())
+        _pool = _pg_pool.ThreadedConnectionPool(minconn=2, maxconn=_pool_maxconn, **_pg_kwargs())
         if not os.environ.get("WILLOW_PG_SKIP_SCHEMA_INIT"):
             conn = _pool.getconn()
             try:
