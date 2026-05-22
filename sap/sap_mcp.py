@@ -2804,16 +2804,52 @@ async def kb_extract_from_session(
     return await loop.run_in_executor(_executor, _extract)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
-@sap_gate()
-async def kb_backup(app_id: str) -> dict:
-    """Placeholder — Valhalla archive (kb_backup/restore) not yet implemented.
-    Returns the intended design so tooling can discover it exists."""
-    return {
-        "status": "not_implemented",
-        "note": "Valhalla archive tools are planned but disabled. "
-                "Use pg_dump / sqlite3 .dump for manual backups.",
-    }
+@mcp.tool()
+@sap_gate(write=True)
+async def kb_backup(app_id: str, label: str = "") -> dict:
+    """Backup the Willow Postgres DB to ~/.willow/backups/ using pg_dump -Fc.
+    label: optional tag appended to filename. Returns path and size on success."""
+    logger.info("[w2] kb_backup app_id=%s label=%r", app_id, label)
+    loop = asyncio.get_running_loop()
+
+    def _backup():
+        import subprocess
+        import shutil
+        from datetime import datetime
+
+        if not shutil.which("pg_dump"):
+            return {"error": "pg_dump not found in PATH"}
+
+        backup_dir = Path.home() / ".willow" / "backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+
+        db_name = os.environ.get("WILLOW_PG_DB", "willow_20")
+        ts      = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        slug    = f"_{label}" if label else ""
+        fname   = f"{db_name}{slug}_{ts}.dump"
+        out_path = backup_dir / fname
+
+        try:
+            result = subprocess.run(
+                ["pg_dump", "-Fc", "-d", db_name, "-f", str(out_path)],
+                capture_output=True, text=True, timeout=120,
+            )
+            if result.returncode != 0:
+                return {"error": result.stderr.strip()[-500:]}
+            size_bytes = out_path.stat().st_size
+            return {
+                "status": "ok",
+                "path":   str(out_path),
+                "db":     db_name,
+                "size_bytes": size_bytes,
+                "size_mb":    round(size_bytes / 1_048_576, 2),
+            }
+        except subprocess.TimeoutExpired:
+            return {"error": "pg_dump timed out after 120s"}
+        except Exception as e:
+            return {"error": str(e)}
+
+    return await loop.run_in_executor(_executor, _backup)
 
 
 # ── Tools — nest_ domain ──────────────────────────────────────────────────────
