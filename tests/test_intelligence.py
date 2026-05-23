@@ -109,7 +109,10 @@ def test_serendipity_surfaces_old_overlap_atoms(bridge):
         "title": "machine learning today",
         "summary": "current neural network work",
     })
-    recent_ts = now - timedelta(days=2)
+    # Stamp sd_recent_atom 60 seconds in the future so it always tops the
+    # ORDER BY created_at DESC LIMIT 20 query regardless of how many other
+    # test atoms are in the DB.  Still within recent_days=7.
+    recent_ts = now + timedelta(seconds=60)
     with bridge.conn.cursor() as cur:
         cur.execute("UPDATE knowledge SET created_at = %s WHERE id = 'sd_recent_atom'", (recent_ts,))
     bridge.conn.commit()
