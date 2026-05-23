@@ -25,7 +25,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 os.environ.setdefault("WILLOW_PG_DB", "willow_20_test")
 
-from core.pg_bridge import PgBridge, run_migrations
+from core.pg_bridge import PgBridge
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -33,7 +33,6 @@ from core.pg_bridge import PgBridge, run_migrations
 @pytest.fixture(scope="module")
 def pg():
     b = PgBridge()
-    run_migrations(b.conn)
     yield b
     b.close()
 
