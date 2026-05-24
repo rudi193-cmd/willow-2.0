@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-think_map.py — Think Map CLI (P0 human gate, no TUI yet).
-b17: THNK2  ΔΣ=42
+think_map.py — Think Map CLI.
+b17: THNK3  ΔΣ=42
 
 Usage:
     think_map.py new "<problem statement>" [--no-hydrate]
@@ -14,6 +14,7 @@ Usage:
     think_map.py hydrate <map_id>
     think_map.py confirm <map_id>
     think_map.py validate <map_id>
+    think_map.py export <map_id> [--fork]
 """
 from __future__ import annotations
 
@@ -29,6 +30,7 @@ from agents.hanuman.lib.think_map.store import (
     add_satellite, set_recommended, confirm_map, validate,
 )
 from agents.hanuman.lib.think_map.hydrate import hydrate as _hydrate
+from agents.hanuman.lib.think_map.export import export_map as _export_map
 
 _W = 68
 
@@ -183,6 +185,23 @@ def cmd_validate(mid: str) -> None:
         print(f"Valid — ready to confirm: think_map.py confirm {mid}")
 
 
+def cmd_export(mid: str, fork: bool = False) -> None:
+    try:
+        r = _export_map(mid, create_fork=fork)
+        print(f"Exported: {r['id']}")
+        print(f"  Title:    {r['title']}")
+        print(f"  Decision: {r['recommended_approach']}")
+        if r.get("kb_atom_id"):
+            print(f"  KB atom:  {r['kb_atom_id']}")
+        else:
+            print("  KB atom:  (ingest failed — check MCP)")
+        if r.get("fork_id"):
+            print(f"  Fork:     {r['fork_id']}")
+    except (KeyError, ValueError) as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(1)
+
+
 def cmd_confirm(mid: str) -> None:
     try:
         r = confirm_map(mid)
@@ -254,6 +273,12 @@ if __name__ == "__main__":
             print("Usage: think_map.py hydrate <map_id>", file=sys.stderr)
             sys.exit(1)
         cmd_hydrate(args[1])
+
+    elif cmd == "export":
+        if len(args) < 2:
+            print("Usage: think_map.py export <map_id> [--fork]", file=sys.stderr)
+            sys.exit(1)
+        cmd_export(args[1], fork="--fork" in args)
 
     elif cmd == "validate":
         if len(args) < 2:
