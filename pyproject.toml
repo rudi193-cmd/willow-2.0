@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "willow"
 version = "2.0.0"
@@ -6,7 +10,9 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "psycopg2-binary>=2.9.0",
+    "pgvector>=0.2.0",
     "cryptography>=41.0.0",
+    "requests>=2.31.0",
     "mcp>=1.6.0,<2.0.0",
     "litellm>=1.30.0",
     "textual>=0.61.0",
@@ -28,6 +34,10 @@ dev = [
 markers = [
     "slow: marks tests as slow (enterprise-scale, deselect with -m 'not slow')",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["core*", "sap*"]
 
 [tool.ruff]
 target-version = "py310"

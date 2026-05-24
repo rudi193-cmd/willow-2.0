@@ -160,3 +160,4 @@
 | `sap/adapters` |
 | `sap/mcp_registry.json` |
 | `setup.sh` |
+| `willow.egg-info` |
