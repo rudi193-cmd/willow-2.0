@@ -515,7 +515,7 @@ def _dispatch_watch_loop() -> None:
         try:
             cur = conn.cursor()
             cur.execute(
-                "SELECT COALESCE(MAX(id), 0) FROM grove.messages m "
+                "SELECT COALESCE(MAX(m.id), 0) FROM grove.messages m "
                 "JOIN grove.channels c ON c.id = m.channel_id "
                 "WHERE c.name = 'dispatch' AND m.is_deleted = 0"
             )
