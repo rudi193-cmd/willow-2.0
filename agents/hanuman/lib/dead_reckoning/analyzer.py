@@ -1,9 +1,10 @@
 """
 dead_reckoning/analyzer.py — Weekly heading estimate.
-b17: DRCK1  ΔΣ=42
+b17: DRCK2  ΔΣ=42
 
-Reads the last 7 days of signal (git, Think Maps, KB, Grove) and
-synthesises a one-paragraph heading estimate via local LLM.
+Reads the last 7 days of signal (git, Think Maps, KB, Grove,
+ledger observations, corrections, handoffs) and synthesises a
+one-paragraph heading estimate via local LLM.
 Writes a single KB atom: tier=frontier, category=dead_reckoning.
 """
 from __future__ import annotations
@@ -66,6 +67,7 @@ def _collect_think_maps() -> dict:
         if r.get("status") == "confirmed"
         and (r.get("confirmed_at") or r.get("updated_at") or "") >= since_iso
     ]
+    drafts = [r for r in records if r.get("status") == "draft"]
     decisions = []
     for r in confirmed:
         rec_node = next(
@@ -76,7 +78,78 @@ def _collect_think_maps() -> dict:
             "problem": r.get("center", {}).get("text", "")[:80],
             "decision": rec_node["text"][:60] if rec_node else "",
         })
-    return {"confirmed_count": len(confirmed), "decisions": decisions}
+    open_problems = [r.get("center", {}).get("text", "")[:70] for r in drafts]
+    return {
+        "confirmed_count": len(confirmed),
+        "decisions": decisions,
+        "draft_count": len(drafts),
+        "open_problems": open_problems[:5],
+    }
+
+
+def _collect_ledger() -> dict:
+    """Read FRANK ledger for last 7 days — observations, blocks, check-ins, posts."""
+    since_iso = (_now() - timedelta(days=_WEEK_DAYS)).isoformat()
+    result = _mcp("ledger_read", {"app_id": "hanuman", "limit": 100})
+    if isinstance(result, dict) and result.get("error"):
+        return {"error": result["error"], "observations": [], "blocks": 0,
+                "checkins": [], "posts": 0, "projects_touched": []}
+
+    entries = result.get("entries", []) if isinstance(result, dict) else []
+    recent = [e for e in entries if (e.get("created_at") or "") >= since_iso]
+
+    observations, blocks, checkins, posts, projects = [], 0, [], 0, set()
+
+    for e in recent:
+        etype = e.get("event_type", "")
+        project = e.get("project", "")
+        if project:
+            projects.add(project)
+        content = e.get("content", {})
+
+        if etype == "observation":
+            text = content if isinstance(content, str) else content.get("text", str(content))
+            observations.append(str(text)[:100])
+        elif etype == "block":
+            blocks += 1
+        elif etype == "check_in":
+            summary = content.get("summary", "") if isinstance(content, dict) else str(content)
+            next_bite = content.get("next_bite", "") if isinstance(content, dict) else ""
+            checkins.append({"summary": summary[:120], "next": next_bite[:80]})
+        elif etype in ("upstream.posted", "posted"):
+            posts += 1
+
+    return {
+        "observation_count": len(observations),
+        "observations": observations[:10],
+        "block_count": blocks,
+        "checkin_count": len(checkins),
+        "checkins": checkins[:3],
+        "post_count": posts,
+        "projects_touched": sorted(projects),
+    }
+
+
+def _collect_handoffs() -> dict:
+    """Fetch latest handoff summary and open threads."""
+    result = _mcp("handoff_latest", {"app_id": "hanuman"})
+    if isinstance(result, dict) and result.get("error"):
+        return {"summary": "", "open_threads": [], "date": ""}
+    if not isinstance(result, dict):
+        return {"summary": "", "open_threads": [], "date": ""}
+    summary = result.get("summary", "")[:400]
+    threads = result.get("open_threads", [])
+    thread_texts = []
+    for t in threads[:5]:
+        if isinstance(t, str):
+            thread_texts.append(t[:80])
+        elif isinstance(t, dict):
+            thread_texts.append(str(t.get("text", t.get("title", "")))[:80])
+    return {
+        "summary": summary,
+        "open_threads": thread_texts,
+        "date": result.get("date", ""),
+    }
 
 
 def _collect_kb_atoms() -> dict:
@@ -134,8 +207,26 @@ Write in second person ("you are...").
 Git commits ({commit_count} this week):
 {commits}
 
-Think Map decisions ({map_count} confirmed):
+Think Map decisions ({map_count} confirmed, {draft_count} still open):
 {decisions}
+
+Open problems (draft Think Maps):
+{open_problems}
+
+Ledger observations ({obs_count} this week, {block_count} corrections/blocks):
+{observations}
+
+Session check-ins ({checkin_count}):
+{checkins}
+
+Upstream posts this week: {post_count}
+Projects touched: {projects}
+
+Latest handoff ({handoff_date}):
+{handoff_summary}
+
+Open threads from last handoff:
+{open_threads}
 
 KB atoms written this week ({atom_count}):
 {atoms}
@@ -153,21 +244,43 @@ def _synthesize(signals: dict) -> str:
     maps = signals["think_maps"]
     kb = signals["kb"]
     grove = signals["grove"]
+    ledger = signals["ledger"]
+    handoff = signals["handoff"]
 
     commits_text = "\n".join(f"  - {m}" for m in git["messages"][:15]) or "  (none)"
     decisions_text = "\n".join(
         f"  - {d['problem']} -> {d['decision']}" for d in maps["decisions"]
     ) or "  (none)"
+    open_problems_text = "\n".join(f"  - {p}" for p in maps["open_problems"]) or "  (none)"
     atoms_text = "\n".join(
         f"  - [{a['category']}] {a['title']}" for a in kb["atoms"]
     ) or "  (none)"
     grove_topics = ", ".join(grove["topics"][:5]) or "none"
+    obs_text = "\n".join(f"  - {o}" for o in ledger["observations"][:8]) or "  (none)"
+    checkins_text = "\n".join(
+        f"  - {c['summary']}" + (f" | next: {c['next']}" if c.get("next") else "")
+        for c in ledger["checkins"]
+    ) or "  (none)"
+    projects_text = ", ".join(ledger["projects_touched"]) or "none"
+    threads_text = "\n".join(f"  - {t}" for t in handoff["open_threads"]) or "  (none)"
 
     prompt = _SYNTHESIS_PROMPT.format(
         commit_count=git["commit_count"],
         commits=commits_text,
         map_count=maps["confirmed_count"],
+        draft_count=maps["draft_count"],
         decisions=decisions_text,
+        open_problems=open_problems_text,
+        obs_count=ledger["observation_count"],
+        block_count=ledger["block_count"],
+        observations=obs_text,
+        checkin_count=ledger["checkin_count"],
+        checkins=checkins_text,
+        post_count=ledger["post_count"],
+        projects=projects_text,
+        handoff_date=handoff["date"],
+        handoff_summary=handoff["summary"][:300],
+        open_threads=threads_text,
         atom_count=kb["atom_count"],
         atoms=atoms_text,
         grove_count=grove["message_count"],
@@ -201,10 +314,13 @@ def _write_atom(heading: str, signals: dict, week_start: str) -> dict:
     title = f"Dead Reckoning — Week of {week_start}"
     keywords = ["dead-reckoning", "heading", "trajectory", "weekly"]
 
+    ledger = signals.get("ledger", {})
     summary = heading + (
         f"\n\nSignals: {git['commit_count']} commits, "
-        f"{maps['confirmed_count']} Think Maps confirmed, "
-        f"{kb['atom_count']} KB atoms written."
+        f"{maps['confirmed_count']} Think Maps confirmed ({maps.get('draft_count', 0)} drafts), "
+        f"{kb['atom_count']} KB atoms, "
+        f"{ledger.get('observation_count', 0)} ledger observations, "
+        f"{ledger.get('block_count', 0)} corrections."
     )
 
     result = _mcp("kb_ingest", {
@@ -240,17 +356,24 @@ def run(dry_run: bool = False) -> dict:
         "think_maps": _collect_think_maps(),
         "kb": _collect_kb_atoms(),
         "grove": _collect_grove(),
+        "ledger": _collect_ledger(),
+        "handoff": _collect_handoffs(),
     }
 
     git = signals["git"]
     maps = signals["think_maps"]
     kb = signals["kb"]
     grove = signals["grove"]
+    ledger = signals["ledger"]
+    handoff = signals["handoff"]
 
-    print(f"  git:        {git['commit_count']} commits")
-    print(f"  think_maps: {maps['confirmed_count']} confirmed")
-    print(f"  kb atoms:   {kb['atom_count']} written this week")
-    print(f"  grove:      {grove['message_count']} messages")
+    print(f"  git:         {git['commit_count']} commits")
+    print(f"  think_maps:  {maps['confirmed_count']} confirmed, {maps['draft_count']} drafts")
+    print(f"  kb atoms:    {kb['atom_count']} written this week")
+    print(f"  ledger:      {ledger['observation_count']} observations, {ledger['block_count']} blocks, {ledger['post_count']} posts")
+    print(f"  projects:    {', '.join(ledger['projects_touched']) or 'none'}")
+    print(f"  handoff:     {handoff['date'] or 'none'}")
+    print(f"  grove:       {grove['message_count']} messages")
 
     if git["commit_count"] == 0 and maps["confirmed_count"] == 0 and kb["atom_count"] == 0:
         print("  No signal this week — skipping synthesis.")
