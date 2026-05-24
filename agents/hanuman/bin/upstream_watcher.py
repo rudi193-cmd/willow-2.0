@@ -27,6 +27,8 @@ sys.path.insert(0, _ROOT)
 
 from core import soil
 from agents.hanuman.lib.upstream.triage import Notification, classify, work_id
+from agents.hanuman.lib.upstream.analyzer import analyze
+from agents.hanuman.lib.upstream.voice_drafter import draft
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
@@ -167,20 +169,54 @@ def _write_digest(pending_count: int, urgent_count: int) -> None:
     })
 
 
+# ── Enrich + notify (P1) ─────────────────────────────────────────────────────
+
+def _enrich_and_notify(n: Notification, wid: str) -> None:
+    """Analyze thread, generate draft, update SOIL, then notify Grove."""
+    pending = soil.get(_SOIL_PENDING, wid) or {}
+
+    # Step 1: fetch thread context
+    try:
+        enriched = analyze(pending)
+        pending.update(enriched)
+        soil.put(_SOIL_PENDING, wid, pending)
+    except Exception as exc:
+        print(f"upstream_watcher: analyze error for {wid} — {exc}", file=sys.stderr, flush=True)
+
+    # Step 2: generate voice draft (only if we got a comment to reply to)
+    if pending.get("their_comment") and not pending.get("draft_body"):
+        try:
+            draft_body = draft(pending)
+            if draft_body:
+                pending["draft_body"] = draft_body
+                pending["status"] = "awaiting_human"
+                soil.put(_SOIL_PENDING, wid, pending)
+        except Exception as exc:
+            print(f"upstream_watcher: draft error for {wid} — {exc}", file=sys.stderr, flush=True)
+
+    # Step 3: notify Grove (now draft_body is populated if available)
+    _notify_grove(n, wid, has_draft=bool(pending.get("draft_body")))
+
+
 # ── Grove notify ──────────────────────────────────────────────────────────────
 
-def _notify_grove(n: Notification, wid: str) -> None:
+def _notify_grove(n: Notification, wid: str, has_draft: bool = False) -> None:
     """Post a notification to Grove #upstream channel."""
     try:
         from core.pg_bridge import PgBridge
         pg = PgBridge()
         try:
+            draft_line = (
+                "Draft ready → approve / edit / skip"
+                if has_draft else
+                "Needs attention (no draft — check thread)"
+            )
             msg = (
                 f"📬 Upstream — reply needed\n\n"
                 f"{n['repo']} — {n['subject_title']}\n"
-                f"Draft ready → approve / edit / skip\n"
-                f"  willow.sh upstream approve {wid}\n"
-                f"  willow.sh upstream edit {wid} --file draft.md"
+                f"{draft_line}\n"
+                f"  willow.sh upstream show {wid}\n"
+                f"  willow.sh upstream approve {wid}"
             )
             with pg.conn.cursor() as cur:
                 cur.execute(
@@ -241,10 +277,10 @@ def tick(config: dict, cursor: dict) -> dict:
                 urgent_count += 1
             draft_count += 1
             new_count += 1
-            # Notify Grove once per work item per run
+            # P1: analyze + draft before notifying (so Grove message has draft_body ready)
             if wid not in _notified_this_run:
                 _notified_this_run.add(wid)
-                _notify_grove(n, wid)
+                _enrich_and_notify(n, wid)
         else:
             new_count += 1
 
