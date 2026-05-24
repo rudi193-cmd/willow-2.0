@@ -9,7 +9,9 @@ Never posts. Draft stored in SOIL; human must approve before anything goes out.
 """
 from __future__ import annotations
 
+import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -52,7 +54,6 @@ def _fetch_gh_comment_samples(limit: int = 6) -> list[str]:
         )
         if result.returncode != 0:
             return []
-        import json
         events = json.loads(result.stdout)
         samples = []
         for ev in events:
