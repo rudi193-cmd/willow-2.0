@@ -488,6 +488,127 @@ def _willow_watch_loop() -> None:
         time.sleep(_GROVE_POLL_INTERVAL)
 
 
+_DISPATCH_AGENT = (
+    os.environ.get("GROVE_SENDER", "")
+    or os.environ.get("GROVE_NAME", "")
+    or os.environ.get("WILLOW_AGENT_NAME", "")
+).strip().lower()
+
+_dispatch_last_seen_id: int = 0
+_dispatch_last_seen_lock = threading.Lock()
+
+
+def _dispatch_watch_loop() -> None:
+    """Consume #dispatch JSON payloads addressed to this agent (GROVE_SENDER/GROVE_NAME/WILLOW_AGENT_NAME)."""
+    global _dispatch_last_seen_id
+
+    if not _DISPATCH_AGENT:
+        print("[dispatch-watch] no agent identity set — skipping (set GROVE_SENDER/GROVE_NAME/WILLOW_AGENT_NAME)", flush=True)
+        return
+
+    print(f"[dispatch-watch] started — agent={_DISPATCH_AGENT}, polling every {_GROVE_POLL_INTERVAL}s", flush=True)
+
+    # Seed cursor to current max so we don't replay history on startup
+    try:
+        from . import grove_db
+        conn = grove_db.get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT COALESCE(MAX(id), 0) FROM grove.messages m "
+                "JOIN grove.channels c ON c.id = m.channel_id "
+                "WHERE c.name = 'dispatch' AND m.is_deleted = 0"
+            )
+            row = cur.fetchone()
+            with _dispatch_last_seen_lock:
+                _dispatch_last_seen_id = row[0] if row else 0
+        finally:
+            grove_db.release_connection(conn)
+    except Exception as e:
+        print(f"[dispatch-watch] seed error: {e}", flush=True)
+
+    while True:
+        try:
+            from . import grove_db
+            with _dispatch_last_seen_lock:
+                since = _dispatch_last_seen_id
+            conn = grove_db.get_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute(
+                    """
+                    SELECT m.id, m.sender, m.content
+                    FROM grove.messages m
+                    JOIN grove.channels c ON c.id = m.channel_id
+                    WHERE c.name = 'dispatch'
+                      AND m.is_deleted = 0
+                      AND m.id > %s
+                    ORDER BY m.id ASC LIMIT 20
+                    """,
+                    (since,),
+                )
+                rows = cur.fetchall()
+            finally:
+                grove_db.release_connection(conn)
+
+            for mid, sender, content in rows:
+                with _dispatch_last_seen_lock:
+                    if mid > _dispatch_last_seen_id:
+                        _dispatch_last_seen_id = mid
+
+                try:
+                    payload = json.loads(content)
+                except Exception:
+                    continue
+
+                to = (payload.get("to") or "").strip().lower()
+                if to != _DISPATCH_AGENT:
+                    continue
+
+                prompt = (payload.get("prompt") or "").strip()
+                reply_channel = (payload.get("reply_channel") or "general").strip()
+                if not prompt:
+                    continue
+
+                print(f"[dispatch-watch] msg {mid} from {sender} → {_DISPATCH_AGENT}: {prompt[:80]}", flush=True)
+                t0 = time.time()
+                try:
+                    from .llm_edge import respond as _llm_respond
+                    response = _llm_respond(
+                        f"You are {_DISPATCH_AGENT}. Answer concisely.",
+                        [],
+                        prompt,
+                    )
+                except Exception as exc:
+                    print(f"[dispatch-watch] llm error: {exc}", flush=True)
+                    response = None
+                latency_ms = int((time.time() - t0) * 1000)
+
+                try:
+                    from . import grove_db as _gdb
+                    _conn = _gdb.get_connection()
+                    try:
+                        _cur = _conn.cursor()
+                        _cur.execute(
+                            "SELECT id FROM grove.channels WHERE name = %s LIMIT 1",
+                            (reply_channel,),
+                        )
+                        ch_row = _cur.fetchone()
+                        if ch_row:
+                            reply = response or f"[{_DISPATCH_AGENT}] inference unavailable."
+                            _gdb.send_message(_conn, channel_id=ch_row[0], sender=_DISPATCH_AGENT, content=reply)
+                            _conn.commit()
+                            print(f"[dispatch-watch] replied to #{reply_channel} in {latency_ms}ms", flush=True)
+                    finally:
+                        _gdb.release_connection(_conn)
+                except Exception as exc:
+                    print(f"[dispatch-watch] reply error: {exc}", flush=True)
+
+        except Exception as e:
+            print(f"[dispatch-watch] loop error: {e}", flush=True)
+        time.sleep(_GROVE_POLL_INTERVAL)
+
+
 _U2U_PORT    = int(os.getenv("GROVE_U2U_PORT", "8550"))
 _U2U_CHANNEL = "u2u-inbox"
 
@@ -581,6 +702,9 @@ def serve(host: str = "127.0.0.1", port: int = DEFAULT_PORT) -> None:
 
     watcher = threading.Thread(target=_willow_watch_loop, daemon=True, name="willow-watch")
     watcher.start()
+
+    dispatch = threading.Thread(target=_dispatch_watch_loop, daemon=True, name="dispatch-watch")
+    dispatch.start()
 
     u2u = threading.Thread(target=_u2u_listen_thread, daemon=True, name="u2u-bridge")
     u2u.start()
