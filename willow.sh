@@ -716,20 +716,26 @@ print(f'  Disabled: ${PROVIDER}')
 
     upstream)
         _WATCHER="${WILLOW_ROOT}/agents/hanuman/bin/upstream_watcher.py"
+        _RESPONDER="${WILLOW_ROOT}/agents/hanuman/bin/upstream_responder.py"
         case "${2:-status}" in
-            status)
-                "${WILLOW_PYTHON}" "${_WATCHER}" pending
-                ;;
-            pending)
-                "${WILLOW_PYTHON}" "${_WATCHER}" pending
+            status|pending)
+                "${WILLOW_PYTHON}" "${_RESPONDER}" list
                 ;;
             show)
                 [[ -z "${3:-}" ]] && echo "Usage: willow.sh upstream show <work_id>" && exit 1
-                "${WILLOW_PYTHON}" "${_WATCHER}" show "${3}"
+                "${WILLOW_PYTHON}" "${_RESPONDER}" show "${3}"
                 ;;
             approve)
                 [[ -z "${3:-}" ]] && echo "Usage: willow.sh upstream approve <work_id>" && exit 1
-                echo "upstream_responder not yet implemented (P2). Pending: ${3}"
+                "${WILLOW_PYTHON}" "${_RESPONDER}" approve "${3}" "${@:4}"
+                ;;
+            edit)
+                [[ -z "${3:-}" ]] && echo "Usage: willow.sh upstream edit <work_id> [--file <path>]" && exit 1
+                "${WILLOW_PYTHON}" "${_RESPONDER}" edit "${3}" "${@:4}"
+                ;;
+            skip)
+                [[ -z "${3:-}" ]] && echo "Usage: willow.sh upstream skip <work_id> [--reason <text>]" && exit 1
+                "${WILLOW_PYTHON}" "${_RESPONDER}" skip "${3}" "${@:4}"
                 ;;
             run-now)
                 "${WILLOW_PYTHON}" "${_WATCHER}" run-once
@@ -747,7 +753,7 @@ else:
 "
                 ;;
             *)
-                echo "Usage: willow.sh upstream [status|pending|show <id>|approve <id>|run-now|digest]"
+                echo "Usage: willow.sh upstream [status|pending|show <id>|approve <id>|edit <id>|skip <id>|run-now|digest]"
                 ;;
         esac
         ;;

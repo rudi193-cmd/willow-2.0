@@ -235,6 +235,35 @@ def _notify_grove(n: Notification, wid: str, has_draft: bool = False) -> None:
         print(f"upstream_watcher: grove notify error — {exc}", file=sys.stderr, flush=True)
 
 
+# ── Backfill ──────────────────────────────────────────────────────────────────
+
+def _backfill_drafts() -> None:
+    """Enrich existing draft/urgent records that are missing draft_body."""
+    records = soil.all_records(_SOIL_PENDING)
+    for r in records:
+        if (
+            r.get("lane") in ("draft", "urgent")
+            and r.get("status") not in ("posted", "closed", "skipped")
+            and not r.get("draft_body")
+        ):
+            wid = r.get("_id") or r.get("work_id", "")
+            if not wid:
+                continue
+            try:
+                if not r.get("their_comment"):
+                    enriched = analyze(r)
+                    r.update(enriched)
+                if r.get("their_comment"):
+                    body = draft(r)
+                    if body:
+                        r["draft_body"] = body
+                        r["status"] = "awaiting_human"
+                        soil.put(_SOIL_PENDING, wid, r)
+                        print(f"upstream_watcher: backfilled draft for {wid}", flush=True)
+            except Exception as exc:
+                print(f"upstream_watcher: backfill error {wid} — {exc}", file=sys.stderr, flush=True)
+
+
 # ── Main tick ─────────────────────────────────────────────────────────────────
 
 _notified_this_run: set[str] = set()
@@ -289,6 +318,9 @@ def tick(config: dict, cursor: dict) -> dict:
     # Keep seen_ids bounded — last 500 entries
     cursor["seen_ids"] = seen_ids[-500:]
     cursor["last_poll"] = datetime.now(timezone.utc).isoformat()
+
+    # Backfill: enrich any existing draft/urgent items that still lack draft_body
+    _backfill_drafts()
 
     # Update digest
     all_pending = [
