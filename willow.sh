@@ -714,8 +714,46 @@ print(f'  Disabled: ${PROVIDER}')
         esac
         ;;
 
+    upstream)
+        _WATCHER="${WILLOW_ROOT}/agents/hanuman/bin/upstream_watcher.py"
+        case "${2:-status}" in
+            status)
+                "${WILLOW_PYTHON}" "${_WATCHER}" pending
+                ;;
+            pending)
+                "${WILLOW_PYTHON}" "${_WATCHER}" pending
+                ;;
+            show)
+                [[ -z "${3:-}" ]] && echo "Usage: willow.sh upstream show <work_id>" && exit 1
+                "${WILLOW_PYTHON}" "${_WATCHER}" show "${3}"
+                ;;
+            approve)
+                [[ -z "${3:-}" ]] && echo "Usage: willow.sh upstream approve <work_id>" && exit 1
+                echo "upstream_responder not yet implemented (P2). Pending: ${3}"
+                ;;
+            run-now)
+                "${WILLOW_PYTHON}" "${_WATCHER}" run-once
+                ;;
+            digest)
+                "${WILLOW_PYTHON}" -c "
+import sys; sys.path.insert(0, '${WILLOW_ROOT}')
+from core import soil
+d = soil.get('upstream_steward/digest', 'latest')
+if d:
+    print(d.get('line', 'no digest'))
+    print('  as of:', d.get('as_of', '?'))
+else:
+    print('no digest yet — run: willow.sh upstream run-now')
+"
+                ;;
+            *)
+                echo "Usage: willow.sh upstream [status|pending|show <id>|approve <id>|run-now|digest]"
+                ;;
+        esac
+        ;;
+
     *)
-        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]]"
+        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]]"
         exit 1
         ;;
 esac

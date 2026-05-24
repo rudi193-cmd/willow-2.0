@@ -46,25 +46,21 @@ _SERVICES: dict[str, dict] = {
         "port": 7777,                    # GAP 1: checked before spawn
         "restart_policy": "always",
     },
-    # ════════════════════════════════════════════════════════════════════════
-    # ██  GAP — UNBUILT SERVICES  ███████████████████████████████████████████
-    # ════════════════════════════════════════════════════════════════════════
-    # journal_responder and journal_watcher have NEVER been written.
-    # ~/agents/hanuman/bin/ only contains extract_jeles_corpus.py.
-    # Confirmed missing: local home, SEAN drive, willow-1.9, willow-2.0,
-    # github-archive.  These services crashed the fleet on every run since
-    # 2026-05-17, hitting the circuit breaker (10 failures) and taking down
-    # grove_serve with them.
-    #
-    # What they need to do when built:
-    #   journal_watcher   — inotify watch on ~/.willow/journal/  (or Grove
-    #                       inbox), emit events when new entries land
-    #   journal_responder — consume watcher events, call LLM (JANE_MODEL),
-    #                       write structured responses back to journal store
-    #
-    # Re-add to _SERVICES once ~/agents/hanuman/bin/{watcher,responder}.py
-    # exist and are tested.  Tag: FLEET-JOURNAL-GAP
-    # ════════════════════════════════════════════════════════════════════════
+    "journal_watcher": {
+        "cmd": [_PY, str(_REPO_ROOT / "agents" / "hanuman" / "bin" / "journal_watcher.py")],
+        "cwd": str(_REPO_ROOT),
+        "env": {"WILLOW_PG_DB": "willow_20", "WILLOW_PG_USER": os.environ.get("USER", "")},
+        "restart_policy": "always",
+    },
+    # journal_responder is not a long-lived service — it is spawned per-entry
+    # by journal_watcher. No fleet entry needed.
+    # FLEET-JOURNAL-GAP closed 2026-05-24. Persona: Saga. Tag: ::saga in entry.
+    "upstream_watcher": {
+        "cmd": [_PY, str(_AGENTS_BIN / "upstream_watcher.py"), "watch"],
+        "cwd": str(_REPO_ROOT),
+        "env": {"WILLOW_PG_DB": "willow_20", "WILLOW_PG_USER": os.environ.get("USER", "")},
+        "restart_policy": "always",
+    },
 }
 
 _MAX_SILENT_RESTARTS = 2      # Alert after 3 failures (once per service)

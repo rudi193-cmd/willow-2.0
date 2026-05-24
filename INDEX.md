@@ -165,6 +165,8 @@
 
 | Path |
 |------|
+| `dashboard-fresh` |
+| `docs/handoffs` |
 | `issue_body.md` |
 | `sap/adapters` |
 | `sap/mcp_registry.json` |
