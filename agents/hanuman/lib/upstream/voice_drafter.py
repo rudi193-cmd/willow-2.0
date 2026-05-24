@@ -19,9 +19,20 @@ _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
 sys.path.insert(0, _ROOT)
 
 from core.llm_edge import respond
+from core import soil
 
 _VOICE_FILE = Path.home() / ".willow" / "upstream_steward" / "voice.md"
 _GH_AUTHOR = "rudi193-cmd"
+
+_SOIL_VOICE = "upstream_steward/voice"
+_VOICE_DEFAULTS = {
+    "style": "Direct. Genuine. Match their energy.",
+    "no_bullets": True,
+    "no_em_dash": True,
+    "no_salutation": True,
+    "no_sign_off": True,
+    "terse_if_samples_are_terse": True,
+}
 
 _SYSTEM_TEMPLATE = """\
 You are drafting a GitHub reply in the exact voice of {author}.
@@ -41,6 +52,7 @@ Rules:
 - Answer questions directly and briefly.
 - If they offered to help (PR, review, etc.), accept naturally or explain why not.
 - Do NOT end with "let me know if you have questions" or any cliché sign-off.
+- NEVER use em dashes (—). Use a comma, period, or reword instead.
 - Output ONLY the reply body. Nothing else.\
 """
 
@@ -77,9 +89,18 @@ def _fetch_gh_comment_samples(limit: int = 6) -> list[str]:
 
 
 def _load_voice() -> str:
+    """Load voice profile from SOIL (JSONB), seeding from flat file on first run."""
+    record = soil.get(_SOIL_VOICE, "profile")
+    if record:
+        return record.get("style", _VOICE_DEFAULTS["style"])
+    # First run: seed SOIL from flat file if present, else use defaults
     if _VOICE_FILE.exists():
-        return _VOICE_FILE.read_text().strip()
-    return "Direct. Genuine. Match their energy. No bullet lists."
+        style = _VOICE_FILE.read_text().strip()
+    else:
+        style = _VOICE_DEFAULTS["style"]
+    profile = {**_VOICE_DEFAULTS, "style": style}
+    soil.put(_SOIL_VOICE, "profile", profile)
+    return style
 
 
 def _build_context_atoms(bundle: dict) -> list[dict]:

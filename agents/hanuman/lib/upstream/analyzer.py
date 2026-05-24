@@ -10,10 +10,19 @@ Never posts. Never writes to GitHub. Read-only.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
 from typing import Any
+
+_GH_AUTHOR = os.environ.get("GITHUB_ACTOR", "rudi193-cmd")
+
+_BOT_LOGINS = frozenset({
+    "github-actions[bot]", "renovate[bot]", "dependabot[bot]",
+    "gemini-code-assist", "coderabbitai[bot]", "deepsource-autofix[bot]",
+    "snyk-bot", "codecov[bot]", "semantic-release-bot",
+})
 
 # Keywords that signal something worth a warm reply
 _FUN_PHRASES = (
@@ -70,22 +79,26 @@ def _fetch_pr(repo: str, number: int) -> dict:
     comments_raw = meta.get("comments", [])
     reviews_raw = meta.get("reviews", [])
 
-    # Most recent non-bot comment from someone else
+    # Most recent comment from someone else (not us, not bots)
     author_login = ""
     their_comment = ""
     for c in reversed(comments_raw):
         login = c.get("author", {}).get("login", "")
         body = c.get("body", "").strip()
-        if login and login.lower() not in ("github-actions[bot]", "renovate[bot]") and body:
+        if (login and body
+                and login.lower() != _GH_AUTHOR.lower()
+                and login.lower() not in _BOT_LOGINS):
             author_login = login
             their_comment = body[:800]
             break
 
-    # Most recent review comment
+    # Fall back to most recent review (not us, not bots)
     for r in reversed(reviews_raw):
         login = r.get("author", {}).get("login", "")
         body = r.get("body", "").strip()
-        if login and body and not their_comment:
+        if (login and body and not their_comment
+                and login.lower() != _GH_AUTHOR.lower()
+                and login.lower() not in _BOT_LOGINS):
             author_login = login
             their_comment = body[:800]
             break
@@ -129,7 +142,9 @@ def _fetch_issue(repo: str, number: int) -> dict:
     for c in reversed(comments_raw):
         login = c.get("author", {}).get("login", "")
         body = c.get("body", "").strip()
-        if login and "[bot]" not in login.lower() and body:
+        if (login and body
+                and login.lower() != _GH_AUTHOR.lower()
+                and login.lower() not in _BOT_LOGINS):
             author_login = login
             their_comment = body[:800]
             break

@@ -42,30 +42,41 @@ _SOIL_DIGEST = "upstream_steward/digest"
 POLL_INTERVAL = int(os.environ.get("UPSTREAM_WATCHER_INTERVAL", "900"))  # 15 min default
 
 
+_SOIL_CONFIG = "upstream_steward/config"
+
+_CONFIG_DEFAULTS: dict[str, Any] = {
+    "author": os.environ.get("GITHUB_ACTOR", "rudi193-cmd"),
+    "poll_interval_sec": POLL_INTERVAL,
+    "watch_repos": [
+        "zeroc00I/DontFeedTheAI",
+        "ComposioHQ/awesome-claude-skills",
+        "PrefectHQ/fastmcp",
+        "liatrio-labs/claude-deep-review",
+        "NousResearch/hermes-agent",
+        "basicmachines-co/basic-memory",
+        "doobidoo/mcp-memory-service",
+    ],
+    "auto_post_allowlist": [],
+}
+
+
 def _load_config() -> dict:
-    defaults: dict[str, Any] = {
-        "author": os.environ.get("GITHUB_ACTOR", "rudi193-cmd"),
-        "poll_interval_sec": POLL_INTERVAL,
-        "watch_repos": [
-            "zeroc00I/DontFeedTheAI",
-            "ComposioHQ/awesome-claude-skills",
-            "PrefectHQ/fastmcp",
-            "liatrio-labs/claude-deep-review",
-            "NousResearch/hermes-agent",
-            "basicmachines-co/basic-memory",
-            "doobidoo/mcp-memory-service",
-        ],
-        "auto_post_allowlist": [],
-    }
-    if not _CONFIG_FILE.exists():
-        return defaults
-    try:
-        import yaml  # type: ignore
-        with open(_CONFIG_FILE) as f:
-            loaded = yaml.safe_load(f) or {}
-        return {**defaults, **loaded}
-    except ImportError:
-        return defaults
+    """Load config from SOIL (JSONB), seeding from yaml on first run."""
+    record = soil.get(_SOIL_CONFIG, "main")
+    if record:
+        return {**_CONFIG_DEFAULTS, **record}
+    # First run: seed SOIL from yaml if present, else use defaults
+    loaded: dict = {}
+    if _CONFIG_FILE.exists():
+        try:
+            import yaml  # type: ignore
+            with open(_CONFIG_FILE) as f:
+                loaded = yaml.safe_load(f) or {}
+        except ImportError:
+            pass
+    config = {**_CONFIG_DEFAULTS, **loaded}
+    soil.put(_SOIL_CONFIG, "main", config)
+    return config
 
 
 # ── Cursor ────────────────────────────────────────────────────────────────────
