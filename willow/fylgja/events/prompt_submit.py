@@ -93,12 +93,41 @@ def detect_feedback(prompt: str) -> list[dict]:
     return found
 
 
+def _read_anchor_state() -> dict:
+    try:
+        import sys as _sys, os as _os
+        _root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "../../../.."))
+        if _root not in _sys.path:
+            _sys.path.insert(0, _root)
+        from core import soil
+        record = soil.get(f"agent/anchor", AGENT)
+        if record:
+            return record
+    except Exception:
+        pass
+    return json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {"prompt_count": 0}
+
+
+def _write_anchor_state(state: dict) -> None:
+    try:
+        import sys as _sys, os as _os
+        _root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "../../../.."))
+        if _root not in _sys.path:
+            _sys.path.insert(0, _root)
+        from core import soil
+        soil.put(f"agent/anchor", AGENT, state)
+        return
+    except Exception:
+        pass
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    STATE_FILE.write_text(json.dumps(state))
+
+
 def should_anchor() -> bool:
     try:
-        state = json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {"prompt_count": 0}
+        state = _read_anchor_state()
         count = state.get("prompt_count", 0) + 1
-        STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        STATE_FILE.write_text(json.dumps({"prompt_count": count}))
+        _write_anchor_state({"prompt_count": count})
         return count % ANCHOR_INTERVAL == 0
     except Exception:
         return False
@@ -272,7 +301,7 @@ def _inject_dispatch_inbox() -> None:
 def _run_flat_handoff_checkpoint(session_id: str) -> None:
     """Write flat handoff every FLAT_HANDOFF_INTERVAL prompts — crash-safe checkpoint."""
     try:
-        state = json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {"prompt_count": 0}
+        state = _read_anchor_state()
         count = state.get("prompt_count", 0)
         if count % FLAT_HANDOFF_INTERVAL != 0:
             return

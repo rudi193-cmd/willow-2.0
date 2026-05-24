@@ -81,16 +81,26 @@ def _load_config() -> dict:
 
 # ── Cursor ────────────────────────────────────────────────────────────────────
 
+_SOIL_CURSOR = "upstream_steward/cursor"
+_CURSOR_DEFAULTS = {"last_poll": None, "seen_ids": [], "last_tracker_run": None}
+
+
 def _read_cursor() -> dict:
+    """Read poll cursor from SOIL, seeding from flat file on first run."""
+    record = soil.get(_SOIL_CURSOR, "main")
+    if record:
+        return {**_CURSOR_DEFAULTS, **{k: v for k, v in record.items() if not k.startswith("_")}}
+    # Seed from flat file if present
     try:
-        return json.loads(_CURSOR_FILE.read_text())
+        flat = json.loads(_CURSOR_FILE.read_text())
+        soil.put(_SOIL_CURSOR, "main", flat)
+        return flat
     except (FileNotFoundError, json.JSONDecodeError):
-        return {"last_poll": None, "seen_ids": [], "last_tracker_run": None}
+        return dict(_CURSOR_DEFAULTS)
 
 
 def _write_cursor(cursor: dict) -> None:
-    _CURSOR_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _CURSOR_FILE.write_text(json.dumps(cursor, indent=2, default=str))
+    soil.put(_SOIL_CURSOR, "main", cursor)
 
 
 # ── GitHub helpers ─────────────────────────────────────────────────────────────

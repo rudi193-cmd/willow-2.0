@@ -6,6 +6,8 @@ Writes hard_close=True on start, False on clean exit.
 Resume prompt fires if hard_close=True at next boot.
 """
 import json
+import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -20,8 +22,24 @@ _DEFAULTS: dict[str, Any] = {
     "closed_at":     None,
 }
 
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+
+def _soil():
+    from core import soil as _soil_mod
+    return _soil_mod
+
 
 def _read() -> dict:
+    try:
+        record = _soil().get("system/grove_session", "main")
+        if record:
+            return {**_DEFAULTS, **{k: v for k, v in record.items() if not k.startswith("_")}}
+    except Exception:
+        pass
+    # Flat file fallback (seeds SOIL on next write)
     try:
         return json.loads(_SESSION_FILE.read_text())
     except Exception:
@@ -29,8 +47,12 @@ def _read() -> dict:
 
 
 def _write(data: dict) -> None:
-    _SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _SESSION_FILE.write_text(json.dumps(data, indent=2, default=str))
+    try:
+        _soil().put("system/grove_session", "main", data)
+    except Exception:
+        # Flat file fallback if SOIL unavailable (e.g. DB down at boot)
+        _SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _SESSION_FILE.write_text(json.dumps(data, indent=2, default=str))
 
 
 def mark_open() -> dict:
