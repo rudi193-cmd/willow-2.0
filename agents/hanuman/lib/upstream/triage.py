@@ -27,6 +27,10 @@ class Notification(TypedDict):
 
 Lane = str  # "noise" | "auto" | "watch" | "draft" | "urgent"
 
+# PGP signing failures in worktrees — mechanic can advise, not a noise discard
+# Upstream contributors hit this when their worktree doesn't inherit the signing key.
+_PGP_PATTERNS = ("gpg failed to sign", "gpg: signing failed", "error: gpg failed")
+
 # Reasons that almost always need a reply
 _HUMAN_REASONS = {"mention", "review_requested", "assign"}
 # Reasons that are usually background noise
@@ -55,6 +59,13 @@ def classify(n: Notification, watch_repos: list[str] | None = None) -> Lane:
     reason = n["reason"]
     s_type = n["subject_type"]
     title = n["subject_title"]
+
+    # 0. PGP signing failure in worktree — auto before any noise discard
+    # Contributor's worktree doesn't inherit the signing key; mechanic fix:
+    #   git config commit.gpgsign false  (in the worktree)
+    title_lower = title.lower()
+    if any(p in title_lower for p in _PGP_PATTERNS):
+        return "auto"
 
     # 1. Urgent — mentions, review requests, assignments
     if reason in _HUMAN_REASONS:
