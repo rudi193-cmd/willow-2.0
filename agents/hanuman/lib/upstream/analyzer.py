@@ -18,11 +18,26 @@ from typing import Any
 
 _GH_AUTHOR = os.environ.get("GITHUB_ACTOR", "rudi193-cmd")
 
-_BOT_LOGINS = frozenset({
+_BOT_LOGINS_FALLBACK = frozenset({
     "github-actions[bot]", "renovate[bot]", "dependabot[bot]",
     "gemini-code-assist", "coderabbitai[bot]", "deepsource-autofix[bot]",
     "snyk-bot", "codecov[bot]", "semantic-release-bot",
 })
+
+
+def _bot_logins() -> frozenset:
+    """Load bot login list from SOIL upstream_steward/config/bots. Falls back to hardcoded set."""
+    try:
+        _root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
+        if _root not in sys.path:
+            sys.path.insert(0, _root)
+        from core import soil
+        record = soil.get("upstream_steward/config", "bots")
+        if record and record.get("logins"):
+            return frozenset(login.lower() for login in record["logins"])
+    except Exception:
+        pass
+    return _BOT_LOGINS_FALLBACK
 
 # Keywords that signal something worth a warm reply
 _FUN_PHRASES = (
@@ -70,6 +85,7 @@ def _extract_questions(text: str) -> list[str]:
 
 
 def _fetch_pr(repo: str, number: int) -> dict:
+    bots = _bot_logins()
     try:
         meta = _gh("pr", "view", str(number), "--repo", repo,
                    "--json", "title,url,state,mergeable,mergeStateStatus,statusCheckRollup,reviews,comments")
@@ -87,7 +103,7 @@ def _fetch_pr(repo: str, number: int) -> dict:
         body = c.get("body", "").strip()
         if (login and body
                 and login.lower() != _GH_AUTHOR.lower()
-                and login.lower() not in _BOT_LOGINS):
+                and login.lower() not in bots):
             author_login = login
             their_comment = body[:800]
             break
@@ -98,7 +114,7 @@ def _fetch_pr(repo: str, number: int) -> dict:
         body = r.get("body", "").strip()
         if (login and body and not their_comment
                 and login.lower() != _GH_AUTHOR.lower()
-                and login.lower() not in _BOT_LOGINS):
+                and login.lower() not in bots):
             author_login = login
             their_comment = body[:800]
             break
@@ -130,6 +146,7 @@ def _fetch_pr(repo: str, number: int) -> dict:
 
 
 def _fetch_issue(repo: str, number: int) -> dict:
+    bots = _bot_logins()
     try:
         meta = _gh("issue", "view", str(number), "--repo", repo,
                    "--json", "title,url,state,comments,assignees,labels")
@@ -144,7 +161,7 @@ def _fetch_issue(repo: str, number: int) -> dict:
         body = c.get("body", "").strip()
         if (login and body
                 and login.lower() != _GH_AUTHOR.lower()
-                and login.lower() not in _BOT_LOGINS):
+                and login.lower() not in bots):
             author_login = login
             their_comment = body[:800]
             break
