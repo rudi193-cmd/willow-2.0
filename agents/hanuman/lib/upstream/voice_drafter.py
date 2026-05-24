@@ -19,32 +19,66 @@ sys.path.insert(0, _ROOT)
 from core.llm_edge import respond
 
 _VOICE_FILE = Path.home() / ".willow" / "upstream_steward" / "voice.md"
+_GH_AUTHOR = "rudi193-cmd"
 
 _SYSTEM_TEMPLATE = """\
-You are drafting a GitHub reply in the voice of the repository author.
+You are drafting a GitHub reply in the exact voice of {author}.
 
-Voice profile:
+Here are real examples of how {author} actually writes on GitHub — match this register precisely:
+
+{samples}
+
+Voice notes:
 {voice_profile}
 
 Rules:
-- 2–5 sentences. Warm but not gushing.
-- Open with genuine thanks or acknowledgement of their specific point — not a numbered list.
-- Name the interesting/smart part of their comment if there is one.
-- Weave in any concrete commitments as natural prose, not bullet points.
-- If they asked a question, answer it directly and briefly.
-- If they offered to help (PR, review, etc.), accept warmly or explain why not.
-- End with an invitation or a held thought — not a sign-off cliche.
-- Match their register: casual comment → casual reply; technical review → technical but human reply.
-- Write as the author. First person. No "I hope this reply finds you well."
-- Do NOT include a salutation line — start with the substance.
-- Output ONLY the reply body. No preamble, no "Here's a draft:", no quotes.\
+- Match the LENGTH and REGISTER of the samples above. If samples are terse, be terse.
+- Start with the substance. No salutation line, no "Hi," no "Thanks for the review,".
+- If there's something genuinely interesting or clever in their comment, name it specifically.
+- Commitments go in prose, not bullet points.
+- Answer questions directly and briefly.
+- If they offered to help (PR, review, etc.), accept naturally or explain why not.
+- Do NOT end with "let me know if you have questions" or any cliché sign-off.
+- Output ONLY the reply body. Nothing else.\
 """
+
+
+def _fetch_gh_comment_samples(limit: int = 6) -> list[str]:
+    """Pull recent GitHub comments by the author as voice samples."""
+    try:
+        result = subprocess.run(
+            ["gh", "api", f"/users/{_GH_AUTHOR}/events?per_page=100"],
+            capture_output=True, text=True, check=False,
+        )
+        if result.returncode != 0:
+            return []
+        import json
+        events = json.loads(result.stdout)
+        samples = []
+        for ev in events:
+            if ev.get("type") not in ("IssueCommentEvent", "PullRequestReviewCommentEvent", "PullRequestReviewEvent"):
+                continue
+            payload = ev.get("payload", {})
+            comment = payload.get("comment") or payload.get("review") or {}
+            body = (comment.get("body") or "").strip()
+            # Skip empty, bot-like, or very long comments
+            if not body or len(body) < 20 or len(body) > 1200:
+                continue
+            # Skip if it looks like a template or auto-generated form
+            if body.startswith("<!--"):
+                continue
+            samples.append(body)
+            if len(samples) >= limit:
+                break
+        return samples
+    except Exception:
+        return []
 
 
 def _load_voice() -> str:
     if _VOICE_FILE.exists():
         return _VOICE_FILE.read_text().strip()
-    return "Be genuine, warm, direct. No bullet lists. Match the commenter's energy."
+    return "Direct. Genuine. Match their energy. No bullet lists."
 
 
 def _build_context_atoms(bundle: dict) -> list[dict]:
@@ -79,7 +113,16 @@ def draft(pending: dict) -> str:
         return ""
 
     voice_profile = _load_voice()
-    system = _SYSTEM_TEMPLATE.format(voice_profile=voice_profile)
+    samples = _fetch_gh_comment_samples()
+    if samples:
+        samples_block = "\n\n".join(f'  "{s}"' for s in samples)
+    else:
+        samples_block = "  (no prior comment samples available yet)"
+    system = _SYSTEM_TEMPLATE.format(
+        author=_GH_AUTHOR,
+        samples=samples_block,
+        voice_profile=voice_profile,
+    )
 
     author = pending.get("author", "them")
     repo = pending.get("repo", "")
