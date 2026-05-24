@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
 think_map.py — Think Map CLI (P0 human gate, no TUI yet).
-b17: THNK1  ΔΣ=42
+b17: THNK2  ΔΣ=42
 
 Usage:
-    think_map.py new "<problem statement>"
+    think_map.py new "<problem statement>" [--no-hydrate]
     think_map.py list [--all]
     think_map.py show <map_id>
     think_map.py approach <map_id> "<text>" "<tradeoff>" [--recommend]
     think_map.py constraint <map_id> "<text>" [--soft]
     think_map.py satellite <map_id> "<text>" [--ref <ref>]
     think_map.py recommend <map_id> <node_id>
+    think_map.py hydrate <map_id>
     think_map.py confirm <map_id>
     think_map.py validate <map_id>
 """
@@ -27,6 +28,7 @@ from agents.hanuman.lib.think_map.store import (
     new_map, get_map, list_maps, add_approach, add_constraint,
     add_satellite, set_recommended, confirm_map, validate,
 )
+from agents.hanuman.lib.think_map.hydrate import hydrate as _hydrate
 
 _W = 68
 
@@ -84,9 +86,32 @@ def _render(r: dict) -> None:
     print(_sep())
 
 
-def cmd_new(problem: str) -> None:
+def cmd_new(problem: str, auto_hydrate: bool = True) -> None:
     r = new_map(problem)
     print(f"Created: {r['id']}")
+    if auto_hydrate:
+        print("  Hydrating satellites...")
+        try:
+            r = _hydrate(r["id"])
+            sats = [n for n in r.get("nodes", []) if n.get("kind") == "satellite"]
+            if sats:
+                print(f"  {len(sats)} satellite(s) added from KB/handoffs/tensions")
+        except Exception as exc:
+            print(f"  (hydrate skipped: {exc})")
+    _render(r)
+
+
+def cmd_hydrate(mid: str) -> None:
+    r = get_map(mid)
+    if not r:
+        print(f"Not found: {mid}", file=sys.stderr)
+        sys.exit(1)
+    before = sum(1 for n in r.get("nodes", []) if n.get("kind") == "satellite")
+    print(f"Hydrating {mid}...")
+    r = _hydrate(mid)
+    after = sum(1 for n in r.get("nodes", []) if n.get("kind") == "satellite")
+    added = after - before
+    print(f"  +{added} satellite(s) (total: {after})")
     _render(r)
 
 
@@ -182,9 +207,9 @@ if __name__ == "__main__":
 
     if cmd == "new":
         if len(args) < 2:
-            print("Usage: think_map.py new \"<problem>\"", file=sys.stderr)
+            print("Usage: think_map.py new \"<problem>\" [--no-hydrate]", file=sys.stderr)
             sys.exit(1)
-        cmd_new(args[1])
+        cmd_new(args[1], auto_hydrate="--no-hydrate" not in args)
 
     elif cmd == "list":
         cmd_list(show_all="--all" in args)
@@ -223,6 +248,12 @@ if __name__ == "__main__":
             print("Usage: think_map.py recommend <map_id> <node_id>", file=sys.stderr)
             sys.exit(1)
         cmd_recommend(args[1], args[2])
+
+    elif cmd == "hydrate":
+        if len(args) < 2:
+            print("Usage: think_map.py hydrate <map_id>", file=sys.stderr)
+            sys.exit(1)
+        cmd_hydrate(args[1])
 
     elif cmd == "validate":
         if len(args) < 2:
