@@ -18,11 +18,13 @@ jobs:
     permissions:
       issues: write
       contents: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.repository.default_branch || github.ref }}
+          token: ${{ secrets.UPSTREAM_TRACKER_PAT || github.token }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -36,14 +38,23 @@ jobs:
           GH_TOKEN: ${{ secrets.UPSTREAM_TRACKER_PAT || github.token }}
         run: python .github/scripts/update_tracker.py
 
-      - name: Commit and push changes
+      - name: Open PR with tracker updates
+        env:
+          GH_TOKEN: ${{ secrets.UPSTREAM_TRACKER_PAT || github.token }}
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add CONTRIBUTORS.md
           if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "docs: auto-update upstream contributions tracker"
-            git push
+            echo "No CONTRIBUTORS.md changes"
+            exit 0
           fi
+          branch="bot/upstream-tracker-${{ github.run_id }}"
+          git checkout -b "$branch"
+          git commit -m "docs: auto-update upstream contributions tracker"
+          git push -u origin "$branch"
+          gh pr create \
+            --title "docs: auto-update upstream contributions tracker" \
+            --body "Automated update from the Upstream Contribution Tracker workflow (run ${{ github.run_id }})." \
+            --base master \
+            --head "$branch"
