@@ -486,6 +486,53 @@ def _open_run() -> str | None:
         return None
 
 
+def _seed_corpus_corrections() -> None:
+    """Populate corpus/corrections from memory feedback_*.md files (idempotent).
+
+    The feedback files are the canonical source of behavioral corrections but
+    corpus/corrections (read by session_start at boot) was never populated.
+    This runs once per session; soil_put is idempotent by key so re-runs are safe.
+    """
+    memory_dir = Path.home() / ".claude" / "projects" / "-home-sean-campbell-willow-2-0" / "memory"
+    if not memory_dir.exists():
+        return
+
+    try:
+        from core.willow_store import WillowStore as _WS
+        store = _WS()
+    except Exception:
+        return
+
+    for fpath in sorted(memory_dir.glob("feedback_*.md")):
+        try:
+            text = fpath.read_text(encoding="utf-8", errors="replace")
+            # Extract rule: first non-blank line after frontmatter (after second ---)
+            body = text.split("---", 2)[-1].strip() if "---" in text else text.strip()
+            # First substantive line is the rule
+            rule = ""
+            for line in body.splitlines():
+                line = line.strip()
+                if line and not line.startswith("#") and not line.startswith("@"):
+                    rule = line[:200]
+                    break
+            if not rule:
+                continue
+            record_id = fpath.stem  # e.g. "feedback_no_direct_db"
+            # Check if already seeded
+            existing = store.get("corpus/corrections", record_id)
+            if existing:
+                continue
+            store.put("corpus/corrections", {
+                "id": record_id,
+                "content": rule,
+                "source": str(fpath.name),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "sandbox": False,
+            }, record_id=record_id)
+        except Exception:
+            continue
+
+
 def _is_isolated_directory() -> bool:
     """Return True if CWD lacks the willow MCP server — skip all fleet hooks."""
     mcp = Path.cwd() / ".mcp.json"
@@ -520,6 +567,12 @@ def main():
     grove_status = _ensure_grove_mcp()  # instant local file check
     if session_id:
         _register_jeles(session_id)
+
+    # Seed corpus/corrections from memory feedback files (idempotent)
+    try:
+        _seed_corpus_corrections()
+    except Exception:
+        pass
 
     with _cf.ThreadPoolExecutor(max_workers=5) as ex:
         hw_future = ex.submit(_scan_hardware)
