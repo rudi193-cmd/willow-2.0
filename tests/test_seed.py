@@ -78,11 +78,12 @@ def test_step_8_version_pin(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     import importlib
     import root as seed
+    from core.version import VERSION
     importlib.reload(seed)
     (tmp_path / ".willow").mkdir(parents=True, exist_ok=True)
     seed.step_8_version_pin()
     version = (tmp_path / ".willow" / "version").read_text().strip()
-    assert version == "2.0.0"
+    assert version == VERSION
 
 
 def test_sleipnir_idempotent(tmp_path, monkeypatch):
