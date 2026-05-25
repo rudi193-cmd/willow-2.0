@@ -2,7 +2,13 @@
 
 b17: KNOWNG · ΔΣ=42
 
-**As of Willow 2.0 beta (2026-05-19): there are no open engineering gaps in this index.**
+## Open gaps
+
+| ID | What | Doc |
+|----|------|-----|
+| GAP-002 | `mai_write_file` missing — agents fall back to Bash when writing MarkdownAI files | [`gaps/GAP-002-mai-write-missing.md`](gaps/GAP-002-mai-write-missing.md) |
+
+---
 
 The Postgres bridge incident (GAP-001) was fixed in April 2026 and archived May 2026. `_init_pg()` uses `PgBridge()` today; failures log and can post to Grove `#general`. Postmortem: [`../archive/docs/gaps/GAP-001-postgres-bridge-broken.md`](../archive/docs/gaps/GAP-001-postgres-bridge-broken.md).
 

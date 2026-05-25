@@ -338,6 +338,58 @@ def _run_corpus_capture(prompt: str, session_id: str) -> None:
         pass
 
 
+def _boot_guard() -> None:
+    """First turn only: inject an unmissable boot requirement before any response."""
+    if not is_first_turn():
+        return
+    print(
+        "[BOOT-REQUIRED] You have NOT booted this session yet.\n"
+        "[BOOT-REQUIRED] STOP — do NOT respond to the user's message yet.\n"
+        "[BOOT-REQUIRED] Run ALL of the following first, in order:\n"
+        "[BOOT-REQUIRED]   1. Read ~/.willow/willow.md\n"
+        "[BOOT-REQUIRED]   2. fleet_status(app_id=hanuman)\n"
+        "[BOOT-REQUIRED]   3. handoff_latest(app_id=hanuman)\n"
+        "[BOOT-REQUIRED]   4. grove_get_history (Grove MCP)\n"
+        "[BOOT-REQUIRED]   5. kb_search on the user's task\n"
+        "[BOOT-REQUIRED] After all five complete, THEN answer the user's question.\n"
+        "[BOOT-REQUIRED] Skipping boot and responding directly is a failure."
+    )
+
+
+def _inject_stabilization_brief() -> None:
+    """First turn only: if a post-push stabilization brief exists, inject it."""
+    if not is_first_turn():
+        return
+    try:
+        import sys as _sys, os as _os
+        _root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "../../../.."))
+        if _root not in _sys.path:
+            _sys.path.insert(0, _root)
+        from core import soil
+        flag = soil.get("willow/flags", "stabilization_needed")
+        if not flag or not flag.get("value"):
+            return
+        brief = soil.get("willow/stabilization_brief", "latest")
+        if not brief:
+            return
+        lines = [
+            "[STABILIZATION] A major push was merged since your last session.",
+            f"  {brief.get('summary', '')}",
+        ]
+        invalidated = brief.get("atoms_invalidated", [])
+        if invalidated:
+            lines.append(f"  Invalidated atoms: {', '.join(invalidated[:4])}" +
+                         (f" (+{len(invalidated)-4} more)" if len(invalidated) > 4 else ""))
+        for assumption in brief.get("do_not_assume", [])[:3]:
+            lines.append(f"  Do not assume: {assumption}")
+        lines.append(f"  Full brief: SOIL willow/stabilization_brief/latest")
+        print("\n".join(lines))
+        # Clear flag — one-time injection per push
+        soil.put("willow/flags", "stabilization_needed", {**flag, "value": False, "injected_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()})
+    except Exception:
+        pass
+
+
 def _run_build_continue() -> None:
     task = get_active_task()
     if not task:
@@ -393,6 +445,8 @@ def main():
     prompt = data.get("prompt", "")
 
     _check_identity()
+    _boot_guard()
+    _inject_stabilization_brief()
     _run_source_ring(session_id)
     _run_route(prompt, session_id)
     _run_anchor()
