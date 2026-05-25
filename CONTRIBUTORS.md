@@ -35,6 +35,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [smaramwbc/statewave](https://github.com/smaramwbc/statewave) | smaramwbc | feat(server): add make test-cold for cold-install verification (#68) | [PR #154](https://github.com/smaramwbc/statewave/pull/154) merged |
 | [Doorman11991/smallcode](https://github.com/Doorman11991/smallcode) | Doorman11991 | feat(skills): bundle Willow dev-methodology skill pack | [PR #32](https://github.com/Doorman11991/smallcode/pull/32) merged |
 | [doobidoo/mcp-memory-service](https://github.com/doobidoo/mcp-memory-service) | doobidoo | docs: contradiction resolution approaches (RFC #732 reference) | [PR #984](https://github.com/doobidoo/mcp-memory-service/pull/984) merged |
 | [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(cli): ignore CancelledError in background task done callback (#839) | [PR #842](https://github.com/basicmachines-co/basic-memory/pull/842) merged |
@@ -47,6 +48,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: Willow adapter for Postgres-backed knowledge store | [PR #145](https://github.com/manojmallick/sigmap/pull/145) merged |
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: native Python AST extractor for accurate signature extraction | [PR #144](https://github.com/manojmallick/sigmap/pull/144) merged |
 | [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #401](https://github.com/TensorBlock/awesome-mcp-servers/pull/401) merged |
+| [holon-run/holon](https://github.com/holon-run/holon) | holon-run | fix: allow Sleep while waiting on same-WorkItem background command_task (#1416) | [PR #1435](https://github.com/holon-run/holon/pull/1435) open |
 | [alash3al/stash](https://github.com/alash3al/stash) | alash3al | docs: post-install guide + fix MCP copy buttons (#6) | [PR #8](https://github.com/alash3al/stash/pull/8) open |
 | [doobidoo/mcp-memory-service](https://github.com/doobidoo/mcp-memory-service) | doobidoo | feat(entities): Phase 1b — configurable terms + frequency-based extraction (RFC #732) | [PR #1007](https://github.com/doobidoo/mcp-memory-service/pull/1007) open |
 | [doobidoo/mcp-memory-service](https://github.com/doobidoo/mcp-memory-service) | doobidoo | feat(reasoning): Phase 1a — transitive closure + abduction (RFC #732) | [PR #1006](https://github.com/doobidoo/mcp-memory-service/pull/1006) open |
