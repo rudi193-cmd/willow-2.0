@@ -1,8 +1,6 @@
-@markdownai v1.0
-
 ---
-name: rober-rules
-description: Applied Reality Engineering — The Rober Rules (Prof. Penny Riggs / UTETY). Named for Mark Rober. The diagnostic counterpart to Murphy's Law. Murphy tells you what will go wrong. The Rober Rules tell you what to do about it.
+name: complexity-guard
+description: Applied Reality Engineering — The Rober Rules. Diagnostic counterpart to Murphy's Law. Auto-invokes when work drifts, stalls, or spirals.
 autoInvoke:
   - When a task is getting too complex
   - When you've taken too many steps off the original path

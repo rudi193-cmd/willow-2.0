@@ -1,49 +1,73 @@
 ---
 name: worktree
-description: Set up a git worktree for scoped development work — isolated branch without losing your current working state.
+description: Every code change goes through a worktree branch + PR. No direct master commits — ever. Covers git worktree setup, Willow fork tracking, and PR flow.
 ---
 
-# Worktree
+# Worktree — Required Development Pattern
 
-Use git worktrees to work on a feature or fix in isolation without stashing, switching branches, or losing context. A worktree is a second checkout of the same repo at a different path.
+**This is a hard constraint, not a guideline.** Every change to the codebase goes through a worktree branch and a PR. Direct commits to master are banned.
 
-## When to Use This Skill
-
-- Starting non-trivial feature work that should stay off the main branch
-- Working on two things simultaneously without stashing
-- Any bounded task that deserves its own branch
-
-## Setup
+## Start work
 
 ```bash
-# Convention: feat/<short-slug>
+# 1. Create branch (simple) or isolated worktree directory (multi-session)
+git checkout -b feat/<slug>
+# — or —
 git worktree add worktrees/<slug> -b feat/<slug>
 ```
 
-Worktrees live **inside** the repo at `<repo>/worktrees/<slug>`. Add `worktrees/` to `.gitignore` so they don't appear as untracked. The `-b` flag creates the branch.
+```
+# 2. Register a Willow fork (SOIL tracking)
+fork_create(app_id="hanuman", title="<title>", created_by="hanuman", topic="<slug>")
+# Save the returned fork_id
 
-## Work
+# 3. Log the branch
+fork_log(fork_id=<fork_id>, component="git", type="branch", ref="feat/<slug>", app_id="hanuman")
+```
 
-Open the worktree path in a new editor window or terminal. It's a full checkout — all repo tools work normally. Changes stay isolated to `feat/<slug>`.
+Check `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json` for an active `fork_id` before creating a new one.
+Check open forks before starting: `fork_list(status="open", app_id="hanuman")`
 
-## Teardown (after merge)
+## During work
+
+- All commits go to the feature branch only
+- Log KB writes: `fork_log(fork_id, "kb", "atom", atom_id, app_id="hanuman")`
+- Branch naming: `fix/<slug>` · `feat/<slug>` · `chore/<slug>`
+
+## Open PR
 
 ```bash
-git worktree remove worktrees/<slug>
+git push -u origin feat/<slug>
+gh pr create --title "..." --body "..."
+```
+
+CI must pass. Sean approves. Then merge.
+
+## Teardown after merge
+
+```bash
+git worktree remove worktrees/<slug>   # only if worktree directory was used
 git branch -d feat/<slug>
 ```
 
-Only merge to the main branch on explicit approval. Don't pile unrelated commits onto the task branch.
+```
+fork_merge(fork_id=<fork_id>, outcome_note="merged to master", app_id="hanuman")
+```
 
-## Rules
+## Fork operations reference
 
-- Create the worktree at the **start** of scope, not midway through.
-- Work only in that tree until merge.
-- Merge on explicit OK — not when you think it's ready.
-- After merge: remove the worktree and delete the branch.
+| Operation | Call |
+|-----------|------|
+| Open fork | `fork_create(title, created_by, topic, app_id)` |
+| Join existing | `fork_join(fork_id, component, app_id)` |
+| Log branch/atom/task | `fork_log(fork_id, component, type, ref, app_id)` — type: branch/atom/task/thread |
+| Check status | `fork_status(fork_id, app_id)` |
+| List open | `fork_list(status="open", app_id)` |
+| Merge (Sean only) | `fork_merge(fork_id, outcome_note, app_id)` |
+| Delete (Sean only) | `fork_delete(fork_id, reason, app_id)` |
 
 ## Tips
 
-- The worktree path convention (`<repo>/worktrees/<slug>`) keeps everything under one root and makes `worktrees/` easy to gitignore.
-- If you forget to add `worktrees/` to `.gitignore`, git will show every worktree as an untracked directory.
-- Worktrees share the git object store — switching branches in one doesn't affect the other.
+- Worktrees share the git object store — add `worktrees/` to `.gitignore`
+- Create the worktree at the **start** of scope, not midway through
+- The Willow MCP server runs from the main repo — worktrees share it automatically
