@@ -343,16 +343,23 @@ def _boot_guard() -> None:
     if not is_first_turn():
         return
     print(
-        "[BOOT-REQUIRED] You have NOT booted this session yet.\n"
-        "[BOOT-REQUIRED] STOP — do NOT respond to the user's message yet.\n"
-        "[BOOT-REQUIRED] Run ALL of the following first, in order:\n"
-        "[BOOT-REQUIRED]   1. Read ~/.willow/willow.md\n"
-        "[BOOT-REQUIRED]   2. fleet_status(app_id=hanuman)\n"
-        "[BOOT-REQUIRED]   3. handoff_latest(app_id=hanuman)\n"
-        "[BOOT-REQUIRED]   4. grove_get_history (Grove MCP)\n"
-        "[BOOT-REQUIRED]   5. kb_search on the user's task\n"
-        "[BOOT-REQUIRED] After all five complete, THEN answer the user's question.\n"
-        "[BOOT-REQUIRED] Skipping boot and responding directly is a failure."
+        f"[BOOT-REQUIRED] You have NOT booted this session yet.\n"
+        f"[BOOT-REQUIRED] STOP — do NOT respond to the user's message yet.\n"
+        f"[BOOT-REQUIRED] Run ALL of the following (parallel where possible), then answer:\n"
+        f"[BOOT-REQUIRED]\n"
+        f"[BOOT-REQUIRED]   1. mai_read_file('~/.willow/willow.md') — load the contract\n"
+        f"[BOOT-REQUIRED]   2. fleet_status(app_id={AGENT}) — Postgres + Ollama health\n"
+        f"[BOOT-REQUIRED]   3. handoff_latest(app_id={AGENT}, agent={AGENT}) — what was in flight\n"
+        f"[BOOT-REQUIRED]      ALSO run handoff_latest for any other agents active today\n"
+        f"[BOOT-REQUIRED]   4. grove_get_history on: #general, #fleet, #handoffs, #{AGENT}\n"
+        f"[BOOT-REQUIRED]      NOTE: #{AGENT} has 1 msg total — read the other channels too\n"
+        f"[BOOT-REQUIRED]   5. agent_task_list(app_id={AGENT}) — all open tasks\n"
+        f"[BOOT-REQUIRED]   6. ledger_read(app_id={AGENT}, limit=5) — recent check-ins + open decisions\n"
+        f"[BOOT-REQUIRED]   7. kb_search(app_id={AGENT}, query='pending open tasks boot session')\n"
+        f"[BOOT-REQUIRED]      Search for CURRENT STATE — not the user's opening message topic\n"
+        f"[BOOT-REQUIRED]\n"
+        f"[BOOT-REQUIRED] Write one boot-report paragraph (fleet, open threads, flags), then answer.\n"
+        f"[BOOT-REQUIRED] Skipping steps or searching only the user's topic is a boot failure."
     )
 
 

@@ -301,7 +301,7 @@ def _run_silent_startup() -> dict:
     # 1. Latest handoff — timestamp boundary only
     handoff_date = ""
     try:
-        h = call("willow_handoff_latest", {"app_id": AGENT}, timeout=8)
+        h = call("handoff_latest", {"app_id": AGENT}, timeout=8)
         result["handoff_title"] = h.get("filename", "")
         handoff_date = h.get("session_date", h.get("created", ""))
     except Exception as e:
