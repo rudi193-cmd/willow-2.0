@@ -4,8 +4,7 @@ on:
   schedule:
     - cron: '0 9 * * *'   # Daily at 9am UTC
   workflow_dispatch:
-  push:
-    branches: [master, main]
+  # Merged PRs already fire pull_request closed; push duplicated runs + bot PRs.
   pull_request:
     types: [closed]
     branches: [master, main]
