@@ -376,6 +376,173 @@ def cmd_ack(atom_id: str, resolution: str = "") -> None:
         print(f"  resolution: {resolution}")
 
 
+# ── Resolve ───────────────────────────────────────────────────────────────────
+
+_DRAFT_PROMPT = """\
+You are updating a knowledge base atom because the code it describes has changed.
+
+ORIGINAL ATOM TITLE: {title}
+ORIGINAL ATOM SUMMARY: {summary}
+
+DRIFT EVIDENCE (what changed):
+{evidence}
+
+CURRENT CODE ({file_path}):
+{file_content}
+
+Write a concise updated summary (2-4 sentences) that accurately describes what the
+code does now. Be specific. Do not mention that this is an update or reference the
+original atom. Output only the summary text, nothing else."""
+
+
+def _draft_replacement(atom: dict, result_record: dict) -> str:
+    """Use Ollama to draft an updated atom summary from current code + evidence."""
+    drifted_files = [s for s in result_record.get("file_scores", []) if s["verdict"] == "drifted"]
+    if not drifted_files:
+        return ""
+
+    # Use first drifted file for context
+    fp = drifted_files[0]["file"]
+    full_path = _REPO_ROOT / fp
+    file_content = ""
+    if full_path.exists():
+        content = full_path.read_text(encoding="utf-8", errors="replace")
+        file_content = content[:3000] + (f"\n... ({len(content)-3000} chars truncated)" if len(content) > 3000 else "")
+
+    evidence = "\n".join(f"  {s['file']}: {s['evidence']}" for s in drifted_files)
+
+    return _ask_ollama(
+        "llama3.2:3b",
+        "You are a precise technical writer updating knowledge base documentation.",
+        _DRAFT_PROMPT.format(
+            title=atom.get("title", ""),
+            summary=(atom.get("summary") or "")[:500],
+            evidence=evidence,
+            file_path=fp,
+            file_content=file_content,
+        ),
+    ) or ""
+
+
+def _kb_invalidate(atom_id: str) -> bool:
+    """Stamp invalid_at on a KB atom."""
+    try:
+        pg = _get_pg()
+        with pg.conn.cursor() as cur:
+            cur.execute(
+                "UPDATE knowledge SET invalid_at = now() WHERE id = %s AND invalid_at IS NULL",
+                (atom_id,),
+            )
+            updated = cur.rowcount
+        pg.conn.commit()
+        return updated > 0
+    except Exception as exc:
+        print(f"  [error] invalidate failed: {exc}", file=sys.stderr)
+        return False
+
+
+def cmd_resolve() -> None:
+    """Interactive human-in-the-loop resolution for drifted atoms."""
+    results = soil.all_records(_RESULTS_COLLECTION)
+    open_drifts = [
+        r for r in results
+        if r.get("aggregate_verdict") == "drifted"
+        and r.get("status") == "open"
+    ]
+
+    if not open_drifts:
+        print("No open drift alerts. Run scan first or all alerts are already resolved.")
+        return
+
+    print(f"\nKB Truth Drift — Resolve ({len(open_drifts)} open)\n")
+
+    for i, record in enumerate(open_drifts, 1):
+        atom_id = record["atom_id"]
+        print(f"[{i}/{len(open_drifts)}] {atom_id} — {record.get('atom_title', '')[:60]}")
+        print(f"  Confidence: {record.get('max_confidence', 0):.0%}  Scanned: {record.get('scanned_at', '')[:10]}")
+
+        drifted_files = [s for s in record.get("file_scores", []) if s["verdict"] == "drifted"]
+        for s in drifted_files:
+            print(f"  ✗ {s['file']}")
+            print(f"    {s['evidence'][:120]}")
+
+        atom_result = _kb_get(atom_id)
+        if not atom_result.get("found"):
+            print("  [warn] Atom no longer in KB — marking acked.")
+            record["status"] = "acked"
+            record["resolution"] = "atom_gone"
+            soil.put(_RESULTS_COLLECTION, f"drift-{atom_id}", record)
+            print()
+            continue
+
+        atom = atom_result["atom"]
+        print(f"\n  Current summary:\n    {(atom.get('summary') or '')[:300]}")
+
+        print("\n  Drafting replacement via Ollama (llama3.2:3b)...")
+        draft = _draft_replacement(atom, record)
+        if draft:
+            print(f"\n  Draft replacement:\n    {draft[:400]}")
+        else:
+            print("  [warn] Could not draft replacement.")
+
+        print()
+        print("  [r] replace with draft   [i] invalidate only   [s] skip   [k] keep (false positive)")
+        try:
+            choice = input("  > ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\n  Aborted.")
+            return
+
+        if choice == "r" and draft:
+            ok = _kb_invalidate(atom_id)
+            if ok:
+                # Ingest replacement
+                pg = _get_pg()
+                new_id = pg.gen_id(8)
+                pg.knowledge_put({
+                    "id":          new_id,
+                    "title":       atom.get("title", ""),
+                    "summary":     draft,
+                    "category":    atom.get("category", "general"),
+                    "source_type": "drift-resolve",
+                    "project":     atom.get("project", _APP_ID),
+                    "tier":        "frontier",
+                    "confidence":  0.7,
+                    "weight":      atom.get("weight", 1.0),
+                })
+                record["status"] = "resolved"
+                record["resolution"] = f"replaced → {new_id}"
+                record["resolved_at"] = _now()
+                soil.put(_RESULTS_COLLECTION, f"drift-{atom_id}", record)
+                print(f"  ✓ Invalidated {atom_id}, ingested replacement {new_id} (tier=frontier)")
+            else:
+                print(f"  [error] Could not invalidate {atom_id}")
+
+        elif choice == "i":
+            ok = _kb_invalidate(atom_id)
+            if ok:
+                record["status"] = "resolved"
+                record["resolution"] = "invalidated"
+                record["resolved_at"] = _now()
+                soil.put(_RESULTS_COLLECTION, f"drift-{atom_id}", record)
+                print(f"  ✓ Invalidated {atom_id} — no replacement written")
+            else:
+                print(f"  [error] Could not invalidate {atom_id}")
+
+        elif choice == "k":
+            record["status"] = "acked"
+            record["resolution"] = "false_positive"
+            soil.put(_RESULTS_COLLECTION, f"drift-{atom_id}", record)
+            print(f"  Kept — marked as false positive")
+
+        else:
+            print(f"  Skipped")
+
+        print()
+
+    print("Resolve session complete.")
+
+
 # ── Entry ─────────────────────────────────────────────────────────────────────
 
 def _pop_flag(args: list[str], flag: str) -> str:
@@ -413,7 +580,9 @@ if __name__ == "__main__":
         rest = args[1:]
         resolution = _pop_flag(rest, "--note")
         cmd_ack(atom_id=rest[0], resolution=resolution)
+    elif cmd == "resolve":
+        cmd_resolve()
     else:
         print(f"Unknown command: {cmd}")
-        print("Usage: kb_truth_drift.py [seed|scan|report|map-add|ack]")
+        print("Usage: kb_truth_drift.py [seed|scan|report|map-add|ack|resolve]")
         sys.exit(1)
