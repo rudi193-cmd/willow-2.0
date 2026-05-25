@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import urllib.request
 import uuid
 from datetime import datetime, timezone
 
@@ -22,6 +23,33 @@ sys.path.insert(0, _ROOT)
 
 from core.pg_bridge import PgBridge
 from core.llm_edge import respond
+
+GROVE_URL = os.environ.get("GROVE_HEALTH_URL", "http://localhost:7777/health")
+
+_GROVE_ERROR = """
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║   GROVE IS NOT RUNNING                                           ║
+║                                                                  ║
+║   journal_responder requires Grove to be active.                 ║
+║   Start Grove before using the journal system.                   ║
+║                                                                  ║
+║   Check:  curl http://localhost:7777/health                      ║
+║   Start:  ./willow.sh grove_serve   (or see grove startup docs)  ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+""".strip()
+
+
+def _assert_grove() -> None:
+    try:
+        with urllib.request.urlopen(GROVE_URL, timeout=3) as r:
+            if r.status == 200:
+                return
+    except Exception:
+        pass
+    print(_GROVE_ERROR, file=sys.stderr)
+    sys.exit(1)
 
 # ── Saga's system prompt ─────────────────────────────────────────────────────
 
@@ -118,6 +146,7 @@ def _mark_responded(pg: PgBridge, entry_id: str) -> None:
 
 
 def run(entry_id: str | None = None, latest: bool = False) -> None:
+    _assert_grove()
     pg = PgBridge()
     try:
         if latest:

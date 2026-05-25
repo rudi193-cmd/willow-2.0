@@ -27,6 +27,20 @@ POLL_INTERVAL = int(os.environ.get("JOURNAL_WATCHER_INTERVAL", "10"))  # seconds
 GROVE_URL = os.environ.get("GROVE_HEALTH_URL", "http://localhost:7777/health")
 _RESPONDER = os.path.join(os.path.dirname(__file__), "journal_responder.py")
 
+_GROVE_ERROR = """
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║   GROVE IS NOT RUNNING                                           ║
+║                                                                  ║
+║   journal_watcher requires Grove to be active.                   ║
+║   Start Grove before using the journal system.                   ║
+║                                                                  ║
+║   Check:  curl http://localhost:7777/health                      ║
+║   Start:  ./willow.sh grove_serve   (or see grove startup docs)  ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+""".strip()
+
 
 def _grove_alive() -> bool:
     try:
@@ -61,8 +75,8 @@ def _fire(entry_id: str) -> None:
 
 def watch() -> None:
     if not _grove_alive():
-        print("journal_watcher: Grove is down — exiting", flush=True)
-        sys.exit(0)
+        print(_GROVE_ERROR, file=sys.stderr, flush=True)
+        sys.exit(1)
 
     print(f"journal_watcher: Grove up — polling every {POLL_INTERVAL}s for '{SAGA_TAG}'", flush=True)
     pg = PgBridge()
