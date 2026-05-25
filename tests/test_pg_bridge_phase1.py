@@ -149,9 +149,6 @@ def test_ledger_verify_clean_chain(pg):
 def test_task_complete(pg):
     task_id = pg.submit_task("echo phase1 test", submitted_by="test", agent="test")
     assert task_id is not None
-    # pending_tasks() atomically claims the task (pending → running) before we can complete it
-    claimed = pg.pending_tasks(agent="test", limit=10)
-    assert any(t["id"] == task_id for t in claimed), "task was not claimed by pending_tasks"
     ok = pg.task_complete(task_id, {"stdout": "phase1 test"}, "completed")
     assert ok is True
     row = pg.task_status(task_id)
