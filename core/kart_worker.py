@@ -83,6 +83,9 @@ def _bwrap_prefix(allow_net: bool = False) -> list[str]:
     github_dir = os.path.join(home, "github")
     if os.path.exists(github_dir):
         args += ["--ro-bind", github_dir, github_dir]
+    safe_app_store = os.path.join(home, "safe-app-store")
+    if os.path.exists(safe_app_store):
+        args += ["--bind", safe_app_store, safe_app_store]
     local_dir = os.path.join(home, ".local")
     if os.path.exists(local_dir):
         args += ["--ro-bind", local_dir, local_dir]

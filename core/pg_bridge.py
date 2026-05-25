@@ -1379,15 +1379,16 @@ class PgBridge:
     # ── Tasks ────────────────────────────────────────────────────────────────
 
     def submit_task(self, task: str, submitted_by: str = "ganesha",
-                    agent: str = "kart", goal: Optional[str] = None) -> Optional[str]:
+                    agent: str = "kart") -> Optional[str]:
         self._ensure_conn()
         try:
             task_id = self.gen_id(8)
             with self.conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO tasks (id, task, submitted_by, agent, goal)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (task_id, task, submitted_by, agent, goal))
+                cur.execute(
+                    "INSERT INTO tasks (id, task, submitted_by, agent)"
+                    " VALUES (%s, %s, %s, %s)",
+                    (task_id, task, submitted_by, agent),
+                )
             self.conn.commit()
             return task_id
         except Exception:
