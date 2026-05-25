@@ -25,6 +25,8 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from core import soil
+from core.pg_bridge import PgBridge
+from sap.clients.professor_client import _ask_ollama
 
 _APP_ID = "hanuman"
 _MAP_COLLECTION = "hanuman/atom_code_map"
@@ -39,6 +41,35 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+_pg: PgBridge | None = None
+
+
+def _get_pg() -> PgBridge:
+    global _pg
+    if _pg is None:
+        _pg = PgBridge()
+        _pg._ensure_conn()
+    return _pg
+
+
+def _kb_get(atom_id: str) -> dict:
+    """Look up a KB atom by ID directly via Postgres (works inside bwrap)."""
+    try:
+        import psycopg2.extras
+        pg = _get_pg()
+        with pg.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM knowledge WHERE id = %s AND invalid_at IS NULL",
+                (atom_id,),
+            )
+            row = cur.fetchone()
+        if row:
+            return {"found": True, "atom": dict(row)}
+        return {"found": False}
+    except Exception as exc:
+        return {"found": False, "error": str(exc)}
+
+
 def _mcp(tool: str, args: dict, timeout: int = 30) -> Any:
     try:
         from willow.fylgja._mcp import call
@@ -51,16 +82,32 @@ def _mcp(tool: str, args: dict, timeout: int = 30) -> Any:
 
 _INITIAL_MAPPINGS: list[dict] = [
     {
-        "atom_id": "A848E65A",
-        "title": "code_graph CLI — budget-aware Python symbol graph",
-        "file_paths": [
-            "sap/code_graph/indexer.py",
-            "sap/code_graph/walker.py",
-            "sap/code_graph/fuzzy.py",
-            "sap/code_graph/__main__.py",
-        ],
-        "added_by": "skirnir",
-        "note": "Atom describes CLI usage and file layout of sap/code_graph.",
+        "atom_id": "02377795",
+        "title": "kb_truth_drift — KB atom truth-drift detector",
+        "file_paths": ["agents/hanuman/bin/kb_truth_drift.py"],
+        "added_by": "hanuman",
+        "note": "Atom describes kb_truth_drift.py usage and design.",
+    },
+    {
+        "atom_id": "2E063B1C",
+        "title": "kart fix: venv PATH was resolving to core/ not repo root",
+        "file_paths": ["core/kart_worker.py", "core/pg_bridge.py"],
+        "added_by": "hanuman",
+        "note": "Atom records the kart venv path fix — drift if kart_worker changes again.",
+    },
+    {
+        "atom_id": "60B9A121",
+        "title": "Fylgja hook system: anchor state and prompt count",
+        "file_paths": ["sap/fylgja/hooks.py", "sap/sap_mcp.py"],
+        "added_by": "hanuman",
+        "note": "Atom describes Fylgja hook anchor/prompt-count behavior.",
+    },
+    {
+        "atom_id": "9A4A02C4",
+        "title": "grove_session: hard_close crash detection pattern",
+        "file_paths": ["core/grove_serve.py"],
+        "added_by": "hanuman",
+        "note": "Atom describes Grove hard-close crash detection.",
     },
 ]
 
@@ -123,20 +170,11 @@ def _score_atom_against_file(atom: dict, file_path: str) -> dict:
         file_content=snippet,
     )
 
-    result = _mcp("infer_chat", {
-        "app_id": _APP_ID,
-        "message": prompt,
-        "agent": "willow",
-    }, timeout=60)
-
-    raw = ""
-    if isinstance(result, dict):
-        raw = (
-            result.get("response") or result.get("content") or
-            result.get("text") or result.get("message") or ""
-        ).strip()
-    else:
-        raw = str(result).strip()
+    raw = _ask_ollama(
+        "llama3.2:3b",
+        "You are a precise code auditor. Follow the output format exactly.",
+        prompt,
+    ) or ""
 
     verdict = "uncertain"
     evidence = ""
@@ -171,8 +209,8 @@ def cmd_scan() -> None:
         atom_id = mapping.get("atom_id", "")
         file_paths = mapping.get("file_paths", [])
 
-        atom_result = _mcp("kb_get", {"app_id": _APP_ID, "id": atom_id})
-        if not isinstance(atom_result, dict) or not atom_result.get("found"):
+        atom_result = _kb_get(atom_id)
+        if not atom_result.get("found"):
             print(f"  [{atom_id}] atom not found in KB — skipping")
             continue
 
