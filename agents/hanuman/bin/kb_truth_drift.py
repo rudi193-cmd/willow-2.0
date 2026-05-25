@@ -317,10 +317,22 @@ def cmd_report() -> None:
         print("No drift results found. Run: kb_truth_drift.py scan")
         return
 
-    drifted = [r for r in results if r.get("aggregate_verdict") == "drifted" and r.get("status") != "acked"]
-    uncertain = [r for r in results if r.get("aggregate_verdict") == "uncertain" and r.get("status") != "acked"]
-    current = [r for r in results if r.get("aggregate_verdict") == "current"]
-    acked = [r for r in results if r.get("status") == "acked"]
+    drifted, uncertain, current, acked = [], [], [], []
+    for r in results:
+        verdict = r.get("aggregate_verdict")
+        status = r.get("status")
+        if status == "acked" or status == "resolved":
+            acked.append(r)
+        elif verdict == "current":
+            current.append(r)
+        elif verdict == "uncertain":
+            uncertain.append(r)
+        elif verdict == "drifted":
+            # Postgres is authoritative: if atom is gone (invalid_at set), it's resolved
+            if not _kb_get(r.get("atom_id", "")).get("found"):
+                acked.append(r)
+            else:
+                drifted.append(r)
 
     print(f"\nKB Truth Drift Report — {_now()[:10]}")
     print("─" * 60)
@@ -495,9 +507,9 @@ def cmd_resolve() -> None:
 
         atom_result = _kb_get(atom_id)
         if not atom_result.get("found"):
-            print("  [warn] Atom no longer in KB — marking acked.")
-            record["status"] = "acked"
-            record["resolution"] = "atom_gone"
+            print("  [skip] Atom already invalidated in Postgres — marking resolved.")
+            record["status"] = "resolved"
+            record["resolution"] = "invalidated_in_pg"
             soil.put(_RESULTS_COLLECTION, f"drift-{atom_id}", record)
             print()
             continue
