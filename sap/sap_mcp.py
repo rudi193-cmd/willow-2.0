@@ -2905,7 +2905,7 @@ async def workflow_define(
     Phases with no depends_on run first. Phases whose depends_on are all completed run next.
     Parallel phases (same depends_on set) run concurrently.
     output_schema: JSON schema dict for structured LLM output (optional).
-    model: per-phase model override (default: claude-haiku-4-5-20251001)."""
+    model: per-phase model override (default: $KART_WORKFLOW_MODEL or mistral:7b)."""
     logger.info("[w2] workflow_define app_id=%s name=%s", app_id, name)
     if not pg:
         return _no_pg()
@@ -2977,7 +2977,7 @@ async def workflow_run(
 
             phase_input = {
                 "prompt":        prompt,
-                "model":         phase_def.get("model", "claude-haiku-4-5-20251001"),
+                "model":         phase_def.get("model", os.environ.get("KART_WORKFLOW_MODEL", "mistral:7b")),
                 "output_schema": phase_def.get("output_schema", {}),
                 "phase_name":    phase_name,
             }

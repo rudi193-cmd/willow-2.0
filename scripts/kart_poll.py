@@ -101,12 +101,12 @@ def _resolve_template(text: str, run_input: dict, phase_outputs: dict) -> str:
     return re.sub(r"\{\{([^}]+)\}\}", _sub, text)
 
 
+_DEFAULT_WORKFLOW_MODEL = os.environ.get("KART_WORKFLOW_MODEL", "mistral:7b")
+
+
 def _call_llm(prompt: str, model: str, output_schema: dict) -> dict:
-    """Call Anthropic API directly. Returns parsed JSON output or raw text."""
-    import anthropic
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        return {"error": "ANTHROPIC_API_KEY not set", "raw": ""}
+    """Call local LLM (Groq → Ollama) for workflow phases. No Anthropic dependency."""
+    from core.llm_edge import respond as _llm_respond
 
     schema_hint = ""
     if output_schema:
@@ -115,17 +115,16 @@ def _call_llm(prompt: str, model: str, output_schema: dict) -> dict:
             "\nOutput ONLY the JSON object, no markdown fences."
         )
 
-    client = anthropic.Anthropic(api_key=api_key)
-    msg = client.messages.create(
-        model=model or "claude-haiku-4-5-20251001",
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt + schema_hint}],
+    ollama_model = model if model and "claude" not in model else _DEFAULT_WORKFLOW_MODEL
+    raw = _llm_respond(
+        system_prompt="You are a workflow execution agent. Be precise and follow instructions exactly.",
+        context_atoms=[],
+        input_text=prompt + schema_hint,
+        ollama_model=ollama_model,
     )
-    raw = msg.content[0].text if msg.content else ""
 
     if output_schema:
         try:
-            # Strip optional markdown fences
             clean = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
             return json.loads(clean)
         except json.JSONDecodeError:
@@ -154,7 +153,7 @@ def _queue_phases(pg, run_id: str, phases: dict, run_input: dict, phase_outputs:
         )
         phase_input = {
             "prompt":        prompt,
-            "model":         phase_def.get("model", "claude-haiku-4-5-20251001"),
+            "model":         phase_def.get("model", _DEFAULT_WORKFLOW_MODEL),
             "output_schema": phase_def.get("output_schema", {}),
             "phase_name":    phase_name,
         }
@@ -249,7 +248,7 @@ def _run_workflow_phase(pg, task_id: str, payload: dict):
         else:
             output = _call_llm(
                 phase_input["prompt"],
-                phase_input.get("model", "claude-haiku-4-5-20251001"),
+                phase_input.get("model", _DEFAULT_WORKFLOW_MODEL),
                 phase_input.get("output_schema", {}),
             )
         elapsed = round(time.time() - started, 2)
