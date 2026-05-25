@@ -2,6 +2,7 @@
 import { createInterface } from 'node:readline';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { writeFile as fsWriteFile } from 'node:fs/promises';
 
 const distDir = process.env.MARKDOWNAI_DIST_DIR;
 if (!distDir) {
@@ -22,6 +23,7 @@ const { validateMcpInput } = await mod('validate.js');
 
 const TOOL_ALLOWLIST = new Set([
   'read_file',
+  'write_file',
   'list_phases',
   'resolve_phase',
   'next_phase',
@@ -135,6 +137,19 @@ function toolDefinitions() {
       description: 'Get all @constraint declarations from a MarkdownAI document, sorted by severity',
       inputSchema: { type: 'object', properties: { file: { type: 'string' } }, required: ['file'] },
     },
+    {
+      name: 'write_file',
+      description:
+        'Write content to a MarkdownAI file (raw, no rendering). Invalidates the render cache for the path. Use this to edit .md files whose Read is blocked by the MarkdownAI preToolUse hook.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Absolute or cwd-relative path to the file' },
+          content: { type: 'string', description: 'Full file content to write' },
+        },
+        required: ['path', 'content'],
+      },
+    },
   ];
 }
 
@@ -182,6 +197,14 @@ function dispatchTool(name, args, cwd) {
       return invalidateCache(args.directive != null ? String(args.directive) : undefined);
     case 'get_constraints':
       return getConstraints(String(args.file ?? ''), cwd);
+    case 'write_file': {
+      const filePath = path.resolve(cwd, String(args.path ?? ''));
+      const content = String(args.content ?? '');
+      return fsWriteFile(filePath, content, 'utf8').then(() => {
+        invalidateCache(filePath);
+        return { path: filePath, bytes: Buffer.byteLength(content, 'utf8') };
+      });
+    }
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -226,8 +249,9 @@ function handleRequest(req, cwd) {
           respondError(req.id, -32601, `Unknown tool: "${toolName}"`);
           return;
         }
-        const result = dispatchTool(toolName, params.arguments ?? {}, cwd);
-        respond(req.id, asToolResult(result));
+        Promise.resolve(dispatchTool(toolName, params.arguments ?? {}, cwd))
+          .then((result) => respond(req.id, asToolResult(result)))
+          .catch((err) => respondError(req.id, -32603, String(err)));
         return;
       }
       default:
