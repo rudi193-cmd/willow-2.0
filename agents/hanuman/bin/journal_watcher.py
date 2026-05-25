@@ -18,36 +18,12 @@ import time
 _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.insert(0, _ROOT)
 
-import urllib.request
-
 from core.pg_bridge import PgBridge
+from core.grove_gate import assert_grove as _assert_grove_startup, grove_alive as _grove_alive
 
 SAGA_TAG = "::saga"
 POLL_INTERVAL = int(os.environ.get("JOURNAL_WATCHER_INTERVAL", "10"))  # seconds
-GROVE_URL = os.environ.get("GROVE_HEALTH_URL", "http://localhost:7777/health")
 _RESPONDER = os.path.join(os.path.dirname(__file__), "journal_responder.py")
-
-_GROVE_ERROR = """
-╔══════════════════════════════════════════════════════════════════╗
-║                                                                  ║
-║   GROVE IS NOT RUNNING                                           ║
-║                                                                  ║
-║   journal_watcher requires Grove to be active.                   ║
-║   Start Grove before using the journal system.                   ║
-║                                                                  ║
-║   Check:  curl http://localhost:7777/health                      ║
-║   Start:  ./willow.sh grove_serve   (or see grove startup docs)  ║
-║                                                                  ║
-╚══════════════════════════════════════════════════════════════════╝
-""".strip()
-
-
-def _grove_alive() -> bool:
-    try:
-        with urllib.request.urlopen(GROVE_URL, timeout=3) as r:
-            return r.status == 200
-    except Exception:
-        return False
 
 
 def _pending_entries(pg: PgBridge) -> list[str]:
@@ -74,9 +50,7 @@ def _fire(entry_id: str) -> None:
 
 
 def watch() -> None:
-    if not _grove_alive():
-        print(_GROVE_ERROR, file=sys.stderr, flush=True)
-        sys.exit(1)
+    _assert_grove_startup("journal_watcher")
 
     print(f"journal_watcher: Grove up — polling every {POLL_INTERVAL}s for '{SAGA_TAG}'", flush=True)
     pg = PgBridge()

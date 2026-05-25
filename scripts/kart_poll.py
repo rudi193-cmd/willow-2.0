@@ -288,6 +288,9 @@ def _run_workflow_phase(pg, task_id: str, payload: dict):
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
 def main() -> int:
+    from core.grove_gate import assert_grove
+    assert_grove("kart_poll")
+
     try:
         from core.pg_bridge import PgBridge
         pg = PgBridge()
