@@ -9,20 +9,26 @@ from willow.fylgja.events.pre_tool import (
 
 
 def test_blocks_psql():
-    reason = check_bash_block("psql -U willow willow_20")
-    assert reason is not None
+    result = check_bash_block("psql -U willow willow_20")
+    assert result is not None
+    decision, reason = result
+    assert decision == "block"
     assert "MCP" in reason
 
 
 def test_blocks_cat():
-    reason = check_bash_block("cat /home/sean/somefile.py")
-    assert reason is not None
+    result = check_bash_block("cat /home/sean/somefile.py")
+    assert result is not None
+    decision, reason = result
+    assert decision == "block"
     assert "Read" in reason
 
 
 def test_blocks_ls():
-    reason = check_bash_block("ls /home/sean/")
-    assert reason is not None
+    result = check_bash_block("ls /home/sean/")
+    assert result is not None
+    decision, reason = result
+    assert decision == "block"
     assert "Glob" in reason
 
 
