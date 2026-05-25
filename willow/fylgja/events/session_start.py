@@ -14,6 +14,7 @@ from pathlib import Path
 from core.agent_identity import require_agent_name
 from willow.fylgja._mcp import call
 from willow.fylgja._grove import call as _grove_call
+from willow.fylgja._state import reset_turn_count
 
 try:
     from willow.context.dedup import reset_session as _dedup_reset
@@ -564,6 +565,7 @@ def main():
             pass
 
     _clear_stale_thread()
+    reset_turn_count()  # fresh session — boot guard must fire exactly once
     grove_status = _ensure_grove_mcp()  # instant local file check
     if session_id:
         _register_jeles(session_id)

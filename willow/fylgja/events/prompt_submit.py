@@ -11,7 +11,7 @@ from pathlib import Path
 
 from willow.fylgja._mcp import call
 from willow.fylgja._state import (
-    AGENT, is_first_turn, get_trust_state, save_trust_state,
+    AGENT, is_first_turn, increment_turn_count, get_trust_state, save_trust_state,
 )
 
 ANCHOR_INTERVAL = 25
@@ -453,6 +453,7 @@ def main():
 
     _check_identity()
     _boot_guard()
+    increment_turn_count()
     _inject_stabilization_brief()
     _run_source_ring(session_id)
     _run_route(prompt, session_id)
