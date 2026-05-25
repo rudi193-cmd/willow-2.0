@@ -1631,13 +1631,28 @@ class PgBridge:
             return dict(row) if row else None
 
     def pending_tasks(self, agent: str = "kart", limit: int = 10) -> list:
+        """Atomically claim pending tasks by marking them 'running'. Two concurrent
+        callers cannot claim the same row — FOR UPDATE SKIP LOCKED ensures this."""
         self._ensure_conn()
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                SELECT * FROM tasks WHERE agent = %s AND status = 'pending'
-                ORDER BY created_at ASC LIMIT %s
+                WITH claimed AS (
+                    UPDATE tasks
+                    SET status = 'running', updated_at = now()
+                    WHERE id IN (
+                        SELECT id FROM tasks
+                        WHERE agent = %s AND status = 'pending'
+                        ORDER BY created_at ASC
+                        LIMIT %s
+                        FOR UPDATE SKIP LOCKED
+                    )
+                    RETURNING *
+                )
+                SELECT * FROM claimed ORDER BY created_at ASC
             """, (agent, limit))
-            return [dict(r) for r in cur.fetchall()]
+            rows = [dict(r) for r in cur.fetchall()]
+        self.conn.commit()
+        return rows
 
     def task_complete(self, task_id: str, result: dict, status: str = "completed") -> bool:
         self._ensure_conn()
@@ -1645,7 +1660,7 @@ class PgBridge:
             with self.conn.cursor() as cur:
                 cur.execute("""
                     UPDATE tasks SET status=%s, result=%s, updated_at=now()
-                    WHERE id=%s
+                    WHERE id=%s AND status = 'running'
                 """, (status, psycopg2.extras.Json(result), task_id))
             self.conn.commit()
             return cur.rowcount > 0
