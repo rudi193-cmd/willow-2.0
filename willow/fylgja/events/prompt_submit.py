@@ -338,6 +338,24 @@ def _run_corpus_capture(prompt: str, session_id: str) -> None:
         pass
 
 
+def _boot_guard() -> None:
+    """First turn only: inject an unmissable boot requirement before any response."""
+    if not is_first_turn():
+        return
+    print(
+        "[BOOT-REQUIRED] You have NOT booted this session yet.\n"
+        "[BOOT-REQUIRED] STOP — do NOT respond to the user's message yet.\n"
+        "[BOOT-REQUIRED] Run ALL of the following first, in order:\n"
+        "[BOOT-REQUIRED]   1. Read ~/.willow/willow.md\n"
+        "[BOOT-REQUIRED]   2. fleet_status(app_id=hanuman)\n"
+        "[BOOT-REQUIRED]   3. handoff_latest(app_id=hanuman)\n"
+        "[BOOT-REQUIRED]   4. grove_get_history (Grove MCP)\n"
+        "[BOOT-REQUIRED]   5. kb_search on the user's task\n"
+        "[BOOT-REQUIRED] After all five complete, THEN answer the user's question.\n"
+        "[BOOT-REQUIRED] Skipping boot and responding directly is a failure."
+    )
+
+
 def _run_build_continue() -> None:
     task = get_active_task()
     if not task:
@@ -393,6 +411,7 @@ def main():
     prompt = data.get("prompt", "")
 
     _check_identity()
+    _boot_guard()
     _run_source_ring(session_id)
     _run_route(prompt, session_id)
     _run_anchor()
