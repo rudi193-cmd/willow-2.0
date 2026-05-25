@@ -717,6 +717,7 @@ print(f'  Disabled: ${PROVIDER}')
     upstream)
         _WATCHER="${WILLOW_ROOT}/agents/hanuman/bin/upstream_watcher.py"
         _RESPONDER="${WILLOW_ROOT}/agents/hanuman/bin/upstream_responder.py"
+        _SCOUT="${WILLOW_ROOT}/agents/hanuman/bin/upstream_scout.py"
         case "${2:-status}" in
             status|pending)
                 "${WILLOW_PYTHON}" "${_RESPONDER}" list
@@ -737,6 +738,23 @@ print(f'  Disabled: ${PROVIDER}')
                 [[ -z "${3:-}" ]] && echo "Usage: willow.sh upstream skip <work_id> [--reason <text>]" && exit 1
                 "${WILLOW_PYTHON}" "${_RESPONDER}" skip "${3}" "${@:4}"
                 ;;
+            review)
+                "${WILLOW_PYTHON}" "${_RESPONDER}" review "${@:3}"
+                ;;
+            scout)
+                "${WILLOW_PYTHON}" "${_SCOUT}" run-once
+                ;;
+            scout-list)
+                "${WILLOW_PYTHON}" "${_SCOUT}" list
+                ;;
+            scout-show)
+                [[ -z "${3:-}" ]] && echo "Usage: willow.sh upstream scout-show <owner--repo>" && exit 1
+                "${WILLOW_PYTHON}" "${_SCOUT}" show "${3}"
+                ;;
+            scout-dismiss)
+                [[ -z "${3:-}" ]] && echo "Usage: willow.sh upstream scout-dismiss <owner--repo>" && exit 1
+                "${WILLOW_PYTHON}" "${_SCOUT}" dismiss "${3}"
+                ;;
             run-now)
                 "${WILLOW_PYTHON}" "${_WATCHER}" run-once
                 ;;
@@ -753,7 +771,7 @@ else:
 "
                 ;;
             *)
-                echo "Usage: willow.sh upstream [status|pending|show <id>|approve <id>|edit <id>|skip <id>|run-now|digest]"
+                echo "Usage: willow.sh upstream [status|pending|review|scout|scout-list|scout-show|scout-dismiss|show <id>|approve <id>|edit <id>|skip <id>|run-now|digest]"
                 ;;
         esac
         ;;

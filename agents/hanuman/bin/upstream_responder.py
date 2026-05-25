@@ -8,6 +8,7 @@ Every post requires an explicit human approval call. No auto-post.
 
 Usage:
     upstream_responder.py list
+    upstream_responder.py review [--ingest-kb] [--all]
     upstream_responder.py show <work_id>
     upstream_responder.py approve <work_id>
     upstream_responder.py edit <work_id> --file <path>
@@ -147,17 +148,56 @@ def _do_post(record: dict, body: str, ingest_kb: bool = False) -> None:
 
 # ── Commands ──────────────────────────────────────────────────────────────────
 
-def cmd_list() -> None:
+def _active_drafts(*, require_body: bool = False) -> list[dict]:
     records = soil.all_records(_SOIL_PENDING)
     active = [
         r for r in records
         if r.get("status") not in ("posted", "closed", "skipped")
         and r.get("lane") in ("draft", "urgent")
     ]
+    if require_body:
+        active = [r for r in active if r.get("draft_body", "").strip()]
+    active.sort(key=lambda r: (r.get("lane") != "urgent", r.get("updated_at", "")))
+    return active
+
+
+def _print_item_context(r: dict, *, index: int | None = None, total: int | None = None) -> None:
+    sep = "─" * _SHOW_WIDTH
+    wid = r.get("work_id", "")
+    header = f"[{index}/{total}] " if index is not None and total is not None else ""
+    print(f"\n{sep}")
+    print(f"  {header}{wid}")
+    print(f"  {r.get('repo','')} — {r.get('title','')}")
+    print(f"  lane={r.get('lane','')}  status={r.get('status','')}  ci={r.get('ci_state','?')}")
+    print(sep)
+
+    their = r.get("their_comment", "")
+    if their:
+        print(f"\nTHEIR COMMENT (@{r.get('author','?')}):\n")
+        for line in their[:600].split("\n"):
+            print(f"  {line}")
+
+    questions = r.get("open_questions", [])
+    if questions:
+        print("\nOPEN QUESTIONS:")
+        for q in questions:
+            print(f"  • {q}")
+
+    draft = r.get("draft_body", "")
+    if draft:
+        print("\nDRAFT REPLY:\n")
+        for line in draft.split("\n"):
+            print(f"  {line}")
+        print()
+    else:
+        print("\n  (no draft generated — run: willow.sh upstream run-now)\n")
+
+
+def cmd_list() -> None:
+    active = _active_drafts()
     if not active:
         print("No pending drafts.")
         return
-    active.sort(key=lambda r: (r.get("lane") != "urgent", r.get("updated_at", "")))
     for r in active:
         has_draft = "✓ draft" if r.get("draft_body") else "  needs"
         lane_tag = f"[{r.get('lane','?')}]".ljust(10)
@@ -171,38 +211,116 @@ def cmd_show(wid: str) -> None:
         print(f"Not found: {wid}", file=sys.stderr)
         sys.exit(1)
 
+    _print_item_context(r)
     sep = "─" * _SHOW_WIDTH
-    print(f"\n{sep}")
-    print(f"  {r.get('work_id','')}")
-    print(f"  {r.get('repo','')} — {r.get('title','')}")
-    print(f"  lane={r.get('lane','')}  status={r.get('status','')}  ci={r.get('ci_state','?')}")
-    print(sep)
-
-    their = r.get("their_comment", "")
-    if their:
-        print(f"\nTHEIR COMMENT (@{r.get('author','?')}):\n")
-        for line in their[:600].split("\n"):
-            print(f"  {line}")
-
-    questions = r.get("open_questions", [])
-    if questions:
-        print(f"\nOPEN QUESTIONS:")
-        for q in questions:
-            print(f"  • {q}")
-
-    draft = r.get("draft_body", "")
-    if draft:
-        print(f"\nDRAFT REPLY:\n")
-        for line in draft.split("\n"):
-            print(f"  {line}")
-        print()
-    else:
-        print("\n  (no draft generated — run: willow.sh upstream run-now)\n")
-
     print(sep)
     print(f"  willow.sh upstream approve {wid}")
     print(f"  willow.sh upstream skip {wid}")
     print(sep)
+
+
+def _edit_body(r: dict, file_path: str | None = None) -> str | None:
+    if file_path:
+        return Path(file_path).read_text().strip()
+
+    draft = r.get("draft_body", "")
+    editor = os.environ.get("EDITOR", "nano")
+    with tempfile.NamedTemporaryFile(suffix=".md", mode="w", delete=False) as f:
+        f.write(draft)
+        tmp = f.name
+    result = subprocess.run([editor, tmp])
+    if result.returncode != 0:
+        print("Editor exited with error — nothing posted.")
+        os.unlink(tmp)
+        return None
+    body = Path(tmp).read_text().strip()
+    os.unlink(tmp)
+    return body or None
+
+
+def cmd_review(*, ingest_kb: bool = False, include_no_draft: bool = False) -> None:
+    """Walk pending upstream drafts one at a time — mirror kb_truth_drift resolve."""
+    pending = _active_drafts(require_body=not include_no_draft)
+    if not pending:
+        print("No pending upstream drafts.")
+        if not include_no_draft:
+            bare = _active_drafts()
+            if bare:
+                print(f"  ({len(bare)} item(s) lack draft_body — run: willow.sh upstream run-now)")
+        return
+
+    total = len(pending)
+    print(f"\nUpstream Review — {total} pending\n")
+    print("  [a] approve draft   [e] edit in $EDITOR   [s] skip   [q] quit\n")
+
+    for i, r in enumerate(pending, 1):
+        wid = r.get("work_id", "")
+        _print_item_context(r, index=i, total=total)
+
+        draft = r.get("draft_body", "").strip()
+        if not draft:
+            print("  [s] skip   [q] quit")
+            try:
+                choice = input("  > ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                print("\n  Quit.")
+                return
+            if choice in ("q", "quit"):
+                print("Review session ended.")
+                return
+            if choice in ("s", "skip"):
+                cmd_skip(wid, reason="review: no draft")
+            print()
+            continue
+
+        print("  [a] approve   [e] edit   [s] skip   [q] quit")
+        try:
+            choice = input("  > ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\n  Quit.")
+            return
+
+        if choice in ("q", "quit"):
+            print("Review session ended.")
+            return
+
+        if choice in ("a", "approve", "y", "yes"):
+            try:
+                _do_post(r, draft, ingest_kb=ingest_kb)
+            except Exception as exc:
+                print(f"  ✗ Failed: {exc}", file=sys.stderr)
+
+        elif choice in ("e", "edit"):
+            body = _edit_body(r)
+            if not body:
+                print("  Empty body — skipped.")
+            else:
+                print("\nEDITED REPLY:\n")
+                for line in body.split("\n"):
+                    print(f"  {line}")
+                print()
+                try:
+                    confirm = input("Post this? [y/N] ").strip().lower()
+                except (EOFError, KeyboardInterrupt):
+                    print("\n  Skipped.")
+                else:
+                    if confirm == "y":
+                        try:
+                            _do_post(r, body, ingest_kb=ingest_kb)
+                        except Exception as exc:
+                            print(f"  ✗ Failed: {exc}", file=sys.stderr)
+                    else:
+                        print("  Not posted.")
+
+        elif choice in ("s", "skip"):
+            cmd_skip(wid, reason="review: skipped")
+
+        else:
+            print("  Skipped.")
+
+        print()
+
+    print("Review session complete.")
 
 
 def cmd_approve(wid: str, ingest_kb: bool = False) -> None:
@@ -251,23 +369,7 @@ def cmd_edit(wid: str, file_path: str | None = None, ingest_kb: bool = False) ->
         print(f"Already posted: {wid}")
         return
 
-    if file_path:
-        body = Path(file_path).read_text().strip()
-    else:
-        # Drop into $EDITOR with draft pre-filled
-        draft = r.get("draft_body", "")
-        editor = os.environ.get("EDITOR", "nano")
-        with tempfile.NamedTemporaryFile(suffix=".md", mode="w", delete=False) as f:
-            f.write(draft)
-            tmp = f.name
-        result = subprocess.run([editor, tmp])
-        if result.returncode != 0:
-            print("Editor exited with error — nothing posted.")
-            os.unlink(tmp)
-            return
-        body = Path(tmp).read_text().strip()
-        os.unlink(tmp)
-
+    body = _edit_body(r, file_path)
     if not body:
         print("Empty body — nothing posted.")
         return
@@ -329,6 +431,7 @@ def cmd_post_all_approved() -> None:
 def _usage() -> None:
     print("Usage: upstream_responder.py <command> [args]")
     print("  list")
+    print("  review [--ingest-kb] [--all]")
     print("  show <work_id>")
     print("  approve <work_id> [--ingest-kb]")
     print("  edit <work_id> [--file <path>] [--ingest-kb]")
@@ -347,6 +450,12 @@ if __name__ == "__main__":
 
     if cmd == "list":
         cmd_list()
+
+    elif cmd == "review":
+        cmd_review(
+            ingest_kb="--ingest-kb" in args,
+            include_no_draft="--all" in args,
+        )
 
     elif cmd == "show":
         if len(args) < 2:
