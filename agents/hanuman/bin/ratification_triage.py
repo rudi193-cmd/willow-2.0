@@ -3,13 +3,14 @@
 ratification_triage.py — Periodic ratification backlog digest.
 b17: TRGE1  ΔΣ=42
 
-Reads three sources, ranks pending items by urgency, and surfaces the top 5
+Reads four sources, ranks pending items by urgency, and surfaces the top 5
 to Grove #hanuman and writes a machine-readable SOIL record.
 
 Sources:
   1. SOIL hanuman/atom_drift_results  — drifted/uncertain atoms not yet resolved
   2. Postgres knowledge (frontier tier, older than 7 days, never ratified)
   3. SOIL upstream_steward/pending    — draft items past veto window
+  4. Postgres knowledge               — atoms never surfaced to any agent (unread)
 
 Ranking: staleness_days × confidence — highest score first.
 
@@ -29,12 +30,14 @@ if _ROOT not in sys.path:
 
 from core import soil
 from core.pg_bridge import PgBridge
+from core.kb_read_log import read_atoms_set, record_read
 
 _APP_ID = "hanuman"
 _DRIFT_COLLECTION    = "hanuman/atom_drift_results"
 _UPSTREAM_COLLECTION = "upstream_steward/pending"
 _DIGEST_COLLECTION   = "hanuman/triage_digest"
 _FRONTIER_STALE_DAYS = 7
+_UNREAD_STALE_DAYS   = 7
 _TOP_N = 5
 
 
@@ -156,6 +159,54 @@ def _read_upstream_items() -> list[dict]:
     return items
 
 
+# ── Unread atoms ─────────────────────────────────────────────────────────────
+
+def _read_unread_items(pg: PgBridge) -> list[dict]:
+    """Atoms written to KB but never surfaced to any agent in the last N days."""
+    recently_read = read_atoms_set(since_days=_UNREAD_STALE_DAYS)
+    cutoff = _now() - timedelta(days=_UNREAD_STALE_DAYS)
+    items = []
+    try:
+        import psycopg2.extras
+        pg._ensure_conn()
+        with pg.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, title, confidence, valid_at, tier
+                FROM knowledge
+                WHERE invalid_at IS NULL
+                  AND valid_at < %s
+                ORDER BY valid_at ASC
+                LIMIT 100
+                """,
+                (cutoff,),
+            )
+            rows = cur.fetchall()
+    except Exception as exc:
+        print(f"[warn] unread query failed: {exc}", file=sys.stderr)
+        return []
+
+    for row in rows:
+        atom_id = str(row["id"])
+        if atom_id in recently_read:
+            continue
+        valid_at = row["valid_at"]
+        valid_at_str = valid_at.isoformat() if hasattr(valid_at, "isoformat") else str(valid_at)
+        staleness = _days_ago(valid_at_str)
+        confidence = float(row.get("confidence") or 0.5)
+        items.append({
+            "type": "UNREAD",
+            "id": atom_id,
+            "label": (row.get("title") or "")[:60],
+            "staleness_days": staleness,
+            "confidence": confidence,
+            "score": staleness * confidence,
+            "action": f"kb_get {atom_id}",
+            "tier": row.get("tier", ""),
+        })
+    return items
+
+
 # ── Digest writer ─────────────────────────────────────────────────────────────
 
 def _format_grove_message(ranked: list[dict]) -> str:
@@ -196,14 +247,17 @@ def run(dry_run: bool = False) -> int:
     drift_items    = _read_drift_items()
     frontier_items = _read_frontier_items(pg)
     upstream_items = _read_upstream_items()
+    unread_items   = _read_unread_items(pg)
 
-    all_items = drift_items + frontier_items + upstream_items
+    all_items = drift_items + frontier_items + upstream_items + unread_items
     ranked = sorted(all_items, key=lambda x: x["score"], reverse=True)
 
     total = len(ranked)
     top = ranked[:_TOP_N]
 
-    print(f"\n[TRIAGE] {total} item(s) pending ratification")
+    print(f"\n[TRIAGE] {total} item(s) pending  "
+          f"(drift={len(drift_items)} frontier={len(frontier_items)} "
+          f"upstream={len(upstream_items)} unread={len(unread_items)})")
     for i, item in enumerate(top, 1):
         print(
             f"  {i}. [{item['type']}] {item['label'][:55]} "
@@ -212,6 +266,11 @@ def run(dry_run: bool = False) -> int:
         print(f"     → {item['action']}")
 
     if not dry_run:
+        # Write read log for all atoms surfaced in this digest
+        for item in top:
+            if item["type"] in ("KB_DRIFT", "FRONTIER", "UNREAD"):
+                record_read(item["id"], source="triage")
+
         digest = {
             "generated_at": _now().isoformat(),
             "total": total,
@@ -220,6 +279,7 @@ def run(dry_run: bool = False) -> int:
                 "drift":    len(drift_items),
                 "frontier": len(frontier_items),
                 "upstream": len(upstream_items),
+                "unread":   len(unread_items),
             },
         }
         soil.put(_DIGEST_COLLECTION, "latest", digest)
@@ -232,6 +292,15 @@ def run(dry_run: bool = False) -> int:
                 print("Grove #hanuman notified.")
             else:
                 print("Grove not available — SOIL digest only.")
+
+        # Brief any pending kart tasks with KB context
+        try:
+            from agents.hanuman.bin.kb_briefer import brief_pending_tasks
+            briefed = brief_pending_tasks(pg=pg)
+            if briefed:
+                print(f"Briefed {briefed} pending task(s) with KB context.")
+        except Exception as exc:
+            print(f"[warn] kb_briefer failed: {exc}", file=sys.stderr)
     else:
         print("\n[dry-run] no writes performed")
 
