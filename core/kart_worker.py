@@ -232,7 +232,7 @@ def execute_task(task_text: str) -> dict:
     for k, v in os.environ.items():
         if k.startswith(("WILLOW_", "POSTGRES", "PG", "OLLAMA_", "GIT_", "TWINE_", "PYPI_")):
             env[k] = v
-    _repo_venv_bin = str(Path(__file__).parent / ".venv-dev" / "bin")
+    _repo_venv_bin = str(Path(__file__).parent.parent / ".venv-dev" / "bin")
     _home_venv_bin = os.path.join(os.path.expanduser("~"), ".willow-venv", "bin")
     venv_bin = _repo_venv_bin if os.path.exists(_repo_venv_bin) else _home_venv_bin
     if os.path.exists(venv_bin) and venv_bin not in env["PATH"]:

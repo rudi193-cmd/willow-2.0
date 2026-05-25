@@ -165,6 +165,7 @@
 
 | Path |
 |------|
+| `apps/law-gazelle` |
 | `dashboard-fresh` |
 | `docs/handoffs` |
 | `issue_body.md` |
