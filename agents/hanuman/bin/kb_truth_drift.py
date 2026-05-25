@@ -24,9 +24,36 @@ _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
+import json
+import urllib.request
+
 from core import soil
 from core.pg_bridge import PgBridge
-from sap.clients.professor_client import _ask_ollama
+
+
+def _ask_ollama(model: str, system: str, prompt: str, timeout: int = 90) -> str:
+    """Minimal stdlib Ollama caller — no sap.core.gate dependency."""
+    payload = json.dumps({
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ],
+        "stream": False,
+    }).encode()
+    req = urllib.request.Request(
+        "http://localhost:11434/api/chat",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read())
+            return data.get("message", {}).get("content", "").strip()
+    except Exception as exc:
+        print(f"  [ollama] {exc}", file=sys.stderr)
+        return ""
 
 _APP_ID = "hanuman"
 _MAP_COLLECTION = "hanuman/atom_code_map"
