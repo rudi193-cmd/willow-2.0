@@ -124,7 +124,7 @@ def run_feedback_pipeline() -> None:
 
 def run_handoff_rebuild() -> None:
     try:
-        call("willow_handoff_rebuild", {"app_id": AGENT}, timeout=30)
+        call("handoff_rebuild", {"app_id": AGENT}, timeout=30)
     except Exception:
         pass
 
