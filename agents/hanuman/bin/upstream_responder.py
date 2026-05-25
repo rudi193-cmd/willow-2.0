@@ -406,6 +406,58 @@ def cmd_skip(wid: str, reason: str = "") -> None:
     print(f"  Skipped: {wid}")
 
 
+def cmd_auto_post_ready(ingest_kb: bool = False, dry_run: bool = False) -> None:
+    """Post all draft/urgent items whose veto_deadline has passed and aren't skipped."""
+    now = datetime.now(timezone.utc)
+    candidates = _active_drafts(require_body=True)
+    ready = []
+    for r in candidates:
+        deadline_str = r.get("veto_deadline", "")
+        if not deadline_str:
+            continue
+        try:
+            deadline = datetime.fromisoformat(deadline_str.replace("Z", "+00:00"))
+            if deadline.tzinfo is None:
+                deadline = deadline.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+        if deadline < now:
+            ready.append(r)
+
+    if not ready:
+        print("auto-post-ready: no items past veto deadline.")
+        return
+
+    print(f"auto-post-ready: {len(ready)} item(s) past veto deadline.")
+    for r in ready:
+        wid = r.get("work_id", "")
+        body = r.get("draft_body", "").strip()
+        deadline = r.get("veto_deadline", "")[:10]
+        if dry_run:
+            print(f"  [dry-run] would post {wid}  (deadline={deadline})")
+            continue
+        print(f"\n  Posting {wid} (deadline={deadline}) …")
+        try:
+            _do_post(r, body, ingest_kb=ingest_kb)
+            # Additional FRANK ledger entry for auto_posted event type
+            try:
+                from core.pg_bridge import PgBridge
+                pg = PgBridge()
+                try:
+                    pg.ledger_append("willow-ratification", "auto_posted", {
+                        "work_id": wid,
+                        "repo": r.get("repo"),
+                        "url": r.get("url"),
+                        "veto_deadline": r.get("veto_deadline"),
+                    })
+                finally:
+                    pg.close()
+            except Exception as exc:
+                print(f"  (ratification ledger skipped: {exc})", flush=True)
+        except Exception as exc:
+            print(f"  ✗ Failed: {exc}", file=sys.stderr)
+
+
 def cmd_post_all_approved() -> None:
     """Post all items in status=approved (set externally or via future batch UI)."""
     records = soil.all_records(_SOIL_PENDING)
@@ -437,6 +489,7 @@ def _usage() -> None:
     print("  edit <work_id> [--file <path>] [--ingest-kb]")
     print("  skip <work_id> [--reason <text>]")
     print("  post-all-approved")
+    print("  auto-post-ready [--ingest-kb] [--dry-run]")
 
 
 if __name__ == "__main__":
@@ -493,6 +546,12 @@ if __name__ == "__main__":
 
     elif cmd == "post-all-approved":
         cmd_post_all_approved()
+
+    elif cmd == "auto-post-ready":
+        cmd_auto_post_ready(
+            ingest_kb="--ingest-kb" in args,
+            dry_run="--dry-run" in args,
+        )
 
     else:
         _usage()
