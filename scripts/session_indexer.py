@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-Session indexer — parses all Claude Code JSONL session files and writes
-per-session metadata to public.session_index in willow_20.
+Session indexer — parses all Claude Code JSONL session files and writes:
+  - per-session metadata to public.session_index
+  - per-turn user messages to public.session_messages
+Both tables live in willow_20.
 """
 import json
 import os
@@ -23,7 +25,10 @@ DB_PARAMS = {
 
 SESSION_ROOT = str(Path.home() / ".claude" / "projects")
 
-# Tool name classifier — maps MCP tool names to short categories
+# Minimum user message length to store (filters system-injected noise)
+MIN_MSG_LENGTH = 8
+
+
 def classify_tool(name: str) -> str:
     if name in ("Bash",):
         return "Bash"
@@ -48,8 +53,23 @@ def classify_tool(name: str) -> str:
     return "other"
 
 
+def extract_text(content) -> str:
+    """Extract plain text from either a string or a list of content blocks."""
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                t = block.get("text", "").strip()
+                if t:
+                    parts.append(t)
+        return "\n".join(parts).strip()
+    return ""
+
+
 def parse_session(filepath: str) -> dict | None:
-    """Parse a JSONL session file and return metadata dict."""
+    """Parse a JSONL session file and return metadata + messages."""
     session_id = Path(filepath).stem
     project_dir = Path(filepath).parent.name
     file_size = os.path.getsize(filepath)
@@ -58,7 +78,7 @@ def parse_session(filepath: str) -> dict | None:
     user_messages = []
     tool_calls = {}
     compaction_count = 0
-    turn_count = 0
+    turn_index = 0
 
     try:
         with open(filepath, "r", encoding="utf-8", errors="replace") as f:
@@ -77,20 +97,29 @@ def parse_session(filepath: str) -> dict | None:
 
                 obj_type = obj.get("type", "")
 
-                # User turns
                 if obj_type == "user":
                     msg = obj.get("message", {})
                     if msg.get("role") == "user":
-                        content = msg.get("content", "")
-                        if isinstance(content, str) and content.strip():
-                            turn_count += 1
+                        text = extract_text(msg.get("content", ""))
+                        # Skip system-injected blocks (hook output, task notifications, etc.)
+                        if (
+                            text
+                            and len(text) >= MIN_MSG_LENGTH
+                            and not text.startswith("[BOOT-REQUIRED]")
+                            and not text.startswith("<task-notification>")
+                            and not text.startswith("<local-command-caveat>")
+                            and not text.startswith("This session is being continued")
+                        ):
                             user_messages.append({
-                                "text": content.strip(),
+                                "session_id": session_id,
+                                "turn_index": turn_index,
                                 "timestamp": ts,
-                                "uuid": obj.get("uuid"),
+                                "text": text,
+                                "uuid": obj.get("uuid", ""),
+                                "project_dir": project_dir,
                             })
+                            turn_index += 1
 
-                # Assistant turns — count tool calls
                 elif obj_type == "assistant":
                     msg = obj.get("message", {})
                     content = msg.get("content", [])
@@ -101,7 +130,6 @@ def parse_session(filepath: str) -> dict | None:
                                 cat = classify_tool(name)
                                 tool_calls[cat] = tool_calls.get(cat, 0) + 1
 
-                # Compaction events
                 elif obj_type == "system":
                     if obj.get("subtype") == "compact_boundary":
                         compaction_count += 1
@@ -131,16 +159,16 @@ def parse_session(filepath: str) -> dict | None:
         "started_at": started_at,
         "ended_at": ended_at,
         "duration_minutes": round(duration_minutes, 2),
-        "turn_count": turn_count,
+        "turn_count": turn_index,
         "user_message_count": len(user_messages),
         "tool_calls": json.dumps(tool_calls),
         "compaction_count": compaction_count,
         "file_size_bytes": file_size,
-        "user_messages": user_messages,  # returned but not stored in index table
+        "user_messages": user_messages,
     }
 
 
-def create_table(conn):
+def create_tables(conn):
     with conn.cursor() as cur:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS public.session_index (
@@ -158,13 +186,33 @@ def create_table(conn):
                 indexed_at          TIMESTAMPTZ DEFAULT NOW()
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS public.session_messages (
+                id              BIGSERIAL PRIMARY KEY,
+                session_id      TEXT NOT NULL REFERENCES public.session_index(session_id) ON DELETE CASCADE,
+                turn_index      INT NOT NULL,
+                timestamp       TIMESTAMPTZ,
+                text            TEXT NOT NULL,
+                uuid            TEXT,
+                project_dir     TEXT,
+                indexed_at      TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (session_id, turn_index)
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS session_messages_text_idx
+            ON public.session_messages USING gin(to_tsvector('english', text))
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS session_messages_project_idx
+            ON public.session_messages (project_dir, timestamp DESC)
+        """)
         conn.commit()
-    print("[index] Table public.session_index ready.")
+    print("[index] Tables session_index + session_messages ready.")
 
 
 def upsert_sessions(conn, sessions: list[dict]):
-    inserted = 0
-    skipped = 0
+    inserted = skipped = 0
     with conn.cursor() as cur:
         for s in sessions:
             try:
@@ -199,13 +247,39 @@ def upsert_sessions(conn, sessions: list[dict]):
     return inserted, skipped
 
 
+def upsert_messages(conn, sessions: list[dict]):
+    inserted = skipped = 0
+    with conn.cursor() as cur:
+        for s in sessions:
+            for m in s.get("user_messages", []):
+                try:
+                    cur.execute("""
+                        INSERT INTO public.session_messages
+                            (session_id, turn_index, timestamp, text, uuid, project_dir)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (session_id, turn_index) DO UPDATE SET
+                            text       = EXCLUDED.text,
+                            timestamp  = EXCLUDED.timestamp,
+                            indexed_at = NOW()
+                    """, (
+                        m["session_id"], m["turn_index"], m["timestamp"],
+                        m["text"], m["uuid"], m["project_dir"],
+                    ))
+                    inserted += 1
+                except Exception as e:
+                    print(f"  MSG UPSERT ERROR {m['session_id']}:{m['turn_index']}: {e}")
+                    skipped += 1
+        conn.commit()
+    return inserted, skipped
+
+
 def main():
     print(f"[index] Scanning {SESSION_ROOT}...")
     files = glob.glob(os.path.join(SESSION_ROOT, "**", "*.jsonl"), recursive=True)
     print(f"[index] Found {len(files)} JSONL files.")
 
     conn = psycopg2.connect(**DB_PARAMS)
-    create_table(conn)
+    create_tables(conn)
 
     sessions = []
     errors = 0
@@ -219,18 +293,20 @@ def main():
             errors += 1
 
     print(f"[index] Parsed {len(sessions)} sessions ({errors} errors). Upserting...")
-    inserted, skipped = upsert_sessions(conn, sessions)
+    ins_s, skip_s = upsert_sessions(conn, sessions)
+    ins_m, skip_m = upsert_messages(conn, sessions)
     conn.close()
 
-    print(f"[index] Done. {inserted} upserted, {skipped} errors.")
+    total_msgs = sum(len(s["user_messages"]) for s in sessions)
+    print(f"[index] Sessions: {ins_s} upserted, {skip_s} errors.")
+    print(f"[index] Messages: {ins_m}/{total_msgs} upserted, {skip_m} errors.")
     return sessions
 
 
 if __name__ == "__main__":
     sessions = main()
-    # Print top 10 largest sessions
     sessions.sort(key=lambda s: s["file_size_bytes"], reverse=True)
     print("\n[index] Top 10 by file size:")
     for s in sessions[:10]:
         mb = s["file_size_bytes"] / 1024 / 1024
-        print(f"  {s['project_dir']}/{s['session_id'][:8]}  {mb:.1f}MB  {s['turn_count']} turns  {s['duration_minutes']:.0f}min  compactions={s['compaction_count']}")
+        print(f"  {s['project_dir'][:30]}/{s['session_id'][:8]}  {mb:.1f}MB  {s['turn_count']} turns  {s['duration_minutes']:.0f}min  msgs={s['user_message_count']}")
