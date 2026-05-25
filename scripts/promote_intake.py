@@ -38,6 +38,7 @@ sys.path.insert(0, str(_ROOT))
 from core.agent_identity import require_agent_name
 from core.intake import read_pending, mark_promoted
 from core.pg_bridge import PgBridge
+from core.ratification import classify_ratification_class
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [prmint] %(message)s")
 log = logging.getLogger("prmint")
@@ -206,6 +207,21 @@ def main() -> int:
                 log.warning("classify failed for %s: %s — fallback", rec_id, e)
                 tier     = _fallback_route(rec)
                 llm_conf = None
+
+        # Auto-promote evidence-based records out of binder_queue
+        if tier == "binder_queue":
+            cls = classify_ratification_class(rec)
+            if cls == "evidence_based":
+                tier = "knowledge"
+                log.info("  [%s] auto-promoted evidence_based from binder_queue", rec_id)
+                if not args.dry_run:
+                    pg.ledger_append("willow-ratification", "auto_ratified", {
+                        "record_id": rec_id,
+                        "ratification_class": "evidence_based",
+                        "confidence": rec.get("confidence"),
+                        "routed_to": tier,
+                        "evidence_source": rec.get("source"),
+                    })
 
         conf_str = f"llm={llm_conf:.2f}" if llm_conf is not None else "fallback"
         log.info("  [%s] → %-12s %s  %r", rec_id, tier, conf_str, content)

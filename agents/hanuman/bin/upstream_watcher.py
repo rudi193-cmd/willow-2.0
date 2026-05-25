@@ -18,7 +18,7 @@ import os
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -152,6 +152,7 @@ def _write_pending(n: Notification, lane: str) -> str:
     if existing and existing.get("status") in ("posted", "closed", "skipped"):
         return wid
 
+    veto_deadline = (datetime.now(timezone.utc) + timedelta(hours=48)).isoformat()
     record = {
         "work_id": wid,
         "status": "awaiting_human" if lane in ("draft", "urgent") else lane,
@@ -166,6 +167,7 @@ def _write_pending(n: Notification, lane: str) -> str:
         "draft_body": "",      # filled by voice_drafter (P1)
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": n["updated_at"],
+        "veto_deadline": veto_deadline,
     }
     soil.put(_SOIL_PENDING, wid, record)
     return wid

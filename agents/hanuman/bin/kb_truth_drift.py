@@ -224,14 +224,29 @@ def _score_atom_against_file(atom: dict, file_path: str) -> dict:
 
 # ── Scan ──────────────────────────────────────────────────────────────────────
 
-def cmd_scan() -> None:
+def _ledger_auto_invalidated(atom_id: str, atom_title: str, evidence: str, confidence: float) -> None:
+    try:
+        pg = _get_pg()
+        pg.ledger_append("willow-ratification", "auto_invalidated", {
+            "atom_id": atom_id,
+            "atom_title": atom_title,
+            "ratification_class": "evidence_based",
+            "evidence": evidence,
+            "confidence": confidence,
+        })
+    except Exception as exc:
+        print(f"  [warn] ledger write failed: {exc}", file=sys.stderr)
+
+
+def cmd_scan(auto_resolve: bool = False, dry_run: bool = False) -> None:
     mappings = soil.all_records(_MAP_COLLECTION)
     if not mappings:
         print("No mappings found. Run: kb_truth_drift.py seed")
         return
 
-    print(f"Scanning {len(mappings)} atom mapping(s)...")
+    print(f"Scanning {len(mappings)} atom mapping(s)...  auto_resolve={auto_resolve} dry_run={dry_run}")
     grove_alerts: list[dict] = []
+    auto_resolved: list[str] = []
 
     for mapping in mappings:
         atom_id = mapping.get("atom_id", "")
@@ -263,6 +278,24 @@ def cmd_scan() -> None:
 
         max_conf = max((s["confidence"] for s in file_scores), default=0.0)
 
+        # Auto-resolve: high-confidence drifted atoms are invalidated without human review
+        status = "open" if aggregate == "drifted" else "ok"
+        if aggregate == "drifted" and auto_resolve and max_conf >= _HIGH_CONFIDENCE:
+            if dry_run:
+                print(f"  [dry-run] would auto-invalidate {atom_id} (conf={max_conf:.0%})")
+            else:
+                ok = _kb_invalidate(atom_id)
+                if ok:
+                    best_evidence = next(
+                        (s["evidence"] for s in file_scores if s["verdict"] == "drifted"), ""
+                    )
+                    _ledger_auto_invalidated(atom_id, atom.get("title", ""), best_evidence, max_conf)
+                    status = "auto_resolved"
+                    auto_resolved.append(atom_id)
+                    print(f"  ✓ auto-invalidated {atom_id}")
+                else:
+                    print(f"  [error] auto-invalidate failed for {atom_id}", file=sys.stderr)
+
         result_record = {
             "atom_id": atom_id,
             "atom_title": atom.get("title", ""),
@@ -270,19 +303,23 @@ def cmd_scan() -> None:
             "max_confidence": max_conf,
             "file_scores": file_scores,
             "scanned_at": _now(),
-            "status": "open" if aggregate == "drifted" else "ok",
+            "status": status,
         }
-        soil.put(_RESULTS_COLLECTION, f"drift-{atom_id}", result_record)
+        if not dry_run:
+            soil.put(_RESULTS_COLLECTION, f"drift-{atom_id}", result_record)
 
-        if aggregate == "drifted" and max_conf >= _HIGH_CONFIDENCE:
+        if aggregate == "drifted" and max_conf >= _HIGH_CONFIDENCE and status != "auto_resolved":
             grove_alerts.append(result_record)
+
+    if auto_resolved:
+        print(f"\nAuto-resolved {len(auto_resolved)} atom(s): {', '.join(auto_resolved)}")
 
     if grove_alerts:
         print(f"\nRouting {len(grove_alerts)} high-confidence alert(s) to Grove...")
         for alert in grove_alerts:
             _send_grove_alert(alert)
     else:
-        print("\nNo high-confidence drift. Low-conf/uncertain results available in: report")
+        print("\nNo high-confidence drift remaining. Low-conf/uncertain results available in: report")
 
     print(f"\nScan complete. Results: {_RESULTS_COLLECTION}")
 
@@ -603,7 +640,10 @@ if __name__ == "__main__":
     if cmd == "seed":
         cmd_seed()
     elif cmd == "scan":
-        cmd_scan()
+        cmd_scan(
+            auto_resolve="--auto-resolve" in args,
+            dry_run="--dry-run" in args,
+        )
     elif cmd == "report":
         cmd_report()
     elif cmd == "map-add":
