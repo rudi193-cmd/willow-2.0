@@ -25,6 +25,7 @@ _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
+from core.grove_gate import assert_grove as _assert_grove
 from agents.hanuman.lib.think_map.store import (
     new_map, get_map, list_maps, add_approach, add_constraint,
     add_satellite, set_recommended, confirm_map, validate,
@@ -217,6 +218,7 @@ def _usage() -> None:
 
 
 if __name__ == "__main__":
+    _assert_grove("think_map")
     args = sys.argv[1:]
     if not args:
         _usage()

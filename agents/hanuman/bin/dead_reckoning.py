@@ -18,6 +18,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from agents.hanuman.lib.dead_reckoning.analyzer import run as _run
+from core.grove_gate import assert_grove as _assert_grove
 
 
 def _last() -> None:
@@ -47,6 +48,7 @@ def _last() -> None:
 
 
 if __name__ == "__main__":
+    _assert_grove("dead_reckoning")
     args = sys.argv[1:]
     cmd = args[0] if args else "run"
 

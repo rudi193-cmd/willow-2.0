@@ -29,6 +29,7 @@ _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.insert(0, _ROOT)
 
 from core import soil
+from core.grove_gate import assert_grove as _assert_grove
 
 _SOIL_PENDING = "upstream_steward/pending"
 _SHOW_WIDTH = 72
@@ -336,6 +337,7 @@ def _usage() -> None:
 
 
 if __name__ == "__main__":
+    _assert_grove("upstream_responder")
     args = sys.argv[1:]
     if not args:
         _usage()

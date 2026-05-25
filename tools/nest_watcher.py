@@ -17,6 +17,7 @@ sys.path.insert(0, GROVE_ROOT)
 
 from sap.core.nest_intake import scan_nest, NEST_DIRS
 from sap.core.deliver import grove_send
+from core.grove_gate import assert_grove as _assert_grove
 
 POLL_INTERVAL = 30
 GROVE_CHANNEL = "heimdallr"
@@ -33,9 +34,10 @@ signal.signal(signal.SIGINT, _cleanup)
 
 
 def run():
+    _assert_grove("nest_watcher")
     PID_FILE.write_text(str(os.getpid()))
     dirs = ", ".join(str(d) for d in NEST_DIRS)
-    print(f"[nest-watcher] started — polling: {dirs}", flush=True)
+    print(f"[nest-watcher] started (Grove up) — polling: {dirs}", flush=True)
 
     while True:
         try:

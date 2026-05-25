@@ -22,6 +22,9 @@ import argparse
 import os
 import select
 import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from core.grove_gate import assert_grove as _assert_grove
 
 try:
     import psycopg2
@@ -136,6 +139,7 @@ def cmd_history(args):
 
 
 def main():
+    _assert_grove("grove_msg")
     db_default = os.environ.get("WILLOW_PG_DB", "willow_20")
     parser = argparse.ArgumentParser(
         description="Direct Grove CLI — send/watch/history without LLM or MCP."

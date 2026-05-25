@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import argparse
 
 from core.jukebox import segment
+from core.grove_gate import assert_grove as _assert_grove
 
 
 _SEPARATOR = "─" * 60
@@ -40,6 +41,7 @@ def _play(path: str) -> None:
 
 
 def main() -> None:
+    _assert_grove("jukebox")
     parser = argparse.ArgumentParser(description="Semantic Jukebox — guy noir reads your KB")
     parser.add_argument("mood", nargs="+", help="mood or situation to search for")
     parser.add_argument("-n", type=int, default=8, help="atoms to retrieve (default 8)")

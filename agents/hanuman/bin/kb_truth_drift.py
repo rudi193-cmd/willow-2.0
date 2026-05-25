@@ -29,6 +29,7 @@ import urllib.request
 
 from core import soil
 from core.pg_bridge import PgBridge
+from core.grove_gate import assert_grove as _assert_grove
 
 
 def _ask_ollama(model: str, system: str, prompt: str, timeout: int = 90) -> str:
@@ -595,6 +596,7 @@ def _pop_flag(args: list[str], flag: str) -> str:
 
 
 if __name__ == "__main__":
+    _assert_grove("kb_truth_drift")
     args = sys.argv[1:]
     cmd = args[0] if args else "report"
 

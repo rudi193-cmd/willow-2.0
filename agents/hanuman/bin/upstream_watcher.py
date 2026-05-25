@@ -26,6 +26,7 @@ _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.insert(0, _ROOT)
 
 from core import soil
+from core.grove_gate import assert_grove as _assert_grove, grove_alive as _grove_alive
 from agents.hanuman.lib.upstream.triage import Notification, classify, work_id
 from agents.hanuman.lib.upstream.analyzer import analyze
 from agents.hanuman.lib.upstream.voice_drafter import draft
@@ -395,8 +396,9 @@ def _cmd_run_once(config: dict) -> None:
 # ── Watch loop ────────────────────────────────────────────────────────────────
 
 def watch(config: dict) -> None:
+    _assert_grove("upstream_watcher")
     interval = config.get("poll_interval_sec", POLL_INTERVAL)
-    print(f"upstream_watcher: polling every {interval}s", flush=True)
+    print(f"upstream_watcher: polling every {interval}s (Grove up)", flush=True)
     while True:
         cursor = _read_cursor()
         try:

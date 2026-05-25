@@ -27,6 +27,7 @@ import urllib.request
 
 from core.pg_bridge import PgBridge
 from core import soil as _soil
+from core.grove_gate import assert_grove as _assert_grove
 
 
 def _ask_ollama(model: str, system_prompt: str, user_message: str, timeout: int = 90) -> str:
@@ -55,6 +56,7 @@ def _ask_ollama(model: str, system_prompt: str, user_message: str, timeout: int 
 
 
 def run(app_id: str = "hanuman", force: bool = False) -> dict:
+    _assert_grove("auto_dream")
     pg = PgBridge()
     try:
         pg._ensure_conn()
