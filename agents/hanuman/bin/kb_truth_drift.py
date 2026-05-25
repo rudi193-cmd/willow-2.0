@@ -1,0 +1,381 @@
+#!/usr/bin/env python3
+"""
+kb_truth_drift.py — KB atom truth-drift detector.
+b17: DRFT1  ΔΣ=42
+
+Compares KB atom claims against current code files. Flags atoms whose
+claims no longer match reality. Uses SOIL as the mapping layer — no KB
+schema changes required.
+
+Usage:
+    kb_truth_drift.py seed      — write initial atom→file mappings to SOIL
+    kb_truth_drift.py scan      — check all mapped atoms for drift
+    kb_truth_drift.py report    — show current drift results
+"""
+from __future__ import annotations
+
+import os
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from core import soil
+
+_APP_ID = "hanuman"
+_MAP_COLLECTION = "hanuman/atom_code_map"
+_RESULTS_COLLECTION = "hanuman/atom_drift_results"
+_REPO_ROOT = Path(_ROOT)
+
+_MIN_EVIDENCE_LEN = 30   # shorter than this → downgrade confidence
+_HIGH_CONFIDENCE = 0.75  # drifted + >= this → Grove alert; below → handoff only
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _mcp(tool: str, args: dict, timeout: int = 30) -> Any:
+    try:
+        from willow.fylgja._mcp import call
+        return call(tool, args, timeout=timeout)
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+# ── Seed ──────────────────────────────────────────────────────────────────────
+
+_INITIAL_MAPPINGS: list[dict] = [
+    {
+        "atom_id": "A848E65A",
+        "title": "code_graph CLI — budget-aware Python symbol graph",
+        "file_paths": [
+            "sap/code_graph/indexer.py",
+            "sap/code_graph/walker.py",
+            "sap/code_graph/fuzzy.py",
+            "sap/code_graph/__main__.py",
+        ],
+        "added_by": "skirnir",
+        "note": "Atom describes CLI usage and file layout of sap/code_graph.",
+    },
+]
+
+
+def cmd_seed() -> None:
+    for m in _INITIAL_MAPPINGS:
+        record_id = f"map-{m['atom_id']}"
+        if soil.get(_MAP_COLLECTION, record_id):
+            print(f"  already mapped: {m['atom_id']} — skipping")
+            continue
+        soil.put(_MAP_COLLECTION, record_id, {**m, "added_at": _now()})
+        print(f"  seeded: {m['atom_id']} → {len(m['file_paths'])} file(s)")
+    print(f"Seed complete. Collection: {_MAP_COLLECTION}")
+
+
+# ── Drift scorer ──────────────────────────────────────────────────────────────
+
+_DRIFT_PROMPT = """\
+You are checking whether a knowledge base claim still accurately describes code.
+
+CLAIM (KB atom):
+Title: {title}
+Summary: {summary}
+
+CURRENT CODE ({file_path}):
+{file_content}
+
+Does this claim still accurately describe the code above?
+
+Answer with exactly one of:
+  current     — the claim is still accurate
+  drifted     — the claim is no longer accurate (specific mismatch found)
+  uncertain   — cannot determine from this file alone
+
+Then on a new line, write one sentence of evidence (minimum 30 characters). Be specific.
+
+Format:
+VERDICT: <current|drifted|uncertain>
+EVIDENCE: <one sentence>"""
+
+
+def _score_atom_against_file(atom: dict, file_path: str) -> dict:
+    full_path = _REPO_ROOT / file_path
+    if not full_path.exists():
+        return {
+            "verdict": "uncertain",
+            "evidence": f"File {file_path} not found in repo.",
+            "confidence": 0.4,
+        }
+
+    content = full_path.read_text(encoding="utf-8", errors="replace")
+    snippet = content[:4000]
+    if len(content) > 4000:
+        snippet += f"\n... ({len(content) - 4000} chars truncated)"
+
+    prompt = _DRIFT_PROMPT.format(
+        title=atom.get("title", ""),
+        summary=(atom.get("summary") or "")[:1500],
+        file_path=file_path,
+        file_content=snippet,
+    )
+
+    result = _mcp("infer_chat", {
+        "app_id": _APP_ID,
+        "message": prompt,
+        "agent": "willow",
+    }, timeout=60)
+
+    raw = ""
+    if isinstance(result, dict):
+        raw = (
+            result.get("response") or result.get("content") or
+            result.get("text") or result.get("message") or ""
+        ).strip()
+    else:
+        raw = str(result).strip()
+
+    verdict = "uncertain"
+    evidence = ""
+    for line in raw.splitlines():
+        if line.startswith("VERDICT:"):
+            v = line.split(":", 1)[1].strip().lower()
+            if v in ("current", "drifted", "uncertain"):
+                verdict = v
+        elif line.startswith("EVIDENCE:"):
+            evidence = line.split(":", 1)[1].strip()
+
+    confidence = 0.8 if len(evidence) >= _MIN_EVIDENCE_LEN else 0.4
+    if not evidence:
+        evidence = f"No structured evidence returned. Raw: {raw[:100]}"
+        confidence = 0.3
+
+    return {"verdict": verdict, "evidence": evidence, "confidence": confidence}
+
+
+# ── Scan ──────────────────────────────────────────────────────────────────────
+
+def cmd_scan() -> None:
+    mappings = soil.all_records(_MAP_COLLECTION)
+    if not mappings:
+        print("No mappings found. Run: kb_truth_drift.py seed")
+        return
+
+    print(f"Scanning {len(mappings)} atom mapping(s)...")
+    grove_alerts: list[dict] = []
+
+    for mapping in mappings:
+        atom_id = mapping.get("atom_id", "")
+        file_paths = mapping.get("file_paths", [])
+
+        atom_result = _mcp("kb_get", {"app_id": _APP_ID, "id": atom_id})
+        if not isinstance(atom_result, dict) or not atom_result.get("found"):
+            print(f"  [{atom_id}] atom not found in KB — skipping")
+            continue
+
+        atom = atom_result["atom"]
+        print(f"\n  [{atom_id}] {atom.get('title', '')[:60]}")
+
+        file_scores: list[dict] = []
+        for fp in file_paths:
+            score = _score_atom_against_file(atom, fp)
+            file_scores.append({"file": fp, **score})
+            symbol = {"current": "✓", "drifted": "✗", "uncertain": "?"}.get(score["verdict"], "?")
+            print(f"    {symbol} {fp}")
+            print(f"      → {score['verdict']} ({score['confidence']:.0%}) {score['evidence'][:90]}")
+
+        verdicts = [s["verdict"] for s in file_scores]
+        if "drifted" in verdicts:
+            aggregate = "drifted"
+        elif all(v == "current" for v in verdicts):
+            aggregate = "current"
+        else:
+            aggregate = "uncertain"
+
+        max_conf = max((s["confidence"] for s in file_scores), default=0.0)
+
+        result_record = {
+            "atom_id": atom_id,
+            "atom_title": atom.get("title", ""),
+            "aggregate_verdict": aggregate,
+            "max_confidence": max_conf,
+            "file_scores": file_scores,
+            "scanned_at": _now(),
+            "status": "open" if aggregate == "drifted" else "ok",
+        }
+        soil.put(_RESULTS_COLLECTION, f"drift-{atom_id}", result_record)
+
+        if aggregate == "drifted" and max_conf >= _HIGH_CONFIDENCE:
+            grove_alerts.append(result_record)
+
+    if grove_alerts:
+        print(f"\nRouting {len(grove_alerts)} high-confidence alert(s) to Grove...")
+        for alert in grove_alerts:
+            _send_grove_alert(alert)
+    else:
+        print("\nNo high-confidence drift. Low-conf/uncertain results available in: report")
+
+    print(f"\nScan complete. Results: {_RESULTS_COLLECTION}")
+
+
+def _send_grove_alert(alert: dict) -> None:
+    drifted_files = [s for s in alert["file_scores"] if s["verdict"] == "drifted"]
+    evidence_lines = "\n".join(
+        f"  {s['file']}: {s['evidence'][:150]}" for s in drifted_files
+    )
+    msg = (
+        f"[KB DRIFT] Atom {alert['atom_id']} claims may be stale.\n"
+        f"Title: {alert['atom_title']}\n"
+        f"Confidence: {alert['max_confidence']:.0%}\n"
+        f"Evidence:\n{evidence_lines}\n"
+        f"Action: verify atom or invalidate via kb_ingest with force=True."
+    )
+    result = _mcp("grove_send_message", {
+        "channel_name": "general",
+        "content": msg,
+        "sender_agent_id": _APP_ID,
+    }, timeout=15)
+    if isinstance(result, dict) and result.get("error"):
+        print(f"  [warn] Grove alert failed: {result['error']}", file=sys.stderr)
+    else:
+        print(f"  Grove alert sent: {alert['atom_id']}")
+
+
+# ── Report ────────────────────────────────────────────────────────────────────
+
+def cmd_report() -> None:
+    results = soil.all_records(_RESULTS_COLLECTION)
+    if not results:
+        print("No drift results found. Run: kb_truth_drift.py scan")
+        return
+
+    drifted = [r for r in results if r.get("aggregate_verdict") == "drifted" and r.get("status") != "acked"]
+    uncertain = [r for r in results if r.get("aggregate_verdict") == "uncertain" and r.get("status") != "acked"]
+    current = [r for r in results if r.get("aggregate_verdict") == "current"]
+    acked = [r for r in results if r.get("status") == "acked"]
+
+    print(f"\nKB Truth Drift Report — {_now()[:10]}")
+    print("─" * 60)
+    print(f"  Current:   {len(current)}")
+    print(f"  Uncertain: {len(uncertain)}")
+    print(f"  Drifted:   {len(drifted)}")
+    print(f"  Acked:     {len(acked)}")
+
+    if drifted:
+        print()
+        for r in drifted:
+            print(f"  [DRIFTED] {r['atom_id']} — {r.get('atom_title', '')[:50]}")
+            print(f"    confidence: {r.get('max_confidence', 0):.0%}  "
+                  f"scanned: {r.get('scanned_at', '')[:10]}")
+            for fs in r.get("file_scores", []):
+                if fs["verdict"] == "drifted":
+                    print(f"    file: {fs['file']}")
+                    print(f"    evidence: {fs['evidence']}")
+            print()
+
+    if uncertain:
+        print()
+        for r in uncertain:
+            print(f"  [UNCERTAIN] {r['atom_id']} — {r.get('atom_title', '')[:50]}")
+            print(f"    scanned: {r.get('scanned_at', '')[:10]}")
+
+
+# ── Map-add ───────────────────────────────────────────────────────────────────
+
+def cmd_map_add(atom_id: str, file_paths: list[str], added_by: str = "hanuman", note: str = "") -> None:
+    if not atom_id or not file_paths:
+        print("Usage: kb_truth_drift.py map-add <atom_id> <file1> [file2 ...]")
+        sys.exit(1)
+
+    # Validate files exist
+    missing = [fp for fp in file_paths if not (_REPO_ROOT / fp).exists()]
+    if missing:
+        print(f"[warn] These files don't exist in repo: {missing}")
+        print("  Mapping will still be saved — verify paths are correct.")
+
+    record_id = f"map-{atom_id}"
+    existing = soil.get(_MAP_COLLECTION, record_id)
+    if existing:
+        # Merge new paths into existing mapping
+        old_paths = existing.get("file_paths", [])
+        merged = sorted(set(old_paths) | set(file_paths))
+        existing["file_paths"] = merged
+        existing["updated_at"] = _now()
+        soil.put(_MAP_COLLECTION, record_id, existing)
+        print(f"  updated: {atom_id} → {len(merged)} file(s) (was {len(old_paths)})")
+    else:
+        record = {
+            "atom_id": atom_id,
+            "file_paths": file_paths,
+            "added_by": added_by,
+            "added_at": _now(),
+        }
+        if note:
+            record["note"] = note
+        soil.put(_MAP_COLLECTION, record_id, record)
+        print(f"  mapped: {atom_id} → {len(file_paths)} file(s)")
+
+
+# ── Ack ───────────────────────────────────────────────────────────────────────
+
+def cmd_ack(atom_id: str, resolution: str = "") -> None:
+    """Mark a drift result as reviewed/resolved so it stops appearing in report."""
+    result_id = f"drift-{atom_id}"
+    record = soil.get(_RESULTS_COLLECTION, result_id)
+    if not record:
+        print(f"No drift result found for {atom_id}. Run scan first.")
+        sys.exit(1)
+    record["status"] = "acked"
+    record["acked_at"] = _now()
+    if resolution:
+        record["resolution"] = resolution
+    soil.put(_RESULTS_COLLECTION, result_id, record)
+    print(f"  acked: {atom_id} — {record.get('atom_title', '')[:50]}")
+    if resolution:
+        print(f"  resolution: {resolution}")
+
+
+# ── Entry ─────────────────────────────────────────────────────────────────────
+
+def _pop_flag(args: list[str], flag: str) -> str:
+    """Extract --flag value from args list in-place. Returns '' if not found."""
+    try:
+        i = args.index(flag)
+        args.pop(i)
+        return args.pop(i)
+    except (ValueError, IndexError):
+        return ""
+
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+    cmd = args[0] if args else "report"
+
+    if cmd == "seed":
+        cmd_seed()
+    elif cmd == "scan":
+        cmd_scan()
+    elif cmd == "report":
+        cmd_report()
+    elif cmd == "map-add":
+        if len(args) < 3:
+            print("Usage: kb_truth_drift.py map-add <atom_id> <file1> [file2 ...] [--by agent] [--note text]")
+            sys.exit(1)
+        rest = args[1:]
+        by = _pop_flag(rest, "--by") or "hanuman"
+        note = _pop_flag(rest, "--note")
+        cmd_map_add(atom_id=rest[0], file_paths=rest[1:], added_by=by, note=note)
+    elif cmd == "ack":
+        if len(args) < 2:
+            print("Usage: kb_truth_drift.py ack <atom_id> [--note resolution]")
+            sys.exit(1)
+        rest = args[1:]
+        resolution = _pop_flag(rest, "--note")
+        cmd_ack(atom_id=rest[0], resolution=resolution)
+    else:
+        print(f"Unknown command: {cmd}")
+        print("Usage: kb_truth_drift.py [seed|scan|report|map-add|ack]")
+        sys.exit(1)
