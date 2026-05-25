@@ -1746,7 +1746,7 @@ async def mem_jeles_web_search(
     sources:  list = [],
     limit:    int  = 3,
 ) -> dict:
-    """Jeles: Search trusted, citable sources (LOC, arXiv, PubMed, Smithsonian, Europeana, NASA, Crossref, Open Library). Wikipedia excluded. Results carry full source attribution for academic citation. Pass sources=[] for all, or name specific ones."""
+    """Jeles: Search trusted, citable sources (LOC, arXiv, PubMed, Smithsonian, Europeana, NASA, Crossref, Open Library). Results carry full source attribution for academic citation. Pass sources=[] for all 29 academic/institutional sources, or name specific ones. Wikipedia is opt-in only (general reference, not academic): pass sources=["wikipedia"] to include it."""
     logger.info("[w2] mem_jeles_web_search app_id=%s query=%r sources=%s", app_id, query, sources or "all")
     from core.jeles_sources import search as jeles_search
     loop = asyncio.get_running_loop()
