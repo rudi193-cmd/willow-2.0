@@ -55,16 +55,27 @@ def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
     except Exception:
         pass
 
+# Each entry: (pattern, decision, redirect_message)
+# decision: "block" = hard stop | "warn" = let through but redirect
 BASH_BLOCKS = [
-    (r"\bsqlite3\b",
-     "Direct SQLite access is not allowed. Use MCP: store_get / store_list, or Read for schema inspection."),
-    (r"^\s*psql\s",
-     "Direct psql access is not allowed. Use MCP: willow_query or pg_bridge via Python. "
-     "Schema inspection: Read pg_bridge.py or use store_list."),
-    (r"^\s*(cat|head|tail)\s",
-     "Use the Read tool instead of cat/head/tail — it provides line numbers and better context."),
-    (r"^\s*ls\s",
-     "Use Glob tool for file listings — it supports patterns and integrates with the KB."),
+    (r"\bsqlite3\b", "block",
+     "Direct SQLite access is not allowed. "
+     "→ Use MCP: soil_get / soil_list / soil_search, or Read for schema inspection."),
+    (r"^\s*psql\s", "block",
+     "Direct psql access is not allowed. "
+     "→ Use MCP: pg_bridge via Python, or Read pg_bridge.py for schema inspection."),
+    (r"^\s*(cat|head|tail)\s", "block",
+     "Use the Read tool instead of cat/head/tail — it provides line numbers and better context. "
+     "→ Read({file_path: '<path>'})"),
+    (r"^\s*ls(\s|$)", "block",
+     "Use Glob for file listings — it supports patterns and integrates with the KB. "
+     "→ Glob({pattern: '<dir>/**'})"),
+    (r"\bgrep\b", "warn",
+     "grep detected. Prefer MCP over shell grep — it searches indexed content without a subprocess. "
+     "→ kb_search({app_id, query}) · code_graph_search({query}) · soil_search({collection, query})"),
+    (r"\bfind\s", "warn",
+     "find detected. Prefer MCP: code_graph_search or Glob for file discovery. "
+     "→ Glob({pattern: '<dir>/**/*.py'}) · code_graph_search({query: '<symbol>'})"),
 ]
 
 # Loki runs disk audits. These read-only patterns bypass the builder guards above.
@@ -116,16 +127,17 @@ def check_channel_enforce(tool_name: str, tool_input: dict) -> str | None:
     return None
 
 
-def check_bash_block(command: str) -> str | None:
+def check_bash_block(command: str) -> tuple[str, str] | None:
+    """Returns (decision, reason) or None. decision is 'block' or 'warn'."""
     if AGENT in _AUDIT_AGENTS:
         for pattern in _AUDIT_ALLOW_PATTERNS:
             if re.search(pattern, command, re.MULTILINE):
                 return None
-    for pattern, reason in BASH_BLOCKS:
+    for pattern, decision, reason in BASH_BLOCKS:
         if re.search(pattern, command, re.MULTILINE):
             if pattern == r"\bsqlite3\b" and _sqlite_access_allowed(command):
                 continue
-            return reason
+            return decision, reason
     return None
 
 
@@ -322,16 +334,21 @@ def main():
     if tool_name == "Bash":
         command = tool_input.get("command", "")
         # Willow workflow guard first
-        reason = check_bash_block(command) if command else None
-        if reason:
-            if _LEDGER_AVAILABLE:
-                try:
-                    _ledger_block("Bash", reason[:300], session_id=session_id)
-                except Exception:
-                    pass
-            _corpus_log_block("Bash", reason, session_id)
-            print(json.dumps({"decision": "block", "reason": reason}))
-            sys.exit(0)
+        result = check_bash_block(command) if command else None
+        if result:
+            decision, reason = result
+            if decision == "block":
+                if _LEDGER_AVAILABLE:
+                    try:
+                        _ledger_block("Bash", reason[:300], session_id=session_id)
+                    except Exception:
+                        pass
+                _corpus_log_block("Bash", reason, session_id)
+                print(json.dumps({"decision": "block", "reason": reason}))
+                sys.exit(0)
+            else:
+                # warn — let the command through but surface the redirect
+                print(json.dumps({"decision": "warn", "reason": reason}))
         # Security scan — exfiltration, credential theft, destructive, obfuscation
         # Skip for user-owned SQLite databases (DROP TABLE etc. on personal data is fine).
         if command and not (re.search(r"\bsqlite3\b", command) and _sqlite_access_allowed(command)):
