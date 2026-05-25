@@ -8,13 +8,14 @@ Each source function returns list[dict] with standard citation fields:
 Wikipedia is explicitly excluded. Every result here can appear in an academic bibliography.
 Sources requiring API keys load from credentials.json.
 
-Sources (29 total):
+Sources (29 academic/institutional + 1 opt-in):
   Academic:  OpenAlex, CORE, DOAJ, Europe PMC, Semantic Scholar, Crossref, PubMed, arXiv
   Data/Sci:  Zenodo, DataCite, Wikidata, PubChem, USGS, NASA
   Museums:   Met Museum, Cleveland Museum of Art, V&A Museum, Rijksmuseum (key required)
   Libraries: Library of Congress, Open Library, Chronicling America, Internet Archive, DPLA (key required)
   Heritage:  Smithsonian (key required), Europeana (key required)
   Intl:      Gallica (BnF/France), HAL (France), SciELO (Latin America/Iberia), NDL (Japan)
+  Opt-in:    Wikipedia (pass sources=["wikipedia"] — general reference, not for academic citation)
 
 Keys go in ~/.willow/secrets/credentials.json:
   RIJKSMUSEUM_API_KEY  — register at data.rijksmuseum.nl
@@ -52,6 +53,7 @@ _SOURCE_CONFIDENCE: dict[str, float] = {
     "openlibrary": 0.82, "internet_archive": 0.80, "wikidata": 0.80,
     "chronicling_america": 0.85, "dpla": 0.83, "semantic_scholar": 0.87,
     "pubchem": 0.92,
+    "wikipedia": 0.60,
 }
 
 
@@ -938,6 +940,44 @@ def search_smithsonian(query: str, limit: int = 5) -> list[dict]:
     return results
 
 
+def search_wikipedia(query: str, limit: int = 3) -> list[dict]:
+    """Wikipedia REST API — quick entity lookups. General reference only; not for academic citation."""
+    import urllib.parse as _up
+    encoded = _up.quote(query, safe="")
+    data = _get(f"https://en.wikipedia.org/api/rest_v1/page/summary/{encoded}")
+    if data and data.get("type") not in ("disambiguation", "no-extract", None):
+        return [_result(
+            title=data.get("title", ""),
+            url=(data.get("content_urls") or {}).get("desktop", {}).get("page", ""),
+            source="wikipedia",
+            institution="Wikimedia Foundation",
+            snippet=data.get("extract", "")[:400],
+            rid=data.get("pageid", ""),
+        )]
+    # Fallback: search API
+    search_data = _get(
+        f"https://en.wikipedia.org/w/api.php?action=query&list=search"
+        f"&srsearch={encoded}&format=json&srlimit={limit}"
+    )
+    if not search_data:
+        return []
+    items = (search_data.get("query") or {}).get("search", [])
+    results = []
+    for item in items[:limit]:
+        title = item.get("title", "")
+        snippet = item.get("snippet", "").replace("<span class=\"searchmatch\">", "").replace("</span>", "")
+        enc_title = _up.quote(title, safe="")
+        results.append(_result(
+            title=title,
+            url=f"https://en.wikipedia.org/wiki/{enc_title}",
+            source="wikipedia",
+            institution="Wikimedia Foundation",
+            snippet=snippet,
+            rid=str(item.get("pageid", "")),
+        ))
+    return results
+
+
 def search_europeana(query: str, limit: int = 5) -> list[dict]:
     """Europeana — European cultural heritage. Requires EUROPEANA_API_KEY in credentials.json."""
     key = _load_creds().get("EUROPEANA_API_KEY", "")
@@ -1005,6 +1045,8 @@ SOURCES: dict[str, dict] = {
     "hal":              {"name": "HAL Open Access",         "domain": ["academic", "science", "france"],     "fn": search_hal,              "key_required": False},
     "scielo":           {"name": "SciELO",                  "domain": ["science", "latin_america", "iberia"],"fn": search_scielo,           "key_required": False},
     "ndl":              {"name": "National Diet Library",   "domain": ["general", "japan", "asia"],          "fn": search_ndl,              "key_required": False},
+    # Opt-in only — general reference, not suitable for academic citation
+    "wikipedia":        {"name": "Wikipedia",               "domain": ["general", "reference"],              "fn": search_wikipedia,        "key_required": False, "opt_in": True},
 }
 
 NO_WIKIPEDIA_NOTE = (
@@ -1035,7 +1077,7 @@ def search(
     Search across trusted sources. Returns {source_id: [results]} plus a citation note.
     sources=None → all sources. Pass a list to target specific ones.
     """
-    active = sources if sources else list(SOURCES.keys())
+    active = sources if sources else [sid for sid, cfg in SOURCES.items() if not cfg.get("opt_in")]
     out: dict[str, list] = {}
     for sid in active:
         cfg = SOURCES.get(sid)
