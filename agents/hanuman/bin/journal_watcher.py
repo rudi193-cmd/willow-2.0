@@ -18,11 +18,22 @@ import time
 _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.insert(0, _ROOT)
 
+import urllib.request
+
 from core.pg_bridge import PgBridge
 
 SAGA_TAG = "::saga"
 POLL_INTERVAL = int(os.environ.get("JOURNAL_WATCHER_INTERVAL", "10"))  # seconds
+GROVE_URL = os.environ.get("GROVE_HEALTH_URL", "http://localhost:7777/health")
 _RESPONDER = os.path.join(os.path.dirname(__file__), "journal_responder.py")
+
+
+def _grove_alive() -> bool:
+    try:
+        with urllib.request.urlopen(GROVE_URL, timeout=3) as r:
+            return r.status == 200
+    except Exception:
+        return False
 
 
 def _pending_entries(pg: PgBridge) -> list[str]:
@@ -49,10 +60,18 @@ def _fire(entry_id: str) -> None:
 
 
 def watch() -> None:
-    print(f"journal_watcher: polling every {POLL_INTERVAL}s for '{SAGA_TAG}'", flush=True)
+    if not _grove_alive():
+        print("journal_watcher: Grove is down — exiting", flush=True)
+        sys.exit(0)
+
+    print(f"journal_watcher: Grove up — polling every {POLL_INTERVAL}s for '{SAGA_TAG}'", flush=True)
     pg = PgBridge()
     try:
         while True:
+            if not _grove_alive():
+                print("journal_watcher: Grove went down — exiting", flush=True)
+                break
+
             try:
                 pending = _pending_entries(pg)
                 for entry_id in pending:
