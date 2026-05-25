@@ -4343,6 +4343,132 @@ async def code_graph_impact(
     return await loop.run_in_executor(_executor, _run)
 
 
+# ── Tools — session_query (S11) ──────────────────────────────────────────────
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def session_query(
+    app_id:   str,
+    query:    str  = "stats",
+    limit:    int  = 20,
+    project:  str  = "",
+) -> dict:
+    """Query the session_index and session_messages tables.
+
+    query options:
+      "stats"       — aggregate stats across all sessions (default)
+      "compaction"  — sessions with compaction_count > 0, sorted by file size
+      "recent"      — most recent N sessions
+      "search:<term>" — full-text search user messages for <term>
+      "session:<id>"  — all messages for a specific session_id prefix
+
+    project: filter to a specific project_dir substring (optional).
+    """
+    logger.info("[w2] session_query app_id=%s query=%r project=%r", app_id, query, project)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        import psycopg2.extras as _pge
+        from core.pg_bridge import get_connection, release_connection
+        conn = get_connection()
+        try:
+            with conn.cursor(cursor_factory=_pge.RealDictCursor) as cur:
+                proj_filter = f"%{project}%" if project else "%"
+
+                if query == "stats":
+                    cur.execute("""
+                        SELECT
+                            COUNT(*)                                AS total_sessions,
+                            SUM(turn_count)                         AS total_turns,
+                            SUM(user_message_count)                 AS total_messages,
+                            ROUND(AVG(duration_minutes)::numeric,1) AS avg_duration_min,
+                            ROUND(MAX(duration_minutes)::numeric,1) AS max_duration_min,
+                            SUM(compaction_count)                   AS total_compactions,
+                            COUNT(*) FILTER (WHERE compaction_count > 0) AS sessions_with_compaction,
+                            ROUND(AVG(file_size_bytes/1024.0/1024.0)::numeric,2) AS avg_file_mb,
+                            ROUND(MAX(file_size_bytes/1024.0/1024.0)::numeric,2) AS max_file_mb,
+                            COUNT(DISTINCT project_dir)             AS project_count
+                        FROM public.session_index
+                        WHERE project_dir ILIKE %s
+                    """, (proj_filter,))
+                    return {"query": "stats", "result": dict(cur.fetchone())}
+
+                elif query == "compaction":
+                    cur.execute("""
+                        SELECT
+                            LEFT(session_id, 8)     AS session_id,
+                            project_dir,
+                            started_at::date        AS date,
+                            turn_count,
+                            user_message_count,
+                            compaction_count,
+                            ROUND((file_size_bytes/1024.0/1024.0)::numeric,2) AS file_mb,
+                            ROUND(duration_minutes::numeric,0) AS duration_min
+                        FROM public.session_index
+                        WHERE compaction_count > 0
+                          AND project_dir ILIKE %s
+                        ORDER BY file_size_bytes DESC
+                        LIMIT %s
+                    """, (proj_filter, limit))
+                    return {"query": "compaction", "results": [dict(r) for r in cur.fetchall()]}
+
+                elif query == "recent":
+                    cur.execute("""
+                        SELECT
+                            LEFT(session_id, 8)     AS session_id,
+                            project_dir,
+                            started_at::date        AS date,
+                            turn_count,
+                            user_message_count,
+                            compaction_count,
+                            ROUND((file_size_bytes/1024.0/1024.0)::numeric,2) AS file_mb,
+                            ROUND(duration_minutes::numeric,0) AS duration_min
+                        FROM public.session_index
+                        WHERE project_dir ILIKE %s
+                        ORDER BY started_at DESC
+                        LIMIT %s
+                    """, (proj_filter, limit))
+                    return {"query": "recent", "results": [dict(r) for r in cur.fetchall()]}
+
+                elif query.startswith("search:"):
+                    term = query[7:].strip()
+                    cur.execute("""
+                        SELECT
+                            LEFT(m.session_id, 8) AS session_id,
+                            m.project_dir,
+                            m.timestamp::date     AS date,
+                            m.turn_index,
+                            m.text
+                        FROM public.session_messages m
+                        WHERE to_tsvector('english', m.text) @@ plainto_tsquery('english', %s)
+                          AND m.project_dir ILIKE %s
+                        ORDER BY m.timestamp DESC
+                        LIMIT %s
+                    """, (term, proj_filter, limit))
+                    return {"query": f"search:{term}", "results": [dict(r) for r in cur.fetchall()]}
+
+                elif query.startswith("session:"):
+                    sid_prefix = query[8:].strip()
+                    cur.execute("""
+                        SELECT turn_index, timestamp, text
+                        FROM public.session_messages
+                        WHERE session_id LIKE %s
+                          AND project_dir ILIKE %s
+                        ORDER BY turn_index
+                        LIMIT %s
+                    """, (f"{sid_prefix}%", proj_filter, limit))
+                    return {"query": f"session:{sid_prefix}", "results": [dict(r) for r in cur.fetchall()]}
+
+                else:
+                    return {"error": f"Unknown query type: {query!r}. Use: stats|compaction|recent|search:<term>|session:<id>"}
+        finally:
+            release_connection(conn)
+
+    return await loop.run_in_executor(_executor, _run)
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 def main() -> None:
