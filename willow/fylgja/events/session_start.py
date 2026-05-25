@@ -381,6 +381,21 @@ def _run_silent_startup() -> dict:
     except Exception as e:
         result["mcp_errors"].append({"step": "traces", "error": str(e)[:80]})
 
+    # 5b. Stack snapshot — read authoritative open-state written by stop.py
+    try:
+        snap = call("soil_get", {
+            "app_id": AGENT,
+            "collection": f"{AGENT}/stack",
+            "key": "current",
+        }, timeout=5)
+        if isinstance(snap, dict):
+            result["stack_snapshot"] = snap
+            # Prefer snapshot's open_threads over handoff title if richer
+            if not result["handoff_title"] and snap.get("handoff_title"):
+                result["handoff_title"] = snap["handoff_title"]
+    except Exception:
+        result["stack_snapshot"] = {}
+
     if result["next_bite"]:
         result["handoff_summary"] = result["next_bite"][:200]
     elif result["top_flags"]:
@@ -565,6 +580,22 @@ def main():
         lines.append(f"preferences ({len(corpus['preferences'])}):")
         for p in corpus["preferences"]:
             lines.append(f"  · {p[:100]}")
+
+    # Stack snapshot — inject open tasks + open decisions from last stop hook write
+    snap = startup.get("stack_snapshot", {})
+    if snap:
+        snap_tasks = snap.get("open_tasks", [])
+        snap_threads = snap.get("open_threads", [])
+        snap_decisions = snap.get("open_decisions", [])
+        snap_ts = snap.get("written_at", "")[:16]
+        if snap_tasks or snap_threads or snap_decisions:
+            lines.append(f"[STACK] as of {snap_ts}:")
+            for t in snap_tasks[:5]:
+                lines.append(f"  task: {t.get('title', t.get('id', '?'))[:80]}")
+            for th in snap_threads[:3]:
+                lines.append(f"  thread: {str(th)[:80]}")
+            for d in snap_decisions[:3]:
+                lines.append(f"  decision pending: {str(d)[:80]}")
 
     if startup.get("next_bite"):
         lines.append(f"NEXT: {startup['next_bite']}")
