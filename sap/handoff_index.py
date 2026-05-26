@@ -117,6 +117,12 @@ def extract_next_bite(questions: list, summary: str = "") -> str:
             line = block.split("\n", 1)[0].strip().strip("*")
             if line:
                 return line[:500]
+    # Q17 is always the last question; the parser strips the "Q17:" prefix so
+    # the prefix-match above never fires — fall back to the last item in the list.
+    if questions:
+        last = str(questions[-1]).strip().strip("*")
+        if last:
+            return last[:500]
     return ""
 
 

@@ -19,4 +19,4 @@ Default boot is the 14-step sequence in `/boot` skill (`willow/fylgja/skills/boo
 
 Follow [`willow/fylgja/skills/startup.md`](../../willow/fylgja/skills/startup.md) exactly.
 
-Install / refresh Cursor hooks: `python3 -m willow.fylgja.install_cursor`
+Install / refresh IDE wiring: `python3 -m willow.fylgja.install_project hanuman --ide all`
