@@ -141,14 +141,19 @@ format: v2
 
 - Bullet list of decisions, commitments, constraints that carry forward.
 
-## Questions
+## 17 Questions
 
+Q1: {open question — something unresolved that the next session should know about}
+Q2: {open question}
+...
+Q16: {open question}
 Q17: {next single bite — one sentence, no preamble}
 ```
 
 **Required:** `format: v2` and `session:` in frontmatter. Without them `handoff_latest` will not surface this file.
-**Required:** Section headers must match exactly — `## What I Now Understand`, `## Open Threads`, `## What We Agreed On`, `## Questions`.
-**Required:** Q17 line must be `Q17: <text>` — no question mark in the key, colon-delimited, no preamble.
+**Required:** Section headers must match exactly — `## What I Now Understand`, `## Open Threads`, `## What We Agreed On`, `## 17 Questions`.
+**Required:** Q17 line must be `Q17: <text>` — no question mark in the key, colon-delimited, no preamble. Q17 is always "What is the next single bite?" answered.
+**Convention:** Q1-Q16 are open questions for the next session — things unresolved, decisions pending, gates not yet crossed. Write as many as are genuinely open (pad to 17 only if needed). Q17 is always the next action.
 
 After writing, run `handoff_rebuild(app_id={agent})` then verify with `handoff_latest(app_id={agent})`.
 

@@ -141,7 +141,12 @@ def parse_session_handoff(content: str, filename: str = "") -> dict:
             if questions:
                 result["questions"] = json.dumps([q.strip() for q in questions])
             break
-    for marker in ("## What We Agreed On",):
+    # Fallback: Q17 line anywhere in the document (v2 handoffs may omit the section header)
+    if not result.get("questions"):
+        loose_q = re.findall(r"^Q\d+:\s*(.+)$", content, re.MULTILINE)
+        if loose_q:
+            result["questions"] = json.dumps([q.strip() for q in loose_q])
+    for marker in ("## What We Agreed On", "## Agreements"):
         if marker in content:
             start = content.find(marker) + len(marker)
             block = re.split(r"\n(?=##|\n---)", content[start:])[0]
@@ -170,8 +175,9 @@ def parse_session_handoff(content: str, filename: str = "") -> dict:
     m = re.search(r"\*\*What Happened\*\*\n(.+?)(?=\n\*\*|\n---)", content, re.DOTALL)
     if m:
         result["summary"] = m.group(1).strip()
-    elif "## What I Now Understand" in content:
-        start = content.find("## What I Now Understand") + len("## What I Now Understand")
+    elif "## What I Now Understand" in content or "## Summary" in content:
+        marker = "## What I Now Understand" if "## What I Now Understand" in content else "## Summary"
+        start = content.find(marker) + len(marker)
         block = re.split(r"\n(?=##|\n---)", content[start:])[0].strip()
         if block:
             result["summary"] = block.split("\n\n")[0].strip()[:500]
