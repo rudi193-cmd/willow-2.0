@@ -2,10 +2,12 @@
 persona.py — session persona picker and context injection.
 
 State: ~/.willow/willow-2.0-active-persona
+User personas: ~/.willow/user-personas.json  +  ~/.willow/personas/<name>.md
 Wired from session_start (picker) and prompt_submit (selection + context).
 """
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 import sys
@@ -13,6 +15,9 @@ from pathlib import Path
 
 STATE_FILE = Path.home() / ".willow" / "willow-2.0-active-persona"
 DB_PATH = Path.home() / ".willow" / "willow-2.0.db"
+USER_PERSONAS_FILE = Path.home() / ".willow" / "user-personas.json"
+
+_CREATE_KEY = "__create__"
 
 
 def _repo_root() -> Path:
@@ -29,7 +34,8 @@ def _persona_path(name: str) -> str:
     return str(_repo_root() / "willow" / "fylgja" / "personas" / f"{name}.md")
 
 
-PERSONAS = {
+# Built-in personas — always available regardless of user config.
+_BUILTIN_PERSONAS: dict[str, dict] = {
     "oakenscroll": {
         "label": "Oakenscroll",
         "desc": "Professor, Dept. of Numerical Ethics & Accidental Cosmology, UTETY",
@@ -67,20 +73,83 @@ PERSONAS = {
     },
 }
 
-PERSONA_LIST = ["oakenscroll", "hanuman", "loki", "skirnir", "vishwakarma", "none"]
+_BUILTIN_LIST = ["oakenscroll", "hanuman", "loki", "skirnir", "vishwakarma", "none"]
+
+# Legacy aliases — kept so callers that imported PERSONAS/PERSONA_LIST directly still work.
+PERSONAS = _BUILTIN_PERSONAS
+PERSONA_LIST = _BUILTIN_LIST
+
+
+def load_user_personas() -> dict[str, dict]:
+    """Read ~/.willow/user-personas.json. Returns {} on missing or parse error."""
+    if not USER_PERSONAS_FILE.exists():
+        return {}
+    try:
+        data = json.loads(USER_PERSONAS_FILE.read_text(encoding="utf-8"))
+        return {k: v for k, v in data.items() if isinstance(v, dict)}
+    except Exception:
+        return {}
+
+
+def register_user_persona(key: str, label: str, desc: str, persona_md_path: str) -> bool:
+    """
+    Record a user persona in ~/.willow/user-personas.json after the agent has:
+      1. Called agent_create MCP tool (which sets up ~/SAFE/<key>/ + PGP + manifest)
+      2. Written the persona .md file to ~/SAFE/<key>/persona.md
+
+    This function is called by the agent post-registration, not by the hook.
+    persona_md_path should be the absolute path written by agent_create flow.
+    """
+    key = key.strip().lower().replace(" ", "_")
+    if not key or key in _BUILTIN_PERSONAS:
+        return False
+    existing = load_user_personas()
+    existing[key] = {
+        "label": label,
+        "desc": desc,
+        "source": "file",
+        "path": persona_md_path,
+    }
+    USER_PERSONAS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    USER_PERSONAS_FILE.write_text(
+        json.dumps(existing, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    return True
+
+
+def get_personas() -> tuple[dict[str, dict], list[str]]:
+    """
+    Return (personas_dict, ordered_list) with user personas merged in before 'none'.
+    The list never includes _CREATE_KEY — that's a UI action, not a persona.
+    """
+    user = load_user_personas()
+    combined: dict[str, dict] = {}
+    combined_list: list[str] = []
+    for key in _BUILTIN_LIST:
+        if key == "none":
+            # Insert user personas just before "none"
+            for ukey, uval in user.items():
+                if ukey not in combined:
+                    combined[ukey] = uval
+                    combined_list.append(ukey)
+        combined[key] = _BUILTIN_PERSONAS[key]
+        combined_list.append(key)
+    return combined, combined_list
 
 
 def active_persona() -> str:
     if STATE_FILE.exists():
         name = STATE_FILE.read_text(encoding="utf-8").strip().lower()
-        if name in PERSONAS:
+        personas, _ = get_personas()
+        if name in personas:
             return name
     return ""
 
 
 def set_active_persona(name: str) -> bool:
     key = (name or "").strip().lower()
-    if key not in PERSONAS:
+    personas, _ = get_personas()
+    if key not in personas:
         return False
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(key + "\n", encoding="utf-8")
@@ -88,28 +157,67 @@ def set_active_persona(name: str) -> bool:
 
 
 def render_picker(active: str = "") -> str:
-    lines = ["[PERSONA]", "<persona-picker>"]
-    for i, key in enumerate(PERSONA_LIST, 1):
-        p = PERSONAS[key]
-        marker = " ← active" if key == active else ""
-        lines.append(f"  {i}. {p['label']}{marker} — {p['desc']}")
-    lines.append("")
+    personas, persona_list = get_personas()
+    bar = "━" * 54
+    lines = [
+        "[PERSONA — CONFIRM OR SWITCH BEFORE WORK BEGINS]",
+        bar,
+    ]
+    for i, key in enumerate(persona_list, 1):
+        p = personas[key]
+        if key == active:
+            lines.append(f"  {i}. {p['label']:<14} {p['desc']}  ← ACTIVE")
+        else:
+            lines.append(f"  {i}. {p['label']:<14} {p['desc']}")
+    create_num = len(persona_list) + 1
+    lines.append(f"  {create_num}. + Create new persona")
+    lines.append(bar)
     if active:
-        lines.append(f"  Active: {PERSONAS[active]['label']}. Reply with a number or name to switch.")
+        lines.append(
+            f"  Active: {personas[active]['label']}. "
+            "Reply with a number or name to switch, or continue."
+        )
     else:
-        lines.append("  No persona active. Reply with a number or name (or 'none').")
-    lines.append("</persona-picker>")
+        lines.append(
+            f"  No persona active. Reply with a number or name "
+            f"(or '{len(persona_list)}' for none, '{create_num}' to create)."
+        )
     return "\n".join(lines)
 
 
 def render_status(active: str) -> str:
+    personas, persona_list = get_personas()
     labels = []
-    for i, key in enumerate(PERSONA_LIST, 1):
+    for i, key in enumerate(persona_list, 1):
         if key == active:
-            labels.append(f"[{i}:{PERSONAS[key]['label']} ←]")
+            labels.append(f"[{i}:{personas[key]['label']} ←]")
         else:
-            labels.append(f"{i}:{PERSONAS[key]['label']}")
+            labels.append(f"{i}:{personas[key]['label']}")
     return f"<persona> {' | '.join(labels)} | say \"switch to N\" to change </persona>"
+
+
+def render_create_prompt() -> str:
+    bar = "━" * 54
+    return "\n".join([
+        "[PERSONA — CREATE NEW]",
+        bar,
+        "  Creating a persona registers a new agent in the fleet.",
+        "  The process:",
+        "    1. Choose a short name  (e.g. mentor, analyst, coach)",
+        "    2. Provide a one-line role description",
+        "    3. agent_create MCP tool sets up ~/SAFE/<name>/ + PGP key + manifest",
+        "    4. Write persona .md to ~/SAFE/<name>/persona.md",
+        "    5. register_user_persona() records it in ~/.willow/user-personas.json",
+        "    6. Persona appears in the picker next session.",
+        "",
+        "  Reply with:",
+        "    name:  <short-key>",
+        "    role:  <one-line description>",
+        "    trust: WORKER | ENGINEER | OPERATOR  (default: WORKER)",
+        "",
+        "  Or describe the persona you want and I'll draft the content for you.",
+        bar,
+    ])
 
 
 def load_from_seeds(seed_ids: list[str]) -> str:
@@ -147,9 +255,10 @@ def load_from_file(path: str, label: str) -> str:
 
 
 def load_persona(name: str) -> str:
-    if not name or name not in PERSONAS:
+    personas, _ = get_personas()
+    if not name or name not in personas:
         return ""
-    p = PERSONAS[name]
+    p = personas[name]
     source = p["source"]
     if source == "seeds":
         return load_from_seeds(p["seed_ids"])
@@ -159,22 +268,35 @@ def load_persona(name: str) -> str:
 
 
 def parse_selection(prompt: str) -> str | None:
-    """Return persona key if the user message is a persona pick."""
+    """Return persona key (or _CREATE_KEY) if the user message is a persona pick/action."""
+    _, persona_list = get_personas()
     text = (prompt or "").strip()
     if not text:
         return None
     lower = text.lower()
 
+    # Numeric pick — includes the "create" slot at len(persona_list)+1
     if re.fullmatch(r"\d+", lower):
         idx = int(lower)
-        if 1 <= idx <= len(PERSONA_LIST):
-            return PERSONA_LIST[idx - 1]
+        if 1 <= idx <= len(persona_list):
+            return persona_list[idx - 1]
+        if idx == len(persona_list) + 1:
+            return _CREATE_KEY
 
-    m = re.search(r"(?:switch\s+to\s+|persona[:\s]+|use\s+persona\s+)([a-z]+)", lower)
-    if m and m.group(1) in PERSONAS:
-        return m.group(1)
+    # "create" keywords
+    if re.search(r"\b(create|new persona|\+ create)\b", lower):
+        return _CREATE_KEY
 
-    if lower in PERSONAS and len(lower.split()) == 1:
+    # Named switch
+    m = re.search(r"(?:switch\s+to\s+|persona[:\s]+|use\s+persona\s+)([a-z_]+)", lower)
+    if m:
+        personas, _ = get_personas()
+        if m.group(1) in personas:
+            return m.group(1)
+
+    # Bare name match
+    personas, _ = get_personas()
+    if lower in personas and len(lower.split()) == 1:
         return lower
 
     return None
@@ -192,13 +314,14 @@ def prompt_submit_block(*, is_first: bool, prompt: str) -> str:
 
     if is_first:
         choice = parse_selection(prompt)
+        if choice == _CREATE_KEY:
+            parts.append(render_create_prompt())
+            return "\n".join(parts)
         if choice:
             set_active_persona(choice)
             active = choice
-            label = PERSONAS[active]["label"]
-            parts.append(f"[PERSONA] Selected: {label}")
-        elif not active:
-            parts.append("[PERSONA] No persona active — pick a number or name from the SessionStart list.")
+        # Always show the full picker on the first turn — unmissable, like the boot gate.
+        parts.append(render_picker(active))
     elif active:
         parts.append(render_status(active))
 
