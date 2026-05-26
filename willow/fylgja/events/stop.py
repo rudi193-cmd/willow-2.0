@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.agent_identity import require_agent_name
+from willow.fylgja._state import get_trust_state, save_trust_state
 
 try:
     from willow.fylgja._mcp import call
@@ -21,6 +22,32 @@ except Exception:
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
 THREAD_FILE = Path("/tmp/willow-context-thread.json")
 _AGENT = require_agent_name()
+
+
+def read_turns_since(cursor: str, turns_file: Path) -> list[str]:
+    """Return lines from turns_file whose timestamp is after cursor."""
+    if not turns_file.exists():
+        return []
+    lines = []
+    try:
+        for line in turns_file.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.startswith("[") and "]" in line:
+                ts = line[1 : line.index("]")]
+                if ts > cursor:
+                    lines.append(line)
+    except Exception:
+        pass
+    return lines
+
+
+def mark_session_clean(turn_count: int = 0) -> None:
+    if turn_count == 0:
+        return
+    state = get_trust_state()
+    if not state:
+        return
+    state["clean_session_count"] = state.get("clean_session_count", 0) + 1
+    save_trust_state(state)
 
 
 def _write_session_composite(session_id: str) -> None:
