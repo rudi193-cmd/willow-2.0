@@ -293,18 +293,25 @@ def _run_silent_startup() -> dict:
 
     result = {
         "handoff_title": "", "handoff_summary": "",
+        "handoff_threads": [], "handoff_next_bite": "",
         "open_flags": 0, "top_flags": [],
         "postgres": "unknown",
         "recent_traces": [], "next_bite": "",
         "mcp_errors": [],
     }
 
-    # 1. Latest handoff — timestamp boundary only
+    # 1. Latest handoff — filename, summary, open threads, next bite
     handoff_date = ""
     try:
         h = call("handoff_latest", {"app_id": AGENT}, timeout=8)
-        result["handoff_title"] = h.get("filename", "")
-        handoff_date = h.get("session_date", h.get("created", ""))
+        if isinstance(h, dict) and not h.get("error"):
+            result["handoff_title"] = h.get("filename", "")
+            result["handoff_summary"] = (h.get("summary") or "")[:500]
+            result["handoff_threads"] = h.get("open_threads") or []
+            result["handoff_next_bite"] = h.get("next_bite") or ""
+            handoff_date = h.get("date", h.get("session_date", h.get("created", "")))
+            if result["handoff_next_bite"] and not result["next_bite"]:
+                result["next_bite"] = result["handoff_next_bite"]
     except Exception as e:
         result["mcp_errors"].append({"step": "handoff", "error": str(e)[:80]})
 
@@ -399,6 +406,10 @@ def _run_silent_startup() -> dict:
 
     if result["next_bite"]:
         result["handoff_summary"] = result["next_bite"][:200]
+    elif result["handoff_summary"]:
+        pass
+    elif result["handoff_threads"]:
+        result["handoff_summary"] = "Open: " + "; ".join(str(t) for t in result["handoff_threads"][:3])
     elif result["top_flags"]:
         result["handoff_summary"] = "Open: " + "; ".join(result["top_flags"])
 
@@ -444,6 +455,8 @@ def _run_silent_startup() -> dict:
             "postgres": result["postgres"],
             "handoff_title": result["handoff_title"],
             "handoff_summary": result["handoff_summary"],
+            "handoff_threads": result["handoff_threads"],
+            "handoff_next_bite": result["handoff_next_bite"],
             "open_flags": result["open_flags"],
             "top_flags": result["top_flags"],
             "next_bite": result["next_bite"],
@@ -626,6 +639,15 @@ def main():
                 lines.append(f"  · {g}")
     elif startup["handoff_title"]:
         lines.append(f"last handoff: {startup['handoff_title']}")
+
+    if startup.get("handoff_threads") or startup.get("handoff_summary"):
+        lines.append("[HANDOFF]")
+        if startup.get("handoff_summary"):
+            lines.append(f"  {startup['handoff_summary'][:200]}")
+        for th in startup.get("handoff_threads", [])[:5]:
+            lines.append(f"  · {str(th)[:100]}")
+        if startup.get("handoff_next_bite"):
+            lines.append(f"  NEXT: {startup['handoff_next_bite'][:160]}")
 
     traces = startup.get("recent_traces", [])
     if traces:
