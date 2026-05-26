@@ -1587,6 +1587,144 @@ def search_europeana(query: str, limit: int = 5) -> list[dict]:
     return results
 
 
+# ── Plugin sources ─────────────────────────────────────────────────────────────
+# Functions only. Registration lives in jeles_sources + jeles_domain_routes DB.
+# To add a source: write search_X() here, then INSERT into the DB tables.
+
+def search_omdb(query: str, limit: int = 5) -> list[dict]:
+    """OMDb — Open Movie Database. Movies, B-movies, horror, cult cinema. Key required."""
+    import os
+    api_key = os.environ.get("OMDB_API_KEY", "")
+    if not api_key:
+        return []
+    url = (
+        "http://www.omdbapi.com/?s=" + urllib.parse.quote(query)
+        + f"&type=movie&apikey={api_key}"
+    )
+    data = _get(url)
+    if not data:
+        return []
+    results = []
+    for item in (data.get("Search") or [])[:limit]:
+        imdb_id = item.get("imdbID", "")
+        results.append(_result(
+            title=item.get("Title", ""),
+            url=f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else "",
+            source="omdb",
+            institution="OMDb / IMDb",
+            snippet=f"{item.get('Type','').title()} · {item.get('Year','')}",
+            date=item.get("Year", ""),
+            rid=imdb_id,
+        ))
+    return results
+
+
+def search_isfdb(query: str, limit: int = 5) -> list[dict]:
+    """ISFDB — Internet Speculative Fiction Database. Sci-fi, horror, fantasy, pulp."""
+    import re
+    url = (
+        "http://www.isfdb.org/cgi-bin/se.cgi?arg="
+        + urllib.parse.quote(query)
+        + "&type=Fiction+Titles"
+    )
+    html = _get_html(url)
+    if not html:
+        return []
+    results = []
+    title_re  = re.compile(r'title\.cgi\?(\d+)">([^<]{3,120})</a>')
+    author_re = re.compile(r'author\.cgi\?[^"]+">([^<]+)</a>')
+    year_re   = re.compile(r'<td[^>]*class="[^"]*year[^"]*"[^>]*>(\d{4})</td>')
+    titles  = title_re.findall(html)
+    authors = author_re.findall(html)
+    years   = year_re.findall(html)
+    for i, (tid, title) in enumerate(titles[:limit]):
+        author  = authors[i] if i < len(authors) else ""
+        year    = years[i]   if i < len(years)   else ""
+        results.append(_result(
+            title=title.strip(),
+            url=f"http://www.isfdb.org/cgi-bin/title.cgi?{tid}",
+            source="isfdb",
+            institution="Internet Speculative Fiction Database",
+            snippet=author,
+            date=year,
+            rid=tid,
+        ))
+    return results
+
+
+def search_fbi_vault(query: str, limit: int = 5) -> list[dict]:
+    """FBI Records Vault — declassified FBI files on persons, events, organizations."""
+    import re
+    # Try Plone JSON API first
+    url = (
+        "https://vault.fbi.gov/@search?SearchableText="
+        + urllib.parse.quote(query)
+        + f"&portal_type:list=File&b_size={limit}"
+    )
+    data = _get(url)
+    items = []
+    if isinstance(data, dict):
+        items = data.get("items") or data.get("@components", {}).get("items", [])
+    elif isinstance(data, list):
+        items = data
+    results = []
+    for item in items[:limit]:
+        results.append(_result(
+            title=item.get("title", ""),
+            url=item.get("@id", ""),
+            source="fbi_vault",
+            institution="FBI Records Vault (Declassified)",
+            snippet=(item.get("description") or "")[:200],
+            date=(item.get("effective") or "")[:10],
+            rid=item.get("@id", ""),
+        ))
+    if results:
+        return results
+    # HTML fallback
+    html = _get_html(
+        "https://vault.fbi.gov/search?SearchableText=" + urllib.parse.quote(query)
+    )
+    if not html:
+        return []
+    links = re.findall(r'href="(https://vault\.fbi\.gov/[^"#]{5,200})"[^>]*>([^<]{5,120})</a>', html)
+    for url_found, title in links[:limit]:
+        results.append(_result(
+            title=title.strip(),
+            url=url_found,
+            source="fbi_vault",
+            institution="FBI Records Vault (Declassified)",
+            snippet="",
+            date="",
+            rid=url_found,
+        ))
+    return results
+
+
+def search_ig_nobel(query: str, limit: int = 5) -> list[dict]:
+    """Ig Nobel Prize archive — unusual research that makes you laugh then think."""
+    import re
+    url = "https://www.improbable.com/?s=" + urllib.parse.quote(query)
+    html = _get_html(url)
+    if not html:
+        return []
+    title_re   = re.compile(r'class="entry-title[^"]*">\s*<a href="([^"]+)"[^>]*>([^<]+)</a>', re.S)
+    excerpt_re = re.compile(r'class="entry-summary[^"]*">\s*<p>([^<]{10,400})</p>', re.S)
+    titles   = title_re.findall(html)
+    excerpts = [e.strip() for e in excerpt_re.findall(html)]
+    results  = []
+    for i, (link, title) in enumerate(titles[:limit]):
+        results.append(_result(
+            title=title.strip(),
+            url=link,
+            source="ig_nobel",
+            institution="Improbable Research (Ig Nobel)",
+            snippet=excerpts[i] if i < len(excerpts) else "",
+            date="",
+            rid=link,
+        ))
+    return results
+
+
 # ── Source registry ────────────────────────────────────────────────────────────
 
 SOURCES: dict[str, dict] = {
