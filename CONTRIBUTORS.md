@@ -51,6 +51,10 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #401](https://github.com/TensorBlock/awesome-mcp-servers/pull/401) merged |
 | [Filippo-Venturini/ctxvault](https://github.com/Filippo-Venturini/ctxvault) | Filippo-Venturini | feat: expose indexed document text for recovery workflows (#22) | [PR #29](https://github.com/Filippo-Venturini/ctxvault/pull/29) open |
 | [alibaizhanov/mengram](https://github.com/alibaizhanov/mengram) | alibaizhanov | docs: add CONTRIBUTING.md with local setup and PR guidelines | [PR #40](https://github.com/alibaizhanov/mengram/pull/40) open |
+<<<<<<< HEAD
+=======
+| [holon-run/holon](https://github.com/holon-run/holon) | holon-run | fix: allow Sleep while waiting on same-WorkItem background command_task (#1416) | [PR #1435](https://github.com/holon-run/holon/pull/1435) closed |
+>>>>>>> f341999 (chore(upstream): mark holon PR closed, drop from scout seed)
 | [alash3al/stash](https://github.com/alash3al/stash) | alash3al | docs: post-install guide + fix MCP copy buttons (#6) | [PR #8](https://github.com/alash3al/stash/pull/8) open |
 | [doobidoo/mcp-memory-service](https://github.com/doobidoo/mcp-memory-service) | doobidoo | feat(entities): Phase 1b — configurable terms + frequency-based extraction (RFC #732) | [PR #1007](https://github.com/doobidoo/mcp-memory-service/pull/1007) open |
 | [doobidoo/mcp-memory-service](https://github.com/doobidoo/mcp-memory-service) | doobidoo | feat(reasoning): Phase 1a — transitive closure + abduction (RFC #732) | [PR #1006](https://github.com/doobidoo/mcp-memory-service/pull/1006) open |
