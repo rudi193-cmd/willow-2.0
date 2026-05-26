@@ -14,6 +14,7 @@ from pathlib import Path
 from core.agent_identity import require_agent_name
 from willow.fylgja._mcp import call
 from willow.fylgja._grove import call as _grove_call
+from willow.fylgja._state import reset_turn_count
 
 try:
     from willow.context.dedup import reset_session as _dedup_reset
@@ -301,7 +302,7 @@ def _run_silent_startup() -> dict:
     # 1. Latest handoff — timestamp boundary only
     handoff_date = ""
     try:
-        h = call("willow_handoff_latest", {"app_id": AGENT}, timeout=8)
+        h = call("handoff_latest", {"app_id": AGENT}, timeout=8)
         result["handoff_title"] = h.get("filename", "")
         handoff_date = h.get("session_date", h.get("created", ""))
     except Exception as e:
@@ -380,6 +381,21 @@ def _run_silent_startup() -> dict:
         result["recent_traces"] = (traces or [])[:10]
     except Exception as e:
         result["mcp_errors"].append({"step": "traces", "error": str(e)[:80]})
+
+    # 5b. Stack snapshot — read authoritative open-state written by stop.py
+    try:
+        snap = call("soil_get", {
+            "app_id": AGENT,
+            "collection": f"{AGENT}/stack",
+            "key": "current",
+        }, timeout=5)
+        if isinstance(snap, dict):
+            result["stack_snapshot"] = snap
+            # Prefer snapshot's open_threads over handoff title if richer
+            if not result["handoff_title"] and snap.get("handoff_title"):
+                result["handoff_title"] = snap["handoff_title"]
+    except Exception:
+        result["stack_snapshot"] = {}
 
     if result["next_bite"]:
         result["handoff_summary"] = result["next_bite"][:200]
@@ -471,6 +487,53 @@ def _open_run() -> str | None:
         return None
 
 
+def _seed_corpus_corrections() -> None:
+    """Populate corpus/corrections from memory feedback_*.md files (idempotent).
+
+    The feedback files are the canonical source of behavioral corrections but
+    corpus/corrections (read by session_start at boot) was never populated.
+    This runs once per session; soil_put is idempotent by key so re-runs are safe.
+    """
+    memory_dir = Path.home() / ".claude" / "projects" / "-home-sean-campbell-willow-2-0" / "memory"
+    if not memory_dir.exists():
+        return
+
+    try:
+        from core.willow_store import WillowStore as _WS
+        store = _WS()
+    except Exception:
+        return
+
+    for fpath in sorted(memory_dir.glob("feedback_*.md")):
+        try:
+            text = fpath.read_text(encoding="utf-8", errors="replace")
+            # Extract rule: first non-blank line after frontmatter (after second ---)
+            body = text.split("---", 2)[-1].strip() if "---" in text else text.strip()
+            # First substantive line is the rule
+            rule = ""
+            for line in body.splitlines():
+                line = line.strip()
+                if line and not line.startswith("#") and not line.startswith("@"):
+                    rule = line[:200]
+                    break
+            if not rule:
+                continue
+            record_id = fpath.stem  # e.g. "feedback_no_direct_db"
+            # Check if already seeded
+            existing = store.get("corpus/corrections", record_id)
+            if existing:
+                continue
+            store.put("corpus/corrections", {
+                "id": record_id,
+                "content": rule,
+                "source": str(fpath.name),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "sandbox": False,
+            }, record_id=record_id)
+        except Exception:
+            continue
+
+
 def _is_isolated_directory() -> bool:
     """Return True if CWD lacks the willow MCP server — skip all fleet hooks."""
     mcp = Path.cwd() / ".mcp.json"
@@ -502,9 +565,16 @@ def main():
             pass
 
     _clear_stale_thread()
+    reset_turn_count()  # fresh session — boot guard must fire exactly once
     grove_status = _ensure_grove_mcp()  # instant local file check
     if session_id:
         _register_jeles(session_id)
+
+    # Seed corpus/corrections from memory feedback files (idempotent)
+    try:
+        _seed_corpus_corrections()
+    except Exception:
+        pass
 
     with _cf.ThreadPoolExecutor(max_workers=5) as ex:
         hw_future = ex.submit(_scan_hardware)
@@ -565,6 +635,22 @@ def main():
         lines.append(f"preferences ({len(corpus['preferences'])}):")
         for p in corpus["preferences"]:
             lines.append(f"  · {p[:100]}")
+
+    # Stack snapshot — inject open tasks + open decisions from last stop hook write
+    snap = startup.get("stack_snapshot", {})
+    if snap:
+        snap_tasks = snap.get("open_tasks", [])
+        snap_threads = snap.get("open_threads", [])
+        snap_decisions = snap.get("open_decisions", [])
+        snap_ts = snap.get("written_at", "")[:16]
+        if snap_tasks or snap_threads or snap_decisions:
+            lines.append(f"[STACK] as of {snap_ts}:")
+            for t in snap_tasks[:5]:
+                lines.append(f"  task: {t.get('title', t.get('id', '?'))[:80]}")
+            for th in snap_threads[:3]:
+                lines.append(f"  thread: {str(th)[:80]}")
+            for d in snap_decisions[:3]:
+                lines.append(f"  decision pending: {str(d)[:80]}")
 
     if startup.get("next_bite"):
         lines.append(f"NEXT: {startup['next_bite']}")

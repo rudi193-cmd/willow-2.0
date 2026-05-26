@@ -327,6 +327,70 @@ def _promote_session_to_kb(session_id: str, affect: str, session_traces: list) -
         pass
 
 
+def _write_stack_snapshot(session_id: str) -> None:
+    """Write authoritative open-state record to SOIL at every session end.
+
+    This is the single source of truth that boot reads to answer "what's open".
+    Written per-turn so crash recovery still has a recent snapshot.
+    """
+    if call is None:
+        return
+    try:
+        # Open tasks
+        tasks: list = []
+        try:
+            result = call("agent_task_list", {"app_id": _AGENT}, timeout=8)
+            if isinstance(result, list):
+                tasks = [
+                    {"id": t.get("id", ""), "title": t.get("title", ""), "status": t.get("status", "")}
+                    for t in result
+                    if t.get("status") not in ("completed", "cancelled", "done")
+                ]
+        except Exception:
+            pass
+
+        # Latest handoff open threads
+        open_threads: list = []
+        handoff_title = ""
+        try:
+            h = call("handoff_latest", {"app_id": _AGENT}, timeout=8)
+            if isinstance(h, dict):
+                handoff_title = h.get("filename", h.get("title", ""))
+                open_threads = h.get("open_threads", [])
+        except Exception:
+            pass
+
+        # Latest ledger open decisions
+        open_decisions: list = []
+        try:
+            ledger = call("ledger_read", {"app_id": _AGENT, "limit": 1}, timeout=8)
+            entries = ledger.get("entries", []) if isinstance(ledger, dict) else []
+            if entries:
+                latest = entries[0].get("content", {})
+                open_decisions = latest.get("open_decisions", [])
+        except Exception:
+            pass
+
+        record = {
+            "id": "current",
+            "session_id": session_id,
+            "written_at": datetime.now(timezone.utc).isoformat(),
+            "open_tasks": tasks,
+            "open_threads": open_threads,
+            "open_decisions": open_decisions,
+            "handoff_title": handoff_title,
+            "agent": _AGENT,
+        }
+        call("soil_put", {
+            "app_id": _AGENT,
+            "collection": f"{_AGENT}/stack",
+            "key": "current",
+            "value": record,
+        }, timeout=8)
+    except Exception:
+        pass
+
+
 def _is_isolated_directory() -> bool:
     """Return True if CWD is a sandbox/isolated directory — skip all fleet hooks."""
     mcp = Path.cwd() / ".mcp.json"
@@ -394,6 +458,19 @@ def main():
     # Promote session to KB — infer_7b annotation → knowledge table
     try:
         _promote_session_to_kb(session_id, affect, session_traces)
+    except Exception:
+        pass
+
+    # Write stack snapshot — authoritative "what's open" for next boot
+    try:
+        _write_stack_snapshot(session_id)
+    except Exception:
+        pass
+
+    # Rebuild handoff index so handoff_latest is current next session
+    try:
+        if call is not None:
+            call("handoff_rebuild", {"app_id": _AGENT}, timeout=30)
     except Exception:
         pass
 
