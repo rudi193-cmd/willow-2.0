@@ -4,7 +4,7 @@ from willow.fylgja import persona as p
 
 def test_render_picker_lists_all_personas():
     text = p.render_picker("")
-    assert "<persona-picker>" in text
+    assert "PERSONA" in text
     assert "Hanuman" in text
     assert "Oakenscroll" in text
 
