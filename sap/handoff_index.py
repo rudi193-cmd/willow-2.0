@@ -5,6 +5,7 @@ from collections.abc import Mapping
 
 
 _SESSION_TOKEN_RE = re.compile(r"session_handoff-(\d{4}-\d{2}-\d{2})([a-z]?)", re.IGNORECASE)
+_SESSION_LEGACY_RE = re.compile(r"SESSION_HANDOFF_(\d{4})(\d{2})(\d{2})", re.IGNORECASE)
 _DATE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 
 
@@ -21,6 +22,11 @@ def latest_handoff_sort_key(
     if match:
         session_date = match.group(1)
         session_suffix = (match.group(2) or "").lower()
+    else:
+        legacy = _SESSION_LEGACY_RE.search(filename or "")
+        if legacy:
+            session_date = f"{legacy.group(1)}-{legacy.group(2)}-{legacy.group(3)}"
+            session_suffix = ""
 
     if not session_date and handoff_date:
         date_match = _DATE_RE.search(handoff_date)
@@ -70,3 +76,65 @@ def select_latest_handoff(rows: list[Mapping[str, object]]) -> Mapping[str, obje
             str(_value(row, "mtime") or ""),
         ),
     )
+
+
+def _parse_json_list(raw: object) -> list:
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, str) and raw.strip():
+        try:
+            import json
+
+            val = json.loads(raw)
+            return val if isinstance(val, list) else []
+        except Exception:
+            return []
+    return []
+
+
+def extract_next_bite(questions: list, summary: str = "") -> str:
+    """Pull Q17 / 'next single bite' from parsed handoff fields."""
+    for q in reversed(questions or []):
+        text = str(q).strip()
+        if not text:
+            continue
+        if re.search(r"next single bite", text, re.I):
+            for sep in (":", "?"):
+                if sep in text:
+                    tail = text.split(sep, 1)[-1].strip().strip("*").strip()
+                    if tail:
+                        return tail[:500]
+            cleaned = re.sub(r"^\*+\s*", "", text).strip("*").strip()
+            if cleaned:
+                return cleaned[:500]
+        if re.match(r"Q17\b", text, re.I):
+            tail = text.split(":", 1)[-1].strip() if ":" in text else text
+            tail = tail.split("?", 1)[-1].strip() if "?" in tail else tail
+            return tail.strip("*").strip()[:500]
+    for marker in ("## Next Single Bite", "**Next Single Bite**"):
+        if marker in summary:
+            block = summary[summary.find(marker) + len(marker):].strip()
+            line = block.split("\n", 1)[0].strip().strip("*")
+            if line:
+                return line[:500]
+    return ""
+
+
+def handoff_richness_score(handoff: Mapping[str, object]) -> tuple[int, int, int, str]:
+    """Rank handoff candidates: prefer substantive content, then recency."""
+    open_threads = _parse_json_list(handoff.get("open_threads"))
+    questions = _parse_json_list(handoff.get("questions"))
+    summary = str(handoff.get("summary") or "")
+    sort_key = latest_handoff_sort_key(
+        str(handoff.get("filename") or ""),
+        str(handoff.get("date") or handoff.get("handoff_date") or ""),
+        str(handoff.get("_valid_at") or handoff.get("mtime") or ""),
+    )
+    return (len(open_threads), len(questions), len(summary), sort_key)
+
+
+def select_best_handoff(candidates: list[dict]) -> dict | None:
+    """Pick the handoff with the most useful payload; tie-break by recency."""
+    if not candidates:
+        return None
+    return max(candidates, key=handoff_richness_score)

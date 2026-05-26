@@ -46,11 +46,16 @@ def has_valid_frontmatter(content: str) -> bool:
     return stripped.find("---", 3) > 3
 
 
+def has_handoff_body_marker(content: str) -> bool:
+    """Accept session handoffs that use prose headers without YAML frontmatter."""
+    return bool(re.search(r"^#\s*(SESSION HANDOFF|HANDOFF:)", content, re.MULTILINE | re.IGNORECASE))
+
+
 def classify_file(filename: str) -> str:
     name = filename.lower()
     if name.startswith("handoff-") and name.endswith(".md"):
         return "pigeon"
-    if name.startswith("session_handoff") and name.endswith(".md"):
+    if re.search(r"session_handoff[-_]", name, re.IGNORECASE) and name.endswith(".md"):
         return "session"
     if name.startswith("daily_log") and name.endswith(".md"):
         return "daily_log"
@@ -108,22 +113,33 @@ def parse_session_meta(content: str, filename: str = "") -> dict:
     return result
 
 
+def _extract_bullet_items(block: str) -> list[str]:
+    items = re.findall(r"^[-*]\s(.+)$", block, re.MULTILINE)
+    if items:
+        return [i.strip() for i in items if i.strip()]
+    numbered = re.findall(r"^\d+\.\s+(.+)$", block, re.MULTILINE)
+    cleaned = [re.sub(r"\*\*", "", i).strip() for i in numbered if i.strip()]
+    return cleaned if cleaned else []
+
+
 def parse_session_handoff(content: str, filename: str = "") -> dict:
     result = parse_session_meta(content, filename)
     for marker in ("**Open Threads**", "## Open Threads"):
         if marker in content:
             start = content.find(marker) + len(marker)
             block = re.split(r"\n(?=##|\n---)", content[start:])[0]
-            threads = re.findall(r"^[-*]\s(.+)$", block, re.MULTILINE)
+            threads = _extract_bullet_items(block)
             if threads:
                 result["open_threads"] = json.dumps(threads)
             break
     for marker in ("## 17 Questions", "## Questions"):
         if marker in content:
             section = content[content.find(marker):]
-            questions = re.findall(r"^\d+\.\s(.+)$", section, re.MULTILINE)
+            questions = re.findall(r"^Q\d+:\s*(.+)$", section, re.MULTILINE)
+            if not questions:
+                questions = re.findall(r"^\d+\.\s(.+)$", section, re.MULTILINE)
             if questions:
-                result["questions"] = json.dumps(questions)
+                result["questions"] = json.dumps([q.strip() for q in questions])
             break
     for marker in ("## What We Agreed On",):
         if marker in content:
@@ -154,6 +170,11 @@ def parse_session_handoff(content: str, filename: str = "") -> dict:
     m = re.search(r"\*\*What Happened\*\*\n(.+?)(?=\n\*\*|\n---)", content, re.DOTALL)
     if m:
         result["summary"] = m.group(1).strip()
+    elif "## What I Now Understand" in content:
+        start = content.find("## What I Now Understand") + len("## What I Now Understand")
+        block = re.split(r"\n(?=##|\n---)", content[start:])[0].strip()
+        if block:
+            result["summary"] = block.split("\n\n")[0].strip()[:500]
     elif "## The Session" in content:
         section = content[content.find("## The Session") + len("## The Session"):]
         paras = [p.strip() for p in section.split("\n\n") if p.strip()]
@@ -183,6 +204,24 @@ def parse_session_handoff(content: str, filename: str = "") -> dict:
         text = block.strip()
         if text:
             result["questions"] = json.dumps([text[:1000]])
+    for marker in ("## Next Single Bite", "**Next Single Bite**"):
+        if marker not in content:
+            continue
+        start = content.find(marker) + len(marker)
+        block = re.split(r"\n(?=##|\n---)", content[start:])[0].strip()
+        bite = block.split("\n", 1)[0].strip().strip("*")
+        if not bite:
+            break
+        existing: list[str] = []
+        if result.get("questions"):
+            try:
+                existing = json.loads(result["questions"])
+            except Exception:
+                existing = []
+        if not any(re.search(r"Q17\b|next single bite", str(q), re.I) for q in existing):
+            existing.append(f"Q17: What is the next single bite? {bite}")
+            result["questions"] = json.dumps(existing)
+        break
     # New short-form: directive paragraph after closing --- of frontmatter
     if not result.get("summary"):
         parts = content.split("---")
@@ -351,7 +390,7 @@ def build_db():
             except Exception:
                 frontmatter_skipped.append(f.name)
                 continue
-            if not has_valid_frontmatter(_check):
+            if not has_valid_frontmatter(_check) and not has_handoff_body_marker(_check):
                 frontmatter_skipped.append(f.name)
                 continue
         mtime = datetime.fromtimestamp(stat.st_mtime).isoformat()

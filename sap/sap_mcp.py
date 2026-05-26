@@ -40,7 +40,12 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from sap.handoff_index import handoff_select_sql, select_latest_handoff
+from sap.handoff_index import (
+    extract_next_bite,
+    handoff_select_sql,
+    select_best_handoff,
+    select_latest_handoff,
+)
 from typing import AsyncIterator
 
 # ── Path setup ────────────────────────────────────────────────────────────────
@@ -2442,44 +2447,65 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                     if agent_filter:
                         cur.execute(
                             """
-                            SELECT id, title, summary, valid_at,
-                                   content->>'tags' AS tags
+                            SELECT id, title, summary, valid_at, content
                             FROM knowledge
                             WHERE category = 'handoff'
                               AND source_type = 'session'
                               AND invalid_at IS NULL
                               AND (project = %s OR content::text ILIKE %s)
                             ORDER BY valid_at DESC
-                            LIMIT 1
+                            LIMIT 5
                             """,
                             (agent_filter, f"%{agent_filter}%"),
                         )
                     else:
                         cur.execute(
                             """
-                            SELECT id, title, summary, valid_at,
-                                   content->>'tags' AS tags
+                            SELECT id, title, summary, valid_at, content
                             FROM knowledge
                             WHERE category = 'handoff'
                               AND source_type = 'session'
                               AND invalid_at IS NULL
                             ORDER BY valid_at DESC
-                            LIMIT 1
+                            LIMIT 5
                             """
                         )
-                    row = cur.fetchone()
-                    if row:
-                        kb_result = {
+                    kb_rows = cur.fetchall()
+                    kb_candidates: list[dict] = []
+                    for row in kb_rows:
+                        content = row.get("content") or {}
+                        if isinstance(content, str):
+                            try:
+                                content = _j.loads(content)
+                            except Exception:
+                                content = {}
+                        if not isinstance(content, dict):
+                            content = {}
+                        open_threads = content.get("open_threads") or []
+                        questions = content.get("next_steps") or content.get("questions") or []
+                        if isinstance(open_threads, str):
+                            try:
+                                open_threads = _j.loads(open_threads)
+                            except Exception:
+                                open_threads = []
+                        if isinstance(questions, str):
+                            try:
+                                questions = _j.loads(questions)
+                            except Exception:
+                                questions = []
+                        kb_candidates.append({
                             "filename": f"kb_{row['id']}.json",
-                            "date":     str(row["valid_at"])[:10],
-                            "summary":  row["summary"] or row["title"] or "",
-                            "open_threads": [],
-                            "questions":    [],
-                            "agreements":   [],
-                            "capabilities": [],
+                            "date": str(row["valid_at"])[:10],
+                            "summary": content.get("summary") or row["summary"] or row["title"] or "",
+                            "open_threads": open_threads if isinstance(open_threads, list) else [],
+                            "questions": questions if isinstance(questions, list) else [],
+                            "agreements": content.get("agreements") or [],
+                            "capabilities": content.get("capabilities") or [],
                             "_source": "kb",
                             "_valid_at": str(row["valid_at"]),
-                        }
+                        })
+                    if kb_candidates:
+                        kb_result = select_best_handoff(kb_candidates)
             except Exception as _e:
                 logger.warning("[w2] handoff_latest pg query failed: %s", _e)
 
@@ -2496,30 +2522,36 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                 rows = cur.execute(sql_agent, (f"%{agent_filter}%",)).fetchall() if agent_filter else []
                 if not rows:
                     rows = cur.execute(sql_any).fetchall()
-                conn.close()
-                row = select_latest_handoff(rows)
-                if row:
-                    sqlite_result = {
-                        "filename":     row["filename"],
-                        "date":         row["handoff_date"],
-                        "summary":      row["summary"],
-                        "open_threads": _j.loads(row["open_threads"])  if row["open_threads"]  else [],
-                        "questions":    _j.loads(row["questions"])     if row["questions"]     else [],
-                        "agreements":   _j.loads(row["agreements"])    if row["agreements"]    else [],
-                        "capabilities": _j.loads(row["capabilities"])  if row["capabilities"]  else [],
+                sqlite_candidates: list[dict] = []
+                for row in rows:
+                    sqlite_candidates.append({
+                        "filename": row["filename"],
+                        "date": row["handoff_date"],
+                        "summary": row["summary"],
+                        "open_threads": _j.loads(row["open_threads"]) if row["open_threads"] else [],
+                        "questions": _j.loads(row["questions"]) if row["questions"] else [],
+                        "agreements": _j.loads(row["agreements"]) if row["agreements"] else [],
+                        "capabilities": _j.loads(row["capabilities"]) if row["capabilities"] else [],
                         "_source": "sqlite",
                         "_valid_at": row["handoff_date"] or "",
-                    }
+                        "mtime": row["mtime"],
+                    })
+                sqlite_result = select_best_handoff(sqlite_candidates) if sqlite_candidates else None
+                conn.close()
             except Exception as _e:
                 logger.warning("[w2] handoff_latest sqlite query failed: %s", _e)
 
-        # Pick the most recent across both stores
+        # Pick the richest handoff across both stores (substance beats empty recency)
         candidates = [r for r in (kb_result, sqlite_result) if r is not None]
         if not candidates:
             return {"error": "No session handoffs found."}
-        result = max(candidates, key=lambda r: r.get("_valid_at") or "")
-        result.pop("_source", None)
-        result.pop("_valid_at", None)
+        result = select_best_handoff(candidates) or candidates[0]
+        result["next_bite"] = extract_next_bite(
+            result.get("questions") or [],
+            str(result.get("summary") or ""),
+        )
+        for key in ("_source", "_valid_at", "mtime"):
+            result.pop(key, None)
         return result
 
     return await loop.run_in_executor(_executor, _latest)
