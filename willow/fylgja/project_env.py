@@ -97,14 +97,14 @@ def resolve_agent_name(repo: Path | None = None, hint: str = "") -> str:
     if hint.strip():
         return hint.strip()
 
+    active = read_active_agent(root)
+    if active:
+        return active
+
     for key in ("WILLOW_AGENT_NAME", "AGENT_NAME"):
         val = os.environ.get(key, "").strip()
         if val:
             return val
-
-    active = read_active_agent(root)
-    if active:
-        return active
 
     agents = list_agent_identities(root)
     if len(agents) == 1:
