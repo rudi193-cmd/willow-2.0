@@ -14,7 +14,10 @@
     "PYPI_",
     "ANTHROPIC_",
     "OPENROUTER_",
-    "GROQ_"
+    "GROQ_",
+    "GITHUB_",
+    "NPM_",
+    "NODE_"
   ],
   "bind_read_only": [
     "/usr",
@@ -34,6 +37,8 @@
     "{{HOME}}/safe-app-store",
     "{{HOME}}/.local",
     "{{HOME}}/.ssh",
+    "{{HOME}}/.config/gh",
+    "{{HOME}}/.config/git",
     "{{HOME}}/.kaggle",
     "{{HOME}}/Desktop",
     "{{HOME}}/Ashokoa",
