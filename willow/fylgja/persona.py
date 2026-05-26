@@ -20,6 +20,7 @@ USER_PERSONAS_FILE = Path.home() / ".willow" / "user-personas.json"
 _CREATE_KEY = "__create__"
 
 
+
 def _repo_root() -> Path:
     try:
         from willow.fylgja.project_env import repo_root
@@ -218,6 +219,7 @@ def render_create_prompt() -> str:
         "  Or describe the persona you want and I'll draft the content for you.",
         bar,
     ])
+
 
 
 def load_from_seeds(seed_ids: list[str]) -> str:

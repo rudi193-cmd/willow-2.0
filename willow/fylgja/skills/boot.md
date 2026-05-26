@@ -119,7 +119,7 @@ Then respond to the user.
 - Grove unavailable = degraded, not fatal. Continue.
 - Never report "postgres unknown" without probing first (step 3).
 - Compact summaries only — no full diffs, no full handoff content.
-- Persona picker fires via hook before this runs — step 7 is confirm/load, not re-show.
+- Persona picker must be rendered as visible text in the boot response — hook injection is system context only, the user cannot see it without explicit render.
 - No hardcoded names or paths — use `[user]`, `[agent]`, env vars, or parameters.
 - If anchor missing or stale (> 2h): run /startup after for deeper recovery.
 
