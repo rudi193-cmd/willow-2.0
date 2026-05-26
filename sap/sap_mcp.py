@@ -1233,16 +1233,19 @@ async def agent_task_submit(
     task:         str,
     agent:        str = "kart",
     submitted_by: str = "ganesha",
+    allow_net:    bool = False,
 ) -> dict:
     """Queue a task in the Postgres tasks table. Returns task_id immediately.
+    Set allow_net=True for tasks that need internet access (git push, gh, curl, etc.).
     For inline shell execution use agent_dispatch instead."""
-    logger.info("[w2] agent_task_submit app_id=%s agent=%s", app_id, agent)
+    logger.info("[w2] agent_task_submit app_id=%s agent=%s allow_net=%s", app_id, agent, allow_net)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
+    task_text = task if not allow_net else task + "\n# allow_net"
 
     def _submit():
-        task_id = pg.submit_task(task, submitted_by=submitted_by or app_id, agent=agent)
+        task_id = pg.submit_task(task_text, submitted_by=submitted_by or app_id, agent=agent)
         if not task_id:
             return {"error": "failed to submit task"}
         _rl_log_event("task_submit", ref=task_id)
