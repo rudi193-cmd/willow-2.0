@@ -289,16 +289,6 @@ _SEED = [
         "vetted": True,
     },
     {
-        "repo": "holon-run/holon",
-        "stars": 104,
-        "why_fit": "Local-first durable agent runtime (WorkItems, sleep/wake) — aligns with Willow handoffs and fleet agents.",
-        "boost_angle": "Fix #1416 scheduler busy-loop when Sleep waits on background command_task.",
-        "entry_issue": "https://github.com/holon-run/holon/issues/1416",
-        "last_push": "2026-05-25",
-        "confidence": 0.84,
-        "vetted": True,
-    },
-    {
         "repo": "call518/MCP-PostgreSQL-Ops",
         "stars": 149,
         "why_fit": "FastMCP Postgres ops server — complements Willow's Postgres KB daily ops.",

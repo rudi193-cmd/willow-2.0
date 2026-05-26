@@ -102,16 +102,11 @@ def main() -> None:
     init_count = len(stack.get("open_initiatives", []))
     task_count = len(stack.get("open_tasks", []))
 
-    if ok:
-        print(json.dumps({
-            "hookSpecificOutput": {
-                "hookEventName": "Stop",
-                "additionalContext": (
-                    f"[STACK] Written to SOIL {AGENT}/stack/current — "
-                    f"{flag_count} open flags · {init_count} initiatives · {task_count} pending tasks"
-                ),
-            }
-        }))
+    msg = (
+        f"[STACK] Written to SOIL {AGENT}/stack/current — "
+        f"{flag_count} open flags · {init_count} initiatives · {task_count} pending tasks"
+    )
+    print(json.dumps({"stopReason": msg} if ok else {}))
     sys.exit(0)
 
 

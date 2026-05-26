@@ -553,14 +553,18 @@ async def fleet_reload(app_id: str, target: str = "all") -> dict:
 @mcp.tool(annotations={"destructiveHint": True})
 @sap_gate()
 async def fleet_restart(app_id: str) -> dict:
-    """Restart the SAP MCP server process. Claude Code reconnects automatically."""
+    """Restart the SAP MCP server process. Run /mcp in Claude Code to reconnect."""
     logger.info("[w2] fleet_restart app_id=%s — process exiting", app_id)
     import threading
     def _delayed_exit():
         import time; time.sleep(0.2)
         os._exit(0)
     threading.Thread(target=_delayed_exit, daemon=True).start()
-    return {"status": "restarting", "note": "SAP MCP process exiting. Claude Code will reconnect automatically."}
+    return {
+        "status": "restarting",
+        "note": "SAP MCP process exiting. Run /mcp in Claude Code to reconnect.",
+        "kart_daemon": "run_kart.py is a separate persistent process — fleet_restart does NOT restart it. Restart manually if kart_worker.py changed.",
+    }
 
 
 # ── Tools — soil_ domain (SOIL store reads + writes) ─────────────────────────
