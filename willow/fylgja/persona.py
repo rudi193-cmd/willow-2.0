@@ -170,7 +170,7 @@ def parse_selection(prompt: str) -> str | None:
         if 1 <= idx <= len(PERSONA_LIST):
             return PERSONA_LIST[idx - 1]
 
-    m = re.search(r"(?:switch\s+to|persona[:\s]+|use\s+persona\s+)([a-z]+)", lower)
+    m = re.search(r"(?:switch\s+to\s+|persona[:\s]+|use\s+persona\s+)([a-z]+)", lower)
     if m and m.group(1) in PERSONAS:
         return m.group(1)
 
