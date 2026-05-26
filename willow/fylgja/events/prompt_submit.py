@@ -399,6 +399,18 @@ def _inject_stabilization_brief() -> None:
         pass
 
 
+def _run_persona(prompt: str) -> None:
+    """Inject persona picker context and apply selection from user message."""
+    try:
+        from willow.fylgja.persona import prompt_submit_block
+
+        block = prompt_submit_block(is_first=is_first_turn(), prompt=prompt)
+        if block:
+            print(block)
+    except Exception:
+        pass
+
+
 def _run_build_continue() -> None:
     task = get_active_task()
     if not task:
@@ -455,6 +467,7 @@ def main():
 
     _check_identity()
     _boot_guard()
+    _run_persona(prompt)
     increment_turn_count()
     _inject_stabilization_brief()
     _run_source_ring(session_id)
