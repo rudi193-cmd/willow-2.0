@@ -1,1 +1,1 @@
-/home/sean-campbell/willow-2.0/willow/fylgja/skills/willow-worktree.md
+../../willow/fylgja/skills/worktree.md
