@@ -48,6 +48,10 @@
           {
             "type": "command",
             "command": "python3 ~/willow-2.0/scripts/kart_poll.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/willow-2.0/willow/fylgja/events/session_stop.py"
           }
         ]
       }

@@ -345,13 +345,22 @@ def _boot_guard() -> None:
     print(
         "[BOOT-REQUIRED] You have NOT booted this session yet.\n"
         "[BOOT-REQUIRED] STOP — do NOT respond to the user's message yet.\n"
-        "[BOOT-REQUIRED] Run ALL of the following first, in order:\n"
-        "[BOOT-REQUIRED]   1. Read ~/.willow/willow.md\n"
-        "[BOOT-REQUIRED]   2. fleet_status(app_id=hanuman)\n"
-        "[BOOT-REQUIRED]   3. handoff_latest(app_id=hanuman)\n"
-        "[BOOT-REQUIRED]   4. grove_get_history (Grove MCP)\n"
-        "[BOOT-REQUIRED]   5. kb_search on the user's task\n"
-        "[BOOT-REQUIRED] After all five complete, THEN answer the user's question.\n"
+        "[BOOT-REQUIRED] Run ALL boot steps first (willow/fylgja/skills/boot.md):\n"
+        f"[BOOT-REQUIRED]   1. mai_read_file('~/.willow/willow.md') — load the fleet contract\n"
+        f"[BOOT-REQUIRED]   2. Local context — agent={AGENT}, repo root, branch, diff summary\n"
+        f"[BOOT-REQUIRED]   3. fleet_status(app_id={AGENT}) — Postgres down = hard stop\n"
+        f"[BOOT-REQUIRED]   4. handoff_latest(app_id={AGENT}) — what was in flight\n"
+        f"[BOOT-REQUIRED]   5. grove_get_history on agent channel since anchor written_at\n"
+        f"[BOOT-REQUIRED]   6. kb_search(semantic=true, query=<current task topic>)\n"
+        f"[BOOT-REQUIRED]   7. Persona — read ~/.willow/willow-2.0-active-persona, confirm or switch\n"
+        f"[BOOT-REQUIRED]   8. Corrections + Preferences — corpus/corrections, corpus/preferences\n"
+        f"[BOOT-REQUIRED]   9. Stack snapshot — SOIL {AGENT}/stack/current\n"
+        f"[BOOT-REQUIRED]  10. Open initiatives — soil_list({AGENT}/overseer), status!=closed\n"
+        f"[BOOT-REQUIRED]  11. Ledger — ledger_read(project=[user], limit=3)\n"
+        f"[BOOT-REQUIRED]  12. KB continuity — startup_continuity.json queries in parallel\n"
+        f"[BOOT-REQUIRED]  13. Flag triage — soil_list({AGENT}/flags), close dups, surface top 5\n"
+        f"[BOOT-REQUIRED]  14. Boot report — <=6 sentences: fleet, persona, threads, corrections, flags, next_bite\n"
+        "[BOOT-REQUIRED] After all 14 steps complete, THEN answer the user's question.\n"
         "[BOOT-REQUIRED] Skipping boot and responding directly is a failure."
     )
 
@@ -397,7 +406,7 @@ def _run_build_continue() -> None:
     print(
         f"[BUILD-CONTINUE] Active work in progress: {task[:120]}\n"
         f"[BUILD-CONTINUE] Keep building. Do not stop to report status or ask for direction.\n"
-        f"[BUILD-CONTINUE] Only pause if blocked or if Sean asks a question."
+        f"[BUILD-CONTINUE] Only pause if blocked or if [user] asks a question."
     )
 
 

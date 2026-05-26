@@ -165,10 +165,13 @@
 
 | Path |
 |------|
+| `Ashokoa` |
 | `apps/law-gazelle` |
 | `dashboard-fresh` |
 | `docs/handoffs` |
+| `docs/sean-session-metadata-report.md` |
 | `issue_body.md` |
+| `personal` |
 | `sap/adapters` |
 | `sap/mcp_registry.json` |
 | `schema_dump.txt` |

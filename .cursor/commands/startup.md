@@ -7,7 +7,7 @@ description: Willow 2.0 boot recovery — anchor, inbox, ledger, KB continuity (
 
 Recovery path when boot is degraded, the session anchor is stale, or MCP handoff/tools failed.
 
-Default boot is the compact 7-step loop in [`willow.md`](../../willow.md). SessionStart (Cursor `sessionStart` hook) already writes `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`.
+Default boot is the 14-step sequence in `/boot` skill (`willow/fylgja/skills/boot.md`). See [`willow.md`](../../willow.md) for the contract. SessionStart (Cursor `sessionStart` hook) already writes `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json`.
 
 ## When to invoke
 
