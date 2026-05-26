@@ -91,6 +91,26 @@ def _validate_shell_cmd(cmd: str) -> bool:
 
 
 def execute_task(task_text: str) -> dict:
+    # Self-reload: if the file changed since last import, reload the module and
+    # delegate to the fresh execute_task. This lets even the old running daemon
+    # pick up code edits without an MCP/process restart.
+    import importlib as _il
+    import sys as _sys
+    _mod = _sys.modules.get(__name__)
+    if _mod is not None:
+        _cur_mt = Path(__file__).stat().st_mtime
+        _last_mt = getattr(_mod, '_kart_exe_mtime', None)
+        if _last_mt is None:
+            _mod._kart_exe_mtime = _cur_mt
+        elif _cur_mt != _last_mt:
+            try:
+                _il.reload(_mod)
+                _mod._kart_exe_mtime = _cur_mt
+                logger.info("kart_worker reloaded from execute_task")
+                return _mod.execute_task(task_text)
+            except Exception as _re:
+                logger.warning("kart_worker reload failed: %s", _re)
+
     outputs = []
     step = 0
     errors = []
