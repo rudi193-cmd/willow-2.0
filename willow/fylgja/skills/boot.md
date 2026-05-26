@@ -112,6 +112,48 @@ Then respond to the user.
 - No hardcoded names or paths — use `[user]`, `[agent]`, env vars, or parameters.
 - If anchor missing or stale (> 2h): run /startup after for deeper recovery.
 
+## Handoff authoring — v2 schema
+
+Write session handoffs to `~/.willow/handoffs/{agent}/` — **not** `docs/handoffs/` (that directory contains old-format files and will produce the wrong schema).
+
+Filename pattern: `session_handoff-{date}{letter}_{agent}.md` (e.g. `session_handoff-2026-05-26d_hanuman.md`).
+
+```markdown
+---
+agent: {agent}
+date: {YYYY-MM-DD}
+session: {YYYY-MM-DD}{letter}
+runtime: claude-code
+format: v2
+---
+
+# HANDOFF: {one-line title}
+
+## What I Now Understand
+
+{One paragraph summary — what changed this session, what was resolved, what was discovered.}
+
+## Open Threads
+
+- **[label]** — description. Fix_path or next action ≤150 chars.
+
+## What We Agreed On
+
+- Bullet list of decisions, commitments, constraints that carry forward.
+
+## Questions
+
+Q17: {next single bite — one sentence, no preamble}
+```
+
+**Required:** `format: v2` and `session:` in frontmatter. Without them `handoff_latest` will not surface this file.
+**Required:** Section headers must match exactly — `## What I Now Understand`, `## Open Threads`, `## What We Agreed On`, `## Questions`.
+**Required:** Q17 line must be `Q17: <text>` — no question mark in the key, colon-delimited, no preamble.
+
+After writing, run `handoff_rebuild(app_id={agent})` then verify with `handoff_latest(app_id={agent})`.
+
+---
+
 ## Recovery
 
 If boot is degraded or the anchor is stale: run `/startup`. That skill handles anchor recovery, KB continuity, ledger check, and flag triage at depth.
