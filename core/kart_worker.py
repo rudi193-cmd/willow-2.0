@@ -38,6 +38,8 @@ _SHELL_STARTERS = (
     'mkdir ', 'chmod ', 'find ', 'grep ', 'curl ', 'echo ',
     'mv ', 'rm ', 'ls ', 'cat ', 'git ', 'bash ', 'ln ',
     'ollama ', 'jupyter ', 'kaggle ',
+    'gh ', 'node ', 'npm ', 'npx ', 'jq ',
+    'tar ', 'unzip ', 'zip ', 'wget ', 'ssh ', 'scp ',
     str(Path.home()) + os.sep,
     '/usr/', '/opt/',
 )
@@ -154,7 +156,7 @@ def execute_task(task_text: str) -> dict:
         step += 1
         label = cmd.splitlines()[0][:80] if cmd_type == 'script' else cmd
         try:
-                proc = _spawn(cmd_type, cmd, env, allow_net=allow_net)
+            proc = _spawn(cmd_type, cmd, env, allow_net=allow_net)
 
             stdout_lines = []
             stderr_lines = []
@@ -315,10 +317,27 @@ def _kart_run_close(task_id: str, status: str) -> None:
 
 def kart_loop(interval: int = 5) -> None:
     """Daemon loop — claim and execute one task at a time, poll every interval seconds."""
+    import importlib
+    import sys as _sys
+    _self_path = Path(__file__)
+    _self_mtime = _self_path.stat().st_mtime
+
     logger.info("kart daemon started (dashboard-integrated, poll=%ds)", interval)
     conn = None
     while True:
         try:
+            # Hot-reload self if the file changed — picks up edits without MCP restart.
+            _cur_mtime = _self_path.stat().st_mtime
+            if _cur_mtime != _self_mtime:
+                _self_mtime = _cur_mtime
+                _mod = _sys.modules.get(__name__)
+                if _mod is not None:
+                    try:
+                        importlib.reload(_mod)
+                        logger.info("kart_worker reloaded from disk")
+                    except Exception as _re:
+                        logger.warning("kart_worker reload failed: %s", _re)
+
             if conn is None:
                 conn = _pg_connect()
             task = _claim_task(conn)
