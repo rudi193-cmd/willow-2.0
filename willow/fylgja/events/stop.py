@@ -467,6 +467,13 @@ def main():
     except Exception:
         pass
 
+    # Rebuild handoff index so handoff_latest is current next session
+    try:
+        if call is not None:
+            call("handoff_rebuild", {"app_id": _AGENT}, timeout=30)
+    except Exception:
+        pass
+
     # Hook timing log
     _dur_ms = int((_time.monotonic() - _t0) * 1000)
     try:
