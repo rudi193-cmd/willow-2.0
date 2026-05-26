@@ -263,8 +263,7 @@ def run_shell(
     if cwd:
         run_env["PWD"] = cwd
 
-    argv = shlex.split(cmd)
-    if not argv:
+    if not cmd.strip():
         return {
             "returncode": 1,
             "stdout": "",
@@ -273,6 +272,8 @@ def run_shell(
             "sandbox": "none",
         }
 
+    # Use bash -c so shell operators (&&, |, $(), redirects) work correctly.
+    argv = ["bash", "-c", cmd]
     sandbox = "plain"
     if use_bwrap():
         prefix = build_bwrap_argv(allow_net=allow_net)

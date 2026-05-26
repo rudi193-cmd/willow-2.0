@@ -175,6 +175,7 @@
 | `issue_body.md` |
 | `personal` |
 | `sap/adapters` |
+| `sap/grove_mcp.sh` |
 | `sap/mcp_registry.json` |
 | `schema_dump.txt` |
 | `setup.sh` |

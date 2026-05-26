@@ -1667,6 +1667,20 @@ class PgBridge:
         except Exception:
             return False
 
+    def tasks_by_status(self, agent: str = "kart", statuses: list | None = None, limit: int = 20) -> list:
+        """Read-only task query — does NOT claim tasks."""
+        self._ensure_conn()
+        if statuses is None:
+            statuses = ["pending", "running", "complete", "failed", "completed"]
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, task, status, result, submitted_by, created_at, updated_at
+                FROM tasks
+                WHERE agent = %s AND status = ANY(%s)
+                ORDER BY created_at DESC LIMIT %s
+            """, (agent, statuses, limit))
+            return [dict(r) for r in cur.fetchall()]
+
     # ── Opus ─────────────────────────────────────────────────────────────────
 
     def search_opus(self, query: str, limit: int = 20) -> list:

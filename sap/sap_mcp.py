@@ -1293,39 +1293,31 @@ async def kart_task_run(
     loop = asyncio.get_running_loop()
 
     def _run():
-        from core.kart_sandbox import run_shell_result_for_task, task_allows_network
-
-        tasks = pg.pending_tasks(agent=agent, limit=limit)
-        results = []
+        import time as _time
+        # The daemon (kart_worker.kart_loop) claims and executes tasks automatically.
+        # kart_task_run polls until pending+running tasks finish, then returns their results.
         timeout = int(os.environ.get("KART_POLL_TIMEOUT", "120"))
-        for t in tasks:
-            task_id = t["id"]
-            cmd     = t["task"]
-            if cmd.startswith('{"type":"workflow_phase"'):
+        deadline = _time.monotonic() + timeout
+        seen: set = set()
+        results = []
+
+        while _time.monotonic() < deadline:
+            rows = pg.tasks_by_status(agent=agent, limit=limit * 4)
+            active = [r for r in rows if r.get("status") in ("pending", "running")]
+            done = [r for r in rows if r.get("status") in ("complete", "failed", "completed")
+                    and r["id"] not in seen]
+            for r in done:
+                seen.add(r["id"])
                 results.append({
-                    "task_id": task_id,
-                    "status": "skipped",
-                    "cmd": cmd[:80],
-                    "note": "workflow phases — run kart_poll Stop hook or daemon execute_task",
+                    "task_id": r["id"],
+                    "status": r["status"],
+                    "cmd": (r.get("task") or "")[:80],
+                    "result": r.get("result"),
                 })
-                continue
-            if t.get("goal"):
-                results.append({
-                    "task_id": task_id,
-                    "status": "skipped",
-                    "cmd": cmd[:80],
-                    "note": "goal tasks — run kart_poll Stop hook",
-                })
-                continue
-            _rl_log_event("kart_run", ref=task_id)
-            status, result = run_shell_result_for_task(
-                cmd,
-                timeout=timeout,
-                allow_net=task_allows_network(cmd),
-            )
-            pg.task_complete(task_id, result, status)
-            _rl_log_event(f"kart_{status}", ref=task_id)
-            results.append({"task_id": task_id, "status": status, "cmd": cmd[:80], "sandbox": result.get("sandbox")})
+            if not active:
+                break
+            _time.sleep(1)
+
         return {"executed": len(results), "results": results}
 
     return await loop.run_in_executor(_executor, _run)

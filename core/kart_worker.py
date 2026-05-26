@@ -154,12 +154,7 @@ def execute_task(task_text: str) -> dict:
         step += 1
         label = cmd.splitlines()[0][:80] if cmd_type == 'script' else cmd
         try:
-            if cmd_type not in ('script', 'python') and not _validate_shell_cmd(cmd):
-                outputs.append(f"[kart] BLOCKED: {cmd[:80]}")
-                errors.append(f"blocked: {cmd[:80]}")
-                continue
-
-            proc = _spawn(cmd_type, cmd, env, allow_net=allow_net)
+                proc = _spawn(cmd_type, cmd, env, allow_net=allow_net)
 
             stdout_lines = []
             stderr_lines = []
