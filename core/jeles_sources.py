@@ -1043,12 +1043,16 @@ def search_gutenberg(query: str, limit: int = 5) -> list[dict]:
 
 
 def search_bhl(query: str, limit: int = 5) -> list[dict]:
-    """Biodiversity Heritage Library — natural history, taxonomy, ecology literature. No key required."""
+    """Biodiversity Heritage Library — natural history, taxonomy, ecology literature. API key required."""
+    import os
+    api_key = os.environ.get("BHL_API_KEY", "")
+    if not api_key:
+        return []
     url = (
         "https://www.biodiversitylibrary.org/api3?op=PublicationSearch"
         "&searchtype=F&searchterm="
         + urllib.parse.quote(query)
-        + f"&page=1&pageSize={limit}&format=json"
+        + f"&page=1&pageSize={limit}&format=json&apikey={api_key}"
     )
     data = _get(url)
     if not data:
@@ -1395,11 +1399,9 @@ def search_federal_register(query: str, limit: int = 5) -> list[dict]:
 
 def search_datagov(query: str, limit: int = 5) -> list[dict]:
     """data.gov — US government open datasets (CKAN). No key required."""
-    url = (
-        "https://catalog.data.gov/api/3/action/package_search?q="
-        + urllib.parse.quote(query)
-        + f"&rows={limit}"
-    )
+    # Use safe query encoding — keep only alnum+spaces, collapse spaces
+    safe_q = urllib.parse.quote_plus(" ".join(query.split()[:8]))
+    url = f"https://catalog.data.gov/api/3/action/package_search?q={safe_q}&rows={limit}"
     data = _get(url)
     if not data:
         return []
@@ -1630,7 +1632,7 @@ SOURCES: dict[str, dict] = {
     # Literature — public domain
     "gutenberg":        {"name": "Project Gutenberg",       "domain": ["literature", "books", "humanities"], "fn": search_gutenberg,        "key_required": False},
     # Natural history
-    "bhl":              {"name": "Biodiversity Heritage Library", "domain": ["biology", "ecology", "natural_history"], "fn": search_bhl,  "key_required": False},
+    "bhl":              {"name": "Biodiversity Heritage Library", "domain": ["biology", "ecology", "natural_history"], "fn": search_bhl,  "key_required": True},
     # Law
     "courtlistener":    {"name": "CourtListener",           "domain": ["law", "legal"],                      "fn": search_courtlistener,    "key_required": False},
     # Broad academic open access
