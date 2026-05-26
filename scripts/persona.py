@@ -1,175 +1,30 @@
 #!/usr/bin/env python3
 # b17: PER20  ΔΣ=42
 """
-persona.py — session persona injector for willow-2.0.
-
-Every prompt: if no persona set, shows full picker.
-              if persona set, shows compact status line + injects context.
-
-State stored in ~/.willow/willow-2.0-active-persona.
-To switch: tell the LLM the number or name; it writes the state file.
-Wire as second UserPromptSubmit hook in .claude/settings.json.
+persona.py — CLI wrapper for willow.fylgja.persona (hook integration lives in Fylgja events).
 """
-import sqlite3
 import sys
 from pathlib import Path
 
-# Inline first-turn check — avoids import path dependency
-_SESSION_FILE = Path.home() / ".willow" / "willow-2.0-active-persona"  # reuse below
+_REPO = Path(__file__).resolve().parent.parent
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
 
-
-def _is_first_turn() -> bool:
-    try:
-        import json as _json
-        import os as _os
-        agent = _os.environ.get("AGENT_NAME", "hanuman")
-        sf = Path(f"/tmp/willow-session-{agent}.json")
-        if sf.exists():
-            return _json.loads(sf.read_text()).get("turn_count", 0) == 0
-    except Exception:
-        pass
-    return True  # safe default: show picker if uncertain
-
-REPO_ROOT = Path(__file__).resolve().parent
-HOME = Path.home()
-
-DB_PATH    = Path.home() / ".willow" / "willow-2.0.db"
-STATE_FILE = Path.home() / ".willow" / "willow-2.0-active-persona"
-
-PERSONAS = {
-    "oakenscroll": {
-        "label": "Oakenscroll",
-        "desc": "Professor, Dept. of Numerical Ethics & Accidental Cosmology, UTETY",
-        "source": "seeds",
-        "seed_ids": ["OAKENSCROLL_SEED_v1", "OAKENSCROLL_SEED_v2", "OAKENSCROLL_SEED_v3"],
-    },
-    "hanuman": {
-        "label": "Hanuman",
-        "desc": "Builder. Fleet coordinator. Claude Code CLI.",
-        "source": "file",
-        "path": str(REPO_ROOT / "willow" / "fylgja" / "personas" / "hanuman.md"),
-    },
-    "loki": {
-        "label": "Loki",
-        "desc": "The one they didn't plan for. Fleet accountant.",
-        "source": "file",
-        "path": str(REPO_ROOT / "willow" / "fylgja" / "personas" / "loki.md"),
-    },
-    "skirnir": {
-        "label": "Skirnir",
-        "desc": "Emissary. Gate-witness.",
-        "source": "file",
-        "path": str(REPO_ROOT / "willow" / "fylgja" / "personas" / "skirnir.md"),
-    },
-    "vishwakarma": {
-        "label": "Vishwakarma",
-        "desc": "Divine architect. Builder of the SAFE App Store.",
-        "source": "file",
-        "path": str(REPO_ROOT / "willow" / "fylgja" / "personas" / "vishwakarma.md"),
-    },
-    "none": {
-        "label": "None",
-        "desc": "Blank slate — no persona injected.",
-        "source": "none",
-    },
-}
-
-PERSONA_LIST = ["oakenscroll", "hanuman", "loki", "skirnir", "vishwakarma", "none"]
-
-
-def active_persona() -> str:
-    if STATE_FILE.exists():
-        name = STATE_FILE.read_text().strip().lower()
-        if name in PERSONAS:
-            return name
-    return ""
-
-
-def render_picker(active: str) -> str:
-    lines = ["<persona-picker>"]
-    for i, key in enumerate(PERSONA_LIST, 1):
-        p = PERSONAS[key]
-        marker = " ←" if key == active else ""
-        lines.append(f"  {i}. {p['label']}{marker} — {p['desc']}")
-    lines.append("")
-    if active:
-        lines.append(f"  Active: {active}. To switch, tell me the number or name.")
-    else:
-        lines.append("  No persona active. Tell me a number or name to pick one.")
-    lines.append("</persona-picker>")
-    return "\n".join(lines)
-
-
-def render_status(active: str) -> str:
-    labels = []
-    for i, key in enumerate(PERSONA_LIST, 1):
-        marker = f"[{i}:{PERSONAS[key]['label']} ←]" if key == active else f"{i}:{PERSONAS[key]['label']}"
-        labels.append(marker)
-    return f"<persona> {' | '.join(labels)} | say \"switch to N\" to change </persona>"
-
-
-def load_from_seeds(seed_ids: list) -> str:
-    if not DB_PATH.exists():
-        print("persona.py: DB not found", file=sys.stderr)
-        return ""
-    conn = sqlite3.connect(str(DB_PATH))
-    lines = ["# Persona — Session Injection", ""]
-    for sid in seed_ids:
-        cur = conn.execute(
-            "SELECT section, body FROM seed_sections WHERE seed_id = ? ORDER BY section",
-            (sid,),
-        )
-        rows = cur.fetchall()
-        if not rows:
-            print(f"persona.py: {sid} not found in seed_sections — skipping", file=sys.stderr)
-            continue
-        lines.append(f"## {sid}")
-        for section, body in rows:
-            lines.append(f"### {section}")
-            lines.append("```json")
-            lines.append(body)
-            lines.append("```")
-            lines.append("")
-    conn.close()
-    return "\n".join(lines)
-
-
-def load_from_file(path: str, label: str) -> str:
-    p = Path(path)
-    if not p.exists():
-        print(f"persona.py: CLAUDE.md not found at {path}", file=sys.stderr)
-        return ""
-    return f"# Persona — {label}\n\n{p.read_text()}"
-
-
-def load_persona(name: str) -> str:
-    if not name or name not in PERSONAS:
-        return ""
-    p = PERSONAS[name]
-    source = p["source"]
-    if source == "seeds":
-        return load_from_seeds(p["seed_ids"])
-    if source == "file":
-        return load_from_file(p["path"], p["label"])
-    return ""  # "none"
+from willow.fylgja import persona as _persona  # noqa: E402
+from willow.fylgja._state import is_first_turn  # noqa: E402
 
 
 def main() -> int:
-    active = active_persona()
-    parts  = []
+    active = _persona.active_persona()
+    parts: list[str] = []
 
-    if _is_first_turn():
-        # Session start: always show picker so Sean can choose.
-        # Active persona is marked with ← in the picker.
-        parts.append(render_picker(active))
-    else:
-        # Subsequent turns: compact status line only.
-        if active:
-            parts.append(render_status(active))
+    if is_first_turn():
+        parts.append(_persona.render_picker(active))
+    elif active:
+        parts.append(_persona.render_status(active))
 
-    # Always inject persona context when active (any turn).
-    if active:
-        context = load_persona(active)
+    if active and active != "none":
+        context = _persona.load_persona(active)
         if context:
             parts.append(context)
 
