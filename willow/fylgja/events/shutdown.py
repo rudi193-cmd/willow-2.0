@@ -75,13 +75,12 @@ def run_compost() -> None:
     snippet = " / ".join(
         l.strip() for l in turns[-6:] if l.strip() and not l.startswith("[")
     )[:200] or f"{len(turns)} turns"
-    result = call("willow_knowledge_ingest", {
+    result = call("kb_ingest", {
         "app_id": AGENT,
         "title": f"Session {today} — {AGENT}",
         "summary": snippet,
         "source_type": "session",
         "category": "session",
-        "domain": AGENT,
     }, timeout=15)
     if isinstance(result, dict) and result.get("status") == "ingested":
         CURSOR_FILE.write_text(now)
@@ -244,13 +243,12 @@ def run_grove_ingest() -> None:
 
         # Ingest to LOAM
         try:
-            call("willow_knowledge_ingest", {
+            call("kb_ingest", {
                 "app_id": AGENT,
                 "title": f"#{channel} — {today}",
                 "summary": str(dump_path),
                 "source_type": "grove_channel",
                 "category": "grove",
-                "domain": AGENT,
             }, timeout=15)
         except Exception:
             pass

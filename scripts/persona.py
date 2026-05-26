@@ -14,6 +14,22 @@ import sqlite3
 import sys
 from pathlib import Path
 
+# Inline first-turn check — avoids import path dependency
+_SESSION_FILE = Path.home() / ".willow" / "willow-2.0-active-persona"  # reuse below
+
+
+def _is_first_turn() -> bool:
+    try:
+        import json as _json
+        import os as _os
+        agent = _os.environ.get("AGENT_NAME", "hanuman")
+        sf = Path(f"/tmp/willow-session-{agent}.json")
+        if sf.exists():
+            return _json.loads(sf.read_text()).get("turn_count", 0) == 0
+    except Exception:
+        pass
+    return True  # safe default: show picker if uncertain
+
 REPO_ROOT = Path(__file__).resolve().parent
 HOME = Path.home()
 
@@ -142,10 +158,17 @@ def main() -> int:
     active = active_persona()
     parts  = []
 
-    if not active:
-        pass  # picker shown at end of boot by agent, not on every prompt
+    if _is_first_turn():
+        # Session start: always show picker so Sean can choose.
+        # Active persona is marked with ← in the picker.
+        parts.append(render_picker(active))
     else:
-        parts.append(render_status(active))
+        # Subsequent turns: compact status line only.
+        if active:
+            parts.append(render_status(active))
+
+    # Always inject persona context when active (any turn).
+    if active:
         context = load_persona(active)
         if context:
             parts.append(context)

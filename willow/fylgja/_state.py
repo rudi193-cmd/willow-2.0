@@ -22,7 +22,25 @@ def get_turn_count() -> int:
 
 
 def is_first_turn() -> bool:
-    return get_turn_count() <= 1
+    return get_turn_count() == 0
+
+
+def increment_turn_count() -> None:
+    try:
+        state = {}
+        if SESSION_FILE.exists():
+            state = json.loads(SESSION_FILE.read_text())
+        state["turn_count"] = state.get("turn_count", 0) + 1
+        SESSION_FILE.write_text(json.dumps(state))
+    except Exception:
+        pass
+
+
+def reset_turn_count() -> None:
+    try:
+        SESSION_FILE.write_text(json.dumps({"turn_count": 0}))
+    except Exception:
+        pass
 
 
 def get_trust_state() -> dict:
