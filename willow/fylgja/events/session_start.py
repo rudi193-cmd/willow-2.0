@@ -619,6 +619,13 @@ def main():
     )
 
     try:
+        from willow.fylgja.persona import anchor_lines as _persona_lines
+
+        lines.append(_persona_lines())
+    except Exception:
+        pass
+
+    try:
         from willow.fylgja.cross_runtime import anchor_lines as _cross_runtime_lines
 
         lines.extend(_cross_runtime_lines())
