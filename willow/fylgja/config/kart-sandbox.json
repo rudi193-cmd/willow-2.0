@@ -17,7 +17,8 @@
     "GROQ_",
     "GITHUB_",
     "NPM_",
-    "NODE_"
+    "NODE_",
+    "SSH_AUTH"
   ],
   "bind_read_only": [
     "/usr",
@@ -26,7 +27,8 @@
     "/lib",
     "/lib64",
     "/lib32",
-    "/sbin"
+    "/sbin",
+    "/sys"
   ],
   "bind_read_write": [
     "{{WILLOW_ROOT}}",
@@ -52,7 +54,10 @@
     "{{WILLOW_AGENTS_ROOT}}",
     "{{HOME}}/sean-data-vault",
     "{{HOME}}/.willow-venv",
-    "{{WILLOW_ROOT}}/.venv-dev"
+    "{{WILLOW_ROOT}}/.venv-dev",
+    "{{HOME}}/.gitconfig",
+    "{{HOME}}/.npmrc",
+    "/run/user"
   ],
   "worktree_scan_roots": [
     "{{WILLOW_ROOT}}/worktrees"
