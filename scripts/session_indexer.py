@@ -8,7 +8,7 @@ Both tables live in willow_20.
 import json
 import os
 import glob
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 try:
@@ -27,6 +27,29 @@ SESSION_ROOT = str(Path.home() / ".claude" / "projects")
 
 # Minimum user message length to store (filters system-injected noise)
 MIN_MSG_LENGTH = 8
+
+
+def _normalize_record_type(obj: dict) -> str:
+    """Claude Code uses type=; Cursor agent transcripts use role=."""
+    t = obj.get("type") or obj.get("role") or ""
+    if t in ("human",):
+        return "user"
+    return str(t)
+
+
+def _strip_user_query(text: str) -> str:
+    """Cursor wraps prompts in <user_query>…</user_query>."""
+    import re
+
+    m = re.search(r"<user_query>\s*(.*?)\s*</user_query>", text, re.DOTALL | re.IGNORECASE)
+    return (m.group(1) if m else text).strip()
+
+
+def _user_message_text(obj: dict) -> str:
+    msg = obj.get("message", {}) if isinstance(obj.get("message"), dict) else {}
+    content = msg.get("content", obj.get("content", ""))
+    text = _strip_user_query(extract_text(content))
+    return text
 
 
 def classify_tool(name: str) -> str:
@@ -91,37 +114,37 @@ def parse_session(filepath: str) -> dict | None:
                 except json.JSONDecodeError:
                     continue
 
-                ts = obj.get("timestamp")
+                ts = obj.get("timestamp") or obj.get("createdAt")
                 if ts:
                     timestamps.append(ts)
 
-                obj_type = obj.get("type", "")
+                obj_type = _normalize_record_type(obj)
 
                 if obj_type == "user":
-                    msg = obj.get("message", {})
-                    if msg.get("role") == "user":
-                        text = extract_text(msg.get("content", ""))
-                        # Skip system-injected blocks (hook output, task notifications, etc.)
-                        if (
-                            text
-                            and len(text) >= MIN_MSG_LENGTH
-                            and not text.startswith("[BOOT-REQUIRED]")
-                            and not text.startswith("<task-notification>")
-                            and not text.startswith("<local-command-caveat>")
-                            and not text.startswith("This session is being continued")
-                        ):
-                            user_messages.append({
-                                "session_id": session_id,
-                                "turn_index": turn_index,
-                                "timestamp": ts,
-                                "text": text,
-                                "uuid": obj.get("uuid", ""),
-                                "project_dir": project_dir,
-                            })
-                            turn_index += 1
+                    text = _user_message_text(obj)
+                    if obj.get("message", {}).get("role") not in ("user", "human", None) and not obj.get("role"):
+                        text = ""
+                    # Skip system-injected blocks (hook output, task notifications, etc.)
+                    if (
+                        text
+                        and len(text) >= MIN_MSG_LENGTH
+                        and not text.startswith("[BOOT-REQUIRED]")
+                        and not text.startswith("<task-notification>")
+                        and not text.startswith("<local-command-caveat>")
+                        and not text.startswith("This session is being continued")
+                    ):
+                        user_messages.append({
+                            "session_id": session_id,
+                            "turn_index": turn_index,
+                            "timestamp": ts,
+                            "text": text,
+                            "uuid": obj.get("uuid", ""),
+                            "project_dir": project_dir,
+                        })
+                        turn_index += 1
 
                 elif obj_type == "assistant":
-                    msg = obj.get("message", {})
+                    msg = obj.get("message", {}) if isinstance(obj.get("message"), dict) else obj
                     content = msg.get("content", [])
                     if isinstance(content, list):
                         for item in content:
@@ -139,7 +162,12 @@ def parse_session(filepath: str) -> dict | None:
         return None
 
     if not timestamps:
-        return None
+        try:
+            st = os.stat(filepath)
+            iso = datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat()
+            timestamps = [iso, iso]
+        except OSError:
+            return None
 
     timestamps.sort()
     started_at = timestamps[0]

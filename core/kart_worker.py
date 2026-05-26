@@ -7,22 +7,28 @@ the dashboard process — no separate SAP gate check needed since the dashboard
 is already an authorized context.
 
 Polls public.tasks every 5s, claims and executes pending tasks via bwrap sandbox.
+Sandbox policy: core/kart_sandbox.py + willow/fylgja/config/kart-sandbox.json
 """
 import json
 import logging
 import os
 import re
 import resource as _resource
-import shutil as _shutil
 import subprocess
 import sys
 import threading
 import time
 from pathlib import Path
 
-logger = logging.getLogger("kart_worker")
+from core.kart_sandbox import (
+    bwrap_available,
+    build_bwrap_argv,
+    kart_env,
+    task_allows_network,
+    willow_repo_root,
+)
 
-_BWRAP: str | None = _shutil.which("bwrap")
+logger = logging.getLogger("kart_worker")
 
 _ALLOW_NET_DIRECTIVE = "# allow_net"
 
@@ -36,89 +42,6 @@ _SHELL_STARTERS = (
 )
 
 
-def _task_allows_network(task_text: str) -> bool:
-    return any(line.strip() == _ALLOW_NET_DIRECTIVE for line in task_text.splitlines())
-
-
-def _bwrap_prefix(allow_net: bool = False) -> list[str]:
-    home = os.path.expanduser("~")
-    args = [
-        "bwrap",
-        "--ro-bind", "/usr", "/usr",
-        "--ro-bind", "/etc", "/etc",
-        "--dev", "/dev",
-        "--proc", "/proc",
-        "--bind", "/tmp", "/tmp",
-        "--unshare-pid",
-        "--die-with-parent",
-        "--bind", str(Path(__file__).parent.parent), str(Path(__file__).parent.parent),
-    ]
-    if not allow_net:
-        args.insert(1, "--unshare-net")
-    else:
-        ssh_dir = os.path.join(home, ".ssh")
-        if os.path.exists(ssh_dir):
-            args += ["--ro-bind", ssh_dir, ssh_dir]
-        netrc = os.path.join(home, ".netrc")
-        if os.path.exists(netrc):
-            args += ["--ro-bind", netrc, netrc]
-    willow_store = os.path.join(home, ".willow")
-    if os.path.exists(willow_store):
-        args += ["--bind", willow_store, willow_store]
-    pg_socket_dir = "/var/run/postgresql"
-    if os.path.exists(pg_socket_dir):
-        args += ["--bind", pg_socket_dir, pg_socket_dir]
-    for path in ("/bin", "/lib", "/lib64", "/lib32", "/sbin"):
-        if os.path.exists(path):
-            args += ["--ro-bind", path, path]
-    agents_dir = os.path.join(home, "agents")
-    if os.path.exists(agents_dir):
-        args += ["--bind", agents_dir, agents_dir]
-    ashokoa = os.path.join(home, "Ashokoa")
-    if os.path.exists(ashokoa):
-        args += ["--ro-bind", ashokoa, ashokoa]
-    sean_data_vault = os.path.join(home, "sean-data-vault")
-    args += ["--ro-bind-try", sean_data_vault, sean_data_vault]
-    desktop = os.path.join(home, "Desktop")
-    if os.path.exists(desktop):
-        args += ["--ro-bind", desktop, desktop]
-    github_dir = os.path.join(home, "github")
-    if os.path.exists(github_dir):
-        args += ["--ro-bind", github_dir, github_dir]
-    safe_app_store = os.path.join(home, "safe-app-store")
-    if os.path.exists(safe_app_store):
-        args += ["--bind", safe_app_store, safe_app_store]
-    local_dir = os.path.join(home, ".local")
-    if os.path.exists(local_dir):
-        args += ["--ro-bind", local_dir, local_dir]
-    kaggle_dir = os.path.join(home, ".kaggle")
-    if os.path.exists(kaggle_dir):
-        args += ["--ro-bind", kaggle_dir, kaggle_dir]
-    if os.path.exists("/media/willow"):
-        args += ["--bind", "/media/willow", "/media/willow"]
-    willow_venv = os.path.join(home, ".willow-venv")
-    if os.path.exists(willow_venv):
-        args += ["--ro-bind", willow_venv, willow_venv]
-    repo_venv = str(Path(__file__).parent / ".venv-dev")
-    if os.path.exists(repo_venv) and repo_venv != willow_venv:
-        args += ["--ro-bind", repo_venv, repo_venv]
-    try:
-        import psycopg2 as _pg2
-        pg2_dir = os.path.dirname(_pg2.__file__)
-        if os.path.exists(pg2_dir):
-            args += ["--ro-bind", pg2_dir, pg2_dir]
-        libs_dir = os.path.join(os.path.dirname(pg2_dir), "psycopg2_binary.libs")
-        if os.path.exists(libs_dir):
-            args += ["--ro-bind", libs_dir, libs_dir]
-    except ImportError:
-        pass
-    import sysconfig
-    user_site = sysconfig.get_path("purelib")
-    if user_site and os.path.exists(user_site):
-        args += ["--ro-bind", user_site, user_site]
-    return args
-
-
 def _resource_limits():
     _resource.setrlimit(_resource.RLIMIT_CPU, (1800, 1800))
     _resource.setrlimit(_resource.RLIMIT_AS,  (8 * 1024 ** 3, 8 * 1024 ** 3))
@@ -126,7 +49,7 @@ def _resource_limits():
 
 
 def _spawn(cmd_type: str, cmd: str, env: dict, allow_net: bool = False) -> subprocess.Popen:
-    prefix = _bwrap_prefix(allow_net=allow_net)
+    prefix = build_bwrap_argv(allow_net=allow_net)
     if cmd_type == "python":
         proc = subprocess.Popen(
             prefix + ["python3", "-"],
@@ -220,37 +143,11 @@ def execute_task(task_text: str) -> dict:
     if not commands:
         return {"success": False, "error": "no executable commands found", "steps": 0}
 
-    if not _BWRAP:
+    if not bwrap_available() and os.environ.get("WILLOW_KART_NO_BWRAP", "").strip().lower() not in ("1", "true", "yes"):
         return {"success": False, "error": "bwrap not found — install bubblewrap", "steps": 0}
 
-    allow_net = _task_allows_network(task_text)
-
-    env = {
-        "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
-        "HOME": os.path.expanduser("~"),
-        "LANG": os.environ.get("LANG", "en_US.UTF-8"),
-        "PYTHONUNBUFFERED": "1",
-    }
-    for k, v in os.environ.items():
-        if k.startswith(("WILLOW_", "POSTGRES", "PG", "OLLAMA_", "GIT_", "TWINE_", "PYPI_")):
-            env[k] = v
-    _repo_venv_bin = str(Path(__file__).parent.parent / ".venv-dev" / "bin")
-    _home_venv_bin = os.path.join(os.path.expanduser("~"), ".willow-venv", "bin")
-    venv_bin = _repo_venv_bin if os.path.exists(_repo_venv_bin) else _home_venv_bin
-    if os.path.exists(venv_bin) and venv_bin not in env["PATH"]:
-        env["PATH"] = venv_bin + ":" + env["PATH"]
-    if "GIT_AUTHOR_NAME" not in env:
-        try:
-            name = subprocess.check_output(["git", "config", "--global", "user.name"], text=True).strip()
-            email = subprocess.check_output(["git", "config", "--global", "user.email"], text=True).strip()
-            if name:
-                env["GIT_AUTHOR_NAME"] = name
-                env["GIT_COMMITTER_NAME"] = name
-            if email:
-                env["GIT_AUTHOR_EMAIL"] = email
-                env["GIT_COMMITTER_EMAIL"] = email
-        except Exception:
-            pass
+    allow_net = task_allows_network(task_text)
+    env = kart_env()
 
     for cmd_type, cmd in commands:
         step += 1
@@ -344,19 +241,7 @@ def _complete_task(conn, task_id: str, result: dict, steps: int = 0) -> None:
 
 
 def _willow_repo_root() -> Path | None:
-    """Resolve willow-2.0 checkout for Run Ledger imports (never rely on sibling-path guesses alone)."""
-    env = (os.environ.get("WILLOW_ROOT") or "").strip()
-    candidates: list[Path] = []
-    if env:
-        candidates.append(Path(env).expanduser().resolve())
-    candidates.append((Path.home() / "github" / "willow-2.0").resolve())
-    for base in candidates:
-        try:
-            if (base / "core" / "run_ledger.py").is_file():
-                return base
-        except OSError:
-            continue
-    return None
+    return willow_repo_root()
 
 
 def _ensure_willow_on_path() -> Path | None:

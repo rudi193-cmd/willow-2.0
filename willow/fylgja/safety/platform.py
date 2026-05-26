@@ -36,6 +36,7 @@ _PROTECTED_PATHS = frozenset({
     str(Path.home() / ".claude" / "settings.json"),
     str(Path.home() / ".claude" / "settings.local.json"),
 })
+_FYLGJA_CONFIG_MARKER = "/willow/fylgja/config/"
 
 
 def _block(hard_stop_id: str, reason: str) -> dict:
@@ -89,12 +90,13 @@ def _check_hs006(tool_name: str, tool_input: dict) -> Optional[dict]:
 def _check_hs008(tool_name: str, tool_input: dict) -> Optional[dict]:
     if tool_name == "Write":
         file_path = tool_input.get("file_path", "")
-        if file_path in _PROTECTED_PATHS:
+        normalized = str(file_path).replace("\\", "/")
+        if file_path in _PROTECTED_PATHS or _FYLGJA_CONFIG_MARKER in normalized:
             return _block(
                 "HS-008",
                 f"Direct write to '{file_path}' is blocked. "
-                "Use `python3 -m willow.fylgja.install` to modify Claude Code settings. "
-                "This gate prevents unauthorized modification of the Fylgja configuration.",
+                "Use `python3 -m willow.fylgja.install_project <agent> --ide all` "
+                "to modify Fylgja IDE wiring.",
             )
     return None
 

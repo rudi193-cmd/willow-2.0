@@ -1,0 +1,27 @@
+{
+  "ides": {
+    "cursor": {
+      "hooks_file": "willow/fylgja/config/cursor-hooks.json",
+      "cli_file": "willow/fylgja/config/cursor-cli.json",
+      "symlinks": {
+        ".cursor/hooks.json": "../willow/fylgja/config/cursor-hooks.json",
+        ".cursor/cli.json": "../willow/fylgja/config/cursor-cli.json",
+        ".cursor/mcp.json": "../agents/{agent}/config/mcp.json"
+      }
+    },
+    "claude": {
+      "settings_template": "willow/fylgja/config/claude-settings.json",
+      "symlinks": {
+        ".claude/settings.json": "../willow/fylgja/config/claude-settings.json"
+      },
+      "local_settings": ".claude/settings.local.json"
+    },
+    "codex": {
+      "toml_template": "willow/fylgja/config/codex-mcp.toml.template",
+      "target": "~/.codex/config.toml"
+    }
+  },
+  "agent_config": "agents/{agent}/config",
+  "hook_runner": "willow/fylgja/bin/fylgja-hook",
+  "mcp_template": "willow/fylgja/config/mcp.template.json"
+}

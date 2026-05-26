@@ -12,8 +12,6 @@ Calls PgBridge directly (no MCP round-trip) so it works even if the MCP server i
 """
 import json
 import os
-import shlex
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -326,21 +324,13 @@ def main() -> int:
             status, result = _run_goal_task(pg, task_id, cmd, goal)
         else:
             try:
-                proc = subprocess.run(
-                    shlex.split(cmd), shell=False, capture_output=True,
-                    text=True, timeout=TIMEOUT,
+                from core.kart_sandbox import run_shell_result_for_task, task_allows_network
+
+                status, result = run_shell_result_for_task(
+                    cmd,
+                    timeout=int(os.environ.get("KART_POLL_TIMEOUT", "120")),
+                    allow_net=task_allows_network(cmd),
                 )
-                elapsed = round(time.time() - started, 2)
-                status  = "completed" if proc.returncode == 0 else "failed"
-                result  = {
-                    "returncode": proc.returncode,
-                    "stdout":     proc.stdout.strip()[-2000:],
-                    "stderr":     proc.stderr.strip()[-500:],
-                    "elapsed_s":  elapsed,
-                }
-            except subprocess.TimeoutExpired:
-                status = "failed"
-                result = {"error": "timeout", "elapsed_s": TIMEOUT}
             except Exception as e:
                 status = "failed"
                 result = {"error": str(e)}

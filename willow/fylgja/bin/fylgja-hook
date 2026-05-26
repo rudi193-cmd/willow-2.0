@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# fylgja-hook — repo-relative hook entry for Cursor / Claude project configs.
+set -euo pipefail
+
+FMT="${1:?usage: fylgja-hook <cursor|claude> <module>}"
+MODULE="${2:?usage: fylgja-hook <cursor|claude> <module>}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+
+cd "${REPO_ROOT}"
+
+if [[ -f "${REPO_ROOT}/.willow/active-agent" ]]; then
+  export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-$(tr -d '[:space:]' < "${REPO_ROOT}/.willow/active-agent")}"
+  export AGENT_NAME="${AGENT_NAME:-${WILLOW_AGENT_NAME}}"
+fi
+
+PY="${REPO_ROOT}/.venv-dev/bin/python3"
+if [[ ! -x "${PY}" ]]; then
+  PY="$(command -v python3)"
+fi
+
+exec "${PY}" -m willow.fylgja.hook_runner --format "${FMT}" "willow.fylgja.events.${MODULE}"

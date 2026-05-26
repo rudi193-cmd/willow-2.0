@@ -1279,47 +1279,48 @@ async def kart_task_run(
     agent:  str = "kart",
     limit:  int = 5,
 ) -> dict:
-    """Pull pending tasks from the tasks table and execute them (subprocess, 120s timeout each).
-    Updates status to completed/failed in the DB. agent: defaults to kart."""
+    """Pull pending tasks from the tasks table and execute them in the Kart bwrap sandbox.
+    Updates status to completed/failed in the DB. agent: defaults to kart.
+    Workflow/goal tasks are skipped here — use kart_poll at session Stop."""
     logger.info("[w2] kart_task_run app_id=%s agent=%s limit=%d", app_id, agent, limit)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
 
     def _run():
-        import subprocess
-        import shlex
-        import time
+        from core.kart_sandbox import run_shell_result_for_task, task_allows_network
 
         tasks = pg.pending_tasks(agent=agent, limit=limit)
         results = []
+        timeout = int(os.environ.get("KART_POLL_TIMEOUT", "120"))
         for t in tasks:
             task_id = t["id"]
             cmd     = t["task"]
-            started = time.time()
+            if cmd.startswith('{"type":"workflow_phase"'):
+                results.append({
+                    "task_id": task_id,
+                    "status": "skipped",
+                    "cmd": cmd[:80],
+                    "note": "workflow phases — run kart_poll Stop hook or daemon execute_task",
+                })
+                continue
+            if t.get("goal"):
+                results.append({
+                    "task_id": task_id,
+                    "status": "skipped",
+                    "cmd": cmd[:80],
+                    "note": "goal tasks — run kart_poll Stop hook",
+                })
+                continue
             _rl_log_event("kart_run", ref=task_id)
-            try:
-                proc = subprocess.run(
-                    shlex.split(cmd), shell=False, capture_output=True,
-                    text=True, timeout=120,
-                )
-                elapsed = round(time.time() - started, 2)
-                status  = "completed" if proc.returncode == 0 else "failed"
-                result  = {
-                    "returncode": proc.returncode,
-                    "stdout":     proc.stdout.strip()[-2000:],
-                    "stderr":     proc.stderr.strip()[-500:],
-                    "elapsed_s":  elapsed,
-                }
-            except subprocess.TimeoutExpired:
-                status = "failed"
-                result = {"error": "timeout", "elapsed_s": 120}
-            except Exception as e:
-                status = "failed"
-                result = {"error": str(e)}
+            status, result = run_shell_result_for_task(
+                cmd,
+                timeout=timeout,
+                allow_net=task_allows_network(cmd),
+            )
             pg.task_complete(task_id, result, status)
             _rl_log_event(f"kart_{status}", ref=task_id)
-            results.append({"task_id": task_id, "status": status, "cmd": cmd[:80]})
+            results.append({"task_id": task_id, "status": status, "cmd": cmd[:80], "sandbox": result.get("sandbox")})
         return {"executed": len(results), "results": results}
 
     return await loop.run_in_executor(_executor, _run)

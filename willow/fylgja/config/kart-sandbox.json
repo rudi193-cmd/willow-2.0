@@ -1,0 +1,55 @@
+{
+  "b17": "KRTSND",
+  "version": 1,
+  "description": "Kart bwrap mount policy — extend bind_try / env_prefixes for new fleet paths without code changes.",
+  "env_prefixes": [
+    "WILLOW_",
+    "GROVE_",
+    "SAFE_",
+    "PG",
+    "POSTGRES",
+    "OLLAMA_",
+    "GIT_",
+    "TWINE_",
+    "PYPI_",
+    "ANTHROPIC_",
+    "OPENROUTER_",
+    "GROQ_"
+  ],
+  "bind_read_only": [
+    "/usr",
+    "/etc",
+    "/bin",
+    "/lib",
+    "/lib64",
+    "/lib32",
+    "/sbin"
+  ],
+  "bind_read_write": [
+    "{{WILLOW_ROOT}}",
+    "{{HOME}}/.willow",
+    "{{HOME}}/github",
+    "{{HOME}}/agents",
+    "{{HOME}}/SAFE",
+    "{{HOME}}/safe-app-store",
+    "{{HOME}}/.local",
+    "{{HOME}}/.ssh",
+    "{{HOME}}/.kaggle",
+    "{{HOME}}/Desktop",
+    "{{HOME}}/Ashokoa",
+    "/tmp",
+    "/var/run/postgresql",
+    "/media/willow"
+  ],
+  "bind_try": [
+    "{{WILLOW_GROVE_ROOT}}",
+    "{{WILLOW_SAFE_ROOT}}",
+    "{{WILLOW_AGENTS_ROOT}}",
+    "{{HOME}}/sean-data-vault",
+    "{{HOME}}/.willow-venv",
+    "{{WILLOW_ROOT}}/.venv-dev"
+  ],
+  "worktree_scan_roots": [
+    "{{WILLOW_ROOT}}/worktrees"
+  ]
+}

@@ -600,6 +600,17 @@ def main():
     # Anchor context — always injected
     lines.append("[ANCHOR]")
     lines.append(f"agent={AGENT}  postgres={startup['postgres']}")
+    lines.append(
+        "[MCP-FIRST] Use Willow MCP tools — not PYTHONPATH= python, not psql/sqlite3 Bash. "
+        "Shell work → agent_task_submit + kart_task_run. Registry: sap/mcp_registry.json."
+    )
+
+    try:
+        from willow.fylgja.cross_runtime import anchor_lines as _cross_runtime_lines
+
+        lines.extend(_cross_runtime_lines())
+    except Exception:
+        pass
 
     # Flat handoff — verified ground truth takes priority over MCP handoff prose
     flat = startup.get("flat_handoff", {})
