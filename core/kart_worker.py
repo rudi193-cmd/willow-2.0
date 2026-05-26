@@ -34,14 +34,44 @@ logger = logging.getLogger("kart_worker")
 _ALLOW_NET_DIRECTIVE = "# allow_net"
 
 _SHELL_STARTERS = (
-    'cp ', 'rsync ', 'python3 ', 'python ',
-    'mkdir ', 'chmod ', 'find ', 'grep ', 'curl ', 'echo ',
-    'mv ', 'rm ', 'ls ', 'cat ', 'git ', 'bash ', 'ln ',
+    # file ops
+    'cp ', 'mv ', 'rm ', 'mkdir ', 'ln ', 'chmod ', 'chown ', 'rsync ',
+    'ls ', 'find ', 'fd ', 'tree ',
+    # text processing
+    'cat ', 'head ', 'tail ', 'grep ', 'rg ', 'sed ', 'awk ',
+    'sort ', 'uniq ', 'wc ', 'cut ', 'tr ', 'tee ', 'xargs ',
+    'diff ', 'patch ', 'echo ', 'printf ', 'jq ', 'yq ',
+    # archive / transfer
+    'tar ', 'zip ', 'unzip ', 'gzip ', 'gunzip ', 'bzip2 ', 'xz ',
+    'curl ', 'wget ', 'scp ', 'rsync ', 'ssh ',
+    # shell / scripting
+    'bash ', 'sh ', 'env ', 'which ', 'file ', 'date ', 'bc ',
+    'expr ', 'timeout ', 'watch ', 'sleep ',
+    # python
+    'python3 ', 'python ', 'pip3 ', 'pip ', 'uv ', 'pytest ',
+    'black ', 'ruff ', 'mypy ', 'isort ', 'pre-commit ',
+    # js / node
+    'node ', 'npm ', 'npx ', 'yarn ', 'pnpm ',
+    # build tools
+    'make ', 'cmake ', 'cargo ', 'go ', 'java ', 'javac ', 'mvn ', 'gradle ',
+    # git / gh
+    'git ', 'gh ',
+    # data / ml
     'ollama ', 'jupyter ', 'kaggle ',
-    'gh ', 'node ', 'npm ', 'npx ', 'jq ',
-    'tar ', 'unzip ', 'zip ', 'wget ', 'ssh ', 'scp ',
+    # crypto / checksum
+    'md5sum ', 'sha256sum ', 'sha1sum ', 'base64 ', 'openssl ', 'gpg ',
+    # process / system
+    'ps ', 'kill ', 'pkill ', 'pgrep ', 'lsof ', 'nohup ', 'strace ',
+    # network diagnostics
+    'ping ', 'dig ', 'nslookup ', 'nc ', 'netcat ', 'curl ',
+    # media / docs
+    'ffmpeg ', 'convert ', 'pandoc ',
+    # misc utilities
+    'fzf ', 'bat ', 'redis-cli ',
+    # absolute paths
     str(Path.home()) + os.sep,
-    '/usr/', '/opt/',
+    '/usr/', '/opt/', '/tmp/',
+    # psql and sqlite3 are intentionally absent — DB access via MCP only
 )
 
 

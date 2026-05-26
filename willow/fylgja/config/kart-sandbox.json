@@ -18,7 +18,11 @@
     "GITHUB_",
     "NPM_",
     "NODE_",
-    "SSH_AUTH"
+    "SSH_AUTH",
+    "HUGGINGFACE_",
+    "HF_",
+    "OPENAI_",
+    "AWS_"
   ],
   "bind_read_only": [
     "/usr",
@@ -57,6 +61,14 @@
     "{{WILLOW_ROOT}}/.venv-dev",
     "{{HOME}}/.gitconfig",
     "{{HOME}}/.npmrc",
+    "{{HOME}}/.cargo",
+    "{{HOME}}/.npm",
+    "{{HOME}}/.cache/uv",
+    "{{HOME}}/.cache/pip",
+    "{{HOME}}/.cache/pre-commit",
+    "{{HOME}}/.config/pip",
+    "{{HOME}}/.config/pypoetry",
+    "{{HOME}}/.local/share/uv",
     "/run/user",
     "/run/systemd/resolve"
   ],
