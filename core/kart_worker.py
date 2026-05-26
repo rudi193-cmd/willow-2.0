@@ -33,12 +33,16 @@ logger = logging.getLogger("kart_worker")
 _ALLOW_NET_DIRECTIVE = "# allow_net"
 
 _SHELL_STARTERS = (
-    'cp ', 'rsync ', 'python3 ', 'python ',
-    'mkdir ', 'chmod ', 'find ', 'grep ', 'curl ', 'echo ',
-    'mv ', 'rm ', 'ls ', 'cat ', 'git ', 'bash ',
+    'python3 ', 'python ',
+    'curl ',
     'ollama ', 'jupyter ', 'kaggle ',
     str(Path.home()) + os.sep,
     '/usr/', '/opt/',
+)
+
+# Commands forbidden in script blocks — agents must use MCP tools instead.
+_SCRIPT_FORBIDDEN_RE = re.compile(
+    r'(?:^|\n)\s*(?:ln|ls|cat|git|cp|mv|rm|mkdir|chmod|find|grep|rsync|echo|bash|sh|sed|awk|tar|zip|wget|apt|pip)\s',
 )
 
 
@@ -157,6 +161,13 @@ def execute_task(task_text: str) -> dict:
                 outputs.append(f"[kart] BLOCKED: {cmd[:80]}")
                 errors.append(f"blocked: {cmd[:80]}")
                 continue
+            if cmd_type == 'script':
+                m = _SCRIPT_FORBIDDEN_RE.search(cmd)
+                if m:
+                    blocked_cmd = m.group(0).strip().split()[0]
+                    outputs.append(f"[kart] BLOCKED (script): {blocked_cmd} — use MCP tools")
+                    errors.append(f"blocked: {blocked_cmd}")
+                    continue
 
             proc = _spawn(cmd_type, cmd, env, allow_net=allow_net)
 

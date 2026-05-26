@@ -1,0 +1,51 @@
+{
+  "env": {
+    "WILLOW_AGENT_NAME": "hanuman",
+    "AGENT_NAME": "hanuman"
+  },
+  "permissions": {
+    "allow": [
+      "mcp__willow__handoff_latest",
+      "mcp__willow__fleet_status",
+      "mcp__willow__mai_read_file",
+      "mcp__willow__grove_get_history",
+      "mcp__willow__soil_list",
+      "mcp__willow__ledger_read",
+      "mcp__willow__kb_search",
+      "mcp__willow__context_save",
+      "mcp__willow__session_query",
+      "mcp__willow__handoff_search",
+      "Bash(awk '{print $2}')",
+      "mcp__willow__mem_jeles_search",
+      "Bash(.venv-dev/bin/python3 *)",
+      "mcp__willow__mem_jeles_ask",
+      "mcp__willow__fleet_restart",
+      "mcp__willow__mem_jeles_build_centroids",
+      "mcp__willow__soil_search",
+      "Read(//home/sean-campbell/SAFE/Applications/ask-jeles/src/**)",
+      "Bash(pip install *)",
+      "Bash(python3 -m pip install textual)",
+      "Bash(uv pip *)",
+      "Bash(/home/sean-campbell/willow-2.0/.venv-dev/bin/pip install *)",
+      "Read(//home/sean-campbell/SAFE/Applications/ask-jeles/**)",
+      "Bash(cat pyproject.toml)",
+      "Bash(cat setup.py)",
+      "Bash(PYTHONPATH=/home/sean-campbell/willow-2.0:/home/sean-campbell/SAFE/Applications/ask-jeles/src /home/sean-campbell/willow-2.0/.venv-dev/bin/python3 *)",
+      "Bash(PYTHONPATH=/home/sean-campbell/willow-2.0 /home/sean-campbell/willow-2.0/.venv-dev/bin/python3 *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "mcp__willow__handoff_rebuild",
+      "mcp__willow__kb_ingest",
+      "mcp__willow__ledger_write",
+      "Bash(gh pr *)",
+      "Bash(gh run *)",
+      "mcp__willow__skill_list",
+      "mcp__willow__agent_task_submit"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "willow"
+  ]
+}
