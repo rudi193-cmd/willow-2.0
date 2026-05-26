@@ -77,6 +77,8 @@ def _bwrap_prefix(allow_net: bool = False) -> list[str]:
     ashokoa = os.path.join(home, "Ashokoa")
     if os.path.exists(ashokoa):
         args += ["--ro-bind", ashokoa, ashokoa]
+    sean_data_vault = os.path.join(home, "sean-data-vault")
+    args += ["--ro-bind-try", sean_data_vault, sean_data_vault]
     desktop = os.path.join(home, "Desktop")
     if os.path.exists(desktop):
         args += ["--ro-bind", desktop, desktop]
