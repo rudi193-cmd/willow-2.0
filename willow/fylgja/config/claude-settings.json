@@ -1,0 +1,58 @@
+{
+  "sandbox": {
+    "mode": "workspace-write",
+    "filesystem": {
+      "denyRead": [
+        "~/.claude",
+        "~/archive/willow-1.9",
+        "~/github/safe-app-store"
+      ]
+    }
+  },
+  "env": {
+    "WILLOW_20_DB": "~/.willow/willow-2.0.db",
+    "WILLOW_ROOT": "~/willow-2.0",
+    "WILLOW_SAFE_ROOT": "/home/sean-campbell/SAFE/Applications",
+    "WILLOW_AGENT_NAME": "{AGENT_ID}",
+    "AGENT_NAME": "{AGENT_ID}"
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob"
+    ],
+    "defaultMode": "default"
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/willow-2.0/scripts/orchestrator.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/willow-2.0/scripts/persona.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/willow-2.0/scripts/session_close.py"
+          },
+          {
+            "type": "command",
+            "command": "PYTHONPATH=/home/sean-campbell/willow-2.0 python3 ~/willow-2.0/willow/fylgja/events/session_stop.py"
+          }
+        ]
+      }
+    ]
+  }
+}
