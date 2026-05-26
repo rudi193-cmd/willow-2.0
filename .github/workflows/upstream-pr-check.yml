@@ -58,3 +58,4 @@ jobs:
             --body "Automated update from the Upstream Contribution Tracker workflow (run ${{ github.run_id }})." \
             --base master \
             --head "$branch"
+          gh pr merge --auto --squash "$branch"
