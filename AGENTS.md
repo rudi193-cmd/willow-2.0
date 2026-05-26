@@ -4,7 +4,7 @@ b17: AGNTW · ΔΣ=42
 
 **Contract:** [`willow.md`](willow.md) — read it first. Boot: run `/boot` — steps in [`willow/fylgja/skills/boot.md`](willow/fylgja/skills/boot.md).
 
-**Cursor:** `python3 -m willow.fylgja.install_cursor` wires Fylgja hooks to `.cursor/hooks.json`. MCP: `.cursor/mcp.json` → `.willow/mcp.json` (per-machine agent). Use agent name as MCP `app_id`, not `willow-2.0`.
+**IDE wiring:** `./willow agents install hanuman --ide all` (or `python3 -m willow.fylgja.install_project …`) — agent config under `agents/{agent}/config/`, symlinks for `.cursor/`, `.claude/`, `.mcp.json`. Check rails: `./willow agents check`.
 
 **Claude Code:** `python3 -m willow.fylgja.install` wires hooks to `~/.claude/settings.json`.
 

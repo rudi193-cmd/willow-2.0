@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Mcp(willow:fleet_status)",
+      "Mcp(willow:fleet_health)",
+      "Mcp(willow:fleet_agents)",
+      "Mcp(willow:handoff_latest)",
+      "Mcp(willow:handoff_rebuild)",
+      "Mcp(willow:handoff_search)",
+      "Mcp(willow:kb_search)",
+      "Mcp(willow:kb_get)",
+      "Mcp(willow:kb_query)",
+      "Mcp(willow:kb_ingest)",
+      "Mcp(willow:kb_journal)",
+      "Mcp(willow:ledger_read)",
+      "Mcp(willow:ledger_write)",
+      "Mcp(willow:soil_get)",
+      "Mcp(willow:soil_search)",
+      "Mcp(willow:soil_list)",
+      "Mcp(willow:soil_put)",
+      "Mcp(willow:soil_update)",
+      "Mcp(willow:session_review)",
+      "Mcp(willow:mem_check)",
+      "Mcp(willow:grove_inbox)",
+      "Mcp(willow:grove_get_history)",
+      "Mcp(willow:grove_send_message)",
+      "Mcp(willow:grove_list_channels)",
+      "Mcp(willow:mai_read_file)",
+      "Mcp(willow:infer_chat)",
+      "Shell(./willow.sh)",
+      "Shell(python3)",
+      "Shell(uv run)",
+      "Shell(gh)",
+      "Shell(rg)"
+    ],
+    "deny": []
+  }
+}

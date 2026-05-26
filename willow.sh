@@ -7,6 +7,7 @@
 #   ./willow.sh status       — check Postgres + metabolic socket
 #   ./willow.sh fleet_status — check full boot health without MCP
 #   ./willow.sh handoff_latest [agent] — show latest handoff summary
+#   ./willow.sh agents [list|active|install|check] — agent IDE wiring + MCP rails
 #   ./willow.sh metabolic    — run Norn pass now
 #   ./willow.sh update       — check for updates and apply if available
 #   ./willow.sh export       — dump user data to ~/.willow/export.json
@@ -714,6 +715,11 @@ print(f'  Disabled: ${PROVIDER}')
         esac
         ;;
 
+    agents)
+        shift
+        exec "${WILLOW_PYTHON}" -m willow.fylgja.agents_cli "$@"
+        ;;
+
     upstream)
         _WATCHER="${WILLOW_ROOT}/agents/hanuman/bin/upstream_watcher.py"
         _RESPONDER="${WILLOW_ROOT}/agents/hanuman/bin/upstream_responder.py"
@@ -777,7 +783,7 @@ else:
         ;;
 
     *)
-        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]]"
+        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|agents [list|active <id>|install <id>|check]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]]"
         exit 1
         ;;
 esac

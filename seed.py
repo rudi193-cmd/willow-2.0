@@ -517,8 +517,7 @@ def _run_install(win, name_str: str, email: str, passphrase: str) -> str:
         ("Launcher",       _step_launcher),
         ("Grove identity", _step_grove_identity),
         ("Env profile",    lambda: _step_env_profile(agent_name)),
-        ("MCP config",     lambda: _step_mcp_config(agent_name)),
-        ("Fylgja hooks",   _step_fylgja_hooks),
+        ("IDE wiring",     lambda: _step_mcp_config(agent_name)),
     ]
 
     fingerprint = ""
@@ -929,72 +928,19 @@ def _step_env_profile(agent_name: str) -> None:
 
 
 def _step_mcp_config(agent_name: str) -> None:
-    """Generate .mcp.json in WILLOW_ROOT with portable paths.
-    Skips if an existing config already points at a valid Python."""
-    mcp_path = WILLOW_ROOT / ".mcp.json"
-    # Detect best Python — prefer .venv-dev (dev), then seed venv, then current
-    candidates = [
-        WILLOW_ROOT / ".venv-dev" / "bin" / "python3",
-        Path.home() / ".willow" / "venv" / "bin" / "python3",
-        Path(sys.executable),
-    ]
-    python = next((str(p) for p in candidates if p.exists()), sys.executable)
-
-    # Skip if existing config already has a valid Python for the willow server
-    if mcp_path.exists():
-        try:
-            existing = json.loads(mcp_path.read_text())
-            existing_py = (existing.get("mcpServers", {})
-                           .get("willow", {})
-                           .get("command", ""))
-            if existing_py and Path(existing_py).exists():
-                return  # already valid — leave it alone
-        except Exception:
-            pass
-
-    pg_user = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
-    pg_db   = os.environ.get("WILLOW_PG_DB", "willow_20")
-    pg_url  = f"postgresql://{pg_user}@localhost/{pg_db}"
-
-    # Preserve existing servers (e.g. markdownai) and only set willow entry
+    """Unified IDE wiring: agent MCP, Cursor/Claude symlinks, global Claude hooks."""
     try:
-        base = json.loads(mcp_path.read_text()) if mcp_path.exists() else {}
-    except Exception:
-        base = {}
-    servers = base.get("mcpServers", {})
+        from willow.fylgja.install_project import install_project
 
-    grove_dir = str(GROVE_DIR)
-    pythonpath = f"{WILLOW_ROOT}:{grove_dir}"
-
-    servers["willow"] = {
-        "type":    "stdio",
-        "command": python,
-        "args":    [str(WILLOW_ROOT / "sap" / "sap_mcp.py")],
-        "env": {
-            "PYTHONPATH":        pythonpath,
-            "WILLOW_AGENT_NAME": agent_name,
-            "WILLOW_SAFE_ROOT":  str(Path.home() / "SAFE" / "Applications"),
-            "WILLOW_STORE_ROOT": str(Path.home() / ".willow" / "store"),
-            "WILLOW_VAULT":      str(Path.home() / ".willow" / "vault.db"),
-            "WILLOW_PG_DB":      pg_db,
-            "WILLOW_PG_URL":     pg_url,
-        },
-    }
-    base["mcpServers"] = servers
-    tmp = mcp_path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(base, indent=2))
-    tmp.replace(mcp_path)
-
-
-def _step_fylgja_hooks() -> None:
-    """Wire Fylgja hooks into ~/.claude/settings.json."""
-    settings_path = Path.home() / ".claude" / "settings.json"
-    settings_path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        from willow.fylgja.install import apply_hooks
-        apply_hooks(settings_path=settings_path, package_root=WILLOW_ROOT, dry_run=False)
+        install_project(
+            agent_name=agent_name,
+            ides=["all"],
+            package_root=WILLOW_ROOT,
+            dry_run=False,
+            claude_global=True,
+        )
     except Exception as e:
-        raise RuntimeError(f"Fylgja hook install failed: {e}") from e
+        raise RuntimeError(f"IDE install failed: {e}") from e
 
 
 def _is_wsl() -> bool:

@@ -3,7 +3,11 @@ import sqlite3
 from pathlib import Path
 
 from sap.handoff_index import handoff_select_sql, select_latest_handoff
-from willow.fylgja.install_cursor import build_cursor_hooks_block, apply_cursor_hooks
+from willow.fylgja.install_project import (
+    build_claude_hooks_block,
+    install_project,
+    render_mcp_config,
+)
 
 
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
@@ -42,38 +46,57 @@ def test_handoff_select_sql_includes_v2_columns(tmp_path):
     conn.close()
 
 
-def test_build_cursor_hooks_block_contains_core_events():
-    block = build_cursor_hooks_block(PACKAGE_ROOT)
-    assert block["version"] == 1
-    for event in ("sessionStart", "beforeSubmitPrompt", "beforeShellExecution", "stop"):
-        assert event in block["hooks"]
+def test_cursor_hooks_template_uses_fylgja_hook():
+    path = PACKAGE_ROOT / "willow" / "fylgja" / "config" / "cursor-hooks.json"
+    rendered = path.read_text(encoding="utf-8")
+    assert "fylgja-hook" in rendered
+    assert "session_start" in rendered
 
 
-def test_build_cursor_hooks_block_points_at_adapter():
-    block = build_cursor_hooks_block(PACKAGE_ROOT)
+def test_build_claude_hooks_block_uses_hook_runner():
+    block = build_claude_hooks_block(PACKAGE_ROOT)
     rendered = json.dumps(block)
-    assert "run_cursor_hook.py" in rendered
-    assert "willow.fylgja.events.session_start" in rendered
+    assert "hook_runner" in rendered
+    assert "SessionStart" in block
 
 
-def test_apply_cursor_hooks_writes_block(tmp_path):
-    hooks = tmp_path / "hooks.json"
-    apply_cursor_hooks(hooks_path=hooks, package_root=PACKAGE_ROOT, dry_run=False)
-    content = json.loads(hooks.read_text())
-    assert "sessionStart" in content["hooks"]
-    assert content["version"] == 1
+def test_render_mcp_config_sets_agent_name():
+    config = render_mcp_config("hanuman", PACKAGE_ROOT)
+    assert config["mcpServers"]["willow"]["env"]["WILLOW_AGENT_NAME"] == "hanuman"
 
 
-def test_apply_cursor_hooks_preserves_non_fylgja_entries(tmp_path):
-    hooks = tmp_path / "hooks.json"
-    hooks.write_text(json.dumps({
-        "version": 1,
-        "hooks": {
-            "stop": [{"command": "notify-send done"}],
-        },
-    }))
-    apply_cursor_hooks(hooks_path=hooks, package_root=PACKAGE_ROOT, dry_run=False)
-    content = json.loads(hooks.read_text())
-    rendered = json.dumps(content["hooks"]["stop"])
-    assert "notify-send done" in rendered
-    assert "run_cursor_hook.py" in rendered
+def test_install_project_writes_agent_config(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    for rel in (
+        "willow/fylgja/config/mcp.template.json",
+        "willow/fylgja/config/cursor-hooks.json",
+        "willow/fylgja/config/cursor-cli.json",
+        "willow/fylgja/config/claude-settings.json",
+        "willow/fylgja/bin/fylgja-hook",
+        "willow/fylgja/project_env.py",
+        "willow/fylgja/hook_runner.py",
+        "willow/fylgja/install.py",
+        "willow/fylgja/install_project.py",
+    ):
+        src = PACKAGE_ROOT / rel
+        dst = repo / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(src.read_bytes())
+
+    install_project(
+        agent_name="hanuman",
+        ides=["cursor"],
+        package_root=repo,
+        dry_run=False,
+        claude_global=False,
+    )
+
+    identity = repo / "agents" / "hanuman" / "config" / "identity.json"
+    mcp = repo / "agents" / "hanuman" / "config" / "mcp.json"
+    assert identity.is_file()
+    assert json.loads(identity.read_text())["WILLOW_AGENT_NAME"] == "hanuman"
+    assert mcp.is_file()
+    assert (repo / ".willow" / "active-agent").read_text().strip() == "hanuman"
+    assert (repo / ".cursor" / "hooks.json").is_symlink()
+    assert (repo / ".mcp.json").is_symlink()

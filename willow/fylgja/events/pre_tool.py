@@ -55,6 +55,16 @@ def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
     except Exception:
         pass
 
+# Legitimate shell Python — checked before BASH_BLOCKS.
+_BASH_ALLOW_PATTERNS = [
+    r"(?i)python3?\s+-m\s+pytest\b",
+    r"(?i)python3?\s+-m\s+willow\.fylgja\.(install|install_project|hook_runner)\b",
+    r"(?i)python3?\s+seed\.py\b",
+    r"(?i)python3?\s+-m\s+(ruff|mypy)\b",
+    r"(?i)\./willow(\.sh)?\b",
+    r"(?i)\./willow\s+agents\b",
+]
+
 # Each entry: (pattern, decision, redirect_message)
 # decision: "block" = hard stop | "warn" = let through but redirect
 BASH_BLOCKS = [
@@ -70,6 +80,19 @@ BASH_BLOCKS = [
     (r"^\s*ls(\s|$)", "block",
      "Use Glob for file listings — it supports patterns and integrates with the KB. "
      "→ Glob({pattern: '<dir>/**'})"),
+    (r"(?i)(?:^|\s)(?:env\s+)?PYTHONPATH=", "block",
+     "Do not bypass Willow with PYTHONPATH= shell. "
+     "→ MCP tools (kb_search, soil_get, fleet_status, handoff_latest, …). "
+     "Shell-only work → agent_task_submit + kart_task_run (see /kart)."),
+    (r"(?i)python3?\s+-m\s+(willow|sap|core)\.", "block",
+     "Do not invoke Willow modules via python -m in Bash. "
+     "→ Matching MCP tool — registry: sap/mcp_registry.json."),
+    (r"(?i)python3?\s+(-c|--command)\s+.*\b(from\s+(core|willow|sap)|import\s+(core|willow|sap))\b", "block",
+     "Inline Python importing Willow core is blocked. "
+     "→ MCP tools, or Kart with a script in /tmp/ for true shell-only work."),
+    (r"(?i)python3?\s+.*\b(pg_bridge|sqlite_bridge|willow_store|promote_intake|sap_mcp)\b", "warn",
+     "Willow Python entrypoint in Bash — prefer MCP if a tool exists. "
+     "→ agent_task_submit(app_id, task='python3 /tmp/job.py') + kart_task_run."),
     (r"\bgrep\b", "warn",
      "grep detected. Prefer MCP over shell grep — it searches indexed content without a subprocess. "
      "→ kb_search({app_id, query}) · code_graph_search({query}) · soil_search({collection, query})"),
@@ -133,6 +156,9 @@ def check_bash_block(command: str) -> tuple[str, str] | None:
         for pattern in _AUDIT_ALLOW_PATTERNS:
             if re.search(pattern, command, re.MULTILINE):
                 return None
+    for pattern in _BASH_ALLOW_PATTERNS:
+        if re.search(pattern, command, re.MULTILINE):
+            return None
     for pattern, decision, reason in BASH_BLOCKS:
         if re.search(pattern, command, re.MULTILINE):
             if pattern == r"\bsqlite3\b" and _sqlite_access_allowed(command):

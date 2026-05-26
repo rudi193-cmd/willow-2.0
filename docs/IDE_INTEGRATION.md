@@ -29,16 +29,17 @@ Copy [`.mcp.json.example`](../.mcp.json.example) → `.mcp.json`:
 }
 ```
 
-**Cursor:** symlink or copy MCP config into the project:
+**Cursor:** symlink MCP via install — canonical templates live under `willow/fylgja/config/`:
 
 ```bash
-ln -sf ../.willow/mcp.json .cursor/mcp.json   # per-machine agent in ~/.willow/mcp.json
-python3 -m willow.fylgja.install_cursor       # Fylgja hooks → .cursor/hooks.json
+python3 -m willow.fylgja.install_project hanuman --ide all
+# or cursor-only:
+python3 -m willow.fylgja.install_project hanuman --ide cursor
 ```
 
-Use an **absolute** path in `args` — Cursor may not launch MCP from the repo root.
+Use an **absolute** path in unified MCP `args` when the IDE does not launch from repo root (template uses `{{REPO_ROOT}}`).
 
-**Claude Code:** repo `.mcp.json` + `python3 -m willow.fylgja.install` (writes `~/.claude/settings.json` hooks).
+**Claude Code:** `install_project` symlinks `.claude/settings.json` and wires global hooks via `python3 -m willow.fylgja.install`.
 
 Agents read [`willow.md`](../willow.md) via `mai_read_file` first.
 
@@ -56,8 +57,8 @@ Restart the IDE after changing MCP config, hooks, or `sap/unified_mcp.sh`.
 | `beforeMCPExecution` | `pre_tool` | MCP write-path guards |
 | `stop` | `stop` | Session composite, affect tagging |
 
-Install: `python3 -m willow.fylgja.install_cursor` (writes `.cursor/hooks.json` — gitignored, machine-local).  
-Adapter: `tools/run_cursor_hook.py` (translates Cursor JSON ↔ Claude hook output).
+Install: `python3 -m willow.fylgja.install_project <agent> --ide cursor` (symlinks `.cursor/hooks.json` → `willow/fylgja/config/cursor-hooks.json`).  
+Runner: `willow/fylgja/bin/fylgja-hook` → `willow.fylgja.hook_runner` (legacy shims: `tools/run_cursor_hook.py`).
 
 Debug: Cursor **Output → Hooks** channel.
 

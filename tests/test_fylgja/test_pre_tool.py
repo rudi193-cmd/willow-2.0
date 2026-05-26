@@ -42,6 +42,34 @@ def test_allows_pytest():
     assert reason is None
 
 
+def test_blocks_pythonpath_bypass():
+    result = check_bash_block('PYTHONPATH=/home/sean/willow-2.0 python3 -c "from core.pg_bridge import try_connect"')
+    assert result is not None
+    decision, reason = result
+    assert decision == "block"
+    assert "MCP" in reason or "PYTHONPATH" in reason
+
+
+def test_blocks_python_m_willow():
+    result = check_bash_block("python3 -m willow.fylgja.events.shutdown")
+    assert result is not None
+    decision, reason = result
+    assert decision == "block"
+    assert "MCP" in reason
+
+
+def test_blocks_inline_core_import():
+    result = check_bash_block('python3 -c "from core import soil; print(soil.stats())"')
+    assert result is not None
+    decision, _ = result
+    assert decision == "block"
+
+
+def test_allows_install_project_module():
+    reason = check_bash_block("python3 -m willow.fylgja.install_project hanuman --ide all")
+    assert reason is None
+
+
 def test_blocks_explore_subagent():
     reason = check_agent_block("Explore")
     assert reason is not None
