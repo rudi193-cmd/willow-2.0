@@ -31,7 +31,6 @@ except Exception:
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
 THREAD_FILE = Path("/tmp/willow-context-thread.json")
 _AGENT = require_agent_name()
-BOOT_DONE = Path(f"/tmp/willow-boot-done-{_AGENT}.flag")
 
 
 def read_turns_since(cursor: str, turns_file: Path) -> list[str]:
@@ -414,9 +413,6 @@ def main():
         data = {}
 
     session_id = data.get("session_id", "")
-
-    # Clear boot sentinel — next session must boot again
-    BOOT_DONE.unlink(missing_ok=True)
 
     # Cleanup depth stack
     try:

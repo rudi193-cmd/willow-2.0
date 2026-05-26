@@ -54,9 +54,8 @@ Grove unavailable = degraded, not fatal. Continue.
 `kb_search(semantic=true, query=<current task or session topic>)` — check before acting.
 
 **7. Persona**
-Read `~/.willow/willow-2.0-active-persona`. Hook already showed picker — confirm or switch.
+Read `~/.willow/willow-2.0-active-persona`. The hook injects picker context into system context only — **the user cannot see it**. You must render the picker as visible text in your boot response so the user can confirm or switch.
 If active: load context per the persona registry (source defined in `willow.md` — the fleet contract, not any runtime-specific path).
-Surface active persona name in boot report.
 
 **8. Corrections + Preferences**
 Read `corpus/corrections` and `corpus/preferences` — already seeded from memory feedback files by SessionStart hook.
@@ -92,8 +91,20 @@ Paths are relative to repo root. All four are dark by default — they do not se
 Empty → skip.
 
 **14. Boot report + sentinel**
-One paragraph, ≤6 sentences, no headers:
-fleet status · active persona · open threads (count) · corrections loaded · flags · next_bite.
+First render the persona picker as a visible fenced block (the user must be able to see and respond to it):
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PERSONA — confirm or switch
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1. Oakenscroll    ...
+  ...
+  N. [active]  ← ACTIVE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Then one paragraph, ≤6 sentences, no headers:
+fleet status · open threads (count) · corrections loaded · flags · next_bite.
 
 Then write the boot sentinel: `Write(file_path="/tmp/willow-boot-done-{agent}.flag", content="booted")` — this clears the boot gate for this session. The sentinel is deleted by the Stop hook at session end.
 
