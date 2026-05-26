@@ -1750,7 +1750,7 @@ _DOMAIN_ROUTES: list[tuple[list[str], list[str]]] = [
 ]
 
 _DEFAULT_SOURCES = ["base", "openalex", "crossref", "wikidata"]
-_MAX_ROUTE_SOURCES = 4
+_MAX_ROUTE_SOURCES = 6
 
 
 def route_sources(query: str) -> list[str]:
@@ -1804,16 +1804,21 @@ _DOMAIN_SEEDS: dict[str, list[str]] = {
     ],
     "physics": [
         "How does quantum entanglement work?",
-        "What algorithm is used in machine learning?",
-        "Explain the mathematics behind this theorem.",
-        "What is the cryptographic basis of this protocol?",
-        "How does this neural network architecture function?",
+        "What is the theory of general relativity?",
+        "How does nuclear fission generate energy?",
+        "What is the Higgs boson?",
+        "How does superconductivity occur at low temperatures?",
     ],
     "space": [
+        "What is the International Space Station and who operates it?",
+        "What NASA missions have explored Mars?",
         "What is the distance to this planet?",
         "How was this galaxy discovered?",
+        "What spacecraft are currently orbiting Earth?",
+        "What rocket launched this satellite into orbit?",
+        "What is the Hubble Space Telescope?",
+        "When did humans first land on the Moon?",
         "What is the orbital period of this asteroid?",
-        "What telescope imaged this nebula?",
         "What are the atmospheric conditions on this exoplanet?",
     ],
     "geology": [
@@ -1918,7 +1923,7 @@ _DOMAIN_SOURCES: dict[str, list[str]] = {
     "physics":    ["arxiv", "semantic_scholar", "openalex"],
     "space":      ["nasa", "arxiv", "openalex"],
     "geology":    ["usgs", "openalex", "zenodo"],
-    "history":    ["loc", "chronicling_america", "internet_archive", "openlibrary"],
+    "history":    ["loc", "chronicling_america", "internet_archive", "openlibrary", "gallica"],
     "literature": ["openlibrary", "loc", "internet_archive"],
     "marine":          ["pubchem", "crossref", "openalex"],
     "france":          ["gallica", "hal", "europeana"],
@@ -2040,7 +2045,7 @@ def _load_centroids() -> dict[str, list[float]]:
 
 def _route_via_pg(q_vec: list[float]) -> list[str] | None:
     """ANN query against jeles_domain_routes.centroid in Postgres.
-    Returns source_ids for the nearest domain, or None if unavailable."""
+    Returns merged source_ids for the top-3 domains within 0.08 of the best score."""
     try:
         from core.pg_bridge import PgBridge
         bridge = PgBridge()
@@ -2052,14 +2057,30 @@ def _route_via_pg(q_vec: list[float]) -> list[str] | None:
             FROM   jeles_domain_routes
             WHERE  centroid IS NOT NULL
             ORDER BY centroid <=> %s::vector
-            LIMIT  1
+            LIMIT  5
         """, (vec_str, vec_str))
-        row = cur.fetchone()
+        rows = cur.fetchall()
         cur.close()
         bridge.conn.close()
-        if row and row[2] >= _SEMANTIC_THRESHOLD:
-            source_ids = row[1] or []
-            return source_ids[:_MAX_ROUTE_SOURCES]
+        if not rows or rows[0][2] < _SEMANTIC_THRESHOLD:
+            return None
+        best_score = rows[0][2]
+        in_window = [
+            (domain, source_ids, score) for domain, source_ids, score in rows
+            if score >= _SEMANTIC_THRESHOLD and best_score - score <= 0.08
+        ]
+        # Subject-matter domains before regional/language domains
+        in_window.sort(key=lambda r: r[2], reverse=True)
+        seen: set[str] = set()
+        merged: list[str] = []
+        for domain, source_ids, score in in_window:
+            for sid in (source_ids or []):
+                if sid not in seen:
+                    seen.add(sid)
+                    merged.append(sid)
+            if len(merged) >= _MAX_ROUTE_SOURCES:
+                break
+        return merged[:_MAX_ROUTE_SOURCES] if merged else None
     except Exception:
         pass
     return None
@@ -2082,13 +2103,28 @@ def route_sources_semantic(query: str) -> list[str]:
     # Python cosine fallback (uses ~/.willow/jeles_centroids.json)
     centroids = _load_centroids()
     if centroids:
-        best_domain, best_score = "", 0.0
-        for domain, centroid in centroids.items():
-            score = _cosine(q_vec, centroid)
-            if score > best_score:
-                best_score, best_domain = score, domain
-        if best_score >= _SEMANTIC_THRESHOLD and best_domain in _DOMAIN_SOURCES:
-            return _DOMAIN_SOURCES[best_domain][:_MAX_ROUTE_SOURCES]
+        scores = sorted(
+            [(d, _cosine(q_vec, v)) for d, v in centroids.items()],
+            key=lambda x: x[1], reverse=True,
+        )
+        if scores and scores[0][1] >= _SEMANTIC_THRESHOLD:
+            best_score = scores[0][1]
+            in_window = [
+                (d, s) for d, s in scores
+                if s >= _SEMANTIC_THRESHOLD and best_score - s <= 0.08
+            ]
+            in_window.sort(key=lambda x: x[1], reverse=True)
+            seen: set[str] = set()
+            merged: list[str] = []
+            for domain, score in in_window:
+                for sid in _DOMAIN_SOURCES.get(domain, []):
+                    if sid not in seen:
+                        seen.add(sid)
+                        merged.append(sid)
+                if len(merged) >= _MAX_ROUTE_SOURCES:
+                    break
+            if merged:
+                return merged[:_MAX_ROUTE_SOURCES]
 
     return _DEFAULT_SOURCES
 
@@ -2099,15 +2135,21 @@ def question_to_intent(question: str) -> str:
     try:
         from core.llm_edge import respond
         system = (
-            "Extract the core factual query from this question. "
-            "Output ONLY a short search phrase (5-10 words, no punctuation). "
-            "No explanation. Examples:\n"
+            "Extract the core factual query from this question as a search phrase. "
+            "Output ONLY 4-8 domain-specific keywords — NO filler words like "
+            "'description', 'information', 'facts', 'overview', 'details', 'history'. "
+            "Keep proper nouns, technical terms, and subject-matter context. "
+            "No punctuation. No explanation. Examples:\n"
             "Q: Why do ships painted red on the bottom last longer? "
-            "→ antifouling compounds copper ship hull paint\n"
+            "→ antifouling copper paint ship hull protection\n"
             "Q: What albums did The Streets release? "
-            "→ The Streets discography albums\n"
+            "→ The Streets discography albums UK rap\n"
             "Q: Who invented the telephone? "
-            "→ telephone invention inventor"
+            "→ telephone invention Bell Gray patent\n"
+            "Q: What is the International Space Station? "
+            "→ International Space Station NASA orbital laboratory crew\n"
+            "Q: What is habeas corpus? "
+            "→ habeas corpus writ legal custody court"
         )
         result = respond(system, [], question)
         return result.strip()[:200] or question
