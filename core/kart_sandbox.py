@@ -190,8 +190,10 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
 
     # Ubuntu has /var/run → /run as a symlink; resolve drops the symlink so
     # pg_bridge can't find the postgres socket at /var/run/postgresql/.s.PGSQL.5432.
-    if Path("/var/run").is_symlink():
-        args += ["--symlink", "run", "/var/run"]
+    # Read the actual symlink target from the host and replicate it exactly.
+    _varrun = Path("/var/run")
+    if _varrun.is_symlink():
+        args += ["--symlink", os.readlink("/var/run"), "/var/run"]
 
     if allow_net:
         home = Path.home()
