@@ -21,6 +21,7 @@ STATE_FILE = Path.home() / ".willow" / f"anchor_state_{AGENT}.json"
 TURNS_FILE = Path.home() / "agents" / AGENT / "cache" / "turns.txt"
 ACTIVE_BUILD_FILE = Path(f"/tmp/{AGENT}-active-build.json")
 DISPATCH_INBOX = Path(f"/tmp/willow-dispatch-inbox-{AGENT}.json")
+BOOT_DONE = Path(f"/tmp/willow-boot-done-{AGENT}.flag")
 
 try:
     from willow.routing.oracle import route as _routing_oracle
@@ -339,29 +340,18 @@ def _run_corpus_capture(prompt: str, session_id: str) -> None:
 
 
 def _boot_guard() -> None:
-    """First turn only: inject an unmissable boot requirement before any response."""
+    """First turn only: gate on boot sentinel. If absent, force Skill('boot') as first action."""
     if not is_first_turn():
         return
+    if BOOT_DONE.exists():
+        return
     print(
-        "[BOOT-REQUIRED] You have NOT booted this session yet.\n"
-        "[BOOT-REQUIRED] STOP — do NOT respond to the user's message yet.\n"
-        "[BOOT-REQUIRED] Run ALL boot steps first (willow/fylgja/skills/boot.md):\n"
-        f"[BOOT-REQUIRED]   1. mai_read_file('~/.willow/willow.md') — load the fleet contract\n"
-        f"[BOOT-REQUIRED]   2. Local context — agent={AGENT}, repo root, branch, diff summary\n"
-        f"[BOOT-REQUIRED]   3. fleet_status(app_id={AGENT}) — Postgres down = hard stop\n"
-        f"[BOOT-REQUIRED]   4. handoff_latest(app_id={AGENT}) — what was in flight\n"
-        f"[BOOT-REQUIRED]   5. grove_get_history on agent channel since anchor written_at\n"
-        f"[BOOT-REQUIRED]   6. kb_search(semantic=true, query=<current task topic>)\n"
-        f"[BOOT-REQUIRED]   7. Persona — read ~/.willow/willow-2.0-active-persona, confirm or switch\n"
-        f"[BOOT-REQUIRED]   8. Corrections + Preferences — corpus/corrections, corpus/preferences\n"
-        f"[BOOT-REQUIRED]   9. Stack snapshot — SOIL {AGENT}/stack/current\n"
-        f"[BOOT-REQUIRED]  10. Open initiatives — soil_list({AGENT}/overseer), status!=closed\n"
-        f"[BOOT-REQUIRED]  11. Ledger — ledger_read(project=[user], limit=3)\n"
-        f"[BOOT-REQUIRED]  12. KB continuity — startup_continuity.json queries in parallel\n"
-        f"[BOOT-REQUIRED]  13. Flag triage — soil_list({AGENT}/flags), close dups, surface top 5\n"
-        f"[BOOT-REQUIRED]  14. Boot report — <=6 sentences: fleet, persona, threads, corrections, flags, next_bite\n"
-        "[BOOT-REQUIRED] After all 14 steps complete, THEN answer the user's question.\n"
-        "[BOOT-REQUIRED] Skipping boot and responding directly is a failure."
+        "[BOOT-REQUIRED] Boot sentinel absent — this session has NOT been booted.\n"
+        "[BOOT-REQUIRED] STOP. Do NOT emit any text. Do NOT call any other tool.\n"
+        "[BOOT-REQUIRED] Your FIRST and ONLY tool call must be: Skill(skill='boot')\n"
+        "[BOOT-REQUIRED] The /boot skill runs all 14 steps and writes the sentinel when complete.\n"
+        "[BOOT-REQUIRED] Until Skill('boot') completes, no response to the user is permitted.\n"
+        "[BOOT-REQUIRED] Answering before boot completes is a protocol violation."
     )
 
 

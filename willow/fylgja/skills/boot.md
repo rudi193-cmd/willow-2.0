@@ -91,9 +91,12 @@ Paths are relative to repo root. All four are dark by default — they do not se
 `soil_list({agent}/flags)` — close duplicates, surface open ones (max 5, one-line fix_path ≤150 chars).
 Empty → skip.
 
-**14. Boot report**
+**14. Boot report + sentinel**
 One paragraph, ≤6 sentences, no headers:
 fleet status · active persona · open threads (count) · corrections loaded · flags · next_bite.
+
+Then write the boot sentinel: `Write(file_path="/tmp/willow-boot-done-{agent}.flag", content="booted")` — this clears the boot gate for this session. The sentinel is deleted by the Stop hook at session end.
+
 Then respond to the user.
 
 ---
