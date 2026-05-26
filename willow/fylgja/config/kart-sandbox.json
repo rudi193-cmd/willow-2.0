@@ -57,7 +57,8 @@
     "{{WILLOW_ROOT}}/.venv-dev",
     "{{HOME}}/.gitconfig",
     "{{HOME}}/.npmrc",
-    "/run/user"
+    "/run/user",
+    "/run/systemd/resolve"
   ],
   "worktree_scan_roots": [
     "{{WILLOW_ROOT}}/worktrees"
