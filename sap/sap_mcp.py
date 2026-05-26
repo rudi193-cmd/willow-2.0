@@ -1762,6 +1762,85 @@ async def mem_jeles_web_search(
 
 @mcp.tool()
 @sap_gate()
+async def mem_jeles_ask(
+    app_id:   str,
+    question: str,
+    sources:  list = [],
+    limit:    int  = 2,
+) -> dict:
+    """Jeles: Answer a natural language question from trusted sources.
+    Auto-routes to relevant source groups (music→MusicBrainz, medicine→PubMed, etc.).
+    Synthesizes a cited answer via Groq→Ollama. Pass sources=[] to auto-route,
+    or name specific source IDs to override. limit=results per source (default 2)."""
+    logger.info("[w2] mem_jeles_ask app_id=%s question=%r sources=%s", app_id, question[:80], sources or "auto")
+    from core.jeles_sources import search as jeles_search, route_sources, question_to_query
+    from core.llm_edge import respond as llm_respond
+
+    search_query = question_to_query(question)
+    active_sources = list(sources) if sources else route_sources(search_query)
+    loop = asyncio.get_running_loop()
+
+    raw = await loop.run_in_executor(_executor, jeles_search, search_query, active_sources, limit)
+    results_by_source = raw.get("results", {})
+    total = raw.get("total", 0)
+
+    if not total:
+        return {
+            "answer": "No results found in trusted sources for this query.",
+            "citations": [],
+            "sources_used": active_sources,
+            "question": question,
+            "total_results": 0,
+        }
+
+    # Build citation list + snippet block within token budget
+    citations: list = []
+    snippet_lines: list = []
+    budget = 1500
+    idx = 1
+    for source_id, hits in results_by_source.items():
+        for hit in hits:
+            title   = (hit.get("title")   or "").strip()
+            snippet = (hit.get("snippet") or "").strip()
+            url     = hit.get("url", "")
+            inst    = hit.get("institution", source_id)
+            date    = hit.get("date", "")
+            citations.append({"n": idx, "title": title, "url": url, "source": inst, "date": date})
+            line = f"[{idx}] {title}" + (f": {snippet}" if snippet else "")
+            snippet_lines.append(line[:400])
+            budget -= len(line)
+            idx += 1
+            if budget <= 0:
+                break
+        if budget <= 0:
+            break
+
+    snippet_block = "\n\n".join(snippet_lines)
+    system = (
+        "You are Jeles, a trusted librarian. Answer using ONLY the numbered source "
+        "excerpts below. Cite each fact with its number in brackets, e.g. [1]. "
+        "2-4 sentences max. NEVER use outside knowledge — if the excerpts do not "
+        "contain the answer, say exactly: 'The trusted sources do not contain this answer.'"
+    )
+    try:
+        answer = await loop.run_in_executor(
+            _executor, llm_respond,
+            system, [], f"Question: {question}\n\nSources:\n{snippet_block}",
+        )
+    except Exception as e:
+        answer = f"(synthesis unavailable: {e})"
+
+    return {
+        "answer": answer,
+        "citations": citations,
+        "sources_used": active_sources,
+        "question": question,
+        "total_results": total,
+    }
+
+
+@mcp.tool()
+@sap_gate()
 async def mem_jeles_search(
     app_id:   str,
     query:    str,
