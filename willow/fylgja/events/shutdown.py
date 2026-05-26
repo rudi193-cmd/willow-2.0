@@ -128,6 +128,59 @@ def run_handoff_rebuild() -> None:
         pass
 
 
+def run_stack_snapshot(session_id: str) -> None:
+    """Write authoritative open-state record to SOIL. Boot step 9 reads this."""
+    try:
+        tasks: list = []
+        try:
+            result = call("agent_task_list", {"app_id": AGENT}, timeout=8)
+            if isinstance(result, list):
+                tasks = [
+                    {"id": t.get("id", ""), "title": t.get("title", ""), "status": t.get("status", "")}
+                    for t in result
+                    if t.get("status") not in ("completed", "cancelled", "done")
+                ]
+        except Exception:
+            pass
+
+        open_threads: list = []
+        handoff_title = ""
+        try:
+            h = call("handoff_latest", {"app_id": AGENT}, timeout=8)
+            if isinstance(h, dict):
+                handoff_title = h.get("filename", h.get("title", ""))
+                open_threads = h.get("open_threads", [])
+        except Exception:
+            pass
+
+        open_decisions: list = []
+        try:
+            ledger = call("ledger_read", {"app_id": AGENT, "limit": 1}, timeout=8)
+            entries = ledger.get("entries", []) if isinstance(ledger, dict) else []
+            if entries:
+                open_decisions = entries[0].get("content", {}).get("open_decisions", [])
+        except Exception:
+            pass
+
+        call("soil_put", {
+            "app_id": AGENT,
+            "collection": f"{AGENT}/stack",
+            "key": "current",
+            "value": {
+                "id": "current",
+                "session_id": session_id,
+                "written_at": datetime.now(timezone.utc).isoformat(),
+                "open_tasks": tasks,
+                "open_threads": open_threads,
+                "open_decisions": open_decisions,
+                "handoff_title": handoff_title,
+                "agent": AGENT,
+            },
+        }, timeout=8)
+    except Exception:
+        pass
+
+
 def run_ingot(session_id: str) -> None:
     try:
         import urllib.request
@@ -425,6 +478,7 @@ def main():
     run_hook_pipeline(run_id=session_id)  # Phase 5: run registered hooks with isolation
     run_feedback_pipeline()
     run_handoff_rebuild()
+    run_stack_snapshot(session_id)
 
     if session_id:
         try:

@@ -1774,12 +1774,26 @@ async def mem_jeles_ask(
     Synthesizes a cited answer via Groq→Ollama. Pass sources=[] to auto-route,
     or name specific source IDs to override. limit=results per source (default 2)."""
     logger.info("[w2] mem_jeles_ask app_id=%s question=%r sources=%s", app_id, question[:80], sources or "auto")
-    from core.jeles_sources import search as jeles_search, route_sources, question_to_query
+    from core.jeles_sources import (
+        search as jeles_search, route_sources_semantic, question_to_query,
+        question_to_intent,
+    )
     from core.llm_edge import respond as llm_respond
 
-    search_query = question_to_query(question)
-    active_sources = list(sources) if sources else route_sources(search_query)
     loop = asyncio.get_running_loop()
+
+    # Step 1: extract factual intent (handles trivia framing)
+    intent = await loop.run_in_executor(_executor, question_to_intent, question)
+
+    # Step 2: route on intent (semantic embedding-based)
+    if sources:
+        active_sources = list(sources)
+    else:
+        active_sources = await loop.run_in_executor(_executor, route_sources_semantic, intent)
+
+    # Step 3: clean search terms from intent
+    search_query = question_to_query(intent)
+    logger.info("[w2] mem_jeles_ask intent=%r route=%s", intent[:80], active_sources)
 
     raw = await loop.run_in_executor(_executor, jeles_search, search_query, active_sources, limit)
     results_by_source = raw.get("results", {})
@@ -1820,8 +1834,10 @@ async def mem_jeles_ask(
     system = (
         "You are Jeles, a trusted librarian. Answer using ONLY the numbered source "
         "excerpts below. Cite each fact with its number in brackets, e.g. [1]. "
-        "2-4 sentences max. NEVER use outside knowledge — if the excerpts do not "
-        "contain the answer, say exactly: 'The trusted sources do not contain this answer.'"
+        "For list questions (albums, works, titles), enumerate ALL items found across "
+        "all sources — do not stop after one. 2-6 sentences or a short bulleted list. "
+        "NEVER use outside knowledge — if the excerpts do not contain the answer, say "
+        "exactly: 'The trusted sources do not contain this answer.'"
     )
     try:
         answer = await loop.run_in_executor(
@@ -1837,6 +1853,26 @@ async def mem_jeles_ask(
         "sources_used": active_sources,
         "question": question,
         "total_results": total,
+    }
+
+
+@mcp.tool()
+@sap_gate()
+async def mem_jeles_build_centroids(
+    app_id: str,
+    force:  bool = False,
+) -> dict:
+    """Build (or rebuild) Jeles domain centroid embeddings using nomic-embed-text.
+    Centroids cached at ~/.willow/jeles_centroids.json and used by mem_jeles_ask
+    for semantic routing. Takes ~30-60s on first build. Pass force=true to rebuild."""
+    from core.jeles_sources import build_centroids, _DOMAIN_SEEDS
+    loop = asyncio.get_running_loop()
+    centroids = await loop.run_in_executor(_executor, build_centroids, force)
+    return {
+        "status": "built" if centroids else "failed",
+        "domains": list(centroids.keys()),
+        "domain_count": len(centroids),
+        "seed_count": sum(len(v) for v in _DOMAIN_SEEDS.values()),
     }
 
 
