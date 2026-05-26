@@ -117,11 +117,17 @@ def extract_next_bite(questions: list, summary: str = "") -> str:
             line = block.split("\n", 1)[0].strip().strip("*")
             if line:
                 return line[:500]
+    # Q17 is always the last question; the parser strips the "Q17:" prefix so
+    # the prefix-match above never fires — fall back to the last item in the list.
+    if questions:
+        last = str(questions[-1]).strip().strip("*")
+        if last:
+            return last[:500]
     return ""
 
 
-def handoff_richness_score(handoff: Mapping[str, object]) -> tuple[int, int, int, str]:
-    """Rank handoff candidates: prefer substantive content, then recency."""
+def handoff_richness_score(handoff: Mapping[str, object]) -> tuple:
+    """Rank handoff candidates: recency first, richness breaks same-session ties."""
     open_threads = _parse_json_list(handoff.get("open_threads"))
     questions = _parse_json_list(handoff.get("questions"))
     summary = str(handoff.get("summary") or "")
@@ -130,7 +136,10 @@ def handoff_richness_score(handoff: Mapping[str, object]) -> tuple[int, int, int
         str(handoff.get("date") or handoff.get("handoff_date") or ""),
         str(handoff.get("_valid_at") or handoff.get("mtime") or ""),
     )
-    return (len(open_threads), len(questions), len(summary), sort_key)
+    # Date and letter suffix are primary — a newer session always beats an older one.
+    # Richness only breaks ties within the exact same date+suffix.
+    date, suffix, filename, mtime = sort_key
+    return (date, suffix, len(open_threads), len(questions), len(summary), filename, mtime)
 
 
 def select_best_handoff(candidates: list[dict]) -> dict | None:

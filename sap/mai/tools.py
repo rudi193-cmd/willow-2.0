@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 def _read_file(path: str, cwd: str = "") -> str:
-    p = Path(path)
+    p = Path(path).expanduser()
     if not p.is_absolute() and cwd:
         p = Path(cwd) / p
     return p.read_text(encoding="utf-8", errors="replace")

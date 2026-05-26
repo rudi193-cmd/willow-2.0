@@ -27,6 +27,7 @@ AGENT = require_agent_name()
 # Expected layout per startup.md step 3: ~/agents/{AGENT}/index/haumana_handoffs/
 INDEX_DIR = Path.home() / "agents" / AGENT / "index"
 THREAD_FILE = Path("/tmp/willow-context-thread.json")
+BOOT_DONE = Path(f"/tmp/willow-boot-done-{AGENT}.flag")
 
 
 # ---------------------------------------------------------------------------
@@ -579,6 +580,7 @@ def main():
 
     _clear_stale_thread()
     reset_turn_count()  # fresh session — boot guard must fire exactly once
+    BOOT_DONE.unlink(missing_ok=True)  # clear previous session's sentinel — boot must run once per session
     grove_status = _ensure_grove_mcp()  # instant local file check
     if session_id:
         _register_jeles(session_id)

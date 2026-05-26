@@ -46,10 +46,17 @@ def write_session_handoff(
     dest_dir.mkdir(parents=True, exist_ok=True)
     filename = next_session_filename(agent, suffix)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # Extract the session letter from the filename (e.g. "2026-05-26f" from "session_handoff-2026-05-26f_hanuman.md")
+    import re as _re
+    _m = _re.search(r"session_handoff-(\d{4}-\d{2}-\d{2}[a-z]?)_", filename)
+    session_id = _m.group(1) if _m else today
     frontmatter = "\n".join([
         "---",
         f"agent: {agent}",
         f"date: {today}",
+        f"session: {session_id}",
+        f"runtime: claude-code",
+        f"format: v2",
         f"project: {project}",
         *( [f"branch: {branch}"] if branch else [] ),
         "---",

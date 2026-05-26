@@ -171,6 +171,23 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
         flag = "--ro-bind" if read_only else "--bind"
         args += [flag, str(host), str(container)]
 
+    # On merged-usr systems /bin, /lib, /lib64, /sbin are symlinks → /usr/*.
+    # collect_bind_mounts resolves them to real paths, so the container gets
+    # e.g. /usr/bin but no /bin symlink.  Without /lib64 the ELF interpreter
+    # can't be found and bash/python3 fail with ENOENT.  Re-add the symlinks.
+    _MERGED_USR_LINKS = [
+        ("/bin", "usr/bin"),
+        ("/sbin", "usr/sbin"),
+        ("/lib", "usr/lib"),
+        ("/lib32", "usr/lib32"),
+        ("/lib64", "usr/lib64"),
+        ("/libx32", "usr/libx32"),
+    ]
+    for link_path, target in _MERGED_USR_LINKS:
+        p = Path(link_path)
+        if p.is_symlink():
+            args += ["--symlink", target, link_path]
+
     if allow_net:
         home = Path.home()
         netrc = home / ".netrc"
@@ -246,8 +263,7 @@ def run_shell(
     if cwd:
         run_env["PWD"] = cwd
 
-    argv = shlex.split(cmd)
-    if not argv:
+    if not cmd.strip():
         return {
             "returncode": 1,
             "stdout": "",
@@ -256,6 +272,8 @@ def run_shell(
             "sandbox": "none",
         }
 
+    # Use bash -c so shell operators (&&, |, $(), redirects) work correctly.
+    argv = ["bash", "-c", cmd]
     sandbox = "plain"
     if use_bwrap():
         prefix = build_bwrap_argv(allow_net=allow_net)

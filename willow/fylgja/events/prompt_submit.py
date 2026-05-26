@@ -340,17 +340,18 @@ def _run_corpus_capture(prompt: str, session_id: str) -> None:
 
 
 def _boot_guard() -> None:
-    """First turn only: gate on boot sentinel. If absent, force Skill('boot') as first action."""
+    """First turn only: gate on boot sentinel. If absent, direct agent to Read+execute boot.md."""
     if not is_first_turn():
         return
     if BOOT_DONE.exists():
         return
+    boot_path = str(Path(__file__).parent.parent / "skills" / "boot.md")
     print(
         "[BOOT-REQUIRED] Boot sentinel absent — this session has NOT been booted.\n"
         "[BOOT-REQUIRED] STOP. Do NOT emit any text. Do NOT call any other tool.\n"
-        "[BOOT-REQUIRED] Your FIRST and ONLY tool call must be: Skill(skill='boot')\n"
-        "[BOOT-REQUIRED] The /boot skill runs all 14 steps and writes the sentinel when complete.\n"
-        "[BOOT-REQUIRED] Until Skill('boot') completes, no response to the user is permitted.\n"
+        f"[BOOT-REQUIRED] Your FIRST and ONLY tool call must be: Read(file_path='{boot_path}')\n"
+        "[BOOT-REQUIRED] Then execute all 14 boot steps and write the sentinel when complete.\n"
+        "[BOOT-REQUIRED] Until boot completes, no response to the user is permitted.\n"
         "[BOOT-REQUIRED] Answering before boot completes is a protocol violation."
     )
 

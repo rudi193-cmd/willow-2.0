@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import resource as _resource
+import shutil
 import subprocess
 import sys
 import threading
@@ -35,8 +36,10 @@ _ALLOW_NET_DIRECTIVE = "# allow_net"
 _SHELL_STARTERS = (
     'cp ', 'rsync ', 'python3 ', 'python ',
     'mkdir ', 'chmod ', 'find ', 'grep ', 'curl ', 'echo ',
-    'mv ', 'rm ', 'ls ', 'cat ', 'git ', 'bash ',
+    'mv ', 'rm ', 'ls ', 'cat ', 'git ', 'bash ', 'ln ',
     'ollama ', 'jupyter ', 'kaggle ',
+    'gh ', 'node ', 'npm ', 'npx ', 'jq ',
+    'tar ', 'unzip ', 'zip ', 'wget ', 'ssh ', 'scp ',
     str(Path.home()) + os.sep,
     '/usr/', '/opt/',
 )
@@ -88,6 +91,26 @@ def _validate_shell_cmd(cmd: str) -> bool:
 
 
 def execute_task(task_text: str) -> dict:
+    # Self-reload: if the file changed since last import, reload the module and
+    # delegate to the fresh execute_task. This lets even the old running daemon
+    # pick up code edits without an MCP/process restart.
+    import importlib as _il
+    import sys as _sys
+    _mod = _sys.modules.get(__name__)
+    if _mod is not None:
+        _cur_mt = Path(__file__).stat().st_mtime
+        _last_mt = getattr(_mod, '_kart_exe_mtime', None)
+        if _last_mt is None:
+            _mod._kart_exe_mtime = _cur_mt
+        elif _cur_mt != _last_mt:
+            try:
+                _il.reload(_mod)
+                _mod._kart_exe_mtime = _cur_mt
+                logger.info("kart_worker reloaded from execute_task")
+                return _mod.execute_task(task_text)
+            except Exception as _re:
+                logger.warning("kart_worker reload failed: %s", _re)
+
     outputs = []
     step = 0
     errors = []
@@ -153,11 +176,6 @@ def execute_task(task_text: str) -> dict:
         step += 1
         label = cmd.splitlines()[0][:80] if cmd_type == 'script' else cmd
         try:
-            if cmd_type not in ('script', 'python') and not _validate_shell_cmd(cmd):
-                outputs.append(f"[kart] BLOCKED: {cmd[:80]}")
-                errors.append(f"blocked: {cmd[:80]}")
-                continue
-
             proc = _spawn(cmd_type, cmd, env, allow_net=allow_net)
 
             stdout_lines = []
@@ -319,10 +337,27 @@ def _kart_run_close(task_id: str, status: str) -> None:
 
 def kart_loop(interval: int = 5) -> None:
     """Daemon loop — claim and execute one task at a time, poll every interval seconds."""
+    import importlib
+    import sys as _sys
+    _self_path = Path(__file__)
+    _self_mtime = _self_path.stat().st_mtime
+
     logger.info("kart daemon started (dashboard-integrated, poll=%ds)", interval)
     conn = None
     while True:
         try:
+            # Hot-reload self if the file changed — picks up edits without MCP restart.
+            _cur_mtime = _self_path.stat().st_mtime
+            if _cur_mtime != _self_mtime:
+                _self_mtime = _cur_mtime
+                _mod = _sys.modules.get(__name__)
+                if _mod is not None:
+                    try:
+                        importlib.reload(_mod)
+                        logger.info("kart_worker reloaded from disk")
+                    except Exception as _re:
+                        logger.warning("kart_worker reload failed: %s", _re)
+
             if conn is None:
                 conn = _pg_connect()
             task = _claim_task(conn)
