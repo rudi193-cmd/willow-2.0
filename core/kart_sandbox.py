@@ -188,12 +188,14 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
         if p.is_symlink():
             args += ["--symlink", target, link_path]
 
-    # Ubuntu has /var/run → /run as a symlink; resolve drops the symlink so
-    # pg_bridge can't find the postgres socket at /var/run/postgresql/.s.PGSQL.5432.
-    # Read the actual symlink target from the host and replicate it exactly.
-    _varrun = Path("/var/run")
-    if _varrun.is_symlink():
-        args += ["--symlink", os.readlink("/var/run"), "/var/run"]
+    # psycopg2's default socket dir is /var/run/postgresql. collect_bind_mounts
+    # resolves the /var/run → /run symlink, so the socket ends up mounted at
+    # /run/postgresql but never at /var/run/postgresql. Add a direct bind at
+    # the original unresolved path so pg_bridge finds the socket without
+    # needing PGHOST set explicitly.
+    _pg_sock = Path("/var/run/postgresql")
+    if _pg_sock.exists():
+        args += ["--bind", str(_pg_sock.resolve()), str(_pg_sock)]
 
     if allow_net:
         home = Path.home()
