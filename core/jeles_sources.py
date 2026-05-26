@@ -1591,72 +1591,164 @@ def search_europeana(query: str, limit: int = 5) -> list[dict]:
 
 SOURCES: dict[str, dict] = {
     # Academic
-    "openalex":         {"name": "OpenAlex",                "domain": ["academic", "science", "humanities"], "fn": search_openalex,         "key_required": False},
-    "core":             {"name": "CORE",                    "domain": ["academic", "science"],               "fn": search_core,             "key_required": False},
-    "doaj":             {"name": "DOAJ",                    "domain": ["academic", "open_access"],           "fn": search_doaj,             "key_required": False},
-    "europepmc":        {"name": "Europe PMC",              "domain": ["biology", "medicine", "health"],     "fn": search_europepmc,        "key_required": False},
-    "semantic_scholar": {"name": "Semantic Scholar",        "domain": ["academic", "cs", "science"],         "fn": search_semantic_scholar,  "key_required": False},
-    "crossref":         {"name": "Crossref",                "domain": ["academic", "general"],               "fn": search_crossref,         "key_required": False},
-    "pubmed":           {"name": "PubMed",                  "domain": ["biology", "medicine"],               "fn": search_pubmed,           "key_required": False},
-    "arxiv":            {"name": "arXiv",                   "domain": ["science", "cs", "math", "physics"],  "fn": search_arxiv,            "key_required": False},
+    "openalex":         {"name": "OpenAlex",                "domain": ["academic", "science", "humanities"], "key_required": False},
+    "core":             {"name": "CORE",                    "domain": ["academic", "science"],             "key_required": False},
+    "doaj":             {"name": "DOAJ",                    "domain": ["academic", "open_access"],           "key_required": False},
+    "europepmc":        {"name": "Europe PMC",              "domain": ["biology", "medicine", "health"],     "key_required": False},
+    "semantic_scholar": {"name": "Semantic Scholar",        "domain": ["academic", "cs", "science"],         "key_required": False},
+    "crossref":         {"name": "Crossref",                "domain": ["academic", "general"],               "key_required": False},
+    "pubmed":           {"name": "PubMed",                  "domain": ["biology", "medicine"],               "key_required": False},
+    "arxiv":            {"name": "arXiv",                   "domain": ["science", "cs", "math", "physics"],  "key_required": False},
     # Data / Science
-    "zenodo":           {"name": "Zenodo",                  "domain": ["science", "data", "general"],        "fn": search_zenodo,           "key_required": False},
-    "datacite":         {"name": "DataCite",                "domain": ["science", "data"],                   "fn": search_datacite,         "key_required": False},
-    "wikidata":         {"name": "Wikidata",                "domain": ["general", "reference"],              "fn": search_wikidata,         "key_required": False},
-    "pubchem":          {"name": "PubChem",                 "domain": ["chemistry", "science"],              "fn": search_pubchem,          "key_required": False},
-    "usgs":             {"name": "USGS Publications",       "domain": ["geology", "earth_science"],          "fn": search_usgs,             "key_required": False},
-    "nasa":             {"name": "NASA",                    "domain": ["space", "science"],                  "fn": search_nasa,             "key_required": False},
+    "zenodo":           {"name": "Zenodo",                  "domain": ["science", "data", "general"],        "key_required": False},
+    "datacite":         {"name": "DataCite",                "domain": ["science", "data"],                   "key_required": False},
+    "wikidata":         {"name": "Wikidata",                "domain": ["general", "reference"],              "key_required": False},
+    "pubchem":          {"name": "PubChem",                 "domain": ["chemistry", "science"],              "key_required": False},
+    "usgs":             {"name": "USGS Publications",       "domain": ["geology", "earth_science"],          "key_required": False},
+    "nasa":             {"name": "NASA",                    "domain": ["space", "science"],                  "key_required": False},
     # Museums
-    "met":              {"name": "Met Museum",              "domain": ["art", "culture", "history"],         "fn": search_met,              "key_required": False},
-    "cleveland":        {"name": "Cleveland Museum of Art", "domain": ["art", "culture"],                    "fn": search_cleveland,        "key_required": False},
-    "vam":              {"name": "V&A Museum",              "domain": ["art", "design", "culture"],          "fn": search_vam,              "key_required": False},
-    "rijksmuseum":      {"name": "Rijksmuseum",             "domain": ["art", "history"],                    "fn": search_rijksmuseum,      "key_required": True},
+    "met":              {"name": "Met Museum",              "domain": ["art", "culture", "history"],         "key_required": False},
+    "cleveland":        {"name": "Cleveland Museum of Art", "domain": ["art", "culture"],                    "key_required": False},
+    "vam":              {"name": "V&A Museum",              "domain": ["art", "design", "culture"],          "key_required": False},
+    "rijksmuseum":      {"name": "Rijksmuseum",             "domain": ["art", "history"],                    "key_required": True},
     # Libraries & Archives
-    "loc":              {"name": "Library of Congress",     "domain": ["humanities", "history", "general"],  "fn": search_loc,              "key_required": False},
-    "openlibrary":      {"name": "Open Library",            "domain": ["books", "humanities"],               "fn": search_openlibrary,      "key_required": False},
-    "chronicling_america": {"name": "Chronicling America", "domain": ["history", "journalism"],             "fn": search_chronicling_america, "key_required": False},
-    "internet_archive": {"name": "Internet Archive",        "domain": ["general", "books", "media"],         "fn": search_internet_archive, "key_required": False},
-    "dpla":             {"name": "DPLA",                    "domain": ["humanities", "history", "general"],  "fn": search_dpla,             "key_required": True},
+    "loc":              {"name": "Library of Congress",     "domain": ["humanities", "history", "general"],  "key_required": False},
+    "openlibrary":      {"name": "Open Library",            "domain": ["books", "humanities"],               "key_required": False},
+    "chronicling_america": {"name": "Chronicling America", "domain": ["history", "journalism"],             "key_required": False},
+    "internet_archive": {"name": "Internet Archive",        "domain": ["general", "books", "media"],         "key_required": False},
+    "dpla":             {"name": "DPLA",                    "domain": ["humanities", "history", "general"],  "key_required": True},
     # Heritage
-    "smithsonian":      {"name": "Smithsonian",             "domain": ["art", "history", "science"],         "fn": search_smithsonian,      "key_required": True},
-    "europeana":        {"name": "Europeana",               "domain": ["art", "culture", "history"],         "fn": search_europeana,        "key_required": True},
+    "smithsonian":      {"name": "Smithsonian",             "domain": ["art", "history", "science"],         "key_required": True},
+    "europeana":        {"name": "Europeana",               "domain": ["art", "culture", "history"],         "key_required": True},
     # International
-    "gallica":          {"name": "Gallica (BnF)",           "domain": ["humanities", "history", "france"],   "fn": search_gallica,          "key_required": False},
-    "hal":              {"name": "HAL Open Access",         "domain": ["academic", "science", "france"],     "fn": search_hal,              "key_required": False},
-    "scielo":           {"name": "SciELO",                  "domain": ["science", "latin_america", "iberia"],"fn": search_scielo,           "key_required": False},
-    "ndl":              {"name": "National Diet Library",   "domain": ["general", "japan", "asia"],          "fn": search_ndl,              "key_required": False},
+    "gallica":          {"name": "Gallica (BnF)",           "domain": ["humanities", "history", "france"],   "key_required": False},
+    "hal":              {"name": "HAL Open Access",         "domain": ["academic", "science", "france"],     "key_required": False},
+    "scielo":           {"name": "SciELO",                  "domain": ["science", "latin_america", "iberia"],"key_required": False},
+    "ndl":              {"name": "National Diet Library",   "domain": ["general", "japan", "asia"],          "key_required": False},
     # Music
-    "musicbrainz":      {"name": "MusicBrainz",             "domain": ["music", "art", "culture"],           "fn": search_musicbrainz,      "key_required": False},
+    "musicbrainz":      {"name": "MusicBrainz",             "domain": ["music", "art", "culture"],           "key_required": False},
     # Philosophy & humanities
-    "sep":              {"name": "Stanford Encyclopedia of Philosophy", "domain": ["philosophy", "humanities"], "fn": search_sep,           "key_required": False},
+    "sep":              {"name": "Stanford Encyclopedia of Philosophy", "domain": ["philosophy", "humanities"], "key_required": False},
     # Literature — public domain
-    "gutenberg":        {"name": "Project Gutenberg",       "domain": ["literature", "books", "humanities"], "fn": search_gutenberg,        "key_required": False},
+    "gutenberg":        {"name": "Project Gutenberg",       "domain": ["literature", "books", "humanities"], "key_required": False},
     # Natural history
-    "bhl":              {"name": "Biodiversity Heritage Library", "domain": ["biology", "ecology", "natural_history"], "fn": search_bhl,  "key_required": True},
+    "bhl":              {"name": "Biodiversity Heritage Library", "domain": ["biology", "ecology", "natural_history"], "key_required": True},
     # Law
-    "courtlistener":    {"name": "CourtListener",           "domain": ["law", "legal"],                      "fn": search_courtlistener,    "key_required": False},
+    "courtlistener":    {"name": "CourtListener",           "domain": ["law", "legal"],                      "key_required": False},
     # Broad academic open access
-    "base":             {"name": "BASE (Bielefeld)",         "domain": ["academic", "general", "open_access"],"fn": search_base,             "key_required": False},
+    "base":             {"name": "BASE (Bielefeld)",         "domain": ["academic", "general", "open_access"],"key_required": False},
     # Computer science
-    "dblp":             {"name": "DBLP",                    "domain": ["computer_science", "academic"],      "fn": search_dblp,             "key_required": False},
+    "dblp":             {"name": "DBLP",                    "domain": ["computer_science", "academic"],      "key_required": False},
     # Drug / medical safety
-    "openfda":          {"name": "OpenFDA",                 "domain": ["medicine", "drug", "safety"],        "fn": search_openfda,          "key_required": False},
+    "openfda":          {"name": "OpenFDA",                 "domain": ["medicine", "drug", "safety"],        "key_required": False},
     # Species / ecology
-    "eol":              {"name": "Encyclopedia of Life",    "domain": ["biology", "ecology", "species"],     "fn": search_eol,              "key_required": False},
-    "gbif":             {"name": "GBIF",                    "domain": ["biology", "ecology", "biodiversity"],"fn": search_gbif,             "key_required": False},
-    "inaturalist":      {"name": "iNaturalist",             "domain": ["biology", "ecology", "species"],     "fn": search_inaturalist,      "key_required": False},
+    "eol":              {"name": "Encyclopedia of Life",    "domain": ["biology", "ecology", "species"],     "key_required": False},
+    "gbif":             {"name": "GBIF",                    "domain": ["biology", "ecology", "biodiversity"],"key_required": False},
+    "inaturalist":      {"name": "iNaturalist",             "domain": ["biology", "ecology", "species"],     "key_required": False},
     # Geography
-    "nominatim":        {"name": "OpenStreetMap Nominatim", "domain": ["geography", "places"],               "fn": search_nominatim,        "key_required": False},
+    "nominatim":        {"name": "OpenStreetMap Nominatim", "domain": ["geography", "places"],               "key_required": False},
     # European open research
-    "openaire":         {"name": "OpenAIRE",                "domain": ["academic", "europe", "open_access"], "fn": search_openaire,         "key_required": False},
+    "openaire":         {"name": "OpenAIRE",                "domain": ["academic", "europe", "open_access"], "key_required": False},
     # Government open data
-    "federal_register": {"name": "U.S. Federal Register",  "domain": ["law", "government", "us"],           "fn": search_federal_register, "key_required": False},
-    "datagov":          {"name": "data.gov",                "domain": ["government", "data", "us"],          "fn": search_datagov,          "key_required": False},
-    "uk_legislation":   {"name": "legislation.gov.uk",      "domain": ["law", "government", "uk"],           "fn": search_uk_legislation,   "key_required": False},
-    "eu_data":          {"name": "data.europa.eu",          "domain": ["government", "data", "europe"],      "fn": search_eu_data,          "key_required": False},
+    "federal_register": {"name": "U.S. Federal Register",  "domain": ["law", "government", "us"],           "key_required": False},
+    "datagov":          {"name": "data.gov",                "domain": ["government", "data", "us"],          "key_required": False},
+    "uk_legislation":   {"name": "legislation.gov.uk",      "domain": ["law", "government", "uk"],           "key_required": False},
+    "eu_data":          {"name": "data.europa.eu",          "domain": ["government", "data", "europe"],      "key_required": False},
     # Opt-in only — general reference, not suitable for academic citation
-    "wikipedia":        {"name": "Wikipedia",               "domain": ["general", "reference"],              "fn": search_wikipedia,        "key_required": False, "opt_in": True},
+    "wikipedia":        {"name": "Wikipedia",               "domain": ["general", "reference"],              "fn_name": "search_wikipedia",        "key_required": False, "opt_in": True},
 }
+
+# ── DB-backed source registry ─────────────────────────────────────────────────
+# jeles_sources table is canonical. SOURCES above is fallback only.
+# Dispatch resolves fn_name strings via getattr — no function pointers needed.
+
+import sys as _sys
+import time as _time
+
+_REGISTRY_CACHE: dict[str, dict] = {}
+_REGISTRY_LOADED_AT: float = 0.0
+_REGISTRY_TTL: float = 300.0  # 5-minute cache
+
+_ROUTES_CACHE: list[tuple[list[str], list[str]]] = []
+_ROUTES_LOADED_AT: float = 0.0
+
+
+def _load_registry() -> dict[str, dict]:
+    """Load {source_id: {name, fn_name, key_required, opt_in}} from Postgres.
+    Falls back to SOURCES if DB unavailable."""
+    global _REGISTRY_CACHE, _REGISTRY_LOADED_AT
+    now = _time.monotonic()
+    if _REGISTRY_CACHE and now - _REGISTRY_LOADED_AT < _REGISTRY_TTL:
+        return _REGISTRY_CACHE
+    try:
+        from core.pg_bridge import PgBridge
+        bridge = PgBridge()
+        cur = bridge.conn.cursor()
+        cur.execute("""
+            SELECT id, name, fn_name, key_required, opt_in, enabled
+            FROM   jeles_sources
+            WHERE  fn_name IS NOT NULL
+        """)
+        rows = cur.fetchall()
+        cur.close(); bridge.conn.close()
+        if rows:
+            _REGISTRY_CACHE = {
+                row[0]: {
+                    "name":         row[1],
+                    "fn_name":      row[2],
+                    "key_required": row[3],
+                    "opt_in":       row[4],
+                    "enabled":      row[5],
+                }
+                for row in rows
+            }
+            _REGISTRY_LOADED_AT = now
+            return _REGISTRY_CACHE
+    except Exception as e:
+        log.warning("Registry DB load failed, using Python fallback: %s", e)
+    # Fallback: convert SOURCES fn pointers to fn_name strings
+    fallback = {}
+    for sid, cfg in SOURCES.items():
+        fallback[sid] = {
+            "name":         cfg.get("name", sid),
+            "fn_name":      cfg.get("fn_name") or (cfg.get("fn") and cfg["fn"].__name__) or f"search_{sid}",
+            "key_required": cfg.get("key_required", False),
+            "opt_in":       cfg.get("opt_in", False),
+            "enabled":      True,
+        }
+    return fallback
+
+
+def _load_routes() -> list[tuple[list[str], list[str]]]:
+    """Load keyword routes from jeles_domain_routes. Falls back to _DOMAIN_ROUTES."""
+    global _ROUTES_CACHE, _ROUTES_LOADED_AT
+    now = _time.monotonic()
+    if _ROUTES_CACHE and now - _ROUTES_LOADED_AT < _REGISTRY_TTL:
+        return _ROUTES_CACHE
+    try:
+        from core.pg_bridge import PgBridge
+        bridge = PgBridge()
+        cur = bridge.conn.cursor()
+        cur.execute("""
+            SELECT keywords, source_ids
+            FROM   jeles_domain_routes
+            WHERE  keywords IS NOT NULL AND source_ids IS NOT NULL
+            ORDER BY domain
+        """)
+        rows = cur.fetchall()
+        cur.close(); bridge.conn.close()
+        if rows:
+            _ROUTES_CACHE = [(list(row[0]), list(row[1])) for row in rows if row[0] and row[1]]
+            _ROUTES_LOADED_AT = now
+            return _ROUTES_CACHE
+    except Exception as e:
+        log.warning("Routes DB load failed, using Python fallback: %s", e)
+    return _DOMAIN_ROUTES
+
+
+def _resolve_fn(fn_name: str):
+    """Resolve a search function by name from this module."""
+    return getattr(_sys.modules[__name__], fn_name, None)
 
 # ── Domain routing ────────────────────────────────────────────────────────────
 # Each entry: (keyword_list, source_ids). First match wins.
@@ -1757,10 +1849,10 @@ _MAX_ROUTE_SOURCES = 6
 
 def route_sources(query: str) -> list[str]:
     """Select sources for a query based on domain keyword matching.
-    Returns up to 4 source IDs. Fast — no HTTP, no LLM.
-    Falls back to general academic sources if no domain matches."""
+    DB-first: reads routes from jeles_domain_routes. Falls back to _DOMAIN_ROUTES.
+    Fast — no HTTP, no LLM."""
     q = query.lower()
-    for keywords, sources in _DOMAIN_ROUTES:
+    for keywords, sources in _load_routes():
         if any(kw in q for kw in keywords):
             return sources[:_MAX_ROUTE_SOURCES]
     return _DEFAULT_SOURCES
@@ -2193,15 +2285,12 @@ def question_to_query(question: str) -> str:
 
 
 def list_sources() -> list[dict]:
-    """Return source registry metadata (no search functions)."""
+    """Return source registry metadata from DB (canonical) or Python fallback."""
+    registry = _load_registry()
     return [
-        {
-            "id": sid,
-            "name": cfg["name"],
-            "domain": cfg["domain"],
-            "key_required": cfg["key_required"],
-        }
-        for sid, cfg in SOURCES.items()
+        {"id": sid, "name": cfg["name"], "fn_name": cfg["fn_name"],
+         "key_required": cfg["key_required"], "opt_in": cfg.get("opt_in", False)}
+        for sid, cfg in registry.items()
     ]
 
 
@@ -2210,19 +2299,26 @@ def search(
     sources: list[str] | None = None,
     limit_per_source: int = 3,
 ) -> dict:
-    """
-    Search across trusted sources. Returns {source_id: [results]} plus a citation note.
-    sources=None → all sources. Pass a list to target specific ones.
-    """
-    active = sources if sources else [sid for sid, cfg in SOURCES.items() if not cfg.get("opt_in")]
+    """Search across trusted sources. DB-registry dispatch via fn_name strings.
+    sources=None → all non-opt-in sources. Pass a list to target specific ones."""
+    registry = _load_registry()
+    if sources:
+        active = sources
+    else:
+        active = [sid for sid, cfg in registry.items()
+                  if not cfg.get("opt_in") and cfg.get("enabled", True)]
     out: dict[str, list] = {}
     for sid in active:
-        cfg = SOURCES.get(sid)
+        cfg = registry.get(sid)
         if not cfg:
             log.warning("Unknown source: %s", sid)
             continue
+        fn = _resolve_fn(cfg["fn_name"])
+        if not fn:
+            log.warning("No function found for source %s (fn_name=%s)", sid, cfg["fn_name"])
+            continue
         try:
-            hits = cfg["fn"](query, limit_per_source)
+            hits = fn(query, limit_per_source)
             if hits:
                 out[sid] = hits
         except Exception as e:
