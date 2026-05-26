@@ -111,16 +111,62 @@ def apply_plugin(settings_path: Path = _DEFAULT_SETTINGS,
     print(f"[install] Plugin registered: {plugin_key}")
 
 
+def install_project(
+    agent_name: str,
+    package_root: Path = _PACKAGE_ROOT,
+    dry_run: bool = False,
+) -> None:
+    """Wire project-level settings: symlink .claude/settings.json and stamp agent identity.
+
+    Creates:
+      .claude/settings.json      → symlink to willow/fylgja/config/claude-settings.json
+      .claude/settings.local.json → agent-specific env overrides (gitignored)
+    """
+    dot_claude = package_root / ".claude"
+    dot_claude.mkdir(exist_ok=True)
+
+    # Symlink .claude/settings.json → ../willow/fylgja/config/claude-settings.json
+    settings_link = dot_claude / "settings.json"
+    template = package_root / "willow" / "fylgja" / "config" / "claude-settings.json"
+    rel_target = Path("..") / "willow" / "fylgja" / "config" / "claude-settings.json"
+
+    if not template.exists():
+        raise FileNotFoundError(f"Template not found: {template}")
+
+    if dry_run:
+        print(f"[install] Would symlink {settings_link} → {rel_target}")
+    else:
+        if settings_link.exists() or settings_link.is_symlink():
+            settings_link.unlink()
+        settings_link.symlink_to(rel_target)
+        print(f"[install] Symlinked {settings_link} → {rel_target}")
+
+    # Write .claude/settings.local.json with agent-specific env vars
+    local_path = dot_claude / "settings.local.json"
+    local = {"env": {"WILLOW_AGENT_NAME": agent_name, "AGENT_NAME": agent_name}}
+    if dry_run:
+        print(f"[install] Would write {local_path}: {json.dumps(local)}")
+    else:
+        tmp = local_path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(local, indent=2))
+        tmp.replace(local_path)
+        print(f"[install] Agent identity written to {local_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Wire Fylgja into Claude Code settings.json")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--settings", type=Path, default=_DEFAULT_SETTINGS)
     parser.add_argument("--package-root", type=Path, default=_PACKAGE_ROOT)
     parser.add_argument("--plugin", action="store_true", help="Also register fylgja@local plugin")
+    parser.add_argument("--project", metavar="AGENT_NAME",
+                        help="Wire project settings: symlink .claude/settings.json and stamp agent identity")
     args = parser.parse_args()
     apply_hooks(settings_path=args.settings, package_root=args.package_root, dry_run=args.dry_run)
     if args.plugin:
         apply_plugin(settings_path=args.settings, dry_run=args.dry_run)
+    if args.project:
+        install_project(agent_name=args.project, package_root=args.package_root, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":
