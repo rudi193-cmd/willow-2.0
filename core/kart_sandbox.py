@@ -194,6 +194,16 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
         if netrc.is_file():
             args += ["--ro-bind", str(netrc), str(netrc)]
 
+        # Ubuntu/Debian nsswitch.conf has mdns4_minimal [NOTFOUND=return] before dns,
+        # which causes non-.local lookups to abort before reaching the DNS backend.
+        # Shadow /etc/nsswitch.conf with a minimal version that goes straight to dns.
+        _nsswitch = Path("/tmp/kart-nsswitch.conf")
+        _nsswitch.write_text(
+            "passwd:   files\ngroup:    files\nhosts:    files dns\n",
+            encoding="utf-8",
+        )
+        args += ["--ro-bind", str(_nsswitch), "/etc/nsswitch.conf"]
+
     return args
 
 
