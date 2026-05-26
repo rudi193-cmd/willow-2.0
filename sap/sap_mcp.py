@@ -2309,31 +2309,98 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
     def _latest():
         import json as _j
         import sqlite3 as _sql
-        if not Path(HANDOFF_DB).exists():
-            return {"error": "handoffs.db not found. Run handoff_rebuild first."}
+        import psycopg2.extras as _pge
+
         agent_filter = agent or app_id or os.environ.get("WILLOW_AGENT_NAME", "")
-        conn = _sql.connect(HANDOFF_DB)
-        conn.row_factory = _sql.Row
-        cur  = conn.cursor()
-        base_sql = handoff_select_sql(conn)
-        sql_agent = f"{base_sql} WHERE h.file_type = 'session' AND f.filename LIKE ?"
-        sql_any = f"{base_sql} WHERE h.file_type = 'session'"
-        rows = cur.execute(sql_agent, (f"%{agent_filter}%",)).fetchall() if agent_filter else []
-        if not rows:
-            rows = cur.execute(sql_any).fetchall()
-        conn.close()
-        row = select_latest_handoff(rows)
-        if not row:
+
+        # --- Postgres KB atoms (category='handoff', source_type='session') ---
+        kb_result: dict | None = None
+        if pg is not None:
+            try:
+                pg._ensure_conn()
+                with pg.conn.cursor(cursor_factory=_pge.RealDictCursor) as cur:
+                    if agent_filter:
+                        cur.execute(
+                            """
+                            SELECT id, title, summary, valid_at,
+                                   content->>'tags' AS tags
+                            FROM knowledge
+                            WHERE category = 'handoff'
+                              AND source_type = 'session'
+                              AND invalid_at IS NULL
+                              AND (project = %s OR content::text ILIKE %s)
+                            ORDER BY valid_at DESC
+                            LIMIT 1
+                            """,
+                            (agent_filter, f"%{agent_filter}%"),
+                        )
+                    else:
+                        cur.execute(
+                            """
+                            SELECT id, title, summary, valid_at,
+                                   content->>'tags' AS tags
+                            FROM knowledge
+                            WHERE category = 'handoff'
+                              AND source_type = 'session'
+                              AND invalid_at IS NULL
+                            ORDER BY valid_at DESC
+                            LIMIT 1
+                            """
+                        )
+                    row = cur.fetchone()
+                    if row:
+                        kb_result = {
+                            "filename": f"kb_{row['id']}.json",
+                            "date":     str(row["valid_at"])[:10],
+                            "summary":  row["summary"] or row["title"] or "",
+                            "open_threads": [],
+                            "questions":    [],
+                            "agreements":   [],
+                            "capabilities": [],
+                            "_source": "kb",
+                            "_valid_at": str(row["valid_at"]),
+                        }
+            except Exception as _e:
+                logger.warning("[w2] handoff_latest pg query failed: %s", _e)
+
+        # --- SQLite flat-file store ---
+        sqlite_result: dict | None = None
+        if Path(HANDOFF_DB).exists():
+            try:
+                conn = _sql.connect(HANDOFF_DB)
+                conn.row_factory = _sql.Row
+                cur  = conn.cursor()
+                base_sql = handoff_select_sql(conn)
+                sql_agent = f"{base_sql} WHERE h.file_type = 'session' AND f.filename LIKE ?"
+                sql_any = f"{base_sql} WHERE h.file_type = 'session'"
+                rows = cur.execute(sql_agent, (f"%{agent_filter}%",)).fetchall() if agent_filter else []
+                if not rows:
+                    rows = cur.execute(sql_any).fetchall()
+                conn.close()
+                row = select_latest_handoff(rows)
+                if row:
+                    sqlite_result = {
+                        "filename":     row["filename"],
+                        "date":         row["handoff_date"],
+                        "summary":      row["summary"],
+                        "open_threads": _j.loads(row["open_threads"])  if row["open_threads"]  else [],
+                        "questions":    _j.loads(row["questions"])     if row["questions"]     else [],
+                        "agreements":   _j.loads(row["agreements"])    if row["agreements"]    else [],
+                        "capabilities": _j.loads(row["capabilities"])  if row["capabilities"]  else [],
+                        "_source": "sqlite",
+                        "_valid_at": row["handoff_date"] or "",
+                    }
+            except Exception as _e:
+                logger.warning("[w2] handoff_latest sqlite query failed: %s", _e)
+
+        # Pick the most recent across both stores
+        candidates = [r for r in (kb_result, sqlite_result) if r is not None]
+        if not candidates:
             return {"error": "No session handoffs found."}
-        return {
-            "filename":     row["filename"],
-            "date":         row["handoff_date"],
-            "summary":      row["summary"],
-            "open_threads": _j.loads(row["open_threads"])  if row["open_threads"]  else [],
-            "questions":    _j.loads(row["questions"])     if row["questions"]     else [],
-            "agreements":   _j.loads(row["agreements"])    if row["agreements"]    else [],
-            "capabilities": _j.loads(row["capabilities"])  if row["capabilities"]  else [],
-        }
+        result = max(candidates, key=lambda r: r.get("_valid_at") or "")
+        result.pop("_source", None)
+        result.pop("_valid_at", None)
+        return result
 
     return await loop.run_in_executor(_executor, _latest)
 
@@ -2352,25 +2419,64 @@ async def handoff_search(
 
     def _search():
         import sqlite3 as _sql
-        if not Path(HANDOFF_DB).exists():
-            return [{"error": "handoffs.db not found. Run handoff_rebuild first."}]
-        conn = _sql.connect(HANDOFF_DB)
-        conn.row_factory = _sql.Row
-        cur  = conn.cursor()
-        sql  = ("SELECT f.filename, f.file_type, h.handoff_date, h.summary, h.turns"
-                " FROM handoffs h JOIN files f ON h.file_id = f.id"
-                " WHERE (h.summary LIKE ? OR h.raw_content LIKE ?)")
-        params: list = [f"%{query}%", f"%{query}%"]
-        if file_type:
-            sql += " AND h.file_type = ?"
-            params.append(file_type)
-        sql += " ORDER BY h.handoff_date DESC LIMIT ?"
-        params.append(limit)
-        rows = cur.execute(sql, params).fetchall()
-        conn.close()
-        return [{"filename": r["filename"], "type": r["file_type"],
-                 "date": r["handoff_date"], "turns": r["turns"],
-                 "summary": (r["summary"] or "")[:200]} for r in rows]
+        import psycopg2.extras as _pge
+
+        results: list[dict] = []
+
+        # --- Postgres KB atoms ---
+        if pg is not None and (not file_type or file_type == "session"):
+            try:
+                pg._ensure_conn()
+                with pg.conn.cursor(cursor_factory=_pge.RealDictCursor) as cur:
+                    cur.execute(
+                        """
+                        SELECT id, title, summary, valid_at, project
+                        FROM knowledge
+                        WHERE category = 'handoff'
+                          AND source_type = 'session'
+                          AND invalid_at IS NULL
+                          AND (title ILIKE %s OR summary ILIKE %s)
+                        ORDER BY valid_at DESC
+                        LIMIT %s
+                        """,
+                        (f"%{query}%", f"%{query}%", limit),
+                    )
+                    for r in cur.fetchall():
+                        results.append({
+                            "filename": f"kb_{r['id']}.json",
+                            "type": "session",
+                            "date": str(r["valid_at"])[:10],
+                            "turns": None,
+                            "summary": (r["summary"] or r["title"] or "")[:200],
+                        })
+            except Exception as _e:
+                logger.warning("[w2] handoff_search pg query failed: %s", _e)
+
+        # --- SQLite flat-file store ---
+        if Path(HANDOFF_DB).exists():
+            try:
+                conn = _sql.connect(HANDOFF_DB)
+                conn.row_factory = _sql.Row
+                cur  = conn.cursor()
+                sql  = ("SELECT f.filename, f.file_type, h.handoff_date, h.summary, h.turns"
+                        " FROM handoffs h JOIN files f ON h.file_id = f.id"
+                        " WHERE (h.summary LIKE ? OR h.raw_content LIKE ?)")
+                params: list = [f"%{query}%", f"%{query}%"]
+                if file_type:
+                    sql += " AND h.file_type = ?"
+                    params.append(file_type)
+                sql += " ORDER BY h.handoff_date DESC LIMIT ?"
+                params.append(limit)
+                rows = cur.execute(sql, params).fetchall()
+                conn.close()
+                results.extend({"filename": r["filename"], "type": r["file_type"],
+                                 "date": r["handoff_date"], "turns": r["turns"],
+                                 "summary": (r["summary"] or "")[:200]} for r in rows)
+            except Exception as _e:
+                logger.warning("[w2] handoff_search sqlite query failed: %s", _e)
+
+        results.sort(key=lambda r: r.get("date") or "", reverse=True)
+        return results[:limit]
 
     return await loop.run_in_executor(_executor, _search)
 
