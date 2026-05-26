@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -978,6 +979,78 @@ def search_wikipedia(query: str, limit: int = 3) -> list[dict]:
     return results
 
 
+def search_musicbrainz(query: str, limit: int = 5) -> list[dict]:
+    """MusicBrainz — open music encyclopedia. Artists, recordings, albums. No key required.
+    Searches release-groups (albums/singles) first; falls back to recordings for track queries."""
+    q_lower = query.lower()
+    use_releases = any(w in q_lower for w in ["album", "release", "discography", "ep", "lp", "record"])
+
+    if use_releases:
+        # Strip the type word to get artist name, then use Lucene artist: syntax
+        artist_name = re.sub(
+            r"\b(albums?|discography|ep|lp|records?|singles?|releases?)\b", "", query, flags=re.IGNORECASE
+        ).strip()
+        mb_query = f'artist:"{artist_name}"' if artist_name else query
+        url = (
+            "https://musicbrainz.org/ws/2/release-group?query="
+            + urllib.parse.quote(mb_query)
+            + f"&limit={limit}&fmt=json"
+        )
+        data = _get(url)
+        items = (data or {}).get("release-groups") or []
+        results = []
+        for item in items[:limit]:
+            artist = ", ".join(
+                c.get("artist", {}).get("name", "")
+                for c in (item.get("artist-credit") or [])
+                if isinstance(c, dict)
+            )
+            mbid = item.get("id", "")
+            rtype = item.get("primary-type", "")
+            results.append(_result(
+                title=item.get("title", ""),
+                url=f"https://musicbrainz.org/release-group/{mbid}" if mbid else "",
+                source="musicbrainz",
+                institution="MusicBrainz",
+                snippet=f"{artist} — {rtype}".strip(" —") if (artist or rtype) else "",
+                date=(item.get("first-release-date") or "")[:10],
+                rid=mbid,
+            ))
+        if results:
+            return results
+
+    # Fall through to recording search
+    url = (
+        "https://musicbrainz.org/ws/2/recording?query="
+        + urllib.parse.quote(query)
+        + f"&limit={limit}&fmt=json"
+    )
+    data = _get(url)
+    if not data:
+        return []
+    results = []
+    for item in (data.get("recordings") or [])[:limit]:
+        artist = ", ".join(
+            c.get("artist", {}).get("name", "")
+            for c in (item.get("artist-credit") or [])
+            if isinstance(c, dict)
+        )
+        releases = item.get("releases") or []
+        release_title = releases[0].get("title", "") if releases else ""
+        date = (releases[0].get("date", "") if releases else "") or item.get("first-release-date", "")
+        mbid = item.get("id", "")
+        results.append(_result(
+            title=item.get("title", ""),
+            url=f"https://musicbrainz.org/recording/{mbid}" if mbid else "",
+            source="musicbrainz",
+            institution="MusicBrainz",
+            snippet=f"{artist} — {release_title}".strip(" —"),
+            date=date[:10] if date else "",
+            rid=mbid,
+        ))
+    return results
+
+
 def search_europeana(query: str, limit: int = 5) -> list[dict]:
     """Europeana — European cultural heritage. Requires EUROPEANA_API_KEY in credentials.json."""
     key = _load_creds().get("EUROPEANA_API_KEY", "")
@@ -1045,14 +1118,112 @@ SOURCES: dict[str, dict] = {
     "hal":              {"name": "HAL Open Access",         "domain": ["academic", "science", "france"],     "fn": search_hal,              "key_required": False},
     "scielo":           {"name": "SciELO",                  "domain": ["science", "latin_america", "iberia"],"fn": search_scielo,           "key_required": False},
     "ndl":              {"name": "National Diet Library",   "domain": ["general", "japan", "asia"],          "fn": search_ndl,              "key_required": False},
+    # Music
+    "musicbrainz":      {"name": "MusicBrainz",             "domain": ["music", "art", "culture"],           "fn": search_musicbrainz,      "key_required": False},
     # Opt-in only — general reference, not suitable for academic citation
     "wikipedia":        {"name": "Wikipedia",               "domain": ["general", "reference"],              "fn": search_wikipedia,        "key_required": False, "opt_in": True},
 }
+
+# ── Domain routing ────────────────────────────────────────────────────────────
+# Each entry: (keyword_list, source_ids). First match wins.
+
+_DOMAIN_ROUTES: list[tuple[list[str], list[str]]] = [
+    (["music", "song", "album", "band", "artist", "musician", "rapper", "hip hop",
+      "hip-hop", "jazz", "blues", "rock", "pop", "genre", "record", "track",
+      "lyrics", "singer", "producer", "discography", "discogs", "recording"],
+     ["musicbrainz", "internet_archive", "openlibrary", "loc"]),
+
+    (["paint", "artwork", "sculpture", "portrait", "drawing", "exhibition",
+      "canvas", "fresco", "engraving", "watercolor", "print", "photograph",
+      "illustration", "tapestry", "mosaic", "rembrandt", "vermeer", "picasso",
+      "van gogh", "monet", "museum collection", "art history"],
+     ["met", "cleveland", "vam", "wikidata", "europeana"]),
+
+    (["disease", "drug", "medicine", "treatment", "syndrome", "virus", "bacteria",
+      "health", "clinical", "therapy", "gene", "protein", "vaccine", "cancer",
+      "surgery", "diagnosis", "pharmacology"],
+     ["pubmed", "europepmc", "pubchem"]),
+
+    (["chemical", "compound", "molecule", "element", "reaction", "formula", "acid",
+      "polymer", "catalyst", "synthesis", "isotope"],
+     ["pubchem", "crossref", "arxiv"]),
+
+    (["physics", "quantum", "algorithm", "machine learning", "neural network",
+      "mathematics", "theorem", "computer science", "programming", "deep learning",
+      "artificial intelligence", "ai", "cryptography", "compiler"],
+     ["arxiv", "semantic_scholar", "openalex"]),
+
+    (["space", "nasa", "planet", "star", "galaxy", "asteroid", "orbit", "telescope",
+      "astronomy", "cosmos", "lunar", "solar system", "comet", "exoplanet"],
+     ["nasa", "arxiv", "openalex"]),
+
+    (["geology", "earthquake", "volcano", "mineral", "hydrology", "fossil",
+      "sediment", "tectonic", "seismic", "groundwater"],
+     ["usgs", "openalex", "zenodo"]),
+
+    (["history", "historical", "century", "war", "revolution", "colonial", "ancient",
+      "newspaper", "archive", "president", "congress", "empire", "dynasty",
+      "civil war", "world war", "medieval", "renaissance"],
+     ["loc", "chronicling_america", "internet_archive", "openlibrary"]),
+
+    (["book", "novel", "author", "literature", "poem", "fiction", "publish", "writer",
+      "text", "manuscript", "edition", "play", "essay", "anthology"],
+     ["openlibrary", "loc", "internet_archive"]),
+
+    (["france", "french", "paris", "napoleon", "versailles", "de gaulle",
+      "alsace", "bretagne"],
+     ["gallica", "hal", "europeana"]),
+
+    (["japan", "japanese", "tokyo", "kyoto", "manga", "samurai", "meiji"],
+     ["ndl", "openalex"]),
+]
+
+_DEFAULT_SOURCES = ["openalex", "crossref", "wikidata", "semantic_scholar"]
+_MAX_ROUTE_SOURCES = 4
+
+
+def route_sources(query: str) -> list[str]:
+    """Select sources for a query based on domain keyword matching.
+    Returns up to 4 source IDs. Fast — no HTTP, no LLM.
+    Falls back to general academic sources if no domain matches."""
+    q = query.lower()
+    for keywords, sources in _DOMAIN_ROUTES:
+        if any(kw in q for kw in keywords):
+            return sources[:_MAX_ROUTE_SOURCES]
+    return _DEFAULT_SOURCES
+
 
 NO_WIKIPEDIA_NOTE = (
     "Wikipedia is excluded — results are from primary institutions "
     "and peer-reviewed sources suitable for academic citation."
 )
+
+
+_QUESTION_WORDS = re.compile(
+    r"^(what|who|when|where|why|how|which|tell me about|find|look up|search for|"
+    r"can you find|give me|show me)\s+",
+    re.IGNORECASE,
+)
+_FILLER_WORDS = re.compile(
+    r"\b(did|was|were|is|are|has|have|had|do|does|a|an|and|or|of|in|on|at|by|"
+    r"for|with|about|release|released|make|made|create|created|write|wrote|publish|"
+    r"published|appear|appeared|come|came|from|to|into)\b",
+    re.IGNORECASE,
+)
+# "the" stripped separately — only remove standalone "the" not preceding a capital (proper noun)
+_LONE_THE = re.compile(r"\bthe\b(?!\s+[A-Z])", re.IGNORECASE)
+
+
+def question_to_query(question: str) -> str:
+    """Derive a search-friendly query from a natural language question.
+    Strips question words and common fillers; preserves proper nouns and key terms."""
+    import re as _re
+    q = question.strip().rstrip("?").rstrip(".")
+    q = _QUESTION_WORDS.sub("", q)
+    q = _FILLER_WORDS.sub(" ", q)
+    q = _LONE_THE.sub(" ", q)
+    q = _re.sub(r"\s+", " ", q).strip()
+    return q or question.rstrip("?")
 
 
 def list_sources() -> list[dict]:

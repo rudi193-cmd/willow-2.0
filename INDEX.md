@@ -168,6 +168,7 @@
 | `Ashokoa` |
 | `apps/law-gazelle` |
 | `dashboard-fresh` |
+| `docs/anatomy-of-the-willow-revolution.md` |
 | `docs/handoffs` |
 | `docs/sean-session-metadata-report.md` |
 | `issue_body.md` |
