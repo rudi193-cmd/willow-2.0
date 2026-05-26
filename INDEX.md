@@ -170,6 +170,7 @@
 | `dashboard-fresh` |
 | `docs/anatomy-of-the-willow-revolution.md` |
 | `docs/handoffs` |
+| `docs/kb` |
 | `docs/sean-session-metadata-report.md` |
 | `issue_body.md` |
 | `personal` |
