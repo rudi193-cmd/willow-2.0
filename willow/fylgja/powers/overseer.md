@@ -3,7 +3,7 @@
 # power: overseer
 b17: FYLOV · ΔΣ=42
 
-**Branch discipline:** This power file and its **`registry.json`** entry ship from a worktree until Sean ratifies merge to default branch — **dogfood the rule**.
+**Branch discipline:** This power file and its **`registry.json`** entry ship from a worktree until [user] ratifies merge to default branch — **dogfood the rule**.
 
 **When:** A **bounded initiative** (spike, Phase 1, spec + stub) must stay **off default branch** until Sean ratifies merge — you are the **overseer**: gates, evidence, and closeout — not “helpful sprawl.”
 
@@ -14,9 +14,9 @@ b17: FYLOV · ΔΣ=42
 ## 0) Freeze frame (30 seconds)
 
 1. **Outcome** in one sentence (what “done” proves).
-2. **Default branch** name (usually `master`) — **do not** land initiative work there unless Sean says merge now.
+2. **Default branch** name (usually `master`) — **do not** land initiative work there unless [user] says merge now.
 3. **Startup:** if Sean said “no startup,” skip boot hooks; else follow repo startup / `agent-rails` when MCP/Grove/KB is touched.
-4. **Prior art (when claiming novelty):** Before the **plan slice (§2)** hardens, run Jeles / KB / local disk (umbrella **Phase 0** in `archive/docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` §0). **Same session:** post a **skimmable report to Sean in chat** — searches run, pass/fail, what already exists **on disk** (paths), 2–5 external analog bullets, one fork question if needed. **Do not** file results only in spec/KB before Sean has seen that chat report (unless Sean explicitly waives).
+4. **Prior art (when claiming novelty):** Before the **plan slice (§2)** hardens, run Jeles / KB / local disk (umbrella **Phase 0** in `archive/docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` §0). **Same session:** post a **skimmable report to [user] in chat** — searches run, pass/fail, what already exists **on disk** (paths), 2–5 external analog bullets, one fork question if needed. **Do not** file results only in spec/KB before Sean has seen that chat report (unless [user] explicitly waives).
 
 ---
 
@@ -67,11 +67,11 @@ b17: FYLOV · ΔΣ=42
 
 ## 5) Evidence trail (when Willow MCP is in play)
 
-1. `mem_check` → `kb_ingest` (domain **`hanuman`** unless Sean names another) with: **worktree path**, **`wt/<SLUG>`**, **not on default branch until ratified**, spec paths if any.
+1. `mem_check` → `kb_ingest` (domain **`[agent]`** unless [user] names another) with: **worktree path**, **`wt/<SLUG>`**, **not on default branch until ratified**, spec paths if any.
 2. **Cursor memory** (if this workspace uses it): `memory/<topic>.md` + **one** `MEMORY.md` index line with **KB id**.
 3. MCP ingest failed once → `fleet_health` → **retry once** → then stop with error text.
 
-**Don't:** KB story without local memory when Sean asked for both.
+**Don't:** KB story without local memory when [user] asked for both.
 
 ---
 

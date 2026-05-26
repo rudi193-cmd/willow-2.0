@@ -10,7 +10,7 @@
     },
     {
       "id": "brainstorm",
-      "description": "New feature or behavior change — KB/atoms first, three approaches, Sean ratifies before code.",
+      "description": "New feature or behavior change — KB/atoms first, three approaches, [user] ratifies before code.",
       "file": "brainstorm.md"
     },
     {
@@ -25,7 +25,7 @@
     },
     {
       "id": "overseer",
-      "description": "Bounded initiative — worktree first, plan inside branch, verify, KB+memory trail; no default-branch drift until Sean ratifies merge.",
+      "description": "Bounded initiative — worktree first, plan inside branch, verify, KB+memory trail; no default-branch drift until [user] ratifies merge.",
       "file": "overseer.md"
     },
     {

@@ -14,13 +14,14 @@ b17: FYLAR · ΔΣ=42
 
 Default boot when MCP is up:
 
-1. `markdownai-read_file("willow.md")`
+1. `mai_read_file("~/.willow/willow.md")`
 2. Local context — agent, namespace, repo root, branch, compact diff (counts only)
 3. `fleet_status`
 4. `handoff_latest`
 5. `grove_get_history` on your channel/inbox
-6. `kb_search` on the task topic
-7. If degraded → **stop** and report
+6. `kb_search(semantic=true, query=<current task>)`
+7–14. See `/boot` skill (`willow/fylgja/skills/boot.md`) for steps 7–14
+If degraded after step 3 → **stop** and report
 
 Shell fallback: `./willow.sh fleet_status` · `./willow.sh handoff_latest`
 
