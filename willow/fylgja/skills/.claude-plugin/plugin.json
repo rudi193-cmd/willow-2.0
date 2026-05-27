@@ -1,0 +1,5 @@
+{
+  "name": "fylgja",
+  "description": "Willow 2.0 Fylgja behavioral skills \u2014 boot, cold-recovery, handoff, startup.",
+  "commands": "./commands"
+}

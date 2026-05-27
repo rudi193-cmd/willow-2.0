@@ -37,17 +37,12 @@ from typing import Optional
 from sap.core.gate import authorized
 from sap.core.context import assemble
 from sap.core.deliver import to_string
+from sap.core.utety_paths import resolve_utety_chat_root
 
 logger = logging.getLogger("sap.clients.professor")
 
-# Canonical paths
+# Canonical paths (resolved lazily — see _utety_root())
 UTETY_APP_ID = "utety-chat"  # matches SAFE/Applications/utety-chat/
-UTETY_CHAT_ROOT = Path(os.environ.get(
-    "WILLOW_UTETY_ROOT",
-    str(Path(__file__).parent.parent.parent.parent / "safe-app-utety-chat"),
-))
-PERSONAS_PATH = UTETY_CHAT_ROOT / "personas.py"
-PROFESSOR_DATA_ROOT = UTETY_CHAT_ROOT / "data" / "professors"
 
 DISPATCH_MODEL = "llama3.2:1b"   # fast tier — structured routing, short tasks
 DEFAULT_MODEL  = "llama3.2:3b"   # middle tier — general agents, 5/5 bench
@@ -59,10 +54,12 @@ PROFESSOR_DOMAINS: dict[str, list[str]] = {
     "Riggs":       ["architecture", "code", "system-state", "analysis"],
     "Hanz":        ["code", "training", "document", "conversation"],
     "Nova":        ["narrative", "analysis", "user_cognition"],
+    "Grandma Oracle": ["narrative", "general", "training"],
     "Ada":         ["architecture", "system-state", "governance", "core"],
     "Jeles":       ["genealogy", "reference", "documents", "general"],
     "Alexis":      ["personal", "general"],
     "Ofshield":    ["personal", "user_cognition", "narrative"],
+    "Gatekeeper":  ["general", "training"],
     "Shiva":       ["architecture", "system-state", "code", "core", "governance"],
     "Gerald":      ["governance", "general"],
     "Pigeon":      ["architecture", "system-state"],
@@ -110,8 +107,10 @@ PROFESSOR_MODELS = {
     # Default tier — general agents
     "Hanz":        DEFAULT_MODEL,
     "Nova":        DEFAULT_MODEL,
+    "Grandma Oracle": DEFAULT_MODEL,
     "Alexis":      DEFAULT_MODEL,
     "Ofshield":    DEFAULT_MODEL,
+    "Gatekeeper":  DEFAULT_MODEL,
     "Gerald":      DEFAULT_MODEL,
     "Mitra":       DEFAULT_MODEL,
     "Steve":       DEFAULT_MODEL,
@@ -130,11 +129,73 @@ SAMBANOVA_API_URL = "https://api.sambanova.ai/v1/chat/completions"
 SAMBANOVA_DEFAULT_MODEL = "Meta-Llama-3.1-8B-Instruct"
 
 
-def _load_personas() -> dict:
-    """Load PERSONAS dict from utety-chat/personas.py at runtime."""
+def _utety_root() -> Optional[Path]:
+    return resolve_utety_chat_root(Path(__file__).resolve().parents[2])
+
+
+def _professor_data_root() -> Path:
+    root = _utety_root()
+    if root is None:
+        return Path(os.environ.get("WILLOW_UTETY_ROOT", "")) / "data" / "professors"
+    return root / "data" / "professors"
+
+
+def _canonical_persona_key(stem: str, folder_map: dict[str, str]) -> str:
+    lower = stem.lower()
+    for canonical, folder in folder_map.items():
+        if canonical.lower() == lower or folder.lower() == lower:
+            return canonical
+    for key in PROFESSOR_SAFE_IDS:
+        if key.lower() == lower:
+            return key
+    return stem.title() if stem.islower() else stem
+
+
+def _load_personas_from_compiler(root: Path) -> dict[str, str]:
+    """Load compiled JSON personas (source of truth in utety-chat)."""
     try:
         import importlib.util
-        spec = importlib.util.spec_from_file_location("utety_personas", PERSONAS_PATH)
+
+        compiler_path = root / "persona_compiler.py"
+        if not compiler_path.is_file():
+            return {}
+
+        spec = importlib.util.spec_from_file_location("utety_persona_compiler", compiler_path)
+        if spec is None or spec.loader is None:
+            return {}
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        raw = mod.load_all_personas()
+        if not raw:
+            return {}
+
+        personas_py = root / "personas.py"
+        folder_map: dict[str, str] = {}
+        if personas_py.is_file():
+            spec_py = importlib.util.spec_from_file_location("utety_personas", personas_py)
+            mod_py = importlib.util.module_from_spec(spec_py)
+            spec_py.loader.exec_module(mod_py)
+            folder_map = getattr(mod_py, "PERSONA_FOLDERS", {})
+
+        out: dict[str, str] = {}
+        for stem, prompt in raw.items():
+            canonical = _canonical_persona_key(stem, folder_map)
+            out[canonical] = prompt
+        return out
+    except Exception as e:
+        logger.warning("Could not load persona_compiler: %s", e)
+        return {}
+
+
+def _load_personas_from_py(root: Path) -> dict[str, str]:
+    personas_path = root / "personas.py"
+    try:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("utety_personas", personas_path)
+        if spec is None or spec.loader is None:
+            return {}
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return getattr(mod, "PERSONAS", {})
@@ -143,10 +204,31 @@ def _load_personas() -> dict:
         return {}
 
 
+def _load_personas() -> dict:
+    """Load PERSONAS from utety-chat (JSON compiler first, personas.py fallback)."""
+    root = _utety_root()
+    if root is None:
+        logger.warning(
+            "UTETY chat root not found — set WILLOW_UTETY_ROOT or install "
+            "safe-app-store/apps/utety-chat"
+        )
+        return {}
+
+    personas = _load_personas_from_compiler(root)
+    if personas:
+        logger.debug("Loaded %d personas from persona_compiler", len(personas))
+        return personas
+
+    personas = _load_personas_from_py(root)
+    if personas:
+        logger.debug("Loaded %d personas from personas.py", len(personas))
+    return personas
+
+
 def _load_professor_db_context(name: str) -> str:
     """Load professor-specific context from their local SQLite seed DB."""
     folder = name.lower()
-    db_path = PROFESSOR_DATA_ROOT / folder / f"{folder}.db"
+    db_path = _professor_data_root() / folder / f"{folder}.db"
     if not db_path.exists():
         return ""
 
@@ -180,11 +262,27 @@ def _load_professor_db_context(name: str) -> str:
 
 
 def _load_creds() -> dict:
-    try:
-        return json.loads(CREDENTIALS_PATH.read_text(encoding="utf-8"))
-    except Exception as e:
-        logger.warning("Could not load credentials: %s", e)
-        return {}
+    """Merge credentials from repo file, Willow secrets, and env (env wins last)."""
+    creds: dict = {}
+    paths = (
+        CREDENTIALS_PATH,
+        Path.home() / ".willow" / "secrets" / "credentials.json",
+    )
+    for path in paths:
+        try:
+            if path.is_file():
+                creds.update(json.loads(path.read_text(encoding="utf-8")))
+        except Exception as e:
+            logger.warning("Could not load credentials from %s: %s", path, e)
+    for key in (
+        "GROQ_API_KEY", "GROQ_API_KEY_2", "GROQ_API_KEY_3",
+        "CEREBRAS_API_KEY", "CEREBRAS_API_KEY_2", "CEREBRAS_API_KEY_3",
+        "SAMBANOVA_API_KEY", "SAMBANOVA_API_KEY_2", "SAMBANOVA_API_KEY_3",
+    ):
+        val = os.environ.get(key, "").strip()
+        if val:
+            creds[key] = val
+    return creds
 
 
 def _call_openai_compat(url: str, model: str, key: str,
@@ -435,6 +533,11 @@ class ProfessorClient:
         personas = _load_personas()
         self.persona_prompt = personas.get(professor_name, "")
         if not self.persona_prompt:
+            for key, prompt in personas.items():
+                if key.lower() == professor_name.lower():
+                    self.persona_prompt = prompt
+                    break
+        if not self.persona_prompt:
             logger.warning("No persona found for %s — using name only", professor_name)
             self.persona_prompt = f"You are Professor {professor_name} of UTETY."
 
@@ -464,6 +567,9 @@ class ProfessorClient:
         )
         sap_context = to_string(ctx) if ctx else ""
         system_prompt = self._build_system_prompt(sap_context)
+        provider = os.environ.get("UTETY_INFER_PROVIDER", "ollama").strip().lower()
+        if provider in ("groq", "fleet", "cloud"):
+            return _ask_fleet(system_prompt, question)
         return _ask_ollama(self.model, system_prompt, question)
 
 

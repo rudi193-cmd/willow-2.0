@@ -168,15 +168,20 @@ def install_claude_project(agent: str, package_root: Path, dry_run: bool) -> Non
 
 
 def install_claude_global(agent: str, package_root: Path, dry_run: bool) -> None:
+    from willow.fylgja.claude_plugin import ensure_claude_plugin_layout
     from willow.fylgja.install import apply_hooks, apply_plugin
 
     settings = Path.home() / ".claude" / "settings.json"
     if dry_run:
         print(f"[install_project] Would wire Fylgja hooks into {settings}")
+        for action in ensure_claude_plugin_layout(package_root, dry_run=True):
+            print(f"[install_project] {action}")
         return
     settings.parent.mkdir(parents=True, exist_ok=True)
     if not settings.exists():
         settings.write_text("{}\n", encoding="utf-8")
+    for action in ensure_claude_plugin_layout(package_root, dry_run=False):
+        print(f"[install_project] {action}")
     apply_hooks(settings_path=settings, package_root=package_root, dry_run=False)
     apply_plugin(settings_path=settings, dry_run=False)
 
