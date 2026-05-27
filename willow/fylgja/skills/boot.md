@@ -172,4 +172,15 @@ After writing, run `handoff_rebuild(app_id={agent})` then verify with `handoff_l
 
 ## Recovery
 
+If continuity is the bottleneck (pick up where we left off, no fleet gate): run `/cold-recovery` — see `willow/fylgja/skills/cold-recovery.md`.
+
 If boot is degraded or the anchor is stale: run `/startup`. That skill handles anchor recovery, KB continuity, ledger check, and flag triage at depth.
+
+## Claude Code registration
+
+`Skill(skill='boot')` resolves via the Fylgja plugin layout:
+
+- `willow/fylgja/skills/.claude-plugin/plugin.json`
+- `willow/fylgja/skills/commands/boot.md` → symlink to `boot.md`
+
+Re-wire after pull: `./willow agents install <agent> --ide claude` then `/reload-plugins` in Claude Code if skills still show unknown.

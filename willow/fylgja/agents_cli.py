@@ -10,6 +10,7 @@ import json
 import sys
 from pathlib import Path
 
+from willow.fylgja.claude_plugin import check_claude_plugin_layout
 from willow.fylgja.install_project import install_project
 from willow.fylgja.project_env import (
     list_agent_identities,
@@ -113,6 +114,8 @@ def cmd_check(root: Path) -> int:
             "~/.claude/settings.json missing Fylgja PreToolUse — "
             "run: ./willow agents install <agent> --ide claude"
         )
+
+    issues.extend(check_claude_plugin_layout(root))
 
     hook = root / "willow" / "fylgja" / "bin" / "fylgja-hook"
     if not hook.is_file():

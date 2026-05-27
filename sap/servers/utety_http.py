@@ -33,14 +33,25 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
+from sap.core.utety_paths import resolve_utety_chat_root
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [utety] %(message)s")
 logger = logging.getLogger("utety_http")
 
 PORT = int(os.environ.get("UTETY_HTTP_PORT", "8421"))
-UTETY_WEB = Path(os.environ.get(
-    "UTETY_WEB_ROOT",
-    str(Path(__file__).parent.parent.parent.parent / "safe-app-utety-chat" / "web"),
-))
+
+
+def _utety_web_root() -> Path:
+    env = os.environ.get("UTETY_WEB_ROOT", "").strip()
+    if env:
+        return Path(env)
+    root = resolve_utety_chat_root(Path(__file__).resolve().parents[2])
+    if root is not None:
+        return root / "web"
+    return Path(__file__).resolve().parents[3] / "safe-app-utety-chat" / "web"
+
+
+UTETY_WEB = _utety_web_root()
 DEFAULT_MODEL = os.environ.get("UTETY_MODEL", "yggdrasil:v9")
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 
