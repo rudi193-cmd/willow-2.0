@@ -260,6 +260,17 @@ def kart_env(root: Path | None = None) -> dict[str, str]:
                 env["GIT_COMMITTER_EMAIL"] = email
         except Exception:
             pass
+
+    # Inside bwrap, /var/run is not present (collect_bind_mounts resolves the
+    # /var/run → /run symlink away). psycopg2 with host=None defaults to
+    # /var/run/postgresql, which doesn't exist in the container.
+    # Set WILLOW_PG_HOST to the real socket directory so pg_bridge finds it.
+    if not env.get("WILLOW_PG_HOST"):
+        import glob as _glob
+        for _sock in _glob.glob("/run/postgresql/.s.PGSQL.*") + _glob.glob("/tmp/.s.PGSQL.*"):
+            env["WILLOW_PG_HOST"] = str(Path(_sock).parent)
+            break
+
     return env
 
 
