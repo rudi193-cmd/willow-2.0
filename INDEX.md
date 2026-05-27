@@ -173,6 +173,7 @@
 | `docs/kb` |
 | `docs/sean-session-metadata-report.md` |
 | `issue_body.md` |
+| `mcp-memory-service` |
 | `personal` |
 | `sap/adapters` |
 | `sap/grove_mcp.sh` |
