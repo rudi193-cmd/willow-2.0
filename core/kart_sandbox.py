@@ -271,6 +271,13 @@ def kart_env(root: Path | None = None) -> dict[str, str]:
             env["WILLOW_PG_HOST"] = str(Path(_sock).parent)
             break
 
+    # The SAP gate requires WILLOW_SAFE_ROOT to initialize; without it classify
+    # fails inside bwrap and promote_intake falls back to heuristic routing.
+    if not env.get("WILLOW_SAFE_ROOT"):
+        default_safe = Path.home() / "SAFE" / "Applications"
+        if default_safe.is_dir():
+            env["WILLOW_SAFE_ROOT"] = str(default_safe)
+
     return env
 
 
