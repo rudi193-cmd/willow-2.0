@@ -132,8 +132,9 @@ Alternate cards between them for montage rhythm.
 ## Build checklist (when approved)
 
 - [x] Replace `docs/index.html` + new CSS/JS (not UTETY clone)
-- [ ] Update README front-door blurb
-- [ ] Enable GitHub Pages on `/docs`
+- [x] Update README front-door blurb
+- [x] Enable GitHub Pages on `/docs` → https://rudi193-cmd.github.io/willow-2.0/
+- [x] Add `docs/.nojekyll` (skip Jekyll; serve static assets as-is)
 - [ ] Optional: short Oden VO clips later — text-first is fine
 
 ---
