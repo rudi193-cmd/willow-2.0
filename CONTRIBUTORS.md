@@ -35,9 +35,12 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [Emerging-Rule/community](https://github.com/Emerging-Rule/community) | Emerging-Rule | feat(research): AI and Education reading list for teachers | [PR #8](https://github.com/Emerging-Rule/community/pull/8) merged |
+| [Emerging-Rule/community](https://github.com/Emerging-Rule/community) | Emerging-Rule | feat(lessons): The Scribe Who Forgot His Dreams — K-12 AI literacy (story) | [PR #7](https://github.com/Emerging-Rule/community/pull/7) merged |
 | [Filippo-Venturini/ctxvault](https://github.com/Filippo-Venturini/ctxvault) | Filippo-Venturini | feat: expose indexed document text for recovery workflows (#22) | [PR #29](https://github.com/Filippo-Venturini/ctxvault/pull/29) merged |
 | [RikyZ90/ShibaClaw](https://github.com/RikyZ90/ShibaClaw) | RikyZ90 | docs: Gateway WebSocket protocol contract (#26) | [PR #38](https://github.com/RikyZ90/ShibaClaw/pull/38) merged |
 | [smaramwbc/statewave](https://github.com/smaramwbc/statewave) | smaramwbc | feat(server): add make test-cold for cold-install verification (#68) | [PR #154](https://github.com/smaramwbc/statewave/pull/154) merged |
+| [alash3al/stash](https://github.com/alash3al/stash) | alash3al | docs: post-install guide + fix MCP copy buttons (#6) | [PR #8](https://github.com/alash3al/stash/pull/8) merged |
 | [Doorman11991/smallcode](https://github.com/Doorman11991/smallcode) | Doorman11991 | feat(skills): bundle Willow dev-methodology skill pack | [PR #32](https://github.com/Doorman11991/smallcode/pull/32) merged |
 | [doobidoo/mcp-memory-service](https://github.com/doobidoo/mcp-memory-service) | doobidoo | docs: contradiction resolution approaches (RFC #732 reference) | [PR #984](https://github.com/doobidoo/mcp-memory-service/pull/984) merged |
 | [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(cli): ignore CancelledError in background task done callback (#839) | [PR #842](https://github.com/basicmachines-co/basic-memory/pull/842) merged |
@@ -52,11 +55,8 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #401](https://github.com/TensorBlock/awesome-mcp-servers/pull/401) merged |
 | [doobidoo/mcp-memory-service](https://github.com/doobidoo/mcp-memory-service) | doobidoo | feat(auto-capture): memory_observe, auto_extract, and harvest pipeline (RFC #1008 §3) | [PR #1032](https://github.com/doobidoo/mcp-memory-service/pull/1032) open |
 | [Emerging-Rule/community](https://github.com/Emerging-Rule/community) | Emerging-Rule | Example: AI Literacy 9-12 series + Scribe companion (Issue #5) | [PR #9](https://github.com/Emerging-Rule/community/pull/9) open |
-| [Emerging-Rule/community](https://github.com/Emerging-Rule/community) | Emerging-Rule | feat(research): AI and Education reading list for teachers | [PR #8](https://github.com/Emerging-Rule/community/pull/8) open |
-| [Emerging-Rule/community](https://github.com/Emerging-Rule/community) | Emerging-Rule | feat(lessons): The Scribe Who Forgot His Dreams — K-12 AI literacy (story) | [PR #7](https://github.com/Emerging-Rule/community/pull/7) open |
 | [doobidoo/mcp-memory-service](https://github.com/doobidoo/mcp-memory-service) | doobidoo | feat: RFC #1008 §2 ranked search + §3 auto-capture | [PR #1018](https://github.com/doobidoo/mcp-memory-service/pull/1018) open |
 | [alibaizhanov/mengram](https://github.com/alibaizhanov/mengram) | alibaizhanov | docs: add CONTRIBUTING.md with local setup and PR guidelines | [PR #40](https://github.com/alibaizhanov/mengram/pull/40) open |
-| [alash3al/stash](https://github.com/alash3al/stash) | alash3al | docs: post-install guide + fix MCP copy buttons (#6) | [PR #8](https://github.com/alash3al/stash/pull/8) open |
 | [abhixdd/ghgrab](https://github.com/abhixdd/ghgrab) | abhixdd | feat: Homebrew formula + agent integration docs (Willow) | [PR #65](https://github.com/abhixdd/ghgrab/pull/65) open |
 | [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) | ComposioHQ | feat: add 10 development methodology skills | [PR #885](https://github.com/ComposioHQ/awesome-claude-skills/pull/885) open |
 | [ngrok/ngrok-python](https://github.com/ngrok/ngrok-python) | ngrok | docs: add an example for using ngrok with google colab | [PR #161](https://github.com/ngrok/ngrok-python/pull/161) open |
