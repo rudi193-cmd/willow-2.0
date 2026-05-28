@@ -85,6 +85,29 @@ def cmd_install(agent: str, ides: list[str], dry_run: bool) -> int:
     return 0
 
 
+def cmd_sync_manifests(force: bool, sign: bool, agent: str | None) -> int:
+    """Write SAFE agent manifests under ~/SAFE/Agents/."""
+    from core.safe_agents import AGENTS_ROOT, FLEET_AGENTS, write_manifest, sync_all
+
+    if agent:
+        aid = agent.strip().lower()
+        if aid not in FLEET_AGENTS:
+            print(f"Unknown agent {aid!r} — add to core/safe_agents.py FLEET_AGENTS first.")
+            return 1
+        r = write_manifest(aid, force=force, sign=sign)
+        print(json.dumps(r, indent=2))
+        return 0 if r.get("status") in ("written", "skipped") else 1
+
+    summary = sync_all(force=force, sign=sign)
+    print(f"SAFE/Agents root: {AGENTS_ROOT}")
+    print(f"Written: {summary['written']}  Skipped: {summary['skipped']}")
+    for r in summary["results"]:
+        if r.get("status") == "written":
+            sig = "signed" if r.get("signed") else f"unsigned ({r.get('sign_detail', '')})"
+            print(f"  + {r['agent_id']}: {r['permission_count']} groups — {sig}")
+    return 0
+
+
 def cmd_check(root: Path) -> int:
     issues: list[str] = []
     active = read_active_agent(root)
@@ -170,6 +193,14 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("check", help="Verify hooks, MCP config, enforcement rails")
 
+    p_sync = sub.add_parser(
+        "sync-manifests",
+        help="Write safe-app-manifest.json under ~/SAFE/Agents/ from trust tiers",
+    )
+    p_sync.add_argument("agent", nargs="?", help="Single agent id (default: full fleet)")
+    p_sync.add_argument("--force", action="store_true", help="Overwrite existing manifests")
+    p_sync.add_argument("--no-sign", action="store_true", help="Skip gpg detach-sign")
+
     args = parser.parse_args(argv)
     root = repo_root()
 
@@ -184,6 +215,12 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_install(args.agent.strip(), ides, args.dry_run)
     if args.command == "check":
         return cmd_check(root)
+    if args.command == "sync-manifests":
+        return cmd_sync_manifests(
+            force=args.force,
+            sign=not args.no_sign,
+            agent=getattr(args, "agent", None),
+        )
     return 1
 
 

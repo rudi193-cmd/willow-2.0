@@ -16,27 +16,28 @@ In CI, set this to a fixed string like `ci` or the agent under test. Without it,
 
 ### `WILLOW_SAFE_ROOT`
 
-Path to the SAFE manifest directory. Defaults to `~/.willow/safe/` on a normal install.
-
-```bash
-export WILLOW_SAFE_ROOT=/path/to/safe-manifests
-```
-
-In CI or on a machine with SAFE installed:
+Path to SAFE **Applications** (user-facing apps). Defaults to `~/SAFE/Applications`.
 
 ```bash
 export WILLOW_SAFE_ROOT=$HOME/SAFE/Applications
 ```
 
-On fresh hardware without SAFE, point at `tests/fixtures/safe/` (stub manifest tree) so the gate does not fail at boot.
+### `WILLOW_AGENTS_ROOT`
 
-A minimal stub directory looks like:
+Path to **agent** manifests and tool permissions. Defaults to `~/SAFE/Agents/`.
 
+Each agent has `~/SAFE/Agents/<app_id>/safe-app-manifest.json` (+ `.sig` for PGP auth).
+Trust tiers and fleet registry: `core/safe_agents.py`.
+
+Sync all fleet manifests:
+
+```bash
+./willow agents sync-manifests
+# or: python3 scripts/sync_safe_agent_manifests.py
 ```
-tests/fixtures/safe/
-  agents/
-    hanuman.json      # {"id": "hanuman", "roles": ["builder"]}
-```
+
+On fresh hardware without SAFE, point `WILLOW_SAFE_ROOT` at `tests/fixtures/safe/` (stub app tree).
+Agent stubs can live under `tests/fixtures/safe-agents/<id>/` if you set `WILLOW_AGENTS_ROOT` accordingly.
 
 See `docs/runbooks/` for the full manifest schema.
 

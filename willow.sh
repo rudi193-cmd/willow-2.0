@@ -14,7 +14,7 @@
 #   ./willow.sh purge <proj> — delete a project namespace entirely
 #   ./willow.sh ledger [proj] — show FRANK's ledger (optional project filter)
 #   ./willow.sh valhalla     — collect DPO training pairs to ~/.willow/valhalla/
-#   ./willow.sh verify       — verify all SAFE manifests
+#   ./willow.sh verify       — verify SAFE Applications + Agents manifests (.sig)
 
 set -euo pipefail
 
@@ -398,19 +398,21 @@ print('  The Einherjar grow stronger.')
 
     verify)
         echo "Willow 2.0 — manifest verification"
-        SAFE_ROOT="${WILLOW_SAFE_ROOT}"
         pass=0; fail=0
-        for manifest in "${SAFE_ROOT}"/*/safe-app-manifest.json; do
-            [[ -f "$manifest" ]] || continue
-            sig="${manifest}.sig"
-            label="$(basename "$(dirname "$manifest")")"
-            if [[ ! -f "$sig" ]]; then
-                echo "  MISSING SIG: ${label}"; fail=$((fail+1))
-            elif gpg --verify "$sig" "$manifest" > /dev/null 2>&1; then
-                echo "  OK: ${label}"; pass=$((pass+1))
-            else
-                echo "  BAD SIG: ${label}"; fail=$((fail+1))
-            fi
+        for SAFE_ROOT in "${WILLOW_SAFE_ROOT}" "${WILLOW_AGENTS_ROOT}"; do
+            echo "  Root: ${SAFE_ROOT}"
+            for manifest in "${SAFE_ROOT}"/*/safe-app-manifest.json; do
+                [[ -f "$manifest" ]] || continue
+                sig="${manifest}.sig"
+                label="$(basename "$(dirname "$manifest")")"
+                if [[ ! -f "$sig" ]]; then
+                    echo "    MISSING SIG: ${label}"; fail=$((fail+1))
+                elif gpg --verify "$sig" "$manifest" > /dev/null 2>&1; then
+                    echo "    OK: ${label}"; pass=$((pass+1))
+                else
+                    echo "    BAD SIG: ${label}"; fail=$((fail+1))
+                fi
+            done
         done
         echo "  Passed: ${pass}  Failed: ${fail}"
         [[ $fail -eq 0 ]]
