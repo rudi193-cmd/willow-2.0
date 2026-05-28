@@ -16,14 +16,15 @@ from core.agent_identity import require_agent_name
 import re
 import select
 import sys
+import tempfile
 import time
-import fcntl
+import portalocker
 from functools import lru_cache
 from pathlib import Path
 
 AGENT = require_agent_name()
-_LOCK_PATH = Path(os.environ.get("GROVE_MONITOR_LOCK", "/tmp/grove-monitor.lock"))
-_PID_PATH = Path(os.environ.get("GROVE_MONITOR_PID", "/tmp/grove-monitor.pid"))
+_LOCK_PATH = Path(os.environ.get("GROVE_MONITOR_LOCK", str(Path(tempfile.gettempdir()) / "grove-monitor.lock")))
+_PID_PATH = Path(os.environ.get("GROVE_MONITOR_PID", str(Path(tempfile.gettempdir()) / "grove-monitor.pid")))
 
 # ── Mention watch list ────────────────────────────────────────────────────────
 # Primary identity: WILLOW_AGENT_NAME (@handles via ALIASES + default @AGENT).
@@ -82,7 +83,7 @@ class _PidLock:
             self.lock_path.parent.mkdir(parents=True, exist_ok=True)
             self.pid_path.parent.mkdir(parents=True, exist_ok=True)
             self._fh = open(self.lock_path, "a+", encoding="utf-8")
-            fcntl.flock(self._fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            portalocker.lock(self._fh, portalocker.LOCK_EX | portalocker.LOCK_NB)
             self._fh.seek(0)
             self._fh.truncate()
             self._fh.write(f"{os.getpid()}\n")

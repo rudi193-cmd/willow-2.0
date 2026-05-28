@@ -25,6 +25,7 @@ WILLOW_ROOT = Path(__file__).parent
 sys.path = [str(WILLOW_ROOT)] + [p for p in sys.path if "willow-1.7" not in p]
 
 from core.version import VERSION, sync_installed_version
+from willow.platform_compat import IS_WSL
 
 
 def willow_home() -> Path:
@@ -265,10 +266,7 @@ def step_9_path() -> None:
 
 
 def _is_wsl() -> bool:
-    try:
-        return "microsoft" in Path("/proc/version").read_text().lower()
-    except Exception:
-        return False
+    return IS_WSL
 
 
 def _windows_username() -> str | None:
