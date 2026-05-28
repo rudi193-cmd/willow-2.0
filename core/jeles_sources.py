@@ -992,12 +992,20 @@ def search_sep(query: str, limit: int = 5) -> list[dict]:
     except Exception:
         return []
     results = []
-    # SEP search results: <a href="/entries/slug/">Title</a>
     import re as _re
-    for m in _re.finditer(r'href="(/entries/[^/"]+/)"[^>]*>([^<]{5,120})</a>', html):
-        path, title = m.group(1), m.group(2).strip()
+    seen: set[str] = set()
+    # SEP search HTML (2024+): entry=/entries/slug/ in redirect URLs, title often in <b>.
+    for m in _re.finditer(
+        r'entry=(/entries/[^/&"]+/)[^"]*"[^>]*>(?:<b>)?([^<\n]{3,120})',
+        html,
+    ):
+        path, title = m.group(1), _re.sub(r"\s+", " ", m.group(2)).strip()
         if not title or title.lower().startswith("stanford"):
             continue
+        slug = path.strip("/").split("/")[-1]
+        if slug in seen:
+            continue
+        seen.add(slug)
         results.append(_result(
             title=title,
             url=f"https://plato.stanford.edu{path}",
@@ -1005,7 +1013,7 @@ def search_sep(query: str, limit: int = 5) -> list[dict]:
             institution="Stanford Encyclopedia of Philosophy",
             snippet="",
             date="",
-            rid=path.strip("/").split("/")[-1],
+            rid=slug,
         ))
         if len(results) >= limit:
             break
@@ -1733,7 +1741,7 @@ SOURCES: dict[str, dict] = {
     "core":             {"name": "CORE",                    "domain": ["academic", "science"],             "key_required": False},
     "doaj":             {"name": "DOAJ",                    "domain": ["academic", "open_access"],           "key_required": False},
     "europepmc":        {"name": "Europe PMC",              "domain": ["biology", "medicine", "health"],     "key_required": False},
-    "semantic_scholar": {"name": "Semantic Scholar",        "domain": ["academic", "cs", "science"],         "key_required": False},
+    "semantic_scholar": {"name": "Semantic Scholar",        "domain": ["academic", "cs", "science"],         "key_required": True},
     "crossref":         {"name": "Crossref",                "domain": ["academic", "general"],               "key_required": False},
     "pubmed":           {"name": "PubMed",                  "domain": ["biology", "medicine"],               "key_required": False},
     "arxiv":            {"name": "arXiv",                   "domain": ["science", "cs", "math", "physics"],  "key_required": False},
@@ -1891,7 +1899,15 @@ def _resolve_fn(fn_name: str):
 # ── Domain routing ────────────────────────────────────────────────────────────
 # Each entry: (keyword_list, source_ids). First match wins.
 
+# High-priority history queries — checked before broad government/policy keywords.
+_HISTORY_QUERY_OVERRIDES: list[tuple[list[str], list[str]]] = [
+    (["french revolution", "revolution of 1789", "bastille", "reign of terror",
+      "napoleonic wars", "louis xvi"],
+     ["gallica", "loc", "internet_archive", "openlibrary"]),
+]
+
 _DOMAIN_ROUTES: list[tuple[list[str], list[str]]] = [
+    *_HISTORY_QUERY_OVERRIDES,
     (["law", "legal", "court", "case law", "statute", "legislation", "judicial",
       "ruling", "verdict", "judge", "attorney", "plaintiff", "defendant",
       "precedent", "supreme court", "amendment", "regulation", "act of congress",
@@ -1985,10 +2001,21 @@ _DEFAULT_SOURCES = ["base", "openalex", "crossref", "wikidata"]
 _MAX_ROUTE_SOURCES = 6
 
 
+def _route_override(query: str) -> list[str] | None:
+    q = query.lower()
+    for keywords, sources in _HISTORY_QUERY_OVERRIDES:
+        if any(kw in q for kw in keywords):
+            return sources[:_MAX_ROUTE_SOURCES]
+    return None
+
+
 def route_sources(query: str) -> list[str]:
     """Select sources for a query based on domain keyword matching.
     DB-first: reads routes from jeles_domain_routes. Falls back to _DOMAIN_ROUTES.
     Fast — no HTTP, no LLM."""
+    override = _route_override(query)
+    if override:
+        return override
     q = query.lower()
     for keywords, sources in _load_routes():
         if any(kw in q for kw in keywords):
@@ -2323,6 +2350,9 @@ def route_sources_semantic(query: str) -> list[str]:
     Primary: ANN query against jeles_domain_routes in Postgres (pgvector).
     Fallback: Python cosine loop against cached centroids JSON.
     Final fallback: keyword routing."""
+    override = _route_override(query)
+    if override:
+        return override
     q_vec = _get_embedding(query)
     if not q_vec:
         return route_sources(query)

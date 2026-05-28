@@ -34,16 +34,15 @@ BRIDGE_PATH = HANDOFF_DIR / "cross-runtime.json"
 
 # From Claude handoff docs/handoffs/session_handoff-2026-05-26_hanuman.md
 JELES_OPEN = [
-    "Ctrl+S Binder wiring — mem_binder_file in ask-jeles crown.py",
-    "French Revolution routing — government centroid too broad",
-    "SEP HTML parse returns no results",
-    "Semantic Scholar 429 — mark key_required or throttle",
-    "feat/jeles-ask: 6 commits local, unpushed",
+    "teachers-app redirect loop — devtools + localStorage cos_config",
+    "teachers-app git — no remote; most files untracked",
+    "Upstream PR #5 (claude-deep-review) — awaiting re-review",
+    "Upstream PR #1032 (mcp-memory-service) — awaiting maintainer review",
+    "Willow stack rethink — claude.ai-native boot direction (fuzzy)",
 ]
 
 CURSOR_OPEN = [
-    "Land MCP-first pre_tool + ./willow agents + kart_sandbox (uncommitted on feat/jeles-ask)",
-    "Split infra PR from Jeles PR or commit separately",
+    "Grove PR #18 FRANK ledger path — closed unmerged; reopen if still wanted",
 ]
 
 

@@ -29,3 +29,9 @@ def test_persona_path_points_at_repo_personas():
     path = p._persona_path("hanuman")
     assert path.endswith("willow/fylgja/personas/hanuman.md")
     assert p.PERSONAS["hanuman"]["path"] == path
+
+
+def test_prompt_submit_block_first_turn_visible_instruction():
+    block = p.prompt_submit_block(is_first=True, prompt="good afternoon")
+    assert "PERSONA-VISIBLE" in block
+    assert "Paste the PERSONA block" in block

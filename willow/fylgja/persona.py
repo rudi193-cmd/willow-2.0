@@ -324,6 +324,10 @@ def prompt_submit_block(*, is_first: bool, prompt: str) -> str:
             active = choice
         # Always show the full picker on the first turn — unmissable, like the boot gate.
         parts.append(render_picker(active))
+        parts.append(
+            "[PERSONA-VISIBLE] Paste the PERSONA block above into your user-visible reply "
+            "(markdown fenced block). Hook-only context is not shown in chat."
+        )
     elif active:
         parts.append(render_status(active))
 
