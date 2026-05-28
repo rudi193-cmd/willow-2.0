@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Willow 2.0 — local-first memory (field reports from the dead)</title>
+<meta name="description" content="Willow 2.0: Postgres KB, MCP, Grove, Ollama. Muninn and Huginn interviewed twelve strangers. Oden narrates. The software is real.">
+<meta property="og:title" content="Willow 2.0">
+<meta property="og:description" content="Man-on-the-street coverage of your knowledge graph. All quotes fabricated. Clone anyway.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:ital,wght@0,400;1,400;1,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="static/willow.css">
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="cold-open">
+    <div class="live-badge">
+      <span class="live-dot" aria-hidden="true"></span>
+      GROVE CAM 2 · FIELD UNIT ACTIVE
+    </div>
+    <div class="lower-third">
+      <h1>Willow 2.0</h1>
+      <p class="sub">Local-first memory for agents</p>
+      <p class="tag">Cloud optional. Amnesia discouraged.</p>
+    </div>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/rudi193-cmd/willow-2.0">Clone it</a>
+      <a class="btn btn-ghost" href="https://github.com/rudi193-cmd/willow-2.0/tree/master/docs">Docs</a>
+      <a class="btn btn-ghost" href="#street">Skip to vox pops ↓</a>
+    </div>
+  </header>
+
+  <section class="oden-vo" id="oden-vo" aria-label="Oden voiceover">
+    <p class="oden-label">VO · <span>ODEN</span> · AUDIO NOT INCLUDED · YET</p>
+    <p class="oden-line">Every dawn I send two ravens out.</p>
+    <p class="oden-line">Huginn for thought. Muninn for memory.</p>
+    <p class="oden-line">They return at dinner with everything they heard.</p>
+    <p class="oden-line">Today they interviewed twelve people who were already dead.</p>
+    <p class="oden-line">I worry more about Muninn. Thought you can reconstruct.</p>
+  </section>
+
+  <section class="street" id="street">
+    <div class="section-head">
+      <h2>Man on the street</h2>
+      <p>We asked twelve strangers about your knowledge graph. Thirteenth clip is editorial.</p>
+    </div>
+
+    <div class="interview-stage" id="interview-stage"></div>
+
+    <div class="card-nav">
+      <button type="button" id="prev-btn">← prev clip</button>
+      <span class="card-counter" id="card-counter">1 / 13</span>
+      <button type="button" id="next-btn">next clip →</button>
+    </div>
+    <div class="thumb-strip" id="thumb-strip" role="tablist" aria-label="Interview clips"></div>
+  </section>
+
+  <section class="pivot" id="actually">
+    <h2>Anyway. The software is real.</h2>
+    <div class="stack-grid">
+      <div class="stack-item">
+        <h3>Memory</h3>
+        <p>Knowledge atoms in Postgres or SQLite. Sessions end. The graph doesn't amnesia itself.</p>
+      </div>
+      <div class="stack-item">
+        <h3>Gate</h3>
+        <p>SAP MCP + SAFE manifests on every tool call. Agents don't freestyle into prod.</p>
+      </div>
+      <div class="stack-item">
+        <h3>Local default</h3>
+        <p>Ollama by default. Cloud API keys optional — a choice, not a subscription trap.</p>
+      </div>
+    </div>
+    <pre class="stack-diagram" aria-label="Architecture">IDE / CLI / phone
+    │
+    ├── SAP MCP (stdio, portless) ──► KB · SOIL · fleet · tasks
+    │
+    └── Grove serve :7777 ──► LAN remote (optional)</pre>
+  </section>
+
+  <section class="install-block">
+    <h2>Clone it · this part is real</h2>
+    <pre class="install-box" id="install-box"></pre>
+    <p class="install-hint" id="install-hint">click to copy</p>
+    <p style="margin-top:1rem;font-size:0.82rem">
+      <a href="https://github.com/rudi193-cmd/willow-2.0/blob/master/docs/FIRST_5_MINUTES.md">First 5 minutes</a>
+      ·
+      <a href="https://github.com/rudi193-cmd/willow-2.0/blob/master/docs/IDE_INTEGRATION.md">IDE / MCP</a>
+      ·
+      <a href="https://github.com/rudi193-cmd/willow-2.0/blob/master/docs/CONCEPT.md">Why local-first</a>
+    </p>
+  </section>
+
+  <aside class="kin">
+    <strong>Found family:</strong> tended for people who show up in real life — not as users, as kin.
+    <a href="https://github.com/rudi193-cmd/willow-2.0/blob/master/docs/FOR_AHS.md">AHS</a>
+    ·
+    <a href="https://github.com/rudi193-cmd/willow-2.0/blob/master/README-FELIX.md">Felix</a>
+  </aside>
+
+  <footer>
+    <p class="closing">Plant the tree. Tend the roots. Name the ones you love. Let nothing be lost.</p>
+    <p class="seal">b20: SAPMCP2 · ΔΣ=42 · PolyForm Noncommercial</p>
+    <p class="frank-line">FRANK: Lost property — one (1) eye, divine grade, c. 1000 BCE. Unclaimed.</p>
+    <div class="atom-counter">
+      <span class="atom-counter-label">KB atoms ingested (display only)</span>
+      <span class="atom-counter-digits">00677</span>
+    </div>
+  </footer>
+
+</div>
+
+<script src="static/willow.js"></script>
+</body>
+</html>

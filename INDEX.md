@@ -173,6 +173,7 @@
 | `apps/law-gazelle` |
 | `dashboard-fresh` |
 | `docs/AGENT_IDENTITY.md` |
+| `docs/LANDING_DESIGN.md` |
 | `docs/MCP_SPEC_COMPLIANCE.md` |
 | `docs/MCP_TOOL_PROFILES.md` |
 | `docs/RUNTIME_AND_INFERENCE.md` |
@@ -182,9 +183,12 @@
 | `docs/anatomy-of-the-willow-revolution.md` |
 | `docs/dev-log-2026-05-27-fleet-github-layout.md` |
 | `docs/dev-log-2026-05-27-session-complete.md` |
+| `docs/dev-log-2026-05-28-skill-catalog-2.0-cutover.md` |
 | `docs/handoffs` |
+| `docs/index.html` |
 | `docs/kb` |
 | `docs/sean-session-metadata-report.md` |
+| `docs/static` |
 | `docs/templates` |
 | `issue_body.md` |
 | `mcp-memory-service` |
