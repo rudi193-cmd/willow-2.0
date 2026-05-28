@@ -41,7 +41,7 @@ def test_scan_file_tmp_skill(tmp_path):
     rec = scs.scan_file(skill_dir / "SKILL.md")
     assert rec["name"] == "demo"
     assert rec["execution_class"] == "A"
-    assert rec["id"].endswith("/demo")
+    assert rec["id"] == "homebrew/demo-skill"
 
 
 def test_seed_catalog_count():
