@@ -111,6 +111,8 @@ Optional: `./willow.sh providers enable anthropic YOUR_KEY` (or OpenAI / Gemini)
 
 **Beta (2.0)** — tests and packaging are in place; wiki and archive specs may lag code. Honest gaps: [`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md). Audit snapshot: [`docs/BETA_AUDIT_REPORT.md`](docs/BETA_AUDIT_REPORT.md).
 
+**Canonical repo:** `willow-1.9`, `willow-mcp`, `willow-nest`, and `willow-seed` are archived — everything ships here now. Upgrading from 1.9: [`docs/CODE_DIFF_1.9_to_2.0.md`](docs/CODE_DIFF_1.9_to_2.0.md).
+
 ---
 
 ## Documentation
