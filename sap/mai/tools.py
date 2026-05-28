@@ -18,6 +18,25 @@ if TYPE_CHECKING:
 _MAI_HEADER = "@markdownai"
 
 
+def _strip_yaml_frontmatter(text: str) -> tuple[str, str]:
+    """Return (frontmatter_block including delimiters, or ''), and body."""
+    t = text.lstrip()
+    if not t.startswith("---"):
+        return "", text
+    end = t.find("---", 3)
+    if end < 0:
+        return "", text
+    front = t[: end + 3]
+    body = t[end + 3 :].lstrip("\n")
+    return front, body
+
+
+def _markdownai_body(text: str) -> str:
+    """Body after optional YAML frontmatter — where @markdownai must live."""
+    _, body = _strip_yaml_frontmatter(text)
+    return body
+
+
 def _resolve_path(path: str, cwd: str = "") -> Path:
     p = Path(path).expanduser()
     if not p.is_absolute() and cwd:
@@ -30,7 +49,7 @@ def _read_file(path: str, cwd: str = "") -> str:
 
 
 def _is_markdownai_content(content: str) -> bool:
-    return content.lstrip().startswith(_MAI_HEADER)
+    return _markdownai_body(content).lstrip().startswith(_MAI_HEADER)
 
 
 def _is_markdownai_path(path: Path) -> bool:
@@ -86,7 +105,7 @@ def register(mcp: "FastMCP") -> None:
             return raw
 
         return parser.render(
-            raw,
+            _markdownai_body(raw),
             cwd=cwd,
             phase=phase,
             fmt=format,

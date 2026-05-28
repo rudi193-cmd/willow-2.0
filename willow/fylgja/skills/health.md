@@ -9,12 +9,12 @@ description: Willow stack health check — boot/daily/weekly tiers + memory audi
 
 Modes: `boot` (default) · `daily` · `weekly` · `memory`
 
-Scripts live at `${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/willow-2.0}/willow/fylgja}/skills/scripts/`.
+Scripts live at `${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/github/willow-2.0}/willow/fylgja}/skills/scripts/`.
 
 ## System checks (boot / daily / weekly)
 
 ```bash
-SCRIPTS="${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/willow-2.0}/willow/fylgja}/skills/scripts"
+SCRIPTS="${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/github/willow-2.0}/willow/fylgja}/skills/scripts"
 python3 "$SCRIPTS/system_health.py" --check boot    # every session
 python3 "$SCRIPTS/system_health.py" --check daily   # once per day
 python3 "$SCRIPTS/system_health.py" --check weekly  # once per week
@@ -36,7 +36,7 @@ Cleanup actions (offer after reporting — always confirm first):
 ## Memory audit (`/health memory`)
 
 ```bash
-SCRIPTS="${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/willow-2.0}/willow/fylgja}/skills/scripts"
+SCRIPTS="${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/github/willow-2.0}/willow/fylgja}/skills/scripts"
 python3 "$SCRIPTS/memory_health.py" --dir ~/.claude/projects/<project>/memory --limit 50
 python3 "$SCRIPTS/memory_health.py" --dir ~/.claude/projects/<project>/memory --limit 50 --qmd
 ```

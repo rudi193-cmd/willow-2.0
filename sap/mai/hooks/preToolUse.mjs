@@ -21,11 +21,20 @@ function writeContentFromInput(toolInput) {
   )
 }
 
+function markdownaiBody(content) {
+  let t = content.trimStart()
+  if (t.startsWith('---')) {
+    const end = t.indexOf('---', 3)
+    if (end > 0) t = t.slice(end + 3).trimStart()
+  }
+  return t
+}
+
 function isMarkdownaiFile(filePath) {
   if (!filePath.endsWith('.md')) return false
   try {
     const content = readFileSync(filePath, 'utf8')
-    return content.trimStart().startsWith(MAI_HEADER)
+    return markdownaiBody(content).startsWith(MAI_HEADER)
   } catch {
     return false
   }
@@ -33,7 +42,7 @@ function isMarkdownaiFile(filePath) {
 
 function isMarkdownaiWrite(filePath, content) {
   if (!filePath.endsWith('.md')) return false
-  if (content.trimStart().startsWith(MAI_HEADER)) return true
+  if (markdownaiBody(content).startsWith(MAI_HEADER)) return true
   return isMarkdownaiFile(filePath)
 }
 
