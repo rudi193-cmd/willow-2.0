@@ -26,7 +26,7 @@ for f in \
   docs/MCP_TOOL_PROFILES.md \
   docs/MCP_SPEC_COMPLIANCE.md \
   docs/templates/README.md \
-  agents/willow/config/mcp.json \
+  agents/willow/config/mcp.json.example \
   willow/fylgja/config/cursor-hooks.json \
   willow/fylgja/config/kart-sandbox.json; do
   if [[ -f "${f}" ]]; then
@@ -50,24 +50,30 @@ else
   _fail "unified_mcp.sh missing WILLOW_MCP_PROFILE"
 fi
 
-# Agent MCP template uses profile (not only hardcoded user home in examples)
-if grep -q 'WILLOW_MCP_PROFILE' agents/willow/config/mcp.json; then
-  _ok "agents/willow mcp.json has WILLOW_MCP_PROFILE"
+# Agent MCP template (tracked example; live mcp.json is gitignored)
+if grep -q 'WILLOW_MCP_PROFILE' agents/willow/config/mcp.json.example; then
+  _ok "mcp.json.example has WILLOW_MCP_PROFILE"
 else
-  _warn "agents/willow mcp.json missing WILLOW_MCP_PROFILE"
+  _fail "mcp.json.example missing WILLOW_MCP_PROFILE"
 fi
 
-# Secrets must not be committed in agent MCP configs (warn — blocks rotation hygiene)
-keys="$(rg -l 'gsk_|sk-ant-|sk-proj-' agents/*/config/mcp.json 2>/dev/null || true)"
-if [[ -n "${keys}" ]]; then
-  _warn "API key in agents/*/config/mcp.json — move to ~/.willow/secrets.sh and rotate"
+if rg -q 'gsk_|sk-ant-|sk-proj-' agents/willow/config/mcp.json.example 2>/dev/null; then
+  _fail "API key in mcp.json.example — use secrets.sh only"
 else
-  _ok "no API keys in tracked agent mcp.json"
+  _ok "no API keys in mcp.json.example"
 fi
 
-# Portable paths in agent MCP (warn on literal /home/)
-if rg -n '"/home/[^"]+/github/willow-2.0' agents/willow/config/mcp.json >/dev/null 2>&1; then
-  _warn "agents/willow/config/mcp.json uses literal /home/... path (use {{REPO_ROOT}} in docs)"
+mcp_live="agents/willow/config/mcp.json"
+if [[ -f "${mcp_live}" ]]; then
+  if grep -q 'WILLOW_MCP_PROFILE' "${mcp_live}"; then
+    _ok "local mcp.json present (gitignored)"
+  else
+    _warn "local mcp.json missing WILLOW_MCP_PROFILE"
+  fi
+  keys="$(rg -l 'gsk_|sk-ant-|sk-proj-' agents/*/config/mcp.json 2>/dev/null || true)"
+  if [[ -n "${keys}" ]]; then
+    _warn "API key in local agents/*/config/mcp.json — move to ~/.willow/secrets.sh"
+  fi
 fi
 
 # Active agent file when present

@@ -87,8 +87,13 @@ _ci_stubs() {
     mkdir -p "${WILLOW_SAFE_ROOT}" "${WILLOW_AGENTS_ROOT}"
     mkdir -p .willow
     echo "willow" > .willow/active-agent
+    if [[ -f agents/willow/config/mcp.json.example ]]; then
+      sed -e "s|{{REPO_ROOT}}|${ROOT}|g" -e "s|{{HOME}}|${HOME}|g" \
+        agents/willow/config/mcp.json.example > agents/willow/config/mcp.json
+    fi
     if [[ ! -e .cursor/hooks.json && -f willow/fylgja/config/cursor-hooks.json ]]; then
-      ln -sf willow/fylgja/config/cursor-hooks.json .cursor/hooks.json
+      mkdir -p .cursor
+      ln -sf ../willow/fylgja/config/cursor-hooks.json .cursor/hooks.json
     fi
   fi
 }
@@ -147,6 +152,10 @@ _local_verify() {
 
 echo "[comfort_check] mode=${MODE} root=${ROOT}"
 
+if [[ "${MODE}" == "ci" ]]; then
+  _ci_stubs
+fi
+
 _run "path-guard" _path_guard
 _run "mcp-registry-strict" _mcp_registry
 _run "verify-layout" _layout
@@ -159,7 +168,6 @@ if [[ "${MODE}" == "local" ]]; then
   _run "agents-check" _agents_check
   _run "safe-verify" _local_verify
 else
-  _ci_stubs
   _run "agents-rails-ci" _agents_rails_ci
 fi
 
