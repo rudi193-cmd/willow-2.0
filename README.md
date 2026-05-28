@@ -1,5 +1,7 @@
 # Willow 2.0
 
+**→ [Front door (GitHub Pages)](https://rudi193-cmd.github.io/willow-2.0/)** — Oden voiceover, Huginn & Muninn vox pops, dark + colorful. [`docs/LANDING_DESIGN.md`](docs/LANDING_DESIGN.md)
+
 **Local-first memory and tools for AI agents.**
 
 Willow keeps a knowledge graph on hardware you control, exposes it through an MCP server, and runs local inference with Ollama by default. Cloud API keys are optional. Your data stays in Postgres (desktop) or SQLite (Termux).

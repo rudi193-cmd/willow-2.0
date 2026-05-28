@@ -4,9 +4,15 @@ b17: KNOWNG · ΔΣ=42
 
 ## Open gaps
 
+_None at this time — see resolved below._
+
+---
+
+## Resolved gaps
+
 | ID | What | Doc |
 |----|------|-----|
-| GAP-002 | `mai_write_file` missing — agents fall back to Bash when writing MarkdownAI files | [`gaps/GAP-002-mai-write-missing.md`](gaps/GAP-002-mai-write-missing.md) |
+| GAP-002 | `mai_write_file` added; Write/Edit redirect to MCP | [`gaps/GAP-002-mai-write-missing.md`](gaps/GAP-002-mai-write-missing.md) |
 
 ---
 

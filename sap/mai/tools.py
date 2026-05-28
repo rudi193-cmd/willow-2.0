@@ -1,5 +1,5 @@
 """
-sap/mai/tools.py — Python implementations of the 9 MarkdownAI MCP tools.
+sap/mai/tools.py — Python implementations of the MarkdownAI MCP tools.
 
 Replaces the Node.js @markdownai/mcp package with a native Python equivalent.
 Register all tools on a FastMCP instance by calling register(mcp).
@@ -15,12 +15,50 @@ from sap.mai import parser
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
+_MAI_HEADER = "@markdownai"
 
-def _read_file(path: str, cwd: str = "") -> str:
+
+def _strip_yaml_frontmatter(text: str) -> tuple[str, str]:
+    """Return (frontmatter_block including delimiters, or ''), and body."""
+    t = text.lstrip()
+    if not t.startswith("---"):
+        return "", text
+    end = t.find("---", 3)
+    if end < 0:
+        return "", text
+    front = t[: end + 3]
+    body = t[end + 3 :].lstrip("\n")
+    return front, body
+
+
+def _markdownai_body(text: str) -> str:
+    """Body after optional YAML frontmatter — where @markdownai must live."""
+    _, body = _strip_yaml_frontmatter(text)
+    return body
+
+
+def _resolve_path(path: str, cwd: str = "") -> Path:
     p = Path(path).expanduser()
     if not p.is_absolute() and cwd:
         p = Path(cwd) / p
-    return p.read_text(encoding="utf-8", errors="replace")
+    return p.resolve()
+
+
+def _read_file(path: str, cwd: str = "") -> str:
+    return _resolve_path(path, cwd).read_text(encoding="utf-8", errors="replace")
+
+
+def _is_markdownai_content(content: str) -> bool:
+    return _markdownai_body(content).lstrip().startswith(_MAI_HEADER)
+
+
+def _is_markdownai_path(path: Path) -> bool:
+    if not path.exists() or path.suffix.lower() != ".md":
+        return False
+    try:
+        return _is_markdownai_content(path.read_text(encoding="utf-8", errors="replace"))
+    except OSError:
+        return False
 
 
 def register(mcp: "FastMCP") -> None:
@@ -63,11 +101,11 @@ def register(mcp: "FastMCP") -> None:
         except Exception as e:
             return f"[mai_read_file] error reading {path}: {e}"
 
-        if not raw.lstrip().startswith("@markdownai"):
+        if not _is_markdownai_content(raw):
             return raw
 
         return parser.render(
-            raw,
+            _markdownai_body(raw),
             cwd=cwd,
             phase=phase,
             fmt=format,
@@ -75,6 +113,39 @@ def register(mcp: "FastMCP") -> None:
             skill_args=skill_args,
             skill_named_args=skill_named_args or {},
         )
+
+    @mcp.tool()
+    def mai_write_file(path: str, content: str, cwd: str = "") -> dict:
+        """
+        Write raw content to a MarkdownAI file (no rendering).
+
+        Invalidates the render cache for the path. Use for .md files with an
+        @markdownai header when IDE Write/Edit is blocked by preToolUse hooks.
+
+        Args:
+            path: Absolute or cwd-relative path to the file.
+            content: Full file content to write (must include @markdownai header if required).
+            cwd: Working directory for relative paths.
+        """
+        try:
+            target = _resolve_path(path, cwd or os.getcwd())
+            if target.suffix.lower() != ".md":
+                return {"ok": False, "error": f"[mai_write_file] not a .md file: {path}"}
+            if not _is_markdownai_content(content) and _is_markdownai_path(target):
+                return {
+                    "ok": False,
+                    "error": (
+                        "[mai_write_file] existing @markdownai file — content must keep "
+                        "@markdownai header on line 1 of body (after YAML frontmatter if any)"
+                    ),
+                }
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
+            parser.invalidate(str(target))
+            nbytes = len(content.encode("utf-8"))
+            return {"ok": True, "path": str(target), "bytes": nbytes}
+        except Exception as e:
+            return {"ok": False, "error": f"[mai_write_file] {path}: {e}"}
 
     @mcp.tool()
     def mai_list_phases(file: str) -> list[dict]:

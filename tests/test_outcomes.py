@@ -17,6 +17,9 @@ os.environ.setdefault("WILLOW_PG_DB", "willow_20_test")
 
 from core.pg_bridge import PgBridge, run_migrations
 
+# CI Postgres migrations can exceed the default 60s pytest-timeout.
+pytestmark = pytest.mark.timeout(180)
+
 
 @pytest.fixture(scope="module")
 def pg():

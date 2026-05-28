@@ -4,7 +4,7 @@
 
 b17: FYLSF · ΔΣ=42
 
-Canonical tree: `willow/fylgja/` under **`${WILLOW_ROOT}`** (default `~/willow-2.0` or your clone).
+Canonical tree: `willow/fylgja/` under **`${WILLOW_ROOT}`** (default `~/github/willow-2.0` or your clone).
 
 Override: **`WILLOW_FYLGJA_ROOT`** must contain `powers/` and `skills/`.
 

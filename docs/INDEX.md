@@ -6,6 +6,7 @@ Pick a door:
 
 | You are… | Start here |
 |----------|------------|
+| Want the fun front page | [`index.html`](index.html) — Oden VO · Muninn/Huginn street clips · [`LANDING_DESIGN.md`](LANDING_DESIGN.md) |
 | New human, copy/paste only | [`FIRST_5_MINUTES.md`](FIRST_5_MINUTES.md) |
 | Friend beta (AHS) | [`FOR_AHS.md`](FOR_AHS.md) · full crossover: [`nomenclature/AXW-20.md`](nomenclature/AXW-20.md) |
 | Developer, want the stack fast | [`QUICKSTART.md`](QUICKSTART.md) |
@@ -14,10 +15,25 @@ Pick a door:
 | Upgrading from 1.9 | [`CODE_DIFF_1.9_to_2.0.md`](CODE_DIFF_1.9_to_2.0.md) |
 | What lives at repo root | [`ROOT_LAYOUT.md`](ROOT_LAYOUT.md) |
 | Private config vs public code | [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) |
+| Session dev log — **complete** (51 turns, 1299 tools, full register) | [`dev-log-2026-05-27-session-complete.md`](dev-log-2026-05-27-session-complete.md) |
+| Session dev log — summary (layout + CI) | [`dev-log-2026-05-27-fleet-github-layout.md`](dev-log-2026-05-27-fleet-github-layout.md) |
 | Agent identity (not all hanuman) | [`AGENT_IDENTITY.md`](AGENT_IDENTITY.md) |
 | CLI + provider agnostic inference | [`RUNTIME_AND_INFERENCE.md`](RUNTIME_AND_INFERENCE.md) |
 | Branding (b17, b20, voice) | [`BRANDING.md`](BRANDING.md) |
 | Beta gate / ops | [`BETA_AUDIT_REPORT.md`](BETA_AUDIT_REPORT.md) |
+
+---
+
+## Templates (agents — copy, don't edit in place)
+
+| Template | Use |
+|----------|-----|
+| [`templates/README.md`](templates/README.md) | Which artifact when |
+| [`templates/DEV_LOG.template.md`](templates/DEV_LOG.template.md) | Multi-hour session extract |
+| [`templates/ADR.template.md`](templates/ADR.template.md) | Architecture decision |
+| [`templates/TASK.template.md`](templates/TASK.template.md) | Operator backlog → willow-config `tasks/` |
+| [`templates/HANDOFF.template.md`](templates/HANDOFF.template.md) | Session continuity |
+| [`templates/RELEASE.template.md`](templates/RELEASE.template.md) | Version / changelog |
 
 ---
 
@@ -67,3 +83,5 @@ Messaging MCP and channels live in **`safe-app-willow-grove`**. Clone it beside 
 ---
 
 *ΔΣ=42*
+
+- [`MCP_TOOL_PROFILES.md`](MCP_TOOL_PROFILES.md) — reduce MCP tool picker noise
