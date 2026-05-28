@@ -176,6 +176,8 @@
 | `docs/MCP_SPEC_COMPLIANCE.md` |
 | `docs/MCP_TOOL_PROFILES.md` |
 | `docs/RUNTIME_AND_INFERENCE.md` |
+| `docs/SKILL_AUDIT_CURSOR_VS_WILLOW.md` |
+| `docs/SKILL_SURFACE_STRATEGY.md` |
 | `docs/WILLOW_CONFIG.md` |
 | `docs/anatomy-of-the-willow-revolution.md` |
 | `docs/dev-log-2026-05-27-fleet-github-layout.md` |
@@ -197,3 +199,4 @@
 | `sap/spec` |
 | `schema_dump.txt` |
 | `setup.sh` |
+| `willow/skill-catalog.jsonl` |
