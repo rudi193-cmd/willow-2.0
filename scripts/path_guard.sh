@@ -15,7 +15,7 @@ if rg -n '/home/[^/]+/willow-2\.0[^/]' \
     --glob '!docs/handoffs/**' \
     --glob '!scripts/migrate_live_paths_19_to_20.py' \
     --glob '!tests/**' --glob '!**/*.md' . 2>/dev/null; then
-  echo "::error::Use github/willow-2.0 or env vars, not bare ~/willow-2.0 home paths"
+  echo "::error::Use github/willow-2.0 or env vars, not bare ~/github/willow-2.0 home paths"
   fail=1
 fi
 

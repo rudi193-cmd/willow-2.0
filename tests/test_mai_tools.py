@@ -32,6 +32,13 @@ def test_mai_write_file_on_disk(tmp_path):
     assert path.read_text(encoding="utf-8") == content
 
 
+def test_markdownai_detected_after_yaml_frontmatter():
+    raw = "---\nagent: hanuman\ndate: 2026-05-28\n---\n\n@markdownai v1.0\n\n# Hi\n"
+    assert mai_tools._is_markdownai_content(raw)
+    body = mai_tools._markdownai_body(raw)
+    assert body.startswith("@markdownai")
+
+
 def test_mai_write_file_strips_header_guard(tmp_path):
     path = tmp_path / "keep.md"
     path.write_text("@markdownai v1.0\n\nOld\n", encoding="utf-8")

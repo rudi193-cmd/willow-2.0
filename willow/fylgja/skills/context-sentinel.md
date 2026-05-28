@@ -12,7 +12,7 @@ Check session context health and apply the cascading relief protocol before qual
 ## Run
 
 ```bash
-SCRIPTS="${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/willow-2.0}/willow/fylgja}/skills/scripts"
+SCRIPTS="${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/github/willow-2.0}/willow/fylgja}/skills/scripts"
 bash "$SCRIPTS/check_context.sh"
 ```
 
