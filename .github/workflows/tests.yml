@@ -5,6 +5,7 @@ on:
     branches: ["master", "main"]
   pull_request:
     branches: ["master", "main"]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -26,29 +27,56 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    env:
+      WILLOW_ROOT: ${{ github.workspace }}
+      WILLOW_HOME: ${{ github.workspace }}/.ci-willow
+      WILLOW_AGENT_NAME: ci
+      WILLOW_SAFE_ROOT: ${{ github.workspace }}/.ci-safe/Applications
+      WILLOW_AGENTS_ROOT: ${{ github.workspace }}/.ci-safe/Agents
+      WILLOW_PG_DB: willow_20_test
+      WILLOW_PG_USER: postgres
+      WILLOW_PG_HOST: localhost
+      WILLOW_PG_PORT: 5432
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Prepare CI SAFE stub
-        run: mkdir -p "${GITHUB_WORKSPACE}/.ci-safe/Applications"
+      - name: Prepare CI SAFE + USER stubs
+        run: |
+          mkdir -p "${WILLOW_SAFE_ROOT}" "${WILLOW_AGENTS_ROOT}" "${WILLOW_HOME}/store"
 
       - name: Run test suite
         run: python3 -m pytest --ignore=tests/adversarial/e2e -v --timeout=60
-        env:
-          WILLOW_AGENT_NAME: ci
-          WILLOW_SAFE_ROOT: ${{ github.workspace }}/.ci-safe/Applications
-          WILLOW_PG_DB: willow_20_test
-          WILLOW_PG_USER: postgres
-          WILLOW_PG_HOST: localhost
-          WILLOW_PG_PORT: 5432
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: postgres
-          PGPASSWORD: postgres
+
+  path-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject legacy home paths in tracked code
+        run: |
+          set -euo pipefail
+          if rg -n '/home/[^/]+/willow-2\.0[^/]' --glob '!worktrees/**' --glob '!archive/**' \
+              --glob '!docs/handoffs/**' --glob '!scripts/migrate_live_paths_19_to_20.py' \
+              --glob '!**/*.md' .; then
+            echo "::error::Use github/willow-2.0 or env vars, not bare ~/willow-2.0 home paths"
+            exit 1
+          fi
+          if rg -n 'Path\.home\(\) / "willow-2\.0"' --glob '!worktrees/**' --glob '!archive/**' .; then
+            echo "::error::Default WILLOW_ROOT should use github/willow-2.0 or WILLOW_HOME env"
+            exit 1
+          fi
+          echo "path-guard OK"

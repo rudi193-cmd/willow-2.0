@@ -1,7 +1,7 @@
 {
   "env": {
-    "WILLOW_AGENT_NAME": "hanuman",
-    "AGENT_NAME": "hanuman"
+    "WILLOW_AGENT_NAME": "willow",
+    "AGENT_NAME": "willow"
   },
   "permissions": {
     "allow": [
@@ -22,16 +22,16 @@
       "mcp__willow__fleet_restart",
       "mcp__willow__mem_jeles_build_centroids",
       "mcp__willow__soil_search",
-      "Read(//home/sean-campbell/SAFE/Applications/ask-jeles/src/**)",
+      "Read(//home/sean-campbell/github/SAFE/Applications/ask-jeles/src/**)",
       "Bash(pip install *)",
       "Bash(python3 -m pip install textual)",
       "Bash(uv pip *)",
-      "Bash(/home/sean-campbell/willow-2.0/.venv-dev/bin/pip install *)",
-      "Read(//home/sean-campbell/SAFE/Applications/ask-jeles/**)",
+      "Bash(/home/sean-campbell/github/willow-2.0/.venv-dev/bin/pip install *)",
+      "Read(//home/sean-campbell/github/SAFE/Applications/ask-jeles/**)",
       "Bash(cat pyproject.toml)",
       "Bash(cat setup.py)",
-      "Bash(PYTHONPATH=/home/sean-campbell/willow-2.0:/home/sean-campbell/SAFE/Applications/ask-jeles/src /home/sean-campbell/willow-2.0/.venv-dev/bin/python3 *)",
-      "Bash(PYTHONPATH=/home/sean-campbell/willow-2.0 /home/sean-campbell/willow-2.0/.venv-dev/bin/python3 *)",
+      "Bash(PYTHONPATH=/home/sean-campbell/github/willow-2.0:/home/sean-campbell/github/SAFE/Applications/ask-jeles/src /home/sean-campbell/github/willow-2.0/.venv-dev/bin/python3 *)",
+      "Bash(PYTHONPATH=/home/sean-campbell/github/willow-2.0 /home/sean-campbell/github/willow-2.0/.venv-dev/bin/python3 *)",
       "Bash(git checkout *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",

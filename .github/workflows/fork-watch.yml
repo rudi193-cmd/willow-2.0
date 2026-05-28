@@ -26,7 +26,7 @@ jobs:
               title: `🌿 Fork: ${repo}`,
               labels: ['fork-watch'],
               body: [
-                `**${owner}** forked willow-1.9 on ${now}.`,
+                `**${owner}** forked willow-2.0 on ${now}.`,
                 ``,
                 `**Fork:** ${url}`,
                 `**Owner:** https://github.com/${owner}`,
