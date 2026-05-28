@@ -651,7 +651,19 @@ class SqliteBridge:
                 "folder_root=excluded.folder_root",
                 (agent_id, name, role, trust, folder_root),
             )
-            return {"id": agent_id, "name": name, "status": "created"}
+            out: dict = {"id": agent_id, "name": name, "status": "created"}
+            try:
+                from core import safe_agents
+
+                aid = name.strip().lower()
+                if aid not in safe_agents.FLEET_AGENTS:
+                    safe_agents.FLEET_AGENTS[aid] = {"trust": trust, "role": role}
+                out["manifest"] = safe_agents.write_manifest(
+                    aid, trust=trust, role=role, force=False, sign=True,
+                )
+            except Exception as exc:
+                out["manifest_error"] = str(exc)
+            return out
         except Exception as e:
             return {"error": str(e)}
 

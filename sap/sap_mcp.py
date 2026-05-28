@@ -397,6 +397,13 @@ def _hot_reload(target: str = "all") -> dict:
             reloaded.append("gate: reloaded")
         except Exception as e:
             errors.append(f"gate: {e}")
+        try:
+            sys.modules.pop("core.safe_agents", None)
+            import core.safe_agents as _sa_new
+            importlib.reload(_sa_new)
+            reloaded.append("safe_agents: reloaded")
+        except Exception as e:
+            errors.append(f"safe_agents: {e}")
 
     return {
         "status":   "reloaded" if not errors else "partial",
@@ -488,31 +495,15 @@ async def fleet_agents(app_id: str) -> dict:
     """List registered Willow agents and their trust levels. Queries the agents DB table first; falls back to the built-in static list."""
     logger.info("[w2] fleet_agents app_id=%s", app_id)
 
-    # Static fallback list — used when DB has no agent rows
-    _static_agents = [
-        {"name": "heimdallr",   "trust": "ENGINEER", "role": "Watchman, gatekeeper. Claude Code CLI."},
-        {"name": "hanuman",     "trust": "ENGINEER", "role": "Bridge-builder. Corpus indexer. Migration engine."},
-        {"name": "opus",        "trust": "ENGINEER", "role": "Post-obstacle builder. Claude Code CLI."},
-        {"name": "willow",      "trust": "OPERATOR", "role": "Primary interface"},
-        {"name": "ada",         "trust": "OPERATOR", "role": "Systems admin, continuity"},
-        {"name": "steve",       "trust": "OPERATOR", "role": "Prime node, coordinator"},
-        {"name": "kart",        "trust": "ENGINEER", "role": "Infrastructure, multi-step tasks"},
-        {"name": "shiva",       "trust": "ENGINEER", "role": "Bridge Ring, SAFE face"},
-        {"name": "ganesha",     "trust": "ENGINEER", "role": "Diagnostic, obstacle removal"},
-        {"name": "gerald",      "trust": "WORKER",   "role": "Acting Dean, philosophical"},
-        {"name": "riggs",       "trust": "WORKER",   "role": "Applied reality engineering"},
-        {"name": "pigeon",      "trust": "WORKER",   "role": "Carrier, connector"},
-        {"name": "hanz",        "trust": "WORKER",   "role": "Code, holds Copenhagen"},
-        {"name": "jeles",       "trust": "WORKER",   "role": "Librarian, special collections"},
-        {"name": "binder",      "trust": "WORKER",   "role": "Records, filing"},
-        {"name": "oakenscroll", "trust": "WORKER",   "role": "Scroll-keeper, long-form records"},
-        {"name": "nova",        "trust": "WORKER",   "role": "Exploration, new territory"},
-        {"name": "alexis",      "trust": "WORKER",   "role": "Analysis, structured reasoning"},
-        {"name": "mitra",       "trust": "WORKER",   "role": "Mediation, relations"},
-        {"name": "consus",      "trust": "WORKER",   "role": "Mathematics, formal systems"},
-        {"name": "jane",        "trust": "WORKER",   "role": "Research, documentation"},
-        {"name": "ofshield",    "trust": "WORKER",   "role": "Keeper of the Gate"},
-    ]
+    # Static fallback — canonical registry in core.safe_agents.FLEET_AGENTS
+    try:
+        from core.safe_agents import FLEET_AGENTS as _fleet_registry
+        _static_agents = [
+            {"name": k, "trust": v["trust"], "role": v.get("role", "")}
+            for k, v in sorted(_fleet_registry.items())
+        ]
+    except Exception:
+        _static_agents = []
 
     agents = []
     source = "static"
@@ -552,7 +543,23 @@ async def fleet_reload(app_id: str, target: str = "all") -> dict:
     target: all | blast | inference | postgres | store | gate"""
     logger.info("[w2] fleet_reload app_id=%s target=%s", app_id, target)
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(_executor, _hot_reload, target)
+    timeout_s = float(os.environ.get("WILLOW_FLEET_RELOAD_TIMEOUT", "30"))
+    try:
+        return await asyncio.wait_for(
+            loop.run_in_executor(_executor, _hot_reload, target),
+            timeout=timeout_s,
+        )
+    except asyncio.TimeoutError:
+        logger.error("[w2] fleet_reload timed out after %.0fs target=%s", timeout_s, target)
+        return {
+            "error": "reload_timeout",
+            "target": target,
+            "timeout_s": timeout_s,
+            "message": (
+                f"Hot reload did not finish within {timeout_s:.0f}s. "
+                "Try target='gate' for permission groups only, or fleet_restart + /mcp."
+            ),
+        }
 
 
 @mcp.tool(annotations={"destructiveHint": True})

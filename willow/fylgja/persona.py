@@ -95,8 +95,8 @@ def load_user_personas() -> dict[str, dict]:
 def register_user_persona(key: str, label: str, desc: str, persona_md_path: str) -> bool:
     """
     Record a user persona in ~/.willow/user-personas.json after the agent has:
-      1. Called agent_create MCP tool (which sets up ~/SAFE/<key>/ + PGP + manifest)
-      2. Written the persona .md file to ~/SAFE/<key>/persona.md
+      1. Called agent_create MCP tool (which sets up ~/SAFE/Agents/<key>/ + PGP + manifest)
+      2. Written the persona .md file to ~/SAFE/Agents/<key>/persona.md
 
     This function is called by the agent post-registration, not by the hook.
     persona_md_path should be the absolute path written by agent_create flow.
@@ -206,8 +206,8 @@ def render_create_prompt() -> str:
         "  The process:",
         "    1. Choose a short name  (e.g. mentor, analyst, coach)",
         "    2. Provide a one-line role description",
-        "    3. agent_create MCP tool sets up ~/SAFE/<name>/ + PGP key + manifest",
-        "    4. Write persona .md to ~/SAFE/<name>/persona.md",
+        "    3. agent_create MCP tool sets up ~/SAFE/Agents/<name>/ + PGP key + manifest",
+        "    4. Write persona .md to ~/SAFE/Agents/<name>/persona.md",
         "    5. register_user_persona() records it in ~/.willow/user-personas.json",
         "    6. Persona appears in the picker next session.",
         "",

@@ -82,7 +82,33 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "fleet_agents", "fleet_status", "fleet_system_status",
         "fleet_governance", "mem_check",
         "handoff_latest", "handoff_search",
-        "session_review", "diagnostic_summary", "env_check",
+        "session_review", "session_query", "diagnostic_summary", "env_check",
+    }),
+    "skill_read": frozenset({
+        "skill_list", "skill_load",
+    }),
+    "fleet_operator": frozenset({
+        "fleet_health", "fleet_blast", "fleet_persona", "fleet_base17",
+        "fleet_governance",
+    }),
+    "app_manage": frozenset({
+        "app_install", "app_uninstall", "app_list", "app_status",
+    }),
+    "mem_binder": frozenset({
+        "mem_binder_file", "mem_binder_edge", "mem_binder_edge_update",
+        "mem_binder_list_files", "mem_binder_list_edges",
+    }),
+    "ledger_audit": frozenset({
+        "ledger_read", "ledger_verify",
+    }),
+    "diagnostic": frozenset({
+        "diagnostic_summary", "session_review", "env_check",
+    }),
+    "infer_batch": frozenset({
+        "infer_7b",
+    }),
+    "handoff_rebuild": frozenset({
+        "handoff_rebuild",
     }),
     "knowledge_write": frozenset({
         "kb_ingest", "kb_journal",
@@ -112,7 +138,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "mem_jeles_invalidate",
     }),
     "intake": frozenset({
-        "intake_write",
+        "intake_write", "intake_list", "intake_promote", "intake_schedule",
     }),
     "nest": frozenset({
         "nest_scan", "nest_queue", "nest_file",
@@ -137,7 +163,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "handoff_latest", "handoff_search",
         "soil_get", "soil_search", "soil_list", "soil_search_all",
         "soil_edges_for", "soil_stats", "soil_audit",
-        "session_review", "diagnostic_summary", "env_check",
+        "session_review", "session_query", "diagnostic_summary", "env_check",
     }),
     # SAP MCP 2.0 — new groups covering domains not in v1
     "fork_manage": frozenset({
