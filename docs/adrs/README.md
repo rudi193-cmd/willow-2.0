@@ -6,6 +6,8 @@
 
 `ADR-YYYYMMDD-<slug>.md` in this directory.
 
+**Template:** copy [`../templates/ADR.template.md`](../templates/ADR.template.md) — do not edit the template file in place.
+
 ## Receipts
 
 Each ADR must cite at least one **Grove** message id (`grove.messages.id`) and/or a **git commit** — **refs not blobs**.

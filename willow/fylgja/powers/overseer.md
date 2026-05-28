@@ -30,7 +30,7 @@ b17: FYLOV · ΔΣ=42
    - Fields: `title=”<SLUG> — seed contract”`, `summary=<2-3 sentences>`, `domain=<agent>`, `project=<repo>`.
    - Save the returned atom ID.
 4. **Create the worktree via wt_create.py** — use the lifecycle automator instead of bare `git worktree add`:
-   - `python3 ${WILLOW_ROOT:-~/willow-2.0}/scripts/wt_create.py <SLUG> <repo-path> --task "<one-line>" --issue "id:area:desc" [...]`
+   - `python3 ${WILLOW_ROOT:-~/github/willow-2.0}/scripts/wt_create.py <SLUG> <repo-path> --task "<one-line>" --issue "id:area:desc" [...]`
    - This runs `git worktree add`, seeds `wt_project.db` (Test 1: auto-init), and is idempotent on re-run (Test 2: resume).
    - Output includes the Grove post template with a slot for the seed atom ID — fill it after step 3.
    - Worktrees live **inside** the repo at `<repo>/worktrees/<SLUG>`.

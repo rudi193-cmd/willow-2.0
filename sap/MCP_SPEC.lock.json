@@ -1,0 +1,17 @@
+{
+  "spec_version": "2025-11-25",
+  "spec_url": "https://modelcontextprotocol.io/specification/2025-11-25/server/tools",
+  "spec_index": "https://modelcontextprotocol.io/llms.txt",
+  "python_sdk": "mcp",
+  "negotiated_default": "2025-03-26",
+  "latest_protocol": "2025-11-25",
+  "willow_server": "sap/unified_mcp.py",
+  "tool_name_pattern": "^[A-Za-z0-9._-]{1,128}$",
+  "profiles": ["minimal", "core", "standard", "full"],
+  "default_profile": "standard",
+  "notes": [
+    "FastMCP exposes tools/list without pagination; acceptable under ~100 visible tools per profile.",
+    "Profile filter is Willow-specific (WILLOW_MCP_PROFILE), not in MCP spec.",
+    "Run: python3 scripts/check_mcp_registry.py"
+  ]
+}

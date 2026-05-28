@@ -22,7 +22,19 @@
     "app":        "Apps — SAFE app lifecycle (install, uninstall, status)",
     "policy":     "Policy — SAFE policy put/list/delete",
     "voice":      "Voice — key term extraction for TTS",
-    "diag":       "Diagnostics — env, session, diagnostic summary"
+    "diag":       "Diagnostics — env, session, diagnostic summary",
+    "kart":       "Kart — sandbox task execution (bwrap)",
+    "intake":     "Intake — unified intake layer before Jeles routing",
+    "journal":    "Journal — session journal entries",
+    "workflow":   "Workflow — multi-phase workflow engine",
+    "routine":    "Routines — Claude Code Routine API",
+    "cmb":        "CMB — compact message bus atoms",
+    "context":    "Context — compact context summaries in DB",
+    "hook":       "Hooks — hook registry and execution log",
+    "routing":    "Routing — routing decision log",
+    "session":    "Session — session index and messages",
+    "pg":         "Postgres graph — durable KB edges (distinct from SOIL)",
+    "outcome":    "Outcomes — managed agent flow API"
   },
 
   "tools": {
@@ -45,7 +57,8 @@
     "soil_add_edge":      {"group": "soil",   "description": "Add a directed edge between two SOIL records."},
     "soil_edges_for":     {"group": "soil",   "description": "List all edges for a given SOIL record ID."},
 
-    "fleet_status":       {"group": "fleet",  "description": "Primary health check — Postgres, SOIL, Ollama, manifests. app_id is YOUR agent name."},
+    "fleet_tool_guide":   {"group": "fleet",  "tier": "minimal", "description": "Grouped catalog of MCP tools for the active WILLOW_MCP_PROFILE. Call when unsure which tool to use."},
+    "fleet_status":       {"group": "fleet",  "tier": "minimal", "description": "Primary health check — Postgres, SOIL, Ollama, manifests. app_id is YOUR agent name."},
     "fleet_health":       {"group": "fleet",  "description": "Detailed health report across all fleet components."},
     "fleet_agents":       {"group": "fleet",  "description": "List registered agents and their manifest status."},
     "fleet_system_status":{"group": "fleet",  "description": "System-level status (CPU, RAM, disk, services)."},
@@ -128,6 +141,7 @@
     "grove_bus_receive":  {"group": "grove",  "description": "Receive messages from the Grove internal bus."},
 
     "mai_read_file":      {"group": "mai",    "description": "Read and render a MarkdownAI document. Returns ai-format (token-efficient) by default. Use for willow.md and all .md skill files."},
+    "mai_write_file":     {"group": "mai",    "description": "Write raw content to a @markdownai .md file (no rendering). Invalidates cache. Use instead of Write/Edit when preToolUse blocks."},
     "mai_execute_directive": {"group": "mai", "description": "Execute a MarkdownAI directive (e.g., @db, @http, @prompt)."},
     "mai_call_macro":     {"group": "mai",    "description": "Call a MarkdownAI macro."},
     "mai_get_constraints":{"group": "mai",    "description": "Extract @constraint blocks from a MarkdownAI document."},
@@ -157,6 +171,66 @@
 
     "env_check":          {"group": "diag",   "description": "Check environment variables and their current values."},
     "diagnostic_summary": {"group": "diag",   "description": "Full diagnostic summary — env, services, manifests, recent errors."},
-    "session_review":     {"group": "diag",   "description": "Review the current session state and recent activity."}
+    "session_review":     {"group": "diag",   "description": "Review the current session state and recent activity."},
+
+    "kart_task_run":      {"group": "kart",   "tier": "minimal", "lane": "exec", "description": "Pull pending tasks from Postgres and execute in Kart bwrap sandbox. Primary exec lane — pair with agent_task_submit."},
+
+    "cmb_get":            {"group": "cmb",    "tier": "extended", "description": "Fetch a cmb_atom by ID."},
+    "cmb_list":           {"group": "cmb",    "tier": "extended", "description": "List cmb_atoms (journal entries). Filter by agent if provided."},
+    "cmb_search":         {"group": "cmb",    "tier": "extended", "description": "Search cmb_atoms by content or title."},
+
+    "context_expire":     {"group": "context","tier": "extended", "description": "Expire a compact_context immediately (sets expires_at=now())."},
+    "context_get":        {"group": "context","tier": "extended", "description": "Fetch a compact_context by ID."},
+    "context_list":       {"group": "context","tier": "extended", "description": "List non-expired compact_contexts. Filter by agent if provided."},
+    "context_save":       {"group": "context","tier": "extended", "description": "Save a compact context summary to the DB when context depth is high."},
+
+    "hook_list":          {"group": "hook",   "tier": "extended", "description": "List registered hooks from hook_registry. active_only=True filters to enabled hooks."},
+    "hook_log_read":      {"group": "hook",   "tier": "extended", "description": "Read hook execution log, optionally filtered by hook_name."},
+
+    "intake_list":        {"group": "intake", "tier": "standard", "description": "List pending (not yet promoted) intake records for an agent."},
+    "intake_promote":     {"group": "intake", "tier": "standard", "description": "Run promote pass on pending intake — routes records to Jeles/schema."},
+    "intake_schedule":    {"group": "intake", "tier": "standard", "description": "Queue promote_intake as a Kart task. Returns task_id; call kart_task_run after."},
+    "intake_write":       {"group": "intake", "tier": "standard", "description": "Write one annotated record to the unified intake layer."},
+
+    "journal_read":       {"group": "journal","tier": "standard", "description": "Read journal entries. Filter by agent and/or session_id."},
+
+    "kb_backup":          {"group": "kb",     "tier": "extended", "description": "Backup Willow Postgres DB to ~/.willow/backups/ via pg_dump -Fc."},
+    "kb_extract_from_session": {"group": "kb", "tier": "extended", "description": "Extract KB atoms from a git commit or recent session using atom_extractor."},
+    "kb_intelligence_run":{"group": "kb",     "tier": "extended", "description": "Trigger KB intelligence consolidation (NREM/sleep). Disabled by default."},
+    "kb_promote":         {"group": "kb",     "tier": "extended", "description": "Promote or demote a knowledge atom to a new lifecycle tier."},
+
+    "ledger_verify":      {"group": "ledger", "tier": "standard", "description": "Verify the FRANK ledger hash chain. Returns valid=True or broken_at=<id>."},
+
+    "mem_binder_edge_update": {"group": "mem", "tier": "extended", "description": "Binder: update proposed edge status (proposed → approved | rejected)."},
+    "mem_binder_list_edges":  {"group": "mem", "tier": "extended", "description": "Binder: list proposed edges, filter by agent or status."},
+    "mem_binder_list_files":  {"group": "mem", "tier": "extended", "description": "Binder: list filed JSONL records, filter by agent."},
+    "mem_jeles_ask":          {"group": "mem", "tier": "extended", "description": "Jeles: answer a natural language question from trusted sources."},
+    "mem_jeles_build_centroids": {"group": "mem", "tier": "extended", "description": "Build or rebuild Jeles domain centroid embeddings (nomic-embed-text)."},
+    "mem_jeles_get":        {"group": "mem", "tier": "extended", "description": "Jeles: fetch a single jeles_atom by ID."},
+    "mem_jeles_invalidate": {"group": "mem", "tier": "extended", "description": "Jeles: invalidate a jeles_atom (sets invalid_at=now())."},
+    "mem_jeles_search":     {"group": "mem", "tier": "extended", "description": "Jeles: semantic search over jeles_atoms."},
+    "mem_jeles_web_search": {"group": "mem", "tier": "extended", "description": "Jeles: search trusted citable sources (LOC, arXiv, PubMed, etc.)."},
+    "mem_ratify_list":      {"group": "mem", "tier": "standard", "description": "List ratification records, optionally filtered by agent."},
+
+    "outcome_agent_register": {"group": "outcome", "tier": "extended", "description": "Register a Managed Agent for the Outcomes API."},
+    "outcome_run":          {"group": "outcome", "tier": "extended", "description": "Run an Outcomes flow against a registered Managed Agent."},
+    "outcome_status":       {"group": "outcome", "tier": "extended", "description": "Get status and result of a previously started outcome run."},
+
+    "pg_edge_add":          {"group": "pg",   "tier": "standard", "description": "Add a directed edge to Postgres edges table (durable KB graph, not SOIL)."},
+    "pg_edge_list":         {"group": "pg",   "tier": "standard", "description": "List edges from Postgres edges table. Filter by from_id or to_id."},
+
+    "routine_fire":         {"group": "routine", "tier": "extended", "description": "Fire a registered Claude Code Routine by name via Anthropic API."},
+    "routine_list":         {"group": "routine", "tier": "extended", "description": "List all registered routines (IDs and metadata, no tokens)."},
+    "routine_register":     {"group": "routine", "tier": "extended", "description": "Register a Claude Code Routine credential in the DB."},
+
+    "routing_log_read":     {"group": "routing", "tier": "extended", "description": "Read routing_decisions log. Filter by session_id if provided."},
+
+    "session_query":        {"group": "session", "tier": "extended", "description": "Query session_index and session_messages (stats, search, recent)."},
+
+    "workflow_cancel":      {"group": "workflow", "tier": "extended", "description": "Cancel a running or pending workflow run."},
+    "workflow_define":      {"group": "workflow", "tier": "extended", "description": "Define or update a workflow (JSON phases definition)."},
+    "workflow_list":        {"group": "workflow", "tier": "extended", "description": "List all defined workflows."},
+    "workflow_run":         {"group": "workflow", "tier": "extended", "description": "Start a workflow run. input is JSON variables as {{input.key}} in phases."},
+    "workflow_status":      {"group": "workflow", "tier": "extended", "description": "Get workflow run status — phases, outputs, current state."}
   }
 }

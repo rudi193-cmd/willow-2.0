@@ -66,11 +66,25 @@ Debug: Cursor **Output → Hooks** channel.
 
 ## Tool namespaces
 
-| Prefix | Domain | Count |
-|--------|--------|-------|
-| `kb_` `soil_` `fleet_` `agent_` `fork_` `skill_` `mem_` `index_` `ledger_` `handoff_` `soul_` `nest_` `infer_` `task_` | Willow — KB, tasks, fleet, handoff | ~77 |
-| `grove_` | Messaging — channels, bus, inbox, flags | 17 |
-| `mai_` | MarkdownAI — render, phases, macros, directives | 9 |
+~160 tools are registered; the IDE should not show all of them.
+
+**Profiles** (`WILLOW_MCP_PROFILE`, default `standard`): see [`MCP_TOOL_PROFILES.md`](MCP_TOOL_PROFILES.md).
+
+| Profile | ~Visible | Purpose |
+|---------|----------|---------|
+| `minimal` | 10 | Boot |
+| `core` | 38 | Daily |
+| `standard` | 73 | Default |
+| `full` | 160 | Everything |
+
+Call **`fleet_tool_guide`** when unsure which tool to use (grouped catalog).
+
+| Prefix | Domain |
+|--------|--------|
+| `kb_` `soil_` `fleet_` `handoff_` `ledger_` | Data lane |
+| `agent_task_submit` `kart_task_run` | Exec lane (Kart) |
+| `grove_` | Messaging |
+| `mai_` | MarkdownAI |
 
 ---
 
@@ -84,6 +98,7 @@ Debug: Cursor **Output → Hooks** channel.
 | `WILLOW_SAFE_ROOT` | `~/SAFE/Applications` | Installed app manifests — required for SAP gate |
 | `WILLOW_AGENTS_ROOT` | `~/SAFE/Agents` | Agent manifests — required for agent authorization |
 | `WILLOW_STORE_ROOT` | `~/.willow/store` | SOIL store path |
+| `WILLOW_MCP_PROFILE` | `standard` | Tool picker filter: `minimal` \| `core` \| `standard` \| `full` |
 
 ---
 

@@ -33,6 +33,43 @@ DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
 
 _REPO_ROOT = str(Path(__file__).parent.parent.parent.parent)
 
+_MAI_HEADER = "@markdownai"
+_MAI_WRITE_TOOLS = frozenset({"Write", "Edit", "StrReplace", "search_replace"})
+_MAI_WRITE_MSG = (
+    "Use mai_write_file (willow MCP) for @markdownai .md files. "
+    "Use mai_read_file first when updating existing content."
+)
+
+
+def _markdownai_write_block(tool_name: str, tool_input: dict) -> str | None:
+    """Block IDE Write/Edit on @markdownai files — use mai_write_file instead."""
+    if tool_name not in _MAI_WRITE_TOOLS:
+        return None
+    file_path = str(
+        tool_input.get("file_path")
+        or tool_input.get("path")
+        or tool_input.get("file")
+        or ""
+    )
+    if not file_path.endswith(".md"):
+        return None
+    content = str(
+        tool_input.get("content")
+        or tool_input.get("new_string")
+        or tool_input.get("new_str")
+        or ""
+    )
+    p = Path(file_path).expanduser()
+    if content.lstrip().startswith(_MAI_HEADER):
+        return _MAI_WRITE_MSG
+    if p.is_file():
+        try:
+            if p.read_text(encoding="utf-8", errors="replace").lstrip().startswith(_MAI_HEADER):
+                return _MAI_WRITE_MSG
+        except OSError:
+            pass
+    return None
+
 
 def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
     """Write a correction atom to corpus/corrections when a tool is blocked."""
@@ -327,6 +364,12 @@ def main():
     tool_input = payload.get("tool_input", {})
     session_id = payload.get("session_id", "")
 
+    mai_block = _markdownai_write_block(tool_name, tool_input)
+    if mai_block:
+        _corpus_log_block(tool_name, mai_block, session_id)
+        print(json.dumps({"decision": "block", "reason": mai_block}))
+        sys.exit(0)
+
     # Safety gate — runs before all other checks
     block = _run_safety_gate(tool_name, tool_input, session_id)
     if block:
@@ -395,7 +438,7 @@ def main():
                 }))
         sys.exit(0)
 
-    # Write/Edit tools — security path check + content injection + F5 canon guard
+    # Write/Edit tools — MarkdownAI routing, security path check, F5 canon guard
     if tool_name in ("Write", "Edit") or tool_name in F5_PROSE_TOOLS:
         file_path = tool_input.get("file_path", "")
         content = tool_input.get("content", tool_input.get("new_string", ""))

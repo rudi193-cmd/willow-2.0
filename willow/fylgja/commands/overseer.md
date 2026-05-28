@@ -4,7 +4,7 @@ Same behavioral router as `/power`, but **pinned** to the **overseer** checklist
 
 ## ROOT
 
-`WILLOW_FYLGJA_ROOT` if set, else `~/willow-2.0/willow/fylgja`.
+`WILLOW_FYLGJA_ROOT` if set, else `~/github/willow-2.0/willow/fylgja`.
 
 ## Steps
 

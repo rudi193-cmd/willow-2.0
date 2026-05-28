@@ -1,9 +1,10 @@
-"""Willow release version — read from repo VERSION, pin to ~/.willow/version.
+"""Willow release version — read from repo VERSION, pin to WILLOW_HOME/version.
 
 b17: VER20 · ΔΣ=42
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -20,12 +21,13 @@ VERSION = get_version()
 
 
 def installed_version_path() -> Path:
-    """Resolved at call time so tests can monkeypatch Path.home()."""
-    return Path.home() / ".willow" / "version"
+    """Resolved at call time so tests can monkeypatch Path.home() / WILLOW_HOME."""
+    home = Path(os.environ.get("WILLOW_HOME", Path.home() / "github" / ".willow"))
+    return home / "version"
 
 
 def sync_installed_version() -> str:
-    """Write repo VERSION to ~/.willow/version when it differs."""
+    """Write repo VERSION to WILLOW_HOME/version when it differs."""
     v = get_version()
     path = installed_version_path()
     path.parent.mkdir(parents=True, exist_ok=True)

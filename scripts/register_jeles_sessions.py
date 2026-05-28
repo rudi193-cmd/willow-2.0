@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -29,7 +30,7 @@ log = logging.getLogger("jlsreg")
 
 AGENT = require_agent_name()
 SESSION_DIR = Path.home() / ".claude" / "projects" / "-home-sean-campbell-willow-2-0"
-CWD = str(Path.home() / "willow-2.0")
+CWD = os.environ.get("WILLOW_ROOT", str(Path.home() / "github" / "willow-2.0"))
 
 
 def _count_turns(path: Path) -> int:

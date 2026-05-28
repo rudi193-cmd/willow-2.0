@@ -10,4 +10,6 @@ b17: AGNTW · ΔΣ=42
 
 **Branding:** [`docs/BRANDING.md`](docs/BRANDING.md) (`b17: … · ΔΣ=42`; SAP uses `b20: SAPMCP2`).
 
+**Documentation templates:** [`docs/templates/README.md`](docs/templates/README.md) — dev log, ADR, handoff, task, release (copy templates; do not edit `.template.md` files in place).
+
 *ΔΣ=42*
