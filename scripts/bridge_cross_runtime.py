@@ -29,20 +29,24 @@ CURSOR_ROOT = (
     / "agent-transcripts"
 )
 
-HANDOFF_DIR = Path.home() / ".willow" / "handoffs"
+HANDOFF_DIR = Path.home() / "github" / ".willow" / "handoffs"
+if not HANDOFF_DIR.is_dir():
+    HANDOFF_DIR = Path.home() / ".willow" / "handoffs"
 BRIDGE_PATH = HANDOFF_DIR / "cross-runtime.json"
 
-# From Claude handoff docs/handoffs/session_handoff-2026-05-26_hanuman.md
+# Live threads — keep in sync with handoffs/hanuman/session_handoff-2026-05-28d_hanuman.md
 JELES_OPEN = [
+    "GEMINI_API_KEY deferred (Groq + Ollama sufficient)",
     "teachers-app redirect loop — devtools + localStorage cos_config",
     "teachers-app git — no remote; most files untracked",
+    "Commit local path migration — safe-app-willow-grove, willow-2.0 scripts, .willow env",
     "Upstream PR #5 (claude-deep-review) — awaiting re-review",
-    "Upstream PR #1032 (mcp-memory-service) — awaiting maintainer review",
-    "Willow stack rethink — claude.ai-native boot direction (fuzzy)",
+    "Upstream PR #1032 (mcp-memory-service) — awaiting maintainer",
+    "Willow stack rethink — design backlog (fuzzy)",
 ]
 
 CURSOR_OPEN = [
-    "Grove PR #18 FRANK ledger path — closed unmerged; reopen if still wanted",
+    "Optional: prune grove worktrees dashboard-fresh / frank-ledger",
 ]
 
 

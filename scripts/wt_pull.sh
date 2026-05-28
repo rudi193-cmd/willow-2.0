@@ -3,7 +3,7 @@
 # Fetches origin/wt/* and lands each branch as a detached worktree under
 # .wt/incoming/<task> — readable, not auto-merged. Requires explicit review.
 #
-# Cron: */5 * * * * /home/sean-campbell/willow-2.0/scripts/wt_pull.sh
+# Cron: */5 * * * * /home/sean-campbell/github/willow-2.0/scripts/wt_pull.sh
 # b17: WTP02  ΔΣ=42
 
 set -euo pipefail

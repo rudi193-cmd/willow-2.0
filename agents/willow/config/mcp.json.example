@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "willow": {
+      "type": "stdio",
+      "command": "bash",
+      "args": ["{{REPO_ROOT}}/sap/unified_mcp.sh"],
+      "env": {
+        "WILLOW_AGENT_NAME": "willow",
+        "WILLOW_GROVE_ROOT": "{{REPO_ROOT}}/../safe-app-willow-grove",
+        "WILLOW_PG_DB": "willow_20",
+        "WILLOW_SAFE_ROOT": "{{HOME}}/github/SAFE/Applications",
+        "WILLOW_AGENTS_ROOT": "{{HOME}}/github/SAFE/Agents",
+        "WILLOW_ROOT": "{{REPO_ROOT}}",
+        "WILLOW_MCP_PROFILE": "standard",
+        "WILLOW_INFERENCE_PROVIDER": "auto"
+      }
+    }
+  }
+}

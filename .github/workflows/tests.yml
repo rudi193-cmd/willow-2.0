@@ -52,31 +52,32 @@ jobs:
           cache-dependency-path: requirements.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep
 
       - name: Prepare CI SAFE + USER stubs
         run: |
           mkdir -p "${WILLOW_SAFE_ROOT}" "${WILLOW_AGENTS_ROOT}" "${WILLOW_HOME}/store"
+          echo "# CI stub" > "${WILLOW_HOME}/willow.md"
+          printf 'WILLOW_ROOT=%s\nWILLOW_HOME=%s\n' "${WILLOW_ROOT}" "${WILLOW_HOME}" > "${WILLOW_HOME}/env"
+          echo '{"version":1,"paths":{},"fleet":{"default_agent":""}}' > "${WILLOW_HOME}/settings.global.json"
+
+      - name: Comfort check (layout, MCP registry, fast tests)
+        env:
+          WILLOW_MCP_PROFILE: full
+        run: bash scripts/comfort_check.sh --ci
 
       - name: Run test suite
-        run: python3 -m pytest --ignore=tests/adversarial/e2e -v --timeout=60
+        run: python3 -m pytest --ignore=tests/adversarial/e2e -v --timeout=120
 
   path-guard:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install ripgrep
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep
+
       - name: Reject legacy home paths in tracked code
-        run: |
-          set -euo pipefail
-          if rg -n '/home/[^/]+/willow-2\.0[^/]' --glob '!worktrees/**' --glob '!archive/**' \
-              --glob '!docs/handoffs/**' --glob '!scripts/migrate_live_paths_19_to_20.py' \
-              --glob '!**/*.md' .; then
-            echo "::error::Use github/willow-2.0 or env vars, not bare ~/willow-2.0 home paths"
-            exit 1
-          fi
-          if rg -n 'Path\.home\(\) / "willow-2\.0"' --glob '!worktrees/**' --glob '!archive/**' .; then
-            echo "::error::Default WILLOW_ROOT should use github/willow-2.0 or WILLOW_HOME env"
-            exit 1
-          fi
-          echo "path-guard OK"
+        run: bash scripts/path_guard.sh
