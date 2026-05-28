@@ -12,8 +12,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from core import soil
+from core.agent_namespace import soil_collection
 
-COLLECTION = "hanuman/kb_read_log"
+
+def _collection() -> str:
+    return soil_collection("kb_read_log")
 
 
 def _now() -> str:
@@ -38,12 +41,12 @@ def record_read(atom_id: str, source: str) -> None:
     if not atom_id:
         return
     try:
-        existing: dict[str, Any] = soil.get(COLLECTION, atom_id) or {}
+        existing: dict[str, Any] = soil.get(_collection(), atom_id) or {}
         now = _now()
         sources = existing.get("sources", [])
         if source not in sources:
             sources.append(source)
-        soil.put(COLLECTION, atom_id, {
+        soil.put(_collection(), atom_id, {
             "atom_id": atom_id,
             "first_read_at": existing.get("first_read_at", now),
             "last_read_at": now,
@@ -57,7 +60,7 @@ def record_read(atom_id: str, source: str) -> None:
 def was_read_since(atom_id: str, since_days: int = 7) -> bool:
     """Return True if atom_id was surfaced within the last since_days days."""
     try:
-        record = soil.get(COLLECTION, atom_id)
+        record = soil.get(_collection(), atom_id)
         if not record:
             return False
         last_read = record.get("last_read_at", "")
@@ -75,7 +78,7 @@ def unread_atom_ids(since_days: int = 7) -> set[str]:
     """
     result: set[str] = set()
     try:
-        records = soil.all_records(COLLECTION)
+        records = soil.all_records(_collection())
         for r in records:
             atom_id = r.get("atom_id", "")
             if not atom_id:
@@ -92,7 +95,7 @@ def read_atoms_set(since_days: int = 7) -> set[str]:
     """Return set of atom_ids read within the last since_days days (inverse of unread_atom_ids)."""
     result: set[str] = set()
     try:
-        records = soil.all_records(COLLECTION)
+        records = soil.all_records(_collection())
         for r in records:
             atom_id = r.get("atom_id", "")
             if not atom_id:

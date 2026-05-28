@@ -1,0 +1,22 @@
+[Unit]
+Description=Nest drop-zone watcher — fires Grove messages on new items
+After=network-online.target grove-mcp.service
+Wants=grove-mcp.service
+
+[Service]
+Type=simple
+Environment=WILLOW_ROOT=%h/github/willow-2.0
+Environment=WILLOW_PG_DB=willow_20
+Environment=WILLOW_PG_USER=%u
+Environment=WILLOW_GROVE_ROOT=%h/github/safe-app-willow-grove
+Environment=PYTHONPATH=%h/github/willow-2.0
+Environment=WILLOW_AGENT_NAME=heimdallr
+WorkingDirectory=%h/github/willow-2.0
+ExecStart=%h/github/willow-2.0/.venv-dev/bin/python3 %h/github/willow-2.0/tools/nest_watcher.py
+StandardOutput=append:/tmp/nest-watcher.log
+StandardError=append:/tmp/nest-watcher.log
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -224,7 +224,7 @@ def _subprocess_call(tool_name: str, arguments: dict, timeout: int) -> dict:
     })
 
     env = os.environ.copy()
-    env.setdefault("WILLOW_SAFE_ROOT", str(Path.home() / "SAFE" / "Applications"))
+    env.setdefault("WILLOW_SAFE_ROOT", str(Path.home() / "github" / "SAFE" / "Applications"))
     env.setdefault("WILLOW_PG_DB", "willow_20")
     env.setdefault("WILLOW_PG_USER", os.environ.get("USER", ""))
 

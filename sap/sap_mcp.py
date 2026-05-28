@@ -108,11 +108,11 @@ _MCP_AGENT = require_agent_name()
 STORE_ROOT = os.environ.get("WILLOW_STORE_ROOT", str(_SAP_ROOT / "store"))
 HANDOFF_DB = os.environ.get(
     "WILLOW_HANDOFF_DB",
-    str(Path.home() / ".willow" / "handoffs" / _MCP_AGENT / "handoffs.db"),
+    str(Path.home() / "github" / ".willow" / "handoffs" / _MCP_AGENT / "handoffs.db"),
 )
 _DEFAULT_HANDOFF_DIRS = ":".join([
-    str(Path.home() / ".willow" / "handoffs" / _MCP_AGENT),
-    str(Path.home() / ".willow" / "Nest" / _MCP_AGENT),
+    str(Path.home() / "github" / ".willow" / "handoffs" / _MCP_AGENT),
+    str(Path.home() / "github" / ".willow" / "Nest" / _MCP_AGENT),
 ])
 HANDOFF_DIRS = os.environ.get("WILLOW_HANDOFF_DIRS", _DEFAULT_HANDOFF_DIRS)
 
@@ -202,7 +202,7 @@ def _init_pg():
     except Exception as err:
         logger.error("[w2] pg init failed: %s — falling back to SQLite", err)
         try:
-            flag = Path.home() / ".willow" / "pg_failure.flag"
+            flag = Path.home() / "github" / ".willow" / "pg_failure.flag"
             flag.parent.mkdir(parents=True, exist_ok=True)
             flag.write_text(str(err))
         except Exception:
@@ -525,7 +525,7 @@ async def fleet_agents(app_id: str) -> dict:
     # Merge locally registered agents from ~/.willow/agents.json
     try:
         import json as _json
-        override = Path.home() / ".willow" / "agents.json"
+        override = Path.home() / "github" / ".willow" / "agents.json"
         if override.exists():
             existing = {a["name"] for a in agents}
             for entry in _json.loads(override.read_text()):
@@ -1237,26 +1237,44 @@ async def agent_dispatch_result(
 @sap_gate()
 async def agent_task_submit(
     app_id:       str,
-    task:         str,
+    task:         str = "",
+    script_body:  str = "",
+    script_name:  str = "",
     agent:        str = "kart",
     submitted_by: str = "ganesha",
     allow_net:    bool = False,
 ) -> dict:
-    """Queue a task in the Postgres tasks table. Returns task_id immediately.
-    Set allow_net=True for tasks that need internet access (git push, gh, curl, etc.).
-    For inline shell execution use agent_dispatch instead."""
+    """Queue shell work for Kart (execution plane). Returns task_id immediately.
+
+    Prefer this over agent Bash for ls, git, pytest, pipelines, and scripts.
+    Use script_body (not inline task strings) when Python or nested quotes are involved —
+    writes {WILLOW_ROOT}/.kart-scripts/kart-*.py and queues python3 <path>.
+
+    Set allow_net=True for git push, gh, curl, etc.
+    After submit, call kart_task_run(app_id) or wait for kart-worker / Stop kart_poll."""
     logger.info("[w2] agent_task_submit app_id=%s agent=%s allow_net=%s", app_id, agent, allow_net)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
-    task_text = task if not allow_net else task + "\n# allow_net"
+    try:
+        from willow.fylgja.kart_queue import prepare_task_command
+        cmd, script_path = prepare_task_command(task, script_body=script_body, script_name=script_name)
+    except ValueError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": f"prepare task: {e}"}
+
+    task_text = cmd if not allow_net else cmd + "\n# allow_net"
 
     def _submit():
         task_id = pg.submit_task(task_text, submitted_by=submitted_by or app_id, agent=agent)
         if not task_id:
             return {"error": "failed to submit task"}
         _rl_log_event("task_submit", ref=task_id)
-        return {"task_id": task_id, "status": "pending", "agent": agent}
+        out = {"task_id": task_id, "status": "pending", "agent": agent, "command": cmd}
+        if script_path:
+            out["script_path"] = script_path
+        return out
 
     return await loop.run_in_executor(_executor, _submit)
 
@@ -1373,8 +1391,10 @@ async def intake_schedule(
 @mcp.tool()
 @sap_gate()
 async def infer_chat(app_id: str, agent: str = "willow", message: str = "") -> dict:
-    """Chat with a Willow agent (routes to Anthropic / Groq / OpenRouter / Ollama).
-    agent: willow, kart, shiva, gerald, etc. Default: willow."""
+    """Chat with a fleet agent persona via provider-agnostic router (Ollama / Gemini / Groq / fleet).
+
+    The IDE model (Claude, Cursor, etc.) is not the agent — `agent` is the fleet identity.
+    """
     logger.info("[w2] infer_chat app_id=%s agent=%s", app_id, agent)
     if not message:
         return {"error": "message required"}
@@ -1382,22 +1402,23 @@ async def infer_chat(app_id: str, agent: str = "willow", message: str = "") -> d
     timeout = _TOOL_TIMEOUT_INFERENCE
 
     def _chat():
-        if agent in _inf.CLOUD_AGENTS:
-            return (_inf.chat_groq(agent, message)
-                    or _inf.chat_openrouter(agent, message)
-                    or f"[{agent}] Inference unavailable.")
-        from sap.clients.professor_client import _ask_ollama, PROFESSOR_MODELS, DEFAULT_MODEL
-        system_prompt = _inf.load_persona(agent) or f"You are {agent}, a Willow AI agent."
-        model = PROFESSOR_MODELS.get(agent.title(), PROFESSOR_MODELS.get(agent, DEFAULT_MODEL))
-        return (_ask_ollama(model, system_prompt, message)
-                or f"[{agent}] Inference unavailable.")
+        from core.inference_router import chat as router_chat
+        system_prompt = _inf.load_persona(agent) or (
+            f"You are {agent}, a Willow fleet agent. "
+            "You are not the IDE runtime (Claude/Cursor/Gemini). Answer as {agent} only."
+        )
+        try:
+            text, provider = router_chat(system_prompt, message)
+            return text, provider
+        except Exception as e:
+            return f"[{agent}] Inference unavailable: {e}", "none"
 
     try:
-        response = await asyncio.wait_for(
+        response, provider = await asyncio.wait_for(
             loop.run_in_executor(_executor, _chat),
             timeout=timeout,
         )
-        return {"agent": agent, "response": response}
+        return {"agent": agent, "response": response, "provider": provider}
     except asyncio.TimeoutError:
         return {"error": "timeout", "tool": "infer_chat", "timeout_s": timeout}
 
@@ -2202,7 +2223,7 @@ async def intake_promote(
                 elif tier == "binder_queue":
                     result = pg.jeles_register_jsonl(
                         agent=rec_agent,
-                        jsonl_path=str(Path.home() / ".willow" / "intake" / rec_agent),
+                        jsonl_path=str(Path.home() / "github" / ".willow" / "intake" / rec_agent),
                         session_id=f"binder-{rec_id}",
                         cwd="",
                         file_size=len(content),
@@ -3119,7 +3140,7 @@ async def kb_backup(app_id: str, label: str = "") -> dict:
         if not shutil.which("pg_dump"):
             return {"error": "pg_dump not found in PATH"}
 
-        backup_dir = Path.home() / ".willow" / "backups"
+        backup_dir = Path.home() / "github" / ".willow" / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
 
         db_name = os.environ.get("WILLOW_PG_DB", "willow_20")
@@ -4214,9 +4235,9 @@ async def diagnostic_summary(
 
 # ── Tools — app_ domain (install / uninstall / list / status) ────────────────
 
-_SAFE_APPS_DIR   = Path.home() / "SAFE" / "apps"
-_SAFE_APP_REG    = Path(os.environ.get("WILLOW_SAFE_ROOT", str(Path.home() / "SAFE" / "Applications")))
-_MONOREPO_ROOT   = Path.home() / "safe-app-store" / "apps"
+_SAFE_APPS_DIR   = Path.home() / "github" / "SAFE" / "apps"
+_SAFE_APP_REG    = Path(os.environ.get("WILLOW_SAFE_ROOT", str(Path.home() / "github" / "SAFE" / "Applications")))
+_MONOREPO_ROOT   = Path.home() / "github" / "safe-app-store" / "apps"
 _WILLOW2_ROOT    = Path(__file__).parent.parent
 _MCP_TEMPLATE    = {
     "mcpServers": {
@@ -4476,7 +4497,7 @@ async def app_status(app_id: str, target_app_id: str = "") -> dict:
 
 _CODE_GRAPH_DB = Path(os.environ.get(
     "WILLOW_CODE_GRAPH_DB",
-    str(Path.home() / ".willow" / "code_graph.db"),
+    str(Path.home() / "github" / ".willow" / "code_graph.db"),
 ))
 _CODE_GRAPH_ROOT = Path(os.environ.get(
     "WILLOW_CODE_GRAPH_ROOT",

@@ -54,6 +54,27 @@ DEFAULT_RULES = [
         "priority": 6,
         "description": "Deep reasoning and philosophical questions",
     },
+    {
+        "id": "rule-heimdallr",
+        "pattern": r"\b(infra|systemd|deploy|gate|sandbox|mcp|postgres|fleet|build)\b",
+        "agent": "heimdallr",
+        "priority": 9,
+        "description": "Infrastructure and fleet engineering",
+    },
+    {
+        "id": "rule-loki",
+        "pattern": r"\b(audit|ledger|review|flag|inconsisten|account)\b",
+        "agent": "loki",
+        "priority": 9,
+        "description": "Audit and ledger review",
+    },
+    {
+        "id": "rule-hanuman",
+        "pattern": r"\b(migrat|corpus|index|kb|ingest|handoff)\b",
+        "agent": "hanuman",
+        "priority": 7,
+        "description": "Corpus and knowledge migration",
+    },
 ]
 
 

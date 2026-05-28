@@ -22,7 +22,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="KB ingest via memory_gate + Postgres")
     ap.add_argument("--title", required=True)
     ap.add_argument("--summary", required=True)
-    ap.add_argument("--domain", default="hanuman")
+    ap.add_argument("--domain", required=True, help="Agent namespace (e.g. heimdallr, hanuman)")
     ap.add_argument("--source-type", default="cli_kb_ingest")
     ap.add_argument("--source-id", default="")
     ap.add_argument("--category", default="fleet_process")

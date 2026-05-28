@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 AGENTS_ROOT = Path(
-    os.environ.get("WILLOW_AGENTS_ROOT", str(Path.home() / "SAFE" / "Agents"))
+    os.environ.get("WILLOW_AGENTS_ROOT", str(Path.home() / "github" / "SAFE" / "Agents"))
 )
 
 # Fleet registry: name → trust, role (matches sap_mcp fleet_agents static fallback)

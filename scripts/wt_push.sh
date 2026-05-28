@@ -3,13 +3,13 @@
 # Scans $WT_REPO_ROOT for repos with worktrees/ dirs, PII-checks each unpushed
 # branch, and pushes clean branches to origin/wt/<branch>.
 #
-# Cron: */5 * * * * /home/sean-campbell/github/willow-1.9/scripts/wt_push.sh
+# Cron: */5 * * * * /home/sean-campbell/github/willow-2.0/scripts/wt_push.sh
 # b17: WTP01  ΔΣ=42
 
 set -euo pipefail
 
 REPO_ROOT="${WT_REPO_ROOT:-$HOME/github}"
-PII_CHECK="${WILLOW_REPO:-$HOME/github/willow-1.9}/scripts/pii_check.py"
+PII_CHECK="${WILLOW_REPO:-$HOME/github/willow-2.0}/scripts/pii_check.py"
 LOG="${WT_PUSH_LOG:-/tmp/wt_push.log}"
 
 log() { echo "[$(date -Is)] $*" >> "$LOG"; }

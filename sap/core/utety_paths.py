@@ -74,7 +74,7 @@ def ensure_utety_env(repo: Optional[Path] = None) -> Optional[Path]:
     repo = repo or _repo_root()
 
     if not os.environ.get("WILLOW_SAFE_ROOT", "").strip():
-        default_safe = Path.home() / "SAFE" / "Applications"
+        default_safe = Path.home() / "github" / "SAFE" / "Applications"
         if default_safe.is_dir():
             os.environ["WILLOW_SAFE_ROOT"] = str(default_safe)
 

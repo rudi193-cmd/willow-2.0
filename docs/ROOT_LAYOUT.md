@@ -9,7 +9,7 @@ The repo root is intentionally thin. Headers and seals: [`BRANDING.md`](BRANDING
 | File | Purpose |
 |------|---------|
 | `willow.sh` | MCP launcher, `fleet_status`, `handoff_latest`, Grove serve |
-| `willow.md` | Fleet boot contract for agents |
+| `willow.md` | Symlink → `~/github/.willow/willow.md` (canonical in private **willow-config**) |
 | `root.py` | Idempotent install (Sleipnir) |
 | `seed.py` | First-run / environment seed |
 | `shoot.py` | Onboarding TUI |

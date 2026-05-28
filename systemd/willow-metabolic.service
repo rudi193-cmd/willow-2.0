@@ -5,8 +5,8 @@ Requires=willow-metabolic.socket
 
 [Service]
 Type=simple
-Environment=WILLOW_ROOT=%h/willow-2.0
-Environment=WILLOW_STORE_ROOT=%h/.willow/store
+Environment=WILLOW_ROOT=%h/github/willow-2.0
+Environment=WILLOW_STORE_ROOT=%h/github/.willow/store
 Environment=WILLOW_PG_DB=willow_20
 ExecStart=/bin/sh -c 'python3 "$WILLOW_ROOT/core/metabolic.py"'
 StandardInput=socket

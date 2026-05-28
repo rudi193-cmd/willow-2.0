@@ -31,18 +31,24 @@ RULES_COLLECTION = "willow/routing/rules"
 OLLAMA_MODEL = os.environ.get("WILLOW_ROUTE_MODEL", "hf.co/Rudi193/yggdrasil-v9:Q4_K_M")
 OLLAMA_URL = "http://localhost:11434/api/chat"
 
-_AGENT_ROSTER = [
-    {"name": "willow",   "role": "Primary interface — general conversation and KB queries"},
-    {"name": "kart",     "role": "Infrastructure — multi-step tasks, builds, deployments, automation"},
-    {"name": "ganesha",  "role": "Diagnostics — debugging, error analysis, obstacle removal"},
-    {"name": "shiva",    "role": "Bridge Ring — SAFE protocol, user-facing coordination"},
-    {"name": "jeles",    "role": "Librarian — search, retrieval, indexing, special collections"},
-    {"name": "gerald",   "role": "Philosophical — reasoning, ethics, deep analysis"},
-    {"name": "hanz",     "role": "Code — implementation, refactoring, technical work"},
-    {"name": "grove",    "role": "Comms — Grove messages, channels, notifications, posts"},
-    {"name": "ada",      "role": "Systems admin — continuity, infrastructure admin"},
-    {"name": "pigeon",   "role": "Carrier — cross-system coordination and delivery"},
-]
+def _agent_roster() -> list[dict[str, str]]:
+    try:
+        from core.safe_agents import FLEET_AGENTS
+        return [
+            {"name": name, "role": meta.get("role", meta.get("trust", ""))}
+            for name, meta in sorted(FLEET_AGENTS.items())
+        ]
+    except Exception:
+        return [
+            {"name": "willow", "role": "Primary coordinator"},
+            {"name": "heimdallr", "role": "Infrastructure, gates, builds"},
+            {"name": "hanuman", "role": "Corpus, migrations"},
+            {"name": "loki", "role": "Audit, ledger"},
+            {"name": "kart", "role": "Task execution"},
+        ]
+
+
+_AGENT_ROSTER = _agent_roster()
 
 # Intent → preferred agent mapping (JointBERT steal: intent taxonomy routed to fleet agents)
 # Confidence must be >= this threshold to use the intent fast path

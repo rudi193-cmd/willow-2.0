@@ -13,6 +13,9 @@ Pick a door:
 | Agent joining the fleet | [`../willow.md`](../willow.md) + [`../sap/ONBOARDING.md`](../sap/ONBOARDING.md) |
 | Upgrading from 1.9 | [`CODE_DIFF_1.9_to_2.0.md`](CODE_DIFF_1.9_to_2.0.md) |
 | What lives at repo root | [`ROOT_LAYOUT.md`](ROOT_LAYOUT.md) |
+| Private config vs public code | [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) |
+| Agent identity (not all hanuman) | [`AGENT_IDENTITY.md`](AGENT_IDENTITY.md) |
+| CLI + provider agnostic inference | [`RUNTIME_AND_INFERENCE.md`](RUNTIME_AND_INFERENCE.md) |
 | Branding (b17, b20, voice) | [`BRANDING.md`](BRANDING.md) |
 | Beta gate / ops | [`BETA_AUDIT_REPORT.md`](BETA_AUDIT_REPORT.md) |
 

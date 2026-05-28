@@ -19,6 +19,7 @@ try:
 except Exception:
     _LEDGER_AVAILABLE = False
 from willow.fylgja.safety.session import get_session_user_id, get_session_role, get_training_consent
+from willow.fylgja.mcp_routing import BASH_TO_MCP as _MCP_BASH_TO_MCP
 from willow.fylgja.safety.security_scan import (
     scan_bash as _scan_bash,
     scan_write as _scan_write,
@@ -78,8 +79,9 @@ BASH_BLOCKS = [
      "Use the Read tool instead of cat/head/tail — it provides line numbers and better context. "
      "→ Read({file_path: '<path>'})"),
     (r"^\s*ls(\s|$)", "block",
-     "Use Glob for file listings — it supports patterns and integrates with the KB. "
-     "→ Glob({pattern: '<dir>/**'})"),
+     "Do not run ls in agent Bash — Kart is the execution plane. "
+     "→ agent_task_submit(app_id, task='ls <path>') then kart_task_run(app_id). "
+     "Willow atom listings → soil_list / app_list / fleet_agents (MCP data lane)."),
     (r"(?i)(?:^|\s)(?:env\s+)?PYTHONPATH=", "block",
      "Do not bypass Willow with PYTHONPATH= shell. "
      "→ MCP tools (kb_search, soil_get, fleet_status, handoff_latest, …). "
@@ -159,6 +161,9 @@ def check_bash_block(command: str) -> tuple[str, str] | None:
     for pattern in _BASH_ALLOW_PATTERNS:
         if re.search(pattern, command, re.MULTILINE):
             return None
+    for pattern, decision, mcp_hint in _MCP_BASH_TO_MCP:
+        if re.search(pattern, command, re.MULTILINE):
+            return decision, f"Use MCP instead of shell. → {mcp_hint}"
     for pattern, decision, reason in BASH_BLOCKS:
         if re.search(pattern, command, re.MULTILINE):
             if pattern == r"\bsqlite3\b" and _sqlite_access_allowed(command):

@@ -619,6 +619,11 @@ def main():
         "[MCP-FIRST] Use Willow MCP tools — not PYTHONPATH= python, not psql/sqlite3 Bash. "
         "Shell work → agent_task_submit + kart_task_run. Registry: sap/mcp_registry.json."
     )
+    lines.append(
+        f"[IDENTITY] You are {AGENT}. The IDE/CLI model is transport only — not your name. "
+        "Do not route all fleet work to hanuman; use agent_route then agent_dispatch(to=…). "
+        f"Postgres dispatch_tasks.from_agent must be {AGENT}."
+    )
 
     try:
         from willow.fylgja.persona import anchor_lines as _persona_lines

@@ -274,7 +274,7 @@ def kart_env(root: Path | None = None) -> dict[str, str]:
     # The SAP gate requires WILLOW_SAFE_ROOT to initialize; without it classify
     # fails inside bwrap and promote_intake falls back to heuristic routing.
     if not env.get("WILLOW_SAFE_ROOT"):
-        default_safe = Path.home() / "SAFE" / "Applications"
+        default_safe = Path.home() / "github" / "SAFE" / "Applications"
         if default_safe.is_dir():
             env["WILLOW_SAFE_ROOT"] = str(default_safe)
 
@@ -290,7 +290,7 @@ def run_shell(
     env: dict[str, str] | None = None,
 ) -> dict:
     """
-    Execute one shell command (shlex-split, no shell metacharacters).
+    Execute one shell command via bash -c (inside bwrap when enabled).
     Returns {returncode, stdout, stderr, elapsed_s, sandbox: bwrap|plain}.
     """
     started = time.time()

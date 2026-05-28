@@ -40,12 +40,13 @@ def step_telemetry_init() -> None:
 
 
 def step_1_dirs() -> None:
-    """Create ~/.willow/ structure, ~/SAFE/Applications/, and ~/SAFE/Agents/."""
+    """Create ~/github/.willow/ structure, ~/github/SAFE/Applications/, Agents/."""
     home = Path.home()
-    for sub in (".willow", ".willow/store", ".willow/secrets", ".willow/logs"):
-        (home / sub).mkdir(parents=True, exist_ok=True)
-    (home / "SAFE" / "Applications").mkdir(parents=True, exist_ok=True)
-    (home / "SAFE" / "Agents").mkdir(parents=True, exist_ok=True)
+    willow_home = home / "github" / ".willow"
+    for sub in ("store", "secrets", "logs"):
+        (willow_home / sub).mkdir(parents=True, exist_ok=True)
+    (home / "github" / "SAFE" / "Applications").mkdir(parents=True, exist_ok=True)
+    (home / "github" / "SAFE" / "Agents").mkdir(parents=True, exist_ok=True)
 
 
 def step_2_deps() -> None:
@@ -165,20 +166,30 @@ def step_6_socket(skip_socket: bool = False) -> None:
     except (subprocess.CalledProcessError, FileNotFoundError):
         print("  Metabolic socket: systemd not available (skip)")
 
-    # Grove MCP server — persistent streamable-HTTP on port 8765
-    grove_src = WILLOW_ROOT / "systemd" / "grove-mcp.service"
-    if grove_src.exists():
-        shutil.copy2(grove_src, systemd_user / "grove-mcp.service")
+    fleet_units = (
+        "grove-mcp.service",
+        "willow-grove-listen.service",
+        "drop-server.service",
+        "nest-watcher.service",
+    )
+    installed: list[str] = []
+    for unit in fleet_units:
+        src = WILLOW_ROOT / "systemd" / unit
+        if src.exists():
+            shutil.copy2(src, systemd_user / unit)
+            installed.append(unit)
+    if installed:
         try:
             subprocess.run(["systemctl", "--user", "daemon-reload"], check=True,
                            capture_output=True)
-            subprocess.run(
-                ["systemctl", "--user", "enable", "--now", "grove-mcp.service"],
-                check=True, capture_output=True,
-            )
-            print("  Grove MCP: enabled")
+            for unit in installed:
+                subprocess.run(
+                    ["systemctl", "--user", "enable", "--now", unit],
+                    check=True, capture_output=True,
+                )
+            print(f"  Fleet units: {', '.join(installed)}")
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("  Grove MCP: systemd not available (skip)")
+            print("  Fleet units: systemd not available (skip)")
 
 
 def step_7_cmb(skip_pg: bool = False, termux: bool = False) -> None:

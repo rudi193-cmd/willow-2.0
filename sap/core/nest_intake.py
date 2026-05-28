@@ -172,7 +172,8 @@ def confirm_review(item_id: int, override_dest: str | None = None) -> dict:
     try:
         from core.intake import write as intake_write
         import os
-        agent = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
+        from core.agent_identity import require_agent_name
+        agent = require_agent_name()
         intake_write(
             content=f"Nest confirmed: {item['filename']} → {final_dest}",
             source="nest/confirm",

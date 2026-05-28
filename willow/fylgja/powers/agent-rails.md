@@ -14,7 +14,7 @@ b17: FYLAR · ΔΣ=42
 
 Default boot when MCP is up:
 
-1. `mai_read_file("~/.willow/willow.md")`
+1. `mai_read_file("willow.md")`
 2. Local context — agent, namespace, repo root, branch, compact diff (counts only)
 3. `fleet_status`
 4. `handoff_latest`

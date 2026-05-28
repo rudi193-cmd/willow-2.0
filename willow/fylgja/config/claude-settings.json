@@ -4,7 +4,7 @@
     "filesystem": {
       "denyRead": [
         "~/.claude",
-        "~/archive/willow-1.9",
+        "~/archive/willow-2.0",
         "~/github/safe-app-store"
       ]
     }

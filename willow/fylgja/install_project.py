@@ -30,8 +30,9 @@ def _default_paths(repo: Path) -> dict[str, str]:
         "REPO_ROOT": str(repo.resolve()),
         "AGENT_NAME": "",  # filled per call
         "GROVE_ROOT": str(home / "github" / "safe-app-willow-grove"),
-        "SAFE_ROOT": str(home / "SAFE" / "Applications"),
-        "AGENTS_ROOT": str(home / "SAFE" / "Agents"),
+        "SAFE_ROOT": str(home / "github" / "SAFE" / "Applications"),
+        "AGENTS_ROOT": str(home / "github" / "SAFE" / "Agents"),
+        "WILLOW_HOME": str(home / "github" / ".willow"),
     }
 
 
@@ -268,6 +269,7 @@ def install_project(
     package_root: Path | None = None,
     dry_run: bool = False,
     claude_global: bool = True,
+    set_fleet_default: bool = False,
 ) -> None:
     root = package_root or repo_root()
     agent = agent_name.strip()
@@ -291,6 +293,22 @@ def install_project(
             install_claude_global(agent, root, dry_run)
     if "codex" in selected:
         install_codex(agent, root, dry_run)
+
+    if not dry_run:
+        from willow.fylgja.link_fleet_home import link_fleet_home
+
+        link_fleet_home(package_root=root)
+        from willow.fylgja.global_settings import init_global_settings, load_global_settings
+
+        if set_fleet_default:
+            p = init_global_settings(default_agent=agent, force=True)
+            print(f"[install_project] Fleet default_agent → {agent} ({p})")
+        else:
+            load_global_settings(create=True)
+            print(
+                f"[install_project] Active IDE agent → {agent} "
+                f"(repo .willow/active-agent). fleet.default_agent unchanged."
+            )
 
     # Ensure hook script is executable
     hook = root / "willow" / "fylgja" / "bin" / "fylgja-hook"
@@ -321,7 +339,9 @@ def build_claude_hooks_block(package_root: Path) -> dict:
         ],
         "PostToolUse": [
             {"matcher": "ToolSearch",
-             "hooks": [{"type": "command", "command": cmd("post_tool"), "timeout": 5}]}
+             "hooks": [{"type": "command", "command": cmd("post_tool"), "timeout": 5}]},
+            {"matcher": "mcp__willow__agent_task_submit",
+             "hooks": [{"type": "command", "command": cmd("post_tool"), "timeout": 5}]},
         ],
         "Stop": [
             {"hooks": [{"type": "command", "command": cmd("stop"), "timeout": 30,
@@ -342,6 +362,11 @@ def main() -> None:
     parser.add_argument("--package-root", type=Path, default=None)
     parser.add_argument("--no-claude-global", action="store_true",
                         help="Skip wiring ~/.claude/settings.json")
+    parser.add_argument(
+        "--set-fleet-default",
+        action="store_true",
+        help="Also set settings.global.json fleet.default_agent (usually leave unset)",
+    )
     args = parser.parse_args()
 
     ides = ["all"] if args.ide.strip().lower() == "all" else [x.strip() for x in args.ide.split(",")]
@@ -351,6 +376,7 @@ def main() -> None:
         package_root=args.package_root,
         dry_run=args.dry_run,
         claude_global=not args.no_claude_global,
+        set_fleet_default=args.set_fleet_default,
     )
 
 

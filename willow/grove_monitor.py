@@ -100,11 +100,15 @@ def extract_messages(result) -> dict:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--agent", default="hanuman")
+    parser.add_argument("--agent", default=None, help="Defaults to WILLOW_AGENT_NAME")
     parser.add_argument("--cursors", default="")
     args = parser.parse_args()
 
-    agent = args.agent
+    if args.agent:
+        agent = args.agent
+    else:
+        from core.agent_identity import require_agent_name
+        agent = require_agent_name()
 
     # Priority: CLI args > SOIL > zero
     if args.cursors:

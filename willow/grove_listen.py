@@ -32,6 +32,12 @@ _PID_PATH = Path(os.environ.get("GROVE_MONITOR_PID", "/tmp/grove-monitor.pid"))
 # (“Auto + @all broadcasts” fleet layout without systemd/env churn).
 
 
+def _verbose_channels() -> set[str]:
+    """Channel names that log every message (not only @mentions)."""
+    raw = os.environ.get("GROVE_VERBOSE_CHANNELS", "")
+    return {x.strip().lower() for x in raw.split(",") if x.strip()}
+
+
 def _extra_watch_targets() -> list[str]:
     raw = os.environ.get("GROVE_MENTION_WATCH")
     if raw is None:
@@ -166,6 +172,7 @@ def _run():
         sys.exit(1)
 
     ch_map = load_channels(cur)
+    verbose = _verbose_channels()
     cursors = {ch_id: 0 for ch_id in ch_map}
     if ch_map:
         cur.execute(
@@ -234,9 +241,14 @@ def _run():
                             tag = f"DIRECT:{direct_id}"
                         else:
                             tag = ""
+                        preview = content.strip()[:80]
                         if tag:
-                            preview = content.strip()[:80]
                             line = f"[MENTION:{tag}] #{ch_name} id={msg_id} {sender}"
+                            if preview:
+                                line += f": {preview}"
+                            print(line, flush=True)
+                        elif ch_name.lower() in verbose:
+                            line = f"[CHANNEL] #{ch_name} id={msg_id} {sender}"
                             if preview:
                                 line += f": {preview}"
                             print(line, flush=True)

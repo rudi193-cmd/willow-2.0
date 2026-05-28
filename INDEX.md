@@ -166,8 +166,14 @@
 | Path |
 |------|
 | `Ashokoa` |
+| `agents/heimdallr` |
+| `agents/loki` |
+| `agents/willow` |
 | `apps/law-gazelle` |
 | `dashboard-fresh` |
+| `docs/AGENT_IDENTITY.md` |
+| `docs/RUNTIME_AND_INFERENCE.md` |
+| `docs/WILLOW_CONFIG.md` |
 | `docs/anatomy-of-the-willow-revolution.md` |
 | `docs/handoffs` |
 | `docs/kb` |

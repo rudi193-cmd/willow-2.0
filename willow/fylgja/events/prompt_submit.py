@@ -356,6 +356,21 @@ def _boot_guard() -> None:
     )
 
 
+def _inject_mcp_routing() -> None:
+    """Every turn: remind agents to use MCP before Bash (ls/cat/psql habit)."""
+    try:
+        from willow.fylgja.mcp_routing import format_brief, format_cheat_sheet
+
+        print(format_brief())
+        if is_first_turn():
+            print(format_cheat_sheet())
+    except Exception:
+        print(
+            "[WILLOW-LANES] Data → MCP (fleet_status, handoff_latest, kb_search, soil_*). "
+            "Execution → agent_task_submit + kart_task_run. Registry: sap/mcp_registry.json"
+        )
+
+
 def _inject_stabilization_brief() -> None:
     """First turn only: if a post-push stabilization brief exists, inject it."""
     if not is_first_turn():
@@ -460,6 +475,7 @@ def main():
     _boot_guard()
     _run_persona(prompt)
     increment_turn_count()
+    _inject_mcp_routing()
     _inject_stabilization_brief()
     _run_source_ring(session_id)
     _run_route(prompt, session_id)

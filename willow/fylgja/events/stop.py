@@ -402,6 +402,25 @@ def _is_isolated_directory() -> bool:
         return False
 
 
+def _drain_kart_queue() -> None:
+    """Best-effort drain of pending Kart tasks (scripts/kart_poll.py)."""
+    import subprocess
+
+    root = Path(__file__).resolve().parents[3]
+    script = root / "scripts" / "kart_poll.py"
+    if not script.is_file():
+        return
+    venv_py = root / ".venv-dev" / "bin" / "python3"
+    py = str(venv_py) if venv_py.is_file() else sys.executable
+    timeout = int(__import__("os").environ.get("KART_POLL_STOP_TIMEOUT", "130"))
+    subprocess.run(
+        [py, str(script)],
+        timeout=timeout,
+        capture_output=True,
+        check=False,
+    )
+
+
 def main():
     if _is_isolated_directory():
         import sys as _sys; _sys.exit(0)
@@ -475,6 +494,12 @@ def main():
     try:
         if call is not None:
             call("handoff_rebuild", {"app_id": _AGENT}, timeout=30)
+    except Exception:
+        pass
+
+    # Drain pending Kart tasks (scripts/kart_poll.py — same as documented Stop hook)
+    try:
+        _drain_kart_queue()
     except Exception:
         pass
 

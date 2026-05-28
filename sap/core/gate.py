@@ -40,7 +40,7 @@ PROFESSOR_ROOT = SAFE_ROOT / "utety-chat" / "professors"
 # Agent manifests live separately from user apps.
 # WILLOW_AGENTS_ROOT → ~/SAFE/Agents (signed agent manifests + permissions).
 # WILLOW_SAFE_ROOT   → ~/SAFE/Applications (user-facing apps).
-_agents_root_env = os.environ.get("WILLOW_AGENTS_ROOT", str(Path.home() / "SAFE" / "Agents"))
+_agents_root_env = os.environ.get("WILLOW_AGENTS_ROOT", str(Path.home() / "github" / "SAFE" / "Agents"))
 AGENTS_ROOT = Path(_agents_root_env)
 LOG_DIR = Path(__file__).parent.parent / "log"
 

@@ -5,7 +5,7 @@ b17: EDGE1  ΔΣ=42
 Python handles all pipeline logic. The LLM only touches this edge:
   respond(system_prompt, context_atoms, input_text) → str
 
-Groq primary → Ollama fallback. Same call either way.
+Provider-agnostic router (Ollama → Gemini → Groq 70b → fleet). See inference_router.py.
 """
 from __future__ import annotations
 
@@ -92,12 +92,17 @@ def respond(
     Returns:
         The LLM's response string.
     """
+    try:
+        from core.inference_router import respond as _router_respond
+        text, _provider = _router_respond(system_prompt, context_atoms, input_text)
+        return text
+    except Exception:
+        pass
+
     atom_block = _format_atoms(context_atoms) if context_atoms else "(no case file)"
     user_msg = f"Input:\n{input_text}\n\nCase file:\n{atom_block}"
-
     try:
         return _groq(system_prompt, user_msg)
     except Exception:
         pass
-
     return _ollama(system_prompt, user_msg, model=ollama_model)

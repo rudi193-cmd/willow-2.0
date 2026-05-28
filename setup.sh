@@ -3,7 +3,7 @@
 # Run once on a new machine, or re-run to sync config + deps.
 #
 # What it does:
-#   1. Clone or pull willow-config → ~/.willow  (willow.md, handoffs, specs)
+#   1. Pull private willow-config → ~/github/.willow; link contract into willow-2.0 (symlinks in, not out)
 #   2. Create .venv-dev if missing
 #   3. Install/upgrade requirements.txt
 #   4. Verify Postgres connection
@@ -16,7 +16,8 @@
 set -euo pipefail
 
 WILLOW_CONFIG_REPO="https://github.com/rudi193-cmd/willow-config.git"
-WILLOW_HOME="${HOME}/.willow"
+WILLOW_HOME="${HOME}/github/.willow"
+GITHUB_ROOT="${HOME}/github"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV="${REPO_ROOT}/.venv-dev"
 NO_MIGRATE="${1:-}"
@@ -35,9 +36,15 @@ PY_MINOR=$(echo "${PY_VER}" | cut -d. -f2)
 [[ "${PY_MAJOR}" -ge 3 && "${PY_MINOR}" -ge 11 ]] || fail "Python 3.11+ required (found ${PY_VER})"
 ok "Python ${PY_VER}"
 
-# ── 2. willow-config → ~/.willow ──────────────────────────────────────────────
+# ── 2. ~/.willow runtime home (optional willow-config merge) ─────────────────
 
-hdr "Willow config (~/.willow)"
+mkdir -p "${GITHUB_ROOT}/SAFE/Applications" "${GITHUB_ROOT}/SAFE/Agents"
+# Legacy symlinks so old paths keep working
+[[ -e "${HOME}/.willow" ]] || ln -sfn "${WILLOW_HOME}" "${HOME}/.willow"
+[[ -e "${HOME}/SAFE" ]] || ln -sfn "${GITHUB_ROOT}/SAFE" "${HOME}/SAFE"
+[[ -e "${HOME}/willow-2.0" ]] || ln -sfn "${REPO_ROOT}" "${HOME}/willow-2.0"
+
+hdr "~/github/.willow (willow-config)"
 if [[ -d "${WILLOW_HOME}/.git" ]]; then
     REMOTE=$(git -C "${WILLOW_HOME}" remote get-url origin 2>/dev/null || echo "")
     if [[ "${REMOTE}" == *"willow-config"* ]]; then
@@ -59,13 +66,6 @@ else
     ok "Cloned willow-config → ~/.willow"
 fi
 
-# Ensure willow.md symlink in repo points to ~/.willow/willow.md
-SYMLINK="${REPO_ROOT}/willow.md"
-if [[ ! -L "${SYMLINK}" ]] || [[ "$(readlink "${SYMLINK}")" != "${WILLOW_HOME}/willow.md" ]]; then
-    ln -sf "${WILLOW_HOME}/willow.md" "${SYMLINK}"
-    ok "Symlink willow-2.0/willow.md → ~/.willow/willow.md"
-fi
-
 # ── 3. Venv ───────────────────────────────────────────────────────────────────
 
 hdr "Python venv (.venv-dev)"
@@ -78,6 +78,40 @@ fi
 "${VENV}/bin/pip" install --quiet --upgrade pip
 "${VENV}/bin/pip" install --quiet -r "${REPO_ROOT}/requirements.txt"
 ok "Requirements installed"
+
+# Private willow-config (~/github/.willow) is canonical; willow-2.0 symlinks in
+PYTHONPATH="${REPO_ROOT}" "${VENV}/bin/python3" -m willow.fylgja.link_fleet_home
+ok "Linked willow-2.0/willow.md + config → ~/.willow (willow-config)"
+
+hdr "IDE + agent install"
+ACTIVE_FILE="${REPO_ROOT}/.willow/active-agent"
+if [[ -n "${WILLOW_AGENT_NAME:-}" ]]; then
+    AGENT="${WILLOW_AGENT_NAME}"
+elif [[ -f "${ACTIVE_FILE}" ]]; then
+    AGENT="$(tr -d '[:space:]' < "${ACTIVE_FILE}")"
+else
+    fail "No active agent. Run: cd ${REPO_ROOT} && ./willow agents active <id> && ./willow agents install <id> --ide all"
+fi
+export WILLOW_AGENT_NAME="${AGENT}"
+PYTHONPATH="${REPO_ROOT}" "${VENV}/bin/python3" -m willow.fylgja.install_project "${AGENT}" --ide all
+ok "install_project ${AGENT} (active-agent=${ACTIVE_FILE})"
+
+hdr "Systemd fleet units"
+SYSTEMD_USER="${HOME}/.config/systemd/user"
+mkdir -p "${SYSTEMD_USER}"
+for unit in willow-metabolic.socket willow-metabolic.service grove-mcp.service \
+            willow-grove-listen.service drop-server.service nest-watcher.service; do
+    src="${REPO_ROOT}/systemd/${unit}"
+    [[ -f "${src}" ]] && cp -f "${src}" "${SYSTEMD_USER}/${unit}"
+done
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user daemon-reload
+    systemctl --user enable --now willow-metabolic.socket grove-mcp.service \
+        willow-grove-listen.service drop-server.service nest-watcher.service 2>/dev/null \
+        && ok "Fleet units enabled" || warn "Some systemd units failed to enable"
+else
+    warn "systemctl not available"
+fi
 
 # ── 4. Postgres ───────────────────────────────────────────────────────────────
 

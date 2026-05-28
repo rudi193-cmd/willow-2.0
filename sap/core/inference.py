@@ -73,7 +73,8 @@ def load_persona(agent: str) -> str | None:
     root = pathlib.Path(__file__).parent.parent.parent
     candidates = [
         root / "willow" / "fylgja" / "personas" / f"{agent.lower()}.md",
-        pathlib.Path.home() / "agents" / "hanuman" / "personas" / f"{agent.lower()}.md",
+        root / "agents" / agent.lower() / "personas" / f"{agent.lower()}.md",
+        pathlib.Path.home() / "SAFE" / "Agents" / agent.lower() / "personas" / f"{agent.lower()}.md",
     ]
     for p in candidates:
         if p.exists():

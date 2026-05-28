@@ -215,6 +215,22 @@ def main():
               "in this same response. Do NOT say 'Tool loaded.' "
               "Do NOT end your turn. Invoke the tool immediately.")
 
+    if tool_name == "mcp__willow__agent_task_submit":
+        tid = ""
+        try:
+            resp = data.get("tool_response") or {}
+            if isinstance(resp, dict):
+                tid = str(resp.get("task_id") or "")
+        except Exception:
+            pass
+        suffix = f" task_id={tid}" if tid else ""
+        print(
+            f"[KART]{suffix} Call kart_task_run(app_id) now for stdout/stderr "
+            "(kart-worker may also claim it). "
+            "Do not re-run the same command in Bash. "
+            "Nested Python → agent_task_submit(script_body=...)."
+        )
+
     if tool_name in _SIGNIFICANT:
         _write_trace(session_id, tool_name, tool_input)
 

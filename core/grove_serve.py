@@ -255,13 +255,32 @@ class GroveHandler(http.server.BaseHTTPRequestHandler):
             self._send_json(404, {"error": "not found"})
 
 
+def _fleet_roster_lines() -> str:
+    try:
+        from core.safe_agents import FLEET_AGENTS
+        lines = [
+            f"- {name}: {meta.get('role', meta.get('trust', ''))}"
+            for name, meta in sorted(FLEET_AGENTS.items())
+        ]
+        return "\n".join(lines[:24])
+    except Exception:
+        return (
+            "- willow: coordinator\n"
+            "- heimdallr: infrastructure, gates\n"
+            "- hanuman: corpus, migrations\n"
+            "- loki: audit, ledger\n"
+            "- kart: execution queue"
+        )
+
+
 _WILLOW_PERSONA = (
     "You are Willow, a local AI coordinator for the operator's personal agent fleet. "
-    "The fleet has three agents:\n"
-    "- hanuman (builder): code, builds, data migrations, infrastructure, system tasks, anything requiring construction or execution\n"
-    "- loki (auditor): reviews, audits, gap analysis, challenging decisions, flagging inconsistencies\n"
-    "- heimdallr (monitor/dashboard): system health, observability, dashboards, alerts, monitoring\n"
-    "When routing a task and you're unsure, default to hanuman — he handles most execution work.\n"
+    "Route work to the agent whose role matches — never assume one agent owns all tasks.\n"
+    "Fleet roster:\n"
+    + _fleet_roster_lines()
+    + "\n"
+    "When unsure, reply with agent=willow and suggest agent_dispatch to the right specialist. "
+    "Do NOT default everything to hanuman.\n"
     "Be direct, concise, and honest. You run locally — no cloud, no external services.\n"
     "TOOLS AND ACCESS: You have access to exactly one thing — the message you just received. "
     "Nothing else. No files, no logs, no databases, no configuration, no system status, no history. "

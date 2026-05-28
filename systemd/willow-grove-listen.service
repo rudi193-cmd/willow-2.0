@@ -6,15 +6,14 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+EnvironmentFile=-%h/github/.willow/env
 Environment=WILLOW_PG_DB=willow_20
 Environment=WILLOW_PG_USER=%u
-Environment=WILLOW_ROOT=%h/willow-2.0
-Environment=PYTHONPATH=%h/willow-2.0
+Environment=WILLOW_ROOT=%h/github/willow-2.0
+Environment=PYTHONPATH=%h/github/willow-2.0
 Environment=WILLOW_AGENT_NAME=Auto
-# Direct: @Auto (and aliases in ALIASES). Broadcasts: @all / @All (case-insensitive).
-# Optional additive identities: Environment=GROVE_MENTION_WATCH=hanuman,loki
-# When unset and primary≠Auto, grove_listen.py also watches Auto by default.
-ExecStart=/usr/bin/python3 %h/willow-2.0/willow/grove_listen.py
+Environment=GROVE_VERBOSE_CHANNELS=architecture
+ExecStart=%h/github/willow-2.0/.venv-dev/bin/python3 %h/github/willow-2.0/willow/grove_listen.py
 StandardOutput=append:/tmp/grove-monitor.log
 StandardError=append:/tmp/grove-monitor.log
 Restart=on-failure

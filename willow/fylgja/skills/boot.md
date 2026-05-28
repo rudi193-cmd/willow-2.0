@@ -29,7 +29,7 @@ These run before your first turn via hooks:
 Run in order. Parallelize where marked. If fleet is degraded after step 3, surface it and stop.
 
 **1. Contract**
-`mai_read_file("~/.willow/willow.md")` — load the fleet contract.
+`mai_read_file("willow.md")` — load the fleet contract.
 Fallback: Read the raw file.
 
 **2. Local context** *(compact)*

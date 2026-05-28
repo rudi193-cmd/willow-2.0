@@ -1,77 +1,60 @@
 ---
 name: kart
-description: How to use Kart — the fleet task queue. Submit shell work here instead of running Bash directly. Covers submit→run→status flow and common pitfalls.
+description: Kart execution plane — queue shell work via agent_task_submit instead of agent Bash.
 ---
 
-# Kart — Fleet Task Queue
+# Kart — execution plane
 
-Kart is the execution daemon. Shell work goes to Kart, not directly to Bash. This keeps shell execution auditable, Grove-gated, and out of the LLM token budget.
+Kart runs **all shell-class work** (ls, git, pytest, pipelines, scripts). Agent Bash is blocked for that; Willow MCP is the **data** lane (kb, soil, fleet, handoff).
 
-**Why Kart over Bash:**
-- Every task is logged to Postgres with status, output, and elapsed time
-- Tasks survive session close (kart_poll drains the queue at Stop)
-- No LLM call for pure shell work — subprocess only
+**Why Kart over agent Bash:**
+- Auditable Postgres task log (status, stdout, stderr, elapsed)
+- `bash -c` in bwrap — pipelines and `&&` work (not shlex-split argv)
+- Survives session close (`kart_poll` on Stop + `kart-worker` daemon)
+- `script_body` writes under `{WILLOW_ROOT}/.kart-scripts/` (inside bwrap rw bind), not fragile `/tmp` agent paths
 
-## The pattern: submit → run → status
+## Pattern: submit → run → status
 
 ```
-# 1. Submit
-agent_task_submit(app_id="hanuman", task="python3 /tmp/my_script.py", submitted_by="hanuman")
-# Returns: {task_id, status: "pending"}
-
-# 2. Run
+# Simple shell
+agent_task_submit(app_id="hanuman", task="ls -la /home/sean-campbell/willow-2.0")
 kart_task_run(app_id="hanuman")
-# Executes all pending tasks (default limit: 5), updates DB
-
-# 3. Check output
 agent_task_status(app_id="hanuman", task_id="<task_id>")
-# Returns: {status, result: {stdout, stderr, returncode, elapsed_s}}
+
+# Python / nested quotes — use script_body (writes .kart-scripts/kart-*.py under WILLOW_ROOT)
+agent_task_submit(
+    app_id="hanuman",
+    script_body='import json\nprint(json.dumps({"ok": True}))',
+)
+kart_task_run(app_id="hanuman")
 ```
 
-## Rules for commands
+Do **not** paste huge escaped one-liners into `task=` when `script_body` is available.
 
-**Always write scripts to `/tmp/`, never submit inline Python.**
+## What runs where
 
-`kart_task_run` uses `shlex.split(cmd)` — complex shell quoting breaks it:
+| Work | Lane |
+|------|------|
+| ls, git, pytest, curl, shell pipelines | Kart (`agent_task_submit`) |
+| kb_search, soil_get, fleet_status, handoff_latest | Willow MCP |
+| Read repo source files | `Read` tool (or Kart for non-repo paths) |
 
-```bash
-# BREAKS — nested quotes in -c string
-python3 -c "import json; print(json.dumps({'key': 'val'}))"
+## Daemon + Stop drain
 
-# WORKS — script file
-python3 /tmp/my_task.py
-```
+- `kart-worker.service` claims pending tasks continuously
+- `kart_task_run` polls until tasks complete (does not need to spawn shell itself)
+- `stop.py` runs `scripts/kart_poll.py` at session Stop
 
-For grep, find, and other shell work: write a Python script that does it, submit the path.
+## allow_net
 
-## Commands that work fine via Kart
+`agent_task_submit(..., allow_net=True)` for git push, `gh`, curl, etc.
 
-```
-python3 /tmp/script.py
-/path/to/venv/bin/python3 /path/to/script.py
-git -C /repo status
-```
+## Timeouts
 
-## Commands that fail via Kart
+Default 120s (`KART_POLL_TIMEOUT`). Stop drain uses `KART_POLL_STOP_TIMEOUT` (default 130s).
 
-```
-python3 -c "..."        # nested quotes break shlex.split
-grep -r "pattern" .     # also blocked by pre_tool hook (use kb_search instead)
-bash -c "cmd1 && cmd2"  # shell operators not supported (shell=False)
-```
-
-For multi-step shell pipelines: write a `.py` file that does the work with `subprocess`.
-
-## Timeout
-
-Default: 120 seconds per task. Override via `KART_POLL_TIMEOUT` env var.
-
-## Viewing pending tasks
+## Pending tasks
 
 ```
 agent_task_list(app_id="hanuman", agent="kart", limit=10)
 ```
-
-## Kart drains at session Stop
-
-`kart_poll.py` is wired to the Stop hook in `~/.claude/settings.json`. Pending tasks run automatically when the session closes. You don't need to call `kart_task_run` manually at the end of a session.

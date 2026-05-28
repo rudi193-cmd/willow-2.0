@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 _SAFE_ROOT = Path(os.environ.get("WILLOW_SAFE_ROOT",
-                                  str(Path.home() / "SAFE" / "Applications")))
+                                  str(Path.home() / "github" / "SAFE" / "Applications")))
 
 
 def get_connected_projects(app_id: str, safe_root: Optional[Path] = None) -> list:
