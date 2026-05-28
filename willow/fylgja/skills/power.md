@@ -9,7 +9,7 @@ description: Fylgja-powers — registry + one power body (low-token router); opt
 
 ## ROOT
 
-`WILLOW_FYLGJA_ROOT` if set, else `${WILLOW_ROOT:-~/willow-2.0}/willow/fylgja`.
+`WILLOW_FYLGJA_ROOT` if set, else `${WILLOW_ROOT:-~/github/willow-2.0}/willow/fylgja`.
 
 ## Steps
 

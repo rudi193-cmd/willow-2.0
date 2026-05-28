@@ -18,6 +18,8 @@ export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-agent}"
 export WILLOW_PG_DB="${WILLOW_PG_DB:-willow_20}"
 export WILLOW_PG_URL="${WILLOW_PG_URL:-postgresql://${USER:-$(id -un)}@localhost/${WILLOW_PG_DB}}"
 export MAI_SECURITY_CONFIG="${MAI_SECURITY_CONFIG:-${HOME}/.markdownai/security.json}"
+# Tool picker size: minimal | core | standard (default) | full
+export WILLOW_MCP_PROFILE="${WILLOW_MCP_PROFILE:-standard}"
 
 cd "${REPO_ROOT}"
 exec "${REPO_ROOT}/.venv-dev/bin/python3" -m sap.unified_mcp "$@"

@@ -27,9 +27,15 @@ sys.path = [str(WILLOW_ROOT)] + [p for p in sys.path if "willow-1.7" not in p]
 from core.version import VERSION, sync_installed_version
 
 
+def willow_home() -> Path:
+    """USER root — ~/github/.willow or WILLOW_HOME."""
+    return Path(os.environ.get("WILLOW_HOME", Path.home() / "github" / ".willow"))
+
+
 def step_telemetry_init() -> None:
-    """Write ~/.willow/telemetry.json with opt-in disabled by default."""
-    tel_path = Path.home() / ".willow" / "telemetry.json"
+    """Write WILLOW_HOME/telemetry.json with opt-in disabled by default."""
+    tel_path = willow_home() / "telemetry.json"
+    tel_path.parent.mkdir(parents=True, exist_ok=True)
     if tel_path.exists():
         return  # never overwrite user's choice
     tel_path.write_text(json.dumps({
@@ -307,8 +313,9 @@ pause
 
 
 def step_grove_identity() -> Path:
-    """Generate Grove Ed25519 identity key at ~/.willow/identity.key if not present."""
-    key_path = Path.home() / ".willow" / "identity.key"
+    """Generate Grove Ed25519 identity key at WILLOW_HOME/identity.key if not present."""
+    key_path = willow_home() / "identity.key"
+    key_path.parent.mkdir(parents=True, exist_ok=True)
     if key_path.exists():
         print(f"  Grove identity already exists at {key_path}")
         return key_path

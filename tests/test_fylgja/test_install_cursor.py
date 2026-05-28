@@ -65,9 +65,18 @@ def test_render_mcp_config_sets_agent_name():
     assert config["mcpServers"]["willow"]["env"]["WILLOW_AGENT_NAME"] == "hanuman"
 
 
-def test_install_project_writes_agent_config(tmp_path):
+def test_install_project_writes_agent_config(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()
+    wh = tmp_path / "github" / ".willow"
+    wh.mkdir(parents=True)
+    (wh / "willow.md").write_text("# test\n", encoding="utf-8")
+    (wh / "env").write_text("WILLOW_ROOT=\n", encoding="utf-8")
+    (wh / "settings.global.json").write_text(
+        '{"version":1,"paths":{"willow_root":"","grove_root":"","safe_root":""},"fleet":{"default_agent":""}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("WILLOW_HOME", str(wh))
     for rel in (
         "willow/fylgja/config/mcp.template.json",
         "willow/fylgja/config/cursor-hooks.json",

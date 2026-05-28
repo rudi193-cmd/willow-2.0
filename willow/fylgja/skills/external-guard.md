@@ -12,7 +12,7 @@ Defend the ingestion pipeline against prompt injection by scanning and wrapping 
 ## Scan
 
 ```bash
-SCRIPTS="${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/willow-2.0}/willow/fylgja}/skills/scripts"
+SCRIPTS="${WILLOW_FYLGJA_ROOT:-${WILLOW_ROOT:-~/github/willow-2.0}/willow/fylgja}/skills/scripts"
 python3 "$SCRIPTS/guard.py" --text "..."
 python3 "$SCRIPTS/guard.py" --file path/to/content.txt
 ```

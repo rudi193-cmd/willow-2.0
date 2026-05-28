@@ -7,21 +7,21 @@ from pathlib import Path
 
 HOME = Path.home()
 REPLACEMENTS = [
-    ("/home/sean-campbell/github/willow-1.9", "/home/sean-campbell/github/willow-2.0"),
-    ("~/github/willow-1.9", "~/github/willow-2.0"),
-    ("$HOME/github/willow-1.9", "$HOME/github/willow-2.0"),
-    ("/home/sean-campbell/willow-1.9", "/home/sean-campbell/github/willow-2.0"),
-    ("~/willow-1.9", "~/github/willow-2.0"),
-    ("github/willow-1.9", "github/willow-2.0"),
-    ('Path.home() / "github" / "willow-1.9"', 'Path.home() / "github" / "willow-2.0"'),
-    ("Path.home() / 'github' / 'willow-1.9'", "Path.home() / 'github' / 'willow-2.0'"),
-    ("/home/sean-campbell/willow-2.0", "/home/sean-campbell/github/willow-2.0"),
-    ("~/willow-2.0", "~/github/willow-2.0"),
-    ('"willow_19_test"', '"willow_20_test"'),
-    ("willow_19_test", "willow_20_test"),
-    ('"willow_19"', '"willow_20"'),
-    ("willow_19", "willow_20"),
-    ("willow-1.9", "willow-2.0"),
+    ("/home/sean-campbell/github/willow-2.0", "/home/sean-campbell/github/willow-2.0"),
+    ("~/github/willow-2.0", "~/github/willow-2.0"),
+    ("$HOME/github/willow-2.0", "$HOME/github/willow-2.0"),
+    ("/home/sean-campbell/github/willow-2.0", "/home/sean-campbell/github/willow-2.0"),
+    ("~/github/willow-2.0", "~/github/willow-2.0"),
+    ("github/willow-2.0", "github/willow-2.0"),
+    ('Path.home() / "github" / "willow-2.0"', 'Path.home() / "github" / "willow-2.0"'),
+    ("Path.home() / 'github' / 'willow-2.0'", "Path.home() / 'github' / 'willow-2.0'"),
+    ("/home/sean-campbell/github/willow-2.0", "/home/sean-campbell/github/willow-2.0"),
+    ("~/github/willow-2.0", "~/github/willow-2.0"),
+    ('"willow_20_test"', '"willow_20_test"'),
+    ("willow_20_test", "willow_20_test"),
+    ('"willow_20"', '"willow_20"'),
+    ("willow_20", "willow_20"),
+    ("willow-2.0", "willow-2.0"),
 ]
 
 SKIP_PARTS = {

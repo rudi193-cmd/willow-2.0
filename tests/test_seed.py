@@ -12,11 +12,12 @@ def test_step_1_creates_willow_dirs(tmp_path, monkeypatch):
     import root as seed
     importlib.reload(seed)
     seed.step_1_dirs()
-    assert (tmp_path / ".willow").exists()
-    assert (tmp_path / ".willow" / "store").exists()
-    assert (tmp_path / ".willow" / "secrets").exists()
-    assert (tmp_path / ".willow" / "logs").exists()
-    assert (tmp_path / "SAFE" / "Applications").exists()
+    wh = tmp_path / "github" / ".willow"
+    assert wh.exists()
+    assert (wh / "store").exists()
+    assert (wh / "secrets").exists()
+    assert (wh / "logs").exists()
+    assert (tmp_path / "github" / "SAFE" / "Applications").exists()
 
 
 def test_step_1_idempotent(tmp_path, monkeypatch):
@@ -26,7 +27,7 @@ def test_step_1_idempotent(tmp_path, monkeypatch):
     importlib.reload(seed)
     seed.step_1_dirs()
     seed.step_1_dirs()  # second call must not raise
-    assert (tmp_path / ".willow").exists()
+    assert (tmp_path / "github" / ".willow").exists()
 
 
 def test_step_4_vault_creates_db(tmp_path, monkeypatch):
@@ -80,17 +81,20 @@ def test_step_8_version_pin(tmp_path, monkeypatch):
     import root as seed
     from core.version import VERSION
     importlib.reload(seed)
-    (tmp_path / ".willow").mkdir(parents=True, exist_ok=True)
+    wh = tmp_path / "github" / ".willow"
+    wh.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("WILLOW_HOME", str(wh))
     seed.step_8_version_pin()
-    version = (tmp_path / ".willow" / "version").read_text().strip()
+    version = (wh / "version").read_text().strip()
     assert version == VERSION
 
 
 def test_sleipnir_idempotent(tmp_path, monkeypatch):
+    monkeypatch.delenv("WILLOW_HOME", raising=False)
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     import importlib
     import root as seed
     importlib.reload(seed)
     seed.sleipnir(skip_pg=True, skip_socket=True, skip_gpg=True, no_chain=True)
     seed.sleipnir(skip_pg=True, skip_socket=True, skip_gpg=True, no_chain=True)
-    assert (tmp_path / ".willow" / "version").exists()
+    assert (tmp_path / "github" / ".willow" / "version").exists()

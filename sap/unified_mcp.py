@@ -2,15 +2,8 @@
 """
 sap/unified_mcp.py — Unified MCP server: willow + grove + mai in one process.
 
-Replaces three separate MCP servers (willow, grove, markdownai) with a single
-FastMCP instance. Tool namespaces:
-
-  kb_ soil_ fleet_ agent_ fork_ skill_ mem_ index_ ledger_ handoff_
-  soul_ nest_ infer_ task_  — willow (from sap_mcp)
-
-  grove_                    — grove messaging (from grove_tools)
-
-  mai_                      — markdownai rendering (from mai/tools)
+Tool visibility: WILLOW_MCP_PROFILE (default standard)
+  minimal ~25 | core ~45 | standard ~95 | full = all tools
 
 Entry points:
   stdio (default):  python3 -m sap.unified_mcp
@@ -19,6 +12,13 @@ Entry points:
 from __future__ import annotations
 
 import argparse
+from typing import Any
+
+from mcp.server.fastmcp.exceptions import ToolError
+from mcp.types import Tool as MCPTool
+
+from sap.mcp_enrich import enrich_tools
+from sap.mcp_profiles import active_profile, allows_tool
 
 # ── Import willow MCP (registers all willow tools, exports mcp instance) ─────
 import sap.sap_mcp as _sap  # noqa: F401 — side-effect: tool registration
@@ -32,6 +32,39 @@ _grove.register(mcp)
 # ── Register markdownai tools on the same mcp instance ───────────────────────
 from sap.mai import tools as _mai
 _mai.register(mcp)
+
+# ── Tool guide (always registered; visible in every profile) ─────────────────
+from sap import mcp_guide as _guide
+_guide.register(mcp)
+
+def _apply_profile_filter() -> None:
+    if getattr(mcp, "_willow_profile_patched", False):
+        return
+    orig_list = mcp.list_tools
+    orig_call = mcp.call_tool
+
+    async def _filtered_list_tools() -> list[MCPTool]:
+        tools = await orig_list()
+        prof = active_profile()
+        if prof != "full":
+            tools = [t for t in tools if allows_tool(t.name, prof)]
+        return enrich_tools(tools)
+
+    async def _filtered_call_tool(name: str, arguments: dict[str, Any]):
+        if not allows_tool(name):
+            prof = active_profile()
+            raise ToolError(
+                f"Tool '{name}' is not in WILLOW_MCP_PROFILE={prof}. "
+                f"Call fleet_tool_guide() or set WILLOW_MCP_PROFILE=full."
+            )
+        return await orig_call(name, arguments)
+
+    mcp.list_tools = _filtered_list_tools  # type: ignore[method-assign]
+    mcp.call_tool = _filtered_call_tool  # type: ignore[method-assign]
+    mcp._willow_profile_patched = True  # type: ignore[attr-defined]
+
+
+_apply_profile_filter()
 
 
 def main() -> None:
