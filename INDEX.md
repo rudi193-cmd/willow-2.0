@@ -165,6 +165,7 @@
 
 | Path |
 |------|
+| `.ci-willow` |
 | `Ashokoa` |
 | `agents/heimdallr` |
 | `agents/loki` |
@@ -172,17 +173,27 @@
 | `apps/law-gazelle` |
 | `dashboard-fresh` |
 | `docs/AGENT_IDENTITY.md` |
+| `docs/MCP_SPEC_COMPLIANCE.md` |
+| `docs/MCP_TOOL_PROFILES.md` |
 | `docs/RUNTIME_AND_INFERENCE.md` |
 | `docs/WILLOW_CONFIG.md` |
 | `docs/anatomy-of-the-willow-revolution.md` |
+| `docs/dev-log-2026-05-27-fleet-github-layout.md` |
+| `docs/dev-log-2026-05-27-session-complete.md` |
 | `docs/handoffs` |
 | `docs/kb` |
 | `docs/sean-session-metadata-report.md` |
+| `docs/templates` |
 | `issue_body.md` |
 | `mcp-memory-service` |
 | `personal` |
+| `sap/MCP_SPEC.lock.json` |
 | `sap/adapters` |
 | `sap/grove_mcp.sh` |
+| `sap/mcp_enrich.py` |
+| `sap/mcp_guide.py` |
+| `sap/mcp_profiles.py` |
 | `sap/mcp_registry.json` |
+| `sap/spec` |
 | `schema_dump.txt` |
 | `setup.sh` |

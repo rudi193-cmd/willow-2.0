@@ -9,6 +9,7 @@ Agent Bash is not the execution plane; Kart is.
 from __future__ import annotations
 
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -60,7 +61,10 @@ def format_cheat_sheet(*, max_groups: int = 8) -> str:
             continue
         g = str(meta.get("group", "other"))
         by_group.setdefault(g, []).append(name)
-    lines = ["[WILLOW-LANES] Data=MCP · Exec=Kart (sap/mcp_registry.json)"]
+    prof = os.environ.get("WILLOW_MCP_PROFILE", "standard")
+    lines = [
+        f"[WILLOW-LANES] profile={prof} · Data=MCP · Exec=Kart · catalog=fleet_tool_guide",
+    ]
     for g in list(groups.keys())[:max_groups]:
         examples = ", ".join(by_group.get(g, [])[:3])
         if examples:
