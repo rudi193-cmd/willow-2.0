@@ -6,6 +6,7 @@ Pick a door:
 
 | You are… | Start here |
 |----------|------------|
+| Want the fun front page | [`index.html`](index.html) — Oden VO · Muninn/Huginn street clips · [`LANDING_DESIGN.md`](LANDING_DESIGN.md) |
 | New human, copy/paste only | [`FIRST_5_MINUTES.md`](FIRST_5_MINUTES.md) |
 | Friend beta (AHS) | [`FOR_AHS.md`](FOR_AHS.md) · full crossover: [`nomenclature/AXW-20.md`](nomenclature/AXW-20.md) |
 | Developer, want the stack fast | [`QUICKSTART.md`](QUICKSTART.md) |
