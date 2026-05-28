@@ -6,9 +6,12 @@ b17: GRD19  ΔΣ=42
 DegradedBridge is a drop-in for PgBridge that routes to SOIL (SQLite).
 Use get_bridge() instead of PgBridge() directly wherever degradation matters.
 """
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+_PG_CONNECT_TIMEOUT = int(os.environ.get("WILLOW_PG_CONNECT_TIMEOUT", "5"))
 
 
 class DegradedBridge:
@@ -115,7 +118,7 @@ def get_bridge(pg_dsn: Optional[str] = None):
         if pg_dsn:
             import psycopg2
             import threading
-            conn = psycopg2.connect(pg_dsn)
+            conn = psycopg2.connect(pg_dsn, connect_timeout=_PG_CONNECT_TIMEOUT)
             bridge = mod.PgBridge.__new__(mod.PgBridge)
             bridge._local = threading.local()
             bridge._last_ingest_error = None

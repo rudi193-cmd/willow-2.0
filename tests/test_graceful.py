@@ -62,7 +62,10 @@ def test_degraded_bridge_is_flagged(tmp_path, monkeypatch):
 
 def test_get_bridge_returns_degraded_when_pg_down():
     from core.graceful import get_bridge
-    bridge = get_bridge(pg_dsn="dbname=nonexistent_db_xyz user=nobody")
+    # Explicit host/port — avoid libpq unix-socket wait when PGHOST is unset in CI.
+    bridge = get_bridge(
+        pg_dsn="dbname=nonexistent_db_xyz user=nobody host=127.0.0.1 port=1"
+    )
     assert bridge.degraded is True
 
 
