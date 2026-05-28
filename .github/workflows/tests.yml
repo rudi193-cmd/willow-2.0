@@ -57,6 +57,8 @@ jobs:
       - name: Prepare CI SAFE + USER stubs
         run: |
           mkdir -p "${WILLOW_SAFE_ROOT}" "${WILLOW_AGENTS_ROOT}" "${WILLOW_HOME}/store"
+          echo "# CI stub" > "${WILLOW_HOME}/willow.md"
+          printf 'WILLOW_ROOT=%s\nWILLOW_HOME=%s\n' "${WILLOW_ROOT}" "${WILLOW_HOME}" > "${WILLOW_HOME}/env"
 
       - name: Run test suite
         run: python3 -m pytest --ignore=tests/adversarial/e2e -v --timeout=60

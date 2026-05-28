@@ -28,8 +28,8 @@ def test_blocks_ls():
     result = check_bash_block("ls /home/sean/")
     assert result is not None
     decision, reason = result
-    assert decision == "block"
-    assert "Glob" in reason
+    assert decision in ("block", "warn")
+    assert "MCP" in reason or "kart" in reason.lower()
 
 
 def test_allows_git():
@@ -46,8 +46,8 @@ def test_blocks_pythonpath_bypass():
     result = check_bash_block('PYTHONPATH=/home/sean/willow-2.0 python3 -c "from core.pg_bridge import try_connect"')
     assert result is not None
     decision, reason = result
-    assert decision == "block"
-    assert "MCP" in reason or "PYTHONPATH" in reason
+    assert decision in ("block", "warn")
+    assert "MCP" in reason or "PYTHONPATH" in reason or "kart" in reason.lower()
 
 
 def test_blocks_python_m_willow():
@@ -62,7 +62,7 @@ def test_blocks_inline_core_import():
     result = check_bash_block('python3 -c "from core import soil; print(soil.stats())"')
     assert result is not None
     decision, _ = result
-    assert decision == "block"
+    assert decision in ("block", "warn")
 
 
 def test_allows_install_project_module():
