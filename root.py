@@ -25,7 +25,7 @@ WILLOW_ROOT = Path(__file__).parent
 sys.path = [str(WILLOW_ROOT)] + [p for p in sys.path if "willow-1.7" not in p]
 
 from core.version import VERSION, sync_installed_version
-from willow.platform_compat import IS_WSL
+from willow.platform_compat import IS_WSL, IS_POSIX
 
 
 def willow_home() -> Path:
@@ -153,6 +153,10 @@ def step_5_schema(skip_pg: bool = False) -> None:
 
 def step_6_socket(skip_socket: bool = False) -> None:
     """Install systemd user socket and service units."""
+    if not IS_POSIX:
+        print("  [step 6] systemd not available on Windows — start services manually:")
+        print("    python willow.py start")
+        return
     if skip_socket:
         return
     systemd_user = Path.home() / ".config" / "systemd" / "user"
