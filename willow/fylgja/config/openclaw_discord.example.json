@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "discord_channel_id": "REPLACE_WITH_CHANNEL_ID",
+  "discord_target": "channel:REPLACE_WITH_CHANNEL_ID",
+  "openclaw_agent_id": "main",
+  "grove_default_channel": "general",
+  "grove_forward_channels": ["alerts", "handoffs"],
+  "grove_sender": "discord-bridge",
+  "discord_forward_prefix": "🌿 ",
+  "poll_interval_sec": 30,
+  "_setup": [
+    "1. Discord Developer Portal → Bot → token → openclaw.json channels.discord",
+    "2. Invite bot to server; enable Message Content Intent",
+    "3. Copy channel ID (Developer Mode) into discord_channel_id / discord_target",
+    "4. Desktop: openclaw gateway (or onboard --install-daemon)",
+    "5. willow.sh openclaw-discord init-config && edit ~/.willow/openclaw_discord.json",
+    "6. willow openclaw-discord test-discord && test-grove (needs openclaw on PATH or OPENCLAW_BIN)",
+    "7. willow openclaw-discord run"
+  ]
+}

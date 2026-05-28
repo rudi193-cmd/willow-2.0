@@ -784,8 +784,70 @@ else:
         esac
         ;;
 
+    openclaw-discord)
+        _OC_BRIDGE="${WILLOW_ROOT}/scripts/openclaw_discord_bridge.py"
+        case "${2:-run}" in
+            init-config)
+                "${WILLOW_PYTHON}" "${_OC_BRIDGE}" init-config
+                ;;
+            run)
+                "${WILLOW_PYTHON}" "${_OC_BRIDGE}" run "${@:3}"
+                ;;
+            test-discord)
+                "${WILLOW_PYTHON}" "${_OC_BRIDGE}" test-discord "${@:3}"
+                ;;
+            test-grove)
+                "${WILLOW_PYTHON}" "${_OC_BRIDGE}" test-grove
+                ;;
+            *)
+                echo "Usage: willow.sh openclaw-discord [init-config|run|run --once|test-discord|test-grove]"
+                ;;
+        esac
+        ;;
+
+    skills)
+        _SKILL_STEWARD="${WILLOW_ROOT}/agents/hanuman/bin/skill_steward.py"
+        _OPENCLAW_SETUP="${WILLOW_ROOT}/scripts/setup_openclaw_skills.py"
+        case "${2:-}" in
+            openclaw-setup)
+                "${WILLOW_PYTHON}" "${_OPENCLAW_SETUP}" "${@:3}"
+                ;;
+            steward)
+                case "${3:-status}" in
+                    run-once)
+                        "${WILLOW_PYTHON}" "${_SKILL_STEWARD}" run-once "${@:4}"
+                        ;;
+                    status)
+                        "${WILLOW_PYTHON}" "${_SKILL_STEWARD}" status
+                        ;;
+                    list)
+                        "${WILLOW_PYTHON}" "${_SKILL_STEWARD}" list
+                        ;;
+                    show)
+                        [[ -z "${4:-}" ]] && echo "Usage: willow.sh skills steward show <skill_id>" && exit 1
+                        "${WILLOW_PYTHON}" "${_SKILL_STEWARD}" show "${4}"
+                        ;;
+                    dismiss)
+                        [[ -z "${4:-}" ]] && echo "Usage: willow.sh skills steward dismiss <skill_id> [--reason text]" && exit 1
+                        "${WILLOW_PYTHON}" "${_SKILL_STEWARD}" dismiss "${4}" "${@:5}"
+                        ;;
+                    adopt)
+                        [[ -z "${4:-}" ]] && echo "Usage: willow.sh skills steward adopt <skill_id> [--note text]" && exit 1
+                        "${WILLOW_PYTHON}" "${_SKILL_STEWARD}" adopt "${4}" "${@:5}"
+                        ;;
+                    *)
+                        echo "Usage: willow.sh skills steward [run-once|status|list|show <id>|dismiss <id>|adopt <id>]"
+                        ;;
+                esac
+                ;;
+            *)
+                echo "Usage: willow.sh skills [openclaw-setup|steward run-once|steward status|…]"
+                ;;
+        esac
+        ;;
+
     *)
-        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|agents [list|active <id>|install <id>|check]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]]"
+        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|agents [list|active <id>|install <id>|check]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
         exit 1
         ;;
 esac

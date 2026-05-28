@@ -178,6 +178,7 @@
 | `docs/LANDING_DESIGN.md` |
 | `docs/MCP_SPEC_COMPLIANCE.md` |
 | `docs/MCP_TOOL_PROFILES.md` |
+| `docs/OPENCLAW_DISCORD_SETUP.md` |
 | `docs/RUNTIME_AND_INFERENCE.md` |
 | `docs/SKILL_AUDIT_CURSOR_VS_WILLOW.md` |
 | `docs/SKILL_SURFACE_STRATEGY.md` |

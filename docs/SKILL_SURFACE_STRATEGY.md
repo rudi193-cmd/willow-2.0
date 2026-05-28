@@ -156,7 +156,7 @@ Already partially there:
 | **0** | Execution taxonomy + audit doc | Shared language (this doc + `SKILL_AUDIT_CURSOR_VS_WILLOW.md`) |
 | **1** | `willow/skill-catalog.jsonl` — **50** high-value skills | babysit, loop, deploy, review, handoff, tdd, … with class + twin path |
 | **2** | `scripts/skill_catalog_scan.py` — scan path, emit JSONL | `python scripts/skill_catalog_scan.py --write-seed` refreshes seed; full tree → 800+ rows |
-| **3** | Steward hook: weekly ClawHub/awesome delta → Grove `#upstream` | Human triage queue, not auto-install |
+| **3** | Steward hook: weekly ClawHub/awesome delta → Grove `#upstream` | **Done** — `willow.sh skills steward run-once` |
 | **4** | `skill_adopt.py` — import one SKILL.md → draft Fylgja + class | Semi-automated fork |
 | **5** | Agent policy in `safe_agents` / manifest | Block class E at runtime |
 
@@ -178,7 +178,9 @@ Already partially there:
 - `willow/skill-catalog.jsonl` — phase-1 seed catalog (50 skills)
 - `scripts/skill_catalog_scan.py` — classify + index SKILL.md trees
 - `sap/openclaw_ingest.py`, `sap/openclaw_mcp.py` — OpenClaw bridge
-- `upstream_steward/` — watches `awesome-claude-skills`
+- `agents/hanuman/bin/skill_steward.py` — weekly external SKILL.md delta → SOIL `skill_steward/queue` + Grove `#upstream`
+- `willow/fylgja/skills/skill-steward.md` — operator skill
+- `upstream_steward/` — GitHub notification steward (separate from skill delta)
 - `docs/SKILL_AUDIT_CURSOR_VS_WILLOW.md` — local Cursor inventory
 
 *2026-05-28*
