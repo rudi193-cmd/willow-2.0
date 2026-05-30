@@ -91,7 +91,12 @@ Paths are relative to repo root. All four are dark by default — they do not se
 Empty → skip.
 
 **14. Boot report + sentinel**
-First render the persona picker as a visible fenced block (the user must be able to see and respond to it):
+
+**If `[PERSONA-GATE]` is present in system context this turn:**
+Show ONLY the fenced picker block (copy it verbatim). End with the one footer line from the gate directive. Do NOT write a boot report. Do NOT start any work. Stop — wait for the user's next message.
+
+**Otherwise (persona confirmed or no gate):**
+First render the persona picker as a visible fenced block:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -103,8 +108,13 @@ First render the persona picker as a visible fenced block (the user must be able
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-Then one paragraph, ≤6 sentences, no headers:
-fleet status · open threads (count) · corrections loaded · flags · next_bite.
+Then a compact status list (no prose paragraph — one line each, no sub-bullets):
+
+- **Fleet:** Postgres [up/down] · Ollama [running/down] · [N]/[total] manifests
+- **Branch:** [branch] · [N] modified[, N staged] [· diff note if relevant]
+- **Threads:** [N] open — [top item ≤80 chars, or "none"]
+- **Corrections:** [N] loaded
+- **Next:** [next_bite ≤120 chars]
 
 Then write the boot sentinel: `Write(file_path="/tmp/willow-boot-done-{agent}.flag", content="booted")` — this clears the boot gate for this session. The sentinel is deleted by the Stop hook at session end.
 

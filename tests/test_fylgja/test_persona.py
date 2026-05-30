@@ -31,7 +31,18 @@ def test_persona_path_points_at_repo_personas():
     assert p.PERSONAS["hanuman"]["path"] == path
 
 
-def test_prompt_submit_block_first_turn_visible_instruction():
+def test_prompt_submit_block_first_turn_no_selection_emits_gate():
+    # No persona keyword in prompt → gate fires, PERSONA-VISIBLE must NOT appear
     block = p.prompt_submit_block(is_first=True, prompt="good afternoon")
+    assert "PERSONA-GATE" in block
+    assert "PERSONA-VISIBLE" not in block
+
+
+def test_prompt_submit_block_first_turn_with_selection_emits_visible(tmp_path, monkeypatch):
+    # Selection in prompt → gate skips, PERSONA-VISIBLE instruction emitted
+    state = tmp_path / "active-persona"
+    monkeypatch.setattr(p, "STATE_FILE", state)
+    block = p.prompt_submit_block(is_first=True, prompt="hanuman")
     assert "PERSONA-VISIBLE" in block
     assert "Paste the PERSONA block" in block
+    assert "PERSONA-GATE" not in block

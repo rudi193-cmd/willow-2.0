@@ -157,7 +157,7 @@ def set_active_persona(name: str) -> bool:
     return True
 
 
-def render_picker(active: str = "") -> str:
+def render_picker(active: str = "", *, blocking: bool = False) -> str:
     personas, persona_list = get_personas()
     bar = "━" * 54
     lines = [
@@ -174,10 +174,16 @@ def render_picker(active: str = "") -> str:
     lines.append(f"  {create_num}. + Create new persona")
     lines.append(bar)
     if active:
-        lines.append(
-            f"  Active: {personas[active]['label']}. "
-            "Reply with a number or name to switch, or continue."
-        )
+        if blocking:
+            lines.append(
+                f"  Active: **{personas[active]['label']}** — "
+                "reply with a number to switch, or say **go** to continue."
+            )
+        else:
+            lines.append(
+                f"  Active: {personas[active]['label']}. "
+                "Reply with a number or name to switch, or continue."
+            )
     else:
         lines.append(
             f"  No persona active. Reply with a number or name "
@@ -322,12 +328,26 @@ def prompt_submit_block(*, is_first: bool, prompt: str) -> str:
         if choice:
             set_active_persona(choice)
             active = choice
-        # Always show the full picker on the first turn — unmissable, like the boot gate.
-        parts.append(render_picker(active))
-        parts.append(
-            "[PERSONA-VISIBLE] Paste the PERSONA block above into your user-visible reply "
-            "(markdown fenced block). Hook-only context is not shown in chat."
-        )
+            # Choice confirmed — show picker and proceed to boot
+            parts.append(render_picker(active, blocking=False))
+            parts.append(
+                "[PERSONA-VISIBLE] Paste the PERSONA block above into your user-visible reply "
+                "(markdown fenced block). Persona confirmed — proceed with boot."
+            )
+        else:
+            # No selection in this message — gate: show picker, stop, wait for user
+            parts.append(render_picker(active, blocking=True))
+            personas, _ = get_personas()
+            label = personas.get(active, {}).get("label", active.capitalize()) if active else "None"
+            parts.append(
+                "[PERSONA-GATE] No persona confirmed this turn.\n"
+                "[PERSONA-GATE] Show ONLY the fenced picker block above. "
+                "Do NOT write a boot report. Do NOT start any work.\n"
+                f"[PERSONA-GATE] End your reply with exactly: "
+                f"\"Active: **{label}** — reply with a number to switch, or say **go** to continue.\"\n"
+                "[PERSONA-GATE] Wait for the user's next message before proceeding."
+            )
+            return "\n".join(parts)
     elif active:
         parts.append(render_status(active))
 
