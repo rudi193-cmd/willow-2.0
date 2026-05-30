@@ -279,8 +279,56 @@ def _scan_personal_signal(session_id: str) -> None:
         pass
 
 
+def _infer_3b_summarize(content: str, timeout: int = 10) -> dict:
+    """Summarize via llama3.2:3b directly. Returns {one_line, bullets}."""
+    import urllib.request
+    _url = "http://localhost:11434/api/chat"
+    prompt = (
+        "Summarize in one sentence, then list up to 5 keyword phrases.\n"
+        "Respond as JSON only: {\"one_line\": \"...\", \"bullets\": [\"...\", ...]}\n\n"
+        f"{content}"
+    )
+    body = json.dumps({
+        "model": "llama3.2:3b",
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+    }).encode()
+    req = urllib.request.Request(
+        _url,
+        data=body,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            resp = json.loads(r.read())
+        text = resp.get("message", {}).get("content", "")
+        # Model sometimes returns multiple JSON objects — parse all and merge
+        decoder = json.JSONDecoder()
+        merged: dict = {}
+        pos = 0
+        remaining = text.lstrip()
+        while remaining:
+            try:
+                obj, idx = decoder.raw_decode(remaining)
+                if isinstance(obj, dict):
+                    merged.update(obj)
+                remaining = remaining[idx:].lstrip()
+            except json.JSONDecodeError:
+                break
+        if merged:
+            raw = merged.get("bullets") or []
+            bullets = [
+                b.get("keyword") or next(iter(b.values()), "") if isinstance(b, dict) else str(b)
+                for b in raw
+            ]
+            return {"one_line": merged.get("one_line", ""), "bullets": bullets}
+    except Exception:
+        pass
+    return {"one_line": "", "bullets": []}
+
+
 def _promote_session_to_kb(session_id: str, affect: str, session_traces: list) -> None:
-    """Annotate session with infer_7b and write one atom to the knowledge table."""
+    """Annotate session with llama3.2:3b and write one atom to the knowledge table."""
     if call is None or not session_traces:
         return
 
@@ -294,11 +342,7 @@ def _promote_session_to_kb(session_id: str, affect: str, session_traces: list) -
     one_line = ""
     keywords: list = []
     try:
-        result = call("infer_7b", {
-            "app_id": _AGENT,
-            "task_type": "summarize",
-            "content": trace_text,
-        }, timeout=15)
+        result = _infer_3b_summarize(trace_text, timeout=10)
         one_line = (result.get("one_line") or "").strip()
         bullets = result.get("bullets") or []
         keywords = [str(b)[:60] for b in bullets[:5]]
@@ -421,6 +465,28 @@ def _drain_kart_queue() -> None:
     )
 
 
+def _launch_slow_path(session_id: str) -> None:
+    """Fire stop_slow.py as a detached background process — no blocking."""
+    import subprocess
+
+    slow = Path(__file__).parent / "stop_slow.py"
+    if not slow.is_file():
+        return
+    root = Path(__file__).resolve().parents[3]
+    venv_py = root / ".venv-dev" / "bin" / "python3"
+    py = str(venv_py) if venv_py.is_file() else sys.executable
+    try:
+        subprocess.Popen(
+            [py, str(slow), session_id],
+            start_new_session=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        pass
+
+
 def main():
     if _is_isolated_directory():
         import sys as _sys; _sys.exit(0)
@@ -453,55 +519,18 @@ def main():
     except Exception:
         pass
 
-    # Write session composite
+    # Write session composite (fast — one store_put)
     _write_session_composite(session_id)
 
-    # Affect tagging + failure atom
-    affect = "neutral"
-    session_traces: list = []
-    try:
-        affect, session_traces = _compute_affect_with_traces(session_id)
-        if affect == "friction":
-            _write_failure_atom(session_id, session_traces)
-    except Exception:
-        pass
-
-    # Reflection atom (affect-gated)
-    try:
-        _write_reflection_atom(session_id, affect, session_traces)
-    except Exception:
-        pass
-
-    # Personal signal scan → personal/candidates (Loki reviews → sean.db)
+    # Personal signal scan (fast — JSONL read + conditional store_put)
     try:
         _scan_personal_signal(session_id)
     except Exception:
         pass
 
-    # Promote session to KB — infer_7b annotation → knowledge table
-    try:
-        _promote_session_to_kb(session_id, affect, session_traces)
-    except Exception:
-        pass
-
-    # Write stack snapshot — authoritative "what's open" for next boot
-    try:
-        _write_stack_snapshot(session_id)
-    except Exception:
-        pass
-
-    # Rebuild handoff index so handoff_latest is current next session
-    try:
-        if call is not None:
-            call("handoff_rebuild", {"app_id": _AGENT}, timeout=30)
-    except Exception:
-        pass
-
-    # Drain pending Kart tasks (scripts/kart_poll.py — same as documented Stop hook)
-    try:
-        _drain_kart_queue()
-    except Exception:
-        pass
+    # Fire slow path (affect tagging, 3b KB annotation, stack snapshot,
+    # handoff_rebuild, kart drain) as a detached background process.
+    _launch_slow_path(session_id)
 
     # Hook timing log
     _dur_ms = int((_time.monotonic() - _t0) * 1000)
