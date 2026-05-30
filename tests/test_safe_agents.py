@@ -31,6 +31,14 @@ class TestSafeAgents(unittest.TestCase):
         perms = permissions_for_agent("heimdallr")
         self.assertIn("fleet_admin", perms)
 
+    def test_willow_gets_handoff_rebuild(self):
+        perms = permissions_for_agent("willow")
+        self.assertIn("handoff_rebuild", perms)
+
+    def test_skirnir_gets_handoff_rebuild(self):
+        perms = permissions_for_agent("skirnir")
+        self.assertIn("handoff_rebuild", perms)
+
     def test_build_manifest_shape(self):
         m = build_manifest("jeles")
         self.assertEqual(m["app_id"], "jeles")

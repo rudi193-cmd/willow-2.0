@@ -119,7 +119,7 @@ AGENT_PERMISSION_EXTRA: dict[str, list[str]] = {
     "loki": ["ledger_read_perm", "ledger_write_perm", "ledger_audit"],
     "vishwakarma": ["app_manage", "pipeline"],
     "orin": ["infer_batch"],
-    "willow": ["infer_speak", "voice_keyterms"],
+    "willow": ["handoff_rebuild", "infer_speak", "voice_keyterms"],
     "ada": ["fleet_health", "kb_backup"],
     "steve": ["agent_dispatch", "fleet_governance"],
 }
