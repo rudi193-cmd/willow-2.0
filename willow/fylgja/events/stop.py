@@ -11,6 +11,7 @@ import re
 import sys
 import time as _time
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -380,41 +381,47 @@ def _write_stack_snapshot(session_id: str) -> None:
     """
     if call is None:
         return
-    try:
-        # Open tasks
-        tasks: list = []
+
+    def _fetch_tasks() -> list:
         try:
             result = call("agent_task_list", {"app_id": _AGENT}, timeout=8)
             if isinstance(result, list):
-                tasks = [
+                return [
                     {"id": t.get("id", ""), "title": t.get("title", ""), "status": t.get("status", "")}
                     for t in result
                     if t.get("status") not in ("completed", "cancelled", "done")
                 ]
         except Exception:
             pass
+        return []
 
-        # Latest handoff open threads
-        open_threads: list = []
-        handoff_title = ""
+    def _fetch_handoff() -> tuple:
         try:
             h = call("handoff_latest", {"app_id": _AGENT}, timeout=8)
             if isinstance(h, dict):
-                handoff_title = h.get("filename", h.get("title", ""))
-                open_threads = h.get("open_threads", [])
+                return h.get("filename", h.get("title", "")), h.get("open_threads", [])
         except Exception:
             pass
+        return "", []
 
-        # Latest ledger open decisions
-        open_decisions: list = []
+    def _fetch_ledger() -> list:
         try:
             ledger = call("ledger_read", {"app_id": _AGENT, "limit": 1}, timeout=8)
             entries = ledger.get("entries", []) if isinstance(ledger, dict) else []
             if entries:
-                latest = entries[0].get("content", {})
-                open_decisions = latest.get("open_decisions", [])
+                return entries[0].get("content", {}).get("open_decisions", [])
         except Exception:
             pass
+        return []
+
+    try:
+        with ThreadPoolExecutor(max_workers=3) as _ex:
+            _ft = _ex.submit(_fetch_tasks)
+            _fh = _ex.submit(_fetch_handoff)
+            _fl = _ex.submit(_fetch_ledger)
+            tasks = _ft.result()
+            handoff_title, open_threads = _fh.result()
+            open_decisions = _fl.result()
 
         record = {
             "id": "current",
