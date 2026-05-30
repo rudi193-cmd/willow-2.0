@@ -1312,9 +1312,11 @@ async def kart_task_run(
     agent:  str = "kart",
     limit:  int = 5,
 ) -> dict:
-    """Pull pending tasks from the tasks table and execute them in the Kart bwrap sandbox.
-    Updates status to completed/failed in the DB. agent: defaults to kart.
-    Workflow/goal tasks are skipped here — use kart_poll at session Stop."""
+    """Wait for kart-worker, then execute any still-pending tasks in-process (fallback).
+
+    Polls until pending+running clear or KART_POLL_TIMEOUT. If tasks remain pending
+    with nothing running, claims and runs them via core/kart_execute (same as stop drain).
+    """
     logger.info("[w2] kart_task_run app_id=%s agent=%s limit=%d", app_id, agent, limit)
     if not pg:
         return _no_pg()
@@ -1322,9 +1324,11 @@ async def kart_task_run(
 
     def _run():
         import time as _time
-        # The daemon (kart_worker.kart_loop) claims and executes tasks automatically.
-        # kart_task_run polls until pending+running tasks finish, then returns their results.
-        timeout = int(os.environ.get("KART_POLL_TIMEOUT", "120"))
+        from core.kart_execute import drain_claimed_tasks, kart_timeout
+
+        timeout = kart_timeout("poll")
+        grace = min(2, timeout)
+        _time.sleep(grace)
         deadline = _time.monotonic() + timeout
         seen: set = set()
         results = []
@@ -1332,8 +1336,12 @@ async def kart_task_run(
         while _time.monotonic() < deadline:
             rows = pg.tasks_by_status(agent=agent, limit=limit * 4)
             active = [r for r in rows if r.get("status") in ("pending", "running")]
-            done = [r for r in rows if r.get("status") in ("complete", "failed", "completed")
-                    and r["id"] not in seen]
+            done = [
+                r
+                for r in rows
+                if r.get("status") in ("complete", "failed", "completed")
+                and r["id"] not in seen
+            ]
             for r in done:
                 seen.add(r["id"])
                 results.append({
@@ -1345,6 +1353,27 @@ async def kart_task_run(
             if not active:
                 break
             _time.sleep(1)
+
+        pending = pg.tasks_by_status(
+            agent=agent, statuses=["pending"], limit=limit
+        )
+        running = pg.tasks_by_status(
+            agent=agent, statuses=["running"], limit=1
+        )
+        if pending and not running:
+            batch = pg.claim_kart_tasks(limit=limit, agent=agent)
+            for task_id, status, result in drain_claimed_tasks(
+                pg, batch, context="poll", log_prefix="kart_task_run"
+            ):
+                seen.add(task_id)
+                row = next((r for r in batch if r["id"] == task_id), {})
+                results.append({
+                    "task_id": task_id,
+                    "status": status,
+                    "cmd": (row.get("task") or "")[:80],
+                    "result": result,
+                    "executed_by": "fallback",
+                })
 
         return {"executed": len(results), "results": results}
 

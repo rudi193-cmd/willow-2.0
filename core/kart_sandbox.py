@@ -1,7 +1,7 @@
 """
 kart_sandbox.py — unified bwrap sandbox for Kart execution paths.
 
-Used by: core/kart_worker.py (daemon), sap kart_task_run, scripts/kart_poll.py
+Used by: core/kart_execute.py (daemon + poll), sap kart_task_run fallback
 
 Mount policy: willow/fylgja/config/kart-sandbox.json (+ dynamic worktree discovery).
 """

@@ -39,8 +39,12 @@ WILLOW_SH = _ROOT / "willow.sh"
 _openclaw_bin_cache: Path | None = None
 
 ALLOWED_WILLOW_CMDS = frozenset({"status-all", "health", "fleet_status", "status"})
-GROVE_CMD_RE = re.compile(r"^grove:\s*(#?[\w-]+)?\s*(.*)$", re.IGNORECASE | re.DOTALL)
+GROVE_CMD_RE = re.compile(r"^grove:(#?[\w-]+)?\s*(.*)$", re.IGNORECASE | re.DOTALL)
 HANDOFF_RE = re.compile(r"^handoff\s+(\S+)\s*$", re.IGNORECASE)
+DOCKET_RE = re.compile(
+    r"^(?:docket|what(?:'s| is) on the docket)\s*$",
+    re.IGNORECASE,
+)
 DISCORD_SNOWFLAKE_RE = re.compile(r"^\d{17,20}$")
 DISCORD_CONFIG_PLACEHOLDERS = frozenset(
     {"REPLACE_WITH_CHANNEL_ID", "replace_with_channel_id", "YOUR_CHANNEL_ID"}
@@ -137,6 +141,9 @@ def parse_command(text: str, *, default_channel: str = "general") -> dict | None
     hm = HANDOFF_RE.match(raw)
     if hm:
         return {"type": "handoff", "agent": hm.group(1).lower()}
+
+    if DOCKET_RE.match(raw):
+        return {"type": "handoff", "agent": "willow"}
 
     token = raw.split(None, 1)[0].lower()
     if token in ALLOWED_WILLOW_CMDS:

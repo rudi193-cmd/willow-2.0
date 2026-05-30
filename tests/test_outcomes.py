@@ -115,7 +115,7 @@ def test_workflow_phase_routes_to_outcomes_when_rubric_present(pg):
     pg.workflow_phase_create(run_id, "grade", phase_input, task_id)
     pg.workflow_run_update(run_id, "running")
 
-    from scripts import kart_poll
+    from core import kart_execute
 
     mock_outcome = {
         "result":      "satisfied",
@@ -126,8 +126,8 @@ def test_workflow_phase_routes_to_outcomes_when_rubric_present(pg):
     }
 
     with unittest.mock.patch("core.outcomes.run_outcome", return_value=mock_outcome) as m_outcome, \
-         unittest.mock.patch.object(kart_poll, "_call_llm") as m_llm:
-        status, result = kart_poll._run_workflow_phase(pg, task_id, payload_dict)
+         unittest.mock.patch.object(kart_execute, "_call_llm") as m_llm:
+        status, result = kart_execute.run_workflow_phase(pg, task_id, payload_dict)
 
     assert status == "completed"
     m_outcome.assert_called_once()
@@ -171,13 +171,13 @@ def test_workflow_phase_uses_llm_without_rubric(pg):
     pg.workflow_phase_create(run_id, "extract", phase_input, task_id)
     pg.workflow_run_update(run_id, "running")
 
-    from scripts import kart_poll
+    from core import kart_execute
 
     mock_llm_output = {"facts": ["hello is a greeting"], "_elapsed_s": 0.1}
 
-    with unittest.mock.patch.object(kart_poll, "_call_llm", return_value=mock_llm_output) as m_llm, \
+    with unittest.mock.patch.object(kart_execute, "_call_llm", return_value=mock_llm_output) as m_llm, \
          unittest.mock.patch("core.outcomes.run_outcome") as m_outcome:
-        status, result = kart_poll._run_workflow_phase(pg, task_id, payload_dict)
+        status, result = kart_execute.run_workflow_phase(pg, task_id, payload_dict)
 
     assert status == "completed"
     m_llm.assert_called_once()

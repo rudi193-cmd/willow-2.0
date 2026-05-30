@@ -1630,7 +1630,7 @@ class PgBridge:
             row = cur.fetchone()
             return dict(row) if row else None
 
-    def pending_tasks(self, agent: str = "kart", limit: int = 10) -> list:
+    def claim_kart_tasks(self, limit: int = 10, agent: str = "kart") -> list:
         """Atomically claim pending tasks by marking them 'running'. Two concurrent
         callers cannot claim the same row — FOR UPDATE SKIP LOCKED ensures this."""
         self._ensure_conn()
@@ -1654,6 +1654,10 @@ class PgBridge:
         self.conn.commit()
         return rows
 
+    def pending_tasks(self, agent: str = "kart", limit: int = 10) -> list:
+        """Alias for claim_kart_tasks (backward compat)."""
+        return self.claim_kart_tasks(limit=limit, agent=agent)
+
     def task_complete(self, task_id: str, result: dict, status: str = "completed") -> bool:
         self._ensure_conn()
         try:
@@ -1671,7 +1675,7 @@ class PgBridge:
         """Read-only task query — does NOT claim tasks."""
         self._ensure_conn()
         if statuses is None:
-            statuses = ["pending", "running", "complete", "failed", "completed"]
+            statuses = ["pending", "running", "completed", "failed", "complete"]
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
                 SELECT id, task, status, result, submitted_by, created_at, updated_at
