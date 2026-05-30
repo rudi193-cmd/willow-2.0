@@ -41,9 +41,11 @@ Do **not** paste huge escaped one-liners into `task=` when `script_body` is avai
 
 ## Daemon + Stop drain
 
-- `kart-worker.service` claims pending tasks continuously
-- `kart_task_run` polls until tasks complete (does not need to spawn shell itself)
+- `kart-worker.service` claims pending tasks continuously (`core/kart_execute.py`)
+- `kart_task_run` waits for the daemon, then runs any still-pending tasks in-process
 - `stop.py` runs `scripts/kart_poll.py` at session Stop
+
+Shell tasks use **full-string** `bash -c` via `kart_sandbox.run_shell` (pipelines, `;`, `$()` work). Use fenced ` ```bash ` blocks only when splitting multiple explicit steps.
 
 ## allow_net
 

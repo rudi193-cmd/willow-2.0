@@ -124,11 +124,12 @@ def test_workflow_phase_executor_full_dag(pg):
     pg.workflow_run_update(run_id, "running")
 
     # Mock LLM and run the phase executor
-    from scripts import kart_poll
+    from core import kart_execute
+
     mock_output = {"facts": ["Willow is local-first", "Willow is an AI stack"], "_elapsed_s": 0.1}
 
-    with unittest.mock.patch.object(kart_poll, "_call_llm", return_value=mock_output):
-        status, result = kart_poll._run_workflow_phase(pg, task_id, json.loads(payload))
+    with unittest.mock.patch.object(kart_execute, "_call_llm", return_value=mock_output):
+        status, result = kart_execute.run_workflow_phase(pg, task_id, json.loads(payload))
 
     assert status == "completed"
     assert result["phase"] == "extract"
