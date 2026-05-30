@@ -157,7 +157,7 @@
 
 | Path |
 |------|
-| `.commitmsg.tmp` |
+| `.cm.tmp` |
 | `agents/heimdallr` |
 | `agents/loki` |
 | `agents/willow` |

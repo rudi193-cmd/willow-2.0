@@ -299,7 +299,7 @@ _FRANK_PERSONA = (
 )
 
 _OLLAMA_URL  = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-_WILLOW_MODEL = os.environ.get("WILLOW_OLLAMA_MODEL", "qwen2.5:3b")
+_WILLOW_MODEL = os.environ.get("WILLOW_OLLAMA_MODEL", "llama3.2:3b")
 _GROVE_POLL_INTERVAL = int(os.environ.get("WILLOW_GROVE_POLL_SECS", "3"))
 
 _willow_last_seen_id: int = 0

@@ -19,7 +19,7 @@ from typing import Optional
 _GROQ_BASE  = "https://api.groq.com/openai/v1"
 _GROQ_MODEL = os.environ.get("WILLOW_JUKEBOX_GROQ_MODEL", "llama-3.3-70b-versatile")
 _OLLAMA_URL = "http://localhost:11434/api/generate"
-_OLLAMA_MODEL = os.environ.get("WILLOW_JUKEBOX_OLLAMA_MODEL", "llama3.1:8b")
+_OLLAMA_MODEL = os.environ.get("WILLOW_JUKEBOX_OLLAMA_MODEL", "llama3.2:3b")
 _KOKORO_URL = os.environ.get("WILLOW_KOKORO_URL", "http://localhost:5000/v1/audio/speech")
 _KOKORO_VOICE = os.environ.get("WILLOW_KOKORO_VOICE", "am_michael")
 

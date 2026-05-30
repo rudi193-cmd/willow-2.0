@@ -23,7 +23,7 @@ _GROQ_MODEL = os.environ.get(
 )
 _GEMINI_MODEL = os.environ.get("WILLOW_GEMINI_MODEL", "gemini-2.0-flash")
 _OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-_OLLAMA_MODEL = os.environ.get("WILLOW_OLLAMA_MODEL", "qwen2.5:3b")
+_OLLAMA_MODEL = os.environ.get("WILLOW_OLLAMA_MODEL", "llama3.2:3b")
 
 
 def _load_key(*names: str) -> str:
