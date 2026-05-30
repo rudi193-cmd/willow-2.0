@@ -436,8 +436,8 @@ def _write_stack_snapshot(session_id: str) -> None:
         call("soil_put", {
             "app_id": _AGENT,
             "collection": f"{_AGENT}/stack",
-            "key": "current",
-            "value": record,
+            "record_id": "current",
+            "record": record,
         }, timeout=8)
     except Exception:
         pass
