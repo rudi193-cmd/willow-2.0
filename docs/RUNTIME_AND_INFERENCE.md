@@ -49,6 +49,18 @@ See [`AGENT_IDENTITY.md`](AGENT_IDENTITY.md).
 
 Set in `~/.willow/env`, agent `mcp.json`, or `~/.willow/secrets/credentials.json`.
 
+**Local model defaults** (ThinkPad T500, 4 GB VRAM):
+
+| Env | Default | Notes |
+|-----|---------|--------|
+| `WILLOW_OLLAMA_MODEL` | `llama3.2:3b` | Router, Grove, `chat_ollama` — fits VRAM |
+| `WILLOW_EDGE_OLLAMA_MODEL` | `llama3.2:3b` | `llm_edge` pipeline |
+| `WILLOW_JUKEBOX_OLLAMA_MODEL` | `llama3.2:3b` | Jukebox (override optional) |
+
+Avoid **`llama3.1:8b`** / **`mistral:7b`** as the *default* on this GPU: Ollama still returns answers via CPU offload, but latency and timeouts spike on long or repeated calls ([issue #11](https://github.com/rudi193-cmd/willow-2.0/issues/11)). Use Groq **`llama-3.1-8b-instant`** when `auto` needs an 8b-class model in the cloud.
+
+Professor tiers in code (`sap/clients/professor_client.py`): `llama3.2:1b` dispatch · `llama3.2:3b` general · `mistral:7b` heavy (rare).
+
 **Not required:** Anthropic API for normal fleet inference (`willow.md`: no Anthropic in infer path).
 
 ### LiteLLM gateway (optional)

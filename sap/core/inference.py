@@ -180,7 +180,7 @@ def chat_codex(agent: str, message: str) -> str | None:
 def chat_ollama(agent: str, message: str) -> str | None:
     try:
         data = json.dumps({
-            "model": os.environ.get("WILLOW_OLLAMA_MODEL", "qwen2.5:3b"),
+            "model": os.environ.get("WILLOW_OLLAMA_MODEL", "llama3.2:3b"),
             "messages": [
                 {"role": "system", "content": (
                     f"You are {agent}, a local AI coordinator for the operator's personal fleet. "

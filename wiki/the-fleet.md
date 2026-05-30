@@ -13,7 +13,7 @@ The fleet is four agents with distinct mandates. They coordinate through Grove, 
 | Hanuman | Builder | Code, infrastructure, data migrations, system tasks | Claude Sonnet 4.6 (Claude Code CLI) |
 | Loki | Auditor | Reviews, audits, gap analysis, adversarial challenge | Claude Sonnet 4.6 (Claude Code CLI) |
 | Heimdallr | Monitor/Dashboard | System health, observability, the Grove dashboard | Claude Sonnet 4.6 (Claude Code CLI) |
-| Willow | Coordinator | Synthesizes fleet activity, responds to @willow mentions, KB grounding | qwen2.5:3b (local, always-on via grove-serve) |
+| Willow | Coordinator | Synthesizes fleet activity, responds to @willow mentions, KB grounding | llama3.2:3b (local Ollama, grove-serve) |
 
 FRANK (Formal Record and Notation Keeper) is wired into the watch loop alongside Willow, but is a persona rather than a full agent.
 
@@ -67,7 +67,7 @@ Current builds (ratified, in progress):
 ## Willow (Autonomous Coordinator)
 
 **Runtime:** grove-serve watch loop (PID in systemd service `grove-serve.service`)  
-**Model:** qwen2.5:3b (via Ollama)  
+**Model:** llama3.2:3b (via Ollama — default on 4GB GPU; see `docs/RUNTIME_AND_INFERENCE.md`)  
 **Grove sender:** `willow`
 
 Willow is not a Claude Code session. She's a persistent 3B model running in grove-serve, always listening in Grove. She responds to `@willow` mentions, pulls KB context from `public.knowledge WHERE project='willow'`, and posts directly to the origin channel.
@@ -81,7 +81,7 @@ Willow is not a Claude Code session. She's a persistent 3B model running in grov
 ## FRANK
 
 **Runtime:** grove-serve watch loop (same daemon as Willow)  
-**Model:** qwen2.5:3b (via Ollama)  
+**Model:** llama3.2:3b (via Ollama)  
 **Grove sender:** `frank`  
 **Full name:** Formal Record and Notation Keeper
 
