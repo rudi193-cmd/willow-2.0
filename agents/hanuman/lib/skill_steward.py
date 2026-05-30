@@ -121,7 +121,7 @@ def build_snapshot(
         snap["sources"][name] = {
             "git_head": (git_heads or {}).get(name),
             "count": len(skills),
-            "skills": {sid: fingerprint(rec) for sid, rec in skills.items()},
+            "skills": {rec.get("id") or sid: fingerprint(rec) for sid, rec in skills.items()},
         }
     return snap
 
