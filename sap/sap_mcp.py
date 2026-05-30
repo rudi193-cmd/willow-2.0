@@ -110,10 +110,30 @@ HANDOFF_DB = os.environ.get(
     "WILLOW_HANDOFF_DB",
     str(Path.home() / "github" / ".willow" / "handoffs" / _MCP_AGENT / "handoffs.db"),
 )
-_DEFAULT_HANDOFF_DIRS = ":".join([
-    str(Path.home() / "github" / ".willow" / "handoffs" / _MCP_AGENT),
-    str(Path.home() / "github" / ".willow" / "Nest" / _MCP_AGENT),
-])
+def _discover_handoff_dirs() -> str:
+    """Auto-discover all agent subdirectories under handoffs/.
+
+    Scans handoffs/ for subdirectories so new agents are picked up without
+    code or env changes. Falls back to _MCP_AGENT-only if the root is absent.
+    Appends the Nest dir for _MCP_AGENT if it exists.
+    """
+    _handoffs_root = Path.home() / "github" / ".willow" / "handoffs"
+    dirs: list[str] = []
+    if _handoffs_root.is_dir():
+        dirs = [
+            str(sub)
+            for sub in sorted(_handoffs_root.iterdir())
+            if sub.is_dir() and not sub.name.startswith(".")
+        ]
+    if not dirs:
+        dirs = [str(_handoffs_root / _MCP_AGENT)]
+    _nest = Path.home() / "github" / ".willow" / "Nest" / _MCP_AGENT
+    if _nest.is_dir():
+        dirs.append(str(_nest))
+    return ":".join(dirs)
+
+
+_DEFAULT_HANDOFF_DIRS = _discover_handoff_dirs()
 HANDOFF_DIRS = os.environ.get("WILLOW_HANDOFF_DIRS", _DEFAULT_HANDOFF_DIRS)
 
 _ONBOARDING = (Path(__file__).parent / "ONBOARDING.md").read_text(encoding="utf-8")
