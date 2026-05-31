@@ -1111,16 +1111,26 @@ async def kb_at(
 
 @mcp.tool()
 @sap_gate()
-async def agent_route(app_id: str, message: str, session_id: str = "") -> dict:
-    """Route a message to the most appropriate Willow agent based on content analysis."""
-    logger.info("[w2] agent_route app_id=%s sid=%s", app_id, session_id)
+async def agent_route(
+    app_id: str,
+    message: str,
+    session_id: str = "",
+    auto_dispatch: bool = False,
+) -> dict:
+    """Route a message to the most appropriate Willow agent based on content analysis.
+
+    When auto_dispatch=True and oracle confidence >= INTENT_CONFIDENCE_THRESHOLD,
+    automatically calls agent_dispatch to the recommended agent.
+    Default is advisory-only (auto_dispatch=False).
+    """
+    logger.info("[w2] agent_route app_id=%s sid=%s auto_dispatch=%s", app_id, session_id, auto_dispatch)
     loop = asyncio.get_running_loop()
 
     def _route():
         import json as _j
         oracle_ok = False
         try:
-            from willow.routing.oracle import route as _routing_oracle
+            from willow.routing.oracle import route as _routing_oracle, INTENT_CONFIDENCE_THRESHOLD
             result = _routing_oracle(message, session_id=session_id) if message else {
                 "routed_to": "willow", "rule_matched": "no-message", "confidence": 0.5, "latency_ms": 0,
             }
@@ -1130,6 +1140,7 @@ async def agent_route(app_id: str, message: str, session_id: str = "") -> dict:
                 "routed_to": "willow", "rule_matched": "oracle-unavailable",
                 "confidence": 0.5, "latency_ms": 0, "error": str(re),
             }
+            INTENT_CONFIDENCE_THRESHOLD = 0.35
         if pg:
             try:
                 import hashlib
@@ -1157,6 +1168,34 @@ async def agent_route(app_id: str, message: str, session_id: str = "") -> dict:
                 pg.conn.commit()
             except Exception as pe:
                 logger.warning("[w2] agent_route: routing_decisions persist failed: %s", pe)
+
+        # Auto-dispatch if requested and confidence is sufficient
+        if auto_dispatch and message and result.get("confidence", 0) >= INTENT_CONFIDENCE_THRESHOLD:
+            to = result.get("routed_to", "willow")
+            try:
+                import uuid as _u2
+                did = _u2.uuid4().hex[:8].upper()
+                from willow.constants import CHANNEL_DISPATCH
+                with PgBridge() as b:
+                    b.conn.cursor().execute(
+                        "INSERT INTO dispatch_tasks"
+                        " (id,to_agent,from_agent,prompt,context_id,card_id,reply_to,depth,status)"
+                        " VALUES (%s,%s,%s,%s,'','','',0,'pending')",
+                        (did, to, app_id, message),
+                    )
+                    b.conn.commit()
+                try:
+                    from sap.core.deliver import grove_send
+                    grove_send(CHANNEL_DISPATCH,
+                        f"[{did}] {app_id} →auto→ {to}: {message[:120]}", sender=app_id)
+                except Exception:
+                    pass
+                result["auto_dispatched"] = True
+                result["dispatch_id"] = did
+            except Exception as de:
+                logger.warning("[w2] agent_route: auto_dispatch failed: %s", de)
+                result["auto_dispatched"] = False
+
         return result
 
     return await loop.run_in_executor(_executor, _route)
@@ -1174,7 +1213,16 @@ async def agent_dispatch(
     reply_to:   str = "",
     depth:      int = 0,
 ) -> dict:
-    """Dispatch a task to a target agent. Posts to #dispatch, creates dispatch_tasks record."""
+    """Dispatch a task to a target agent. Posts to #dispatch, creates dispatch_tasks record.
+
+    Consumer model — passive queue (intentional):
+      Named agents (hanuman, heimdallr, loki, willow) are session-scoped, not daemons.
+      They consume dispatch_tasks at session start via inbox polling or Grove notification.
+      This means cross-agent dispatch requires human session initiation for named agents.
+
+      For work that must run without human initiation, use agent_task_submit → Kart instead.
+      Kart is the autonomous execution plane; named agents are the reasoning plane.
+    """
     logger.info("[w2] agent_dispatch app_id=%s to=%s depth=%d", app_id, to, depth)
     loop = asyncio.get_running_loop()
 
