@@ -66,16 +66,19 @@ def _extract_sections(text: str, headings: tuple[str, ...]) -> str:
 
 def _banner(source: Path) -> str:
     today = date.today().isoformat()
-    rel = source
-    try:
-        rel = source.relative_to(REPO_ROOT)
-    except ValueError:
-        pass
+    home = Path.home()
+    if str(source).startswith(str(home)):
+        display = "~/" + str(source.relative_to(home))
+    else:
+        try:
+            display = str(source.relative_to(REPO_ROOT))
+        except ValueError:
+            display = str(source)
     return f"""# Willow fleet contract (public snapshot)
 
 b17: PUBCNT · ΔΣ=42
 
-> **Auto-generated** from `{rel}` on {today}.
+> **Auto-generated** from `{display}` on {today}.
 > Run `python3 scripts/sync_contract_snapshot.py` after editing the private contract.
 >
 > This file is a **redacted snapshot** for GitHub-only clones. Machine-specific paths,

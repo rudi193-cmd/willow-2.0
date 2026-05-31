@@ -2,7 +2,7 @@
 
 b17: PUBCNT · ΔΣ=42
 
-> **Auto-generated** from `/home/sean-campbell/github/.willow/willow.md` on 2026-05-31.
+> **Auto-generated** from `~/github/.willow/willow.md` on 2026-05-31.
 > Run `python3 scripts/sync_contract_snapshot.py` after editing the private contract.
 >
 > This file is a **redacted snapshot** for GitHub-only clones. Machine-specific paths,
