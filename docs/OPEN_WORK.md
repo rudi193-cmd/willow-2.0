@@ -35,7 +35,12 @@ Curators: update when a handoff closes a thread or Sean ratifies a decision. Do 
 
 ## Documentation hygiene
 
-Phases A–D landed on `feat/doc-architecture` (PR #162). Follow-up: public `docs/CONTRACT.md`, MCP instruction split, `docs/handoffs/` archived + gitignored.
+Phases A–D merged (PR #162). Follow-ups landed: `docs/CONTRACT.md`, MCP instruction split (`sap/MCP_INSTRUCTIONS.md`), handoffs archived + `docs/handoffs/` gitignored. Upstream tracker fix: PR #163.
+
+| Item | Notes |
+|------|--------|
+| Worktree maintenance scripts | `scripts/cleanup_worktrees.sh`, `restore_upstream_worktrees.sh`, `upstream_worktree_allowlist.txt` |
+| `scripts/fleet_hardening_scan.py` | Operator scan — run before release cut |
 
 ---
 

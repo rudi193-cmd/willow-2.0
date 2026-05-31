@@ -196,7 +196,6 @@
 | `docs/kb` |
 | `docs/static` |
 | `docs/templates` |
-| `issue_body.md` |
 | `personal` |
 | `sap/MCP_SPEC.lock.json` |
 | `sap/adapters` |

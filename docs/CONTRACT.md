@@ -83,13 +83,13 @@ Detail: `willow-2.0/docs/AGENT_IDENTITY.md`
 
 Your identity is `$WILLOW_AGENT_NAME`. Your namespace is that name. Your SAFE manifest lives at `~/github/SAFE/Agents/<agent_id>/safe-app-manifest.json`. All SOIL and KB writes go under your namespace. Your persona is optional.
 
-Full agent registry: [`AGENTS.md`](AGENTS.md)
+Full agent registry: [`AGENTS.md`](../AGENTS.md)
 
 ---
 
 ## Boot sequence
 
-Run `/boot`. Steps, fallbacks, and exceptions are defined in [`willow/fylgja/skills/boot.md`](willow/fylgja/skills/boot.md).
+Run `/boot`. Steps, fallbacks, and exceptions are defined in [`willow/fylgja/skills/boot.md`](../willow/fylgja/skills/boot.md).
 
 ---
 
@@ -155,13 +155,13 @@ Five layers (innermost to outermost):
 - Nest confirms (human files a document) → intake at tier=verified, confidence=1.0.
 - What the next agent needs to resume → handoff.
 
-Detail: [`willow/fylgja/skills/persistent-memory-stack.md`](willow/fylgja/skills/persistent-memory-stack.md)
+Detail: [`willow/fylgja/skills/persistent-memory-stack.md`](../willow/fylgja/skills/persistent-memory-stack.md)
 
 ---
 
 ## Tool groups (SAP MCP)
 
-Full annotated registry: [`sap/mcp_registry.json`](sap/mcp_registry.json)
+Full annotated registry: [`sap/mcp_registry.json`](../sap/mcp_registry.json)
 
 | Group prefix | Purpose |
 |---|---|
@@ -274,7 +274,7 @@ This is a hard constraint (`worktree-pr`), not a guideline.
 
 **Worktree seed:** At creation, before first code edit, ingest one KB atom — the non-derivable contract a cold agent needs. Record the atom ID in the first Grove post for the task.
 
-Detail: [`willow/fylgja/skills/worktree.md`](willow/fylgja/skills/worktree.md) · [`willow/fylgja/skills/willow-worktree.md`](willow/fylgja/skills/willow-worktree.md)
+Detail: [`willow/fylgja/skills/worktree.md`](../willow/fylgja/skills/worktree.md) · [`willow/fylgja/skills/willow-worktree.md`](../willow/fylgja/skills/worktree.md)
 
 **Distribution:** GitHub Actions deploys on push to `master` — PII scan → deploy to `~/github/SAFE/Applications/<id>/` → Grove notification.
 
@@ -289,13 +289,13 @@ Apps and agents share one manifest format: `app_id`, `name`, `version`, `permiss
 | `~/github/SAFE/Applications/` | `WILLOW_SAFE_ROOT` | User-facing installed apps |
 | `~/github/SAFE/Agents/` | `WILLOW_AGENTS_ROOT` | Deployed agent manifests |
 
-Detail: [`sap/ONBOARDING.md`](sap/ONBOARDING.md) · [`sap/README.md`](sap/README.md)
+Detail: [`sap/ONBOARDING.md`](../sap/ONBOARDING.md) · [`sap/README.md`](../sap/README.md)
 
 ---
 
 ## Fleet topology
 
-Full registry: [`AGENTS.md`](AGENTS.md)
+Full registry: [`AGENTS.md`](../AGENTS.md)
 
 | Agent | Trust | Mandate |
 |-------|-------|---------|
@@ -340,7 +340,7 @@ Grove is **optional** after boot — if unavailable the session continues degrad
 
 A handoff is a sealed session document written at the end of every session. The next run reads it first.
 
-Detail: [`willow/fylgja/skills/handoff.md`](willow/fylgja/skills/handoff.md)
+Detail: [`willow/fylgja/skills/handoff.md`](../willow/fylgja/skills/handoff.md)
 
 Write to `~/github/.willow/handoffs/<agent>/session_handoff-<date>_<agent>.md`. Index via `handoff_rebuild`. A handoff with no open threads is incomplete. A handoff with no capability table is incomplete.
 

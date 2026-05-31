@@ -1,0 +1,8 @@
+# Protected upstream steward clones under worktrees/.
+# cleanup_worktrees.sh skips upstream-* dirs listed here unless you pass
+#   --remove-upstream <dirname>   (repeatable, explicit only)
+#
+# Active (2026-05-31): Emerging-Rule #10, mengram #40
+# Inactive: mcp-memory-service (doobidoo — done unless re-invited)
+upstream-emerging-rule-community
+upstream-mengram
