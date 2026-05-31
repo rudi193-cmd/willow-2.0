@@ -6,16 +6,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2026.05.1] - 2026-05-31
+
+First tagged release of Willow 2.0. Baseline code from the 1.9→2.0 rewrite plus the full quality audit (phases 0–3) and infrastructure hardening completed this sprint. See [`docs/CODE_DIFF_1.9_to_2.0.md`](docs/CODE_DIFF_1.9_to_2.0.md) for the full 1.9→2.0 delta.
+
 ### Added
 
-- CI quality phases 0–2: first-party ruff scope, lint/security jobs, pre-commit, Python 3.11/3.12 matrix, bandit report.
-- `CONTRIBUTING.md`, branch hygiene script, local API docs builder, GitHub Release workflow.
-- IDE install: canonical per-agent `settings.local.json` under `WILLOW_HOME` (symlinked from repo).
+- CI quality phases 0–3: first-party ruff scope, lint/security/pytest jobs, pre-commit config, Python 3.11/3.12 matrix, bandit enforced (HIGH gate on `core sap willow`), coverage floor (`--fail-under=10`), GitHub Release workflow.
+- `CONTRIBUTING.md`, branch hygiene script (`scripts/list_stale_branches.sh`), local API docs builder (`scripts/build_api_docs.sh`).
+- IDE install: canonical per-agent `settings.local.json` under `WILLOW_HOME` (symlinked from repo, never committed).
+- Kart sandbox: `ANTHROPIC_` and `GROQ_` API key prefixes now injected from fleet env file.
 
 ### Changed
 
 - `install_project` symlinks Cursor/Claude local settings to fleet home instead of writing into the repo.
-
-## [2026.05.1]
-
-Baseline 2.0 beta — see git history and [`docs/CODE_DIFF_1.9_to_2.0.md`](docs/CODE_DIFF_1.9_to_2.0.md).
+- `openclaw-sap-gate` pinned to commit `710860045` (eliminates floating-HEAD supply chain risk).
+- Routing intent map updated; `navigate` intent routes to `willow` (coordinator) instead of `jeles`.
+- Branch protection on master requires a status check named `test` (gate job wrapping pytest-matrix).
