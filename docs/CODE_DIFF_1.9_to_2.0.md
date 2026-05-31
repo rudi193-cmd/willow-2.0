@@ -58,7 +58,7 @@ Compared: `github.com/rudi193-cmd/willow-1.9` (master) against `willow-2.0` (wor
 |----------|--------|
 | `docs/ARCHITECTURE.md`, `docs/TECHNICAL_SPEC.md` | Not in 2.0 `docs/` root — live under `archive/docs/` in 2.0 |
 | `docs/machine-path-audit.md`, `docs/reports/*` | Archived or dropped from active docs |
-| `archive/docs/superpowers/specs/*` (many May 2026 specs) | Moved to `archive/archive/docs/superpowers/specs/` |
+| `archive/docs/superpowers/specs/*` (many May 2026 specs) | Moved to `archive/docs/superpowers/specs/` |
 | `sap/sap_mcp_v1.py` | Legacy; 2.0 uses `sap/sap_mcp.py` only (v1 in `archive/legacy/sap/`) |
 | `scripts/migr1_willow17_to_19.py`, `migr2_sap_schema.py`, `migrate_willow_legacy.py` | Migration scripts archived |
 | `core/sean_db.py` | Removed |

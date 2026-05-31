@@ -35,8 +35,13 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
 markers = [
     "slow: marks tests as slow (enterprise-scale, deselect with -m 'not slow')",
+    "unit: fast isolated unit tests",
 ]
 
 [tool.setuptools.packages.find]

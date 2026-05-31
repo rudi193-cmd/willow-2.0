@@ -92,7 +92,7 @@ LAN server:
 
 Boot tools (in order): `fleet_status` → `handoff_latest` → `kb_search` on your task.
 
-Full agent contract: [`willow.md`](../willow.md) · [`sap/ONBOARDING.md`](../sap/ONBOARDING.md)
+Full agent contract: [`CONTRACT.md`](CONTRACT.md) · private full: [`willow.md`](../willow.md) · [`sap/ONBOARDING.md`](../sap/ONBOARDING.md)
 
 **Grove server** — separate repo `safe-app-willow-grove`, module `grove.mcp_local`.
 

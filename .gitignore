@@ -79,5 +79,11 @@ archive/*.db
 # Kart ephemeral scripts (agent_task_submit script_body)
 .kart-scripts/
 
+# Upstream steward clones + local worktrees (gitignored per worktree.md)
+worktrees/
+
+# Ephemeral tracker output (update_tracker.py uses tempfile; ignore strays)
+issue_body.md
+
 # Generated API reference (scripts/build_api_docs.sh)
 docs/api/

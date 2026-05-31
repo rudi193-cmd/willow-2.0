@@ -64,6 +64,31 @@ def _extract_sections(text: str, headings: tuple[str, ...]) -> str:
     return "\n\n".join(chunks).strip()
 
 
+def _fix_repo_root_links(text: str) -> str:
+    """CONTRACT.md lives in docs/ — rewrite repo-root relative links to ../ paths."""
+    import re
+
+    def repl(m: re.Match[str]) -> str:
+        target = m.group(1)
+        if target.startswith(("../", "http", "mailto", "#", "/")):
+            return m.group(0)
+        return f"](../{target})"
+
+    return re.sub(r"\]\(([^)#]+)\)", repl, text)
+
+
+# Stale names in private willow.md — map to files that exist in the public repo.
+_LINK_ALIASES = {
+    "../willow/fylgja/skills/willow-worktree.md": "../willow/fylgja/skills/worktree.md",
+}
+
+
+def _apply_link_aliases(text: str) -> str:
+    for old, new in _LINK_ALIASES.items():
+        text = text.replace(f"]({old})", f"]({new})")
+    return text
+
+
 def _banner(source: Path) -> str:
     today = date.today().isoformat()
     home = Path.home()
@@ -111,7 +136,10 @@ def main() -> int:
 
 *Public snapshot · canonical contract lives in willow-config · ΔΣ=42*
 """
-    OUT_PATH.write_text(_banner(source) + body + footer, encoding="utf-8")
+    OUT_PATH.write_text(
+        _banner(source) + _apply_link_aliases(_fix_repo_root_links(body)) + footer,
+        encoding="utf-8",
+    )
     print(f"wrote {OUT_PATH} ({OUT_PATH.stat().st_size} bytes) from {source}")
     return 0
 

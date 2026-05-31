@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from datetime import datetime
 
 UPSTREAM_INTRO = (
@@ -157,9 +158,18 @@ def main():
     issues = json.loads(issue_result.stdout)
     if issues:
         issue_num = str(issues[0]["number"])
-        with open("issue_body.md", "w", encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", suffix=".md", delete=False
+        ) as f:
             f.write(issue_body)
-        subprocess.run(["gh", "issue", "edit", issue_num, "--repo", REPO, "--body-file", "issue_body.md"], check=True)
+            body_path = f.name
+        try:
+            subprocess.run(
+                ["gh", "issue", "edit", issue_num, "--repo", REPO, "--body-file", body_path],
+                check=True,
+            )
+        finally:
+            os.unlink(body_path)
         print(f"Updated issue #{issue_num}")
     else:
         print("Could not find upstream-tracker issue")
