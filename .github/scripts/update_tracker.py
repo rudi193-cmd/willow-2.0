@@ -5,6 +5,33 @@ import subprocess
 import sys
 from datetime import datetime
 
+UPSTREAM_INTRO = (
+    "## Upstream Contributions\n\n"
+    "These projects power Willow. When their maintainers merge our PRs, they earn a place here.\n\n"
+)
+NEXT_SECTION = "## Contributors to Willow"
+
+
+def sanitize_content(content: str) -> str:
+    """Drop unresolved merge conflict markers so table replacement is reliable."""
+    content = re.sub(r"^<<<<<<<[^\n]*\n", "", content, flags=re.M)
+    content = re.sub(r"^=======\n", "", content, flags=re.M)
+    content = re.sub(r"^>>>>>>>[^\n]*\n", "", content, flags=re.M)
+    return content
+
+
+def replace_upstream_table(content: str, new_table: str) -> str:
+    """Replace the full upstream table through the next ## section (not just contiguous | rows)."""
+    content = sanitize_content(content)
+    start = content.find(UPSTREAM_INTRO)
+    if start == -1:
+        raise RuntimeError("CONTRIBUTORS.md upstream section intro not found")
+    table_start = start + len(UPSTREAM_INTRO)
+    end = content.find(NEXT_SECTION, table_start)
+    if end == -1:
+        raise RuntimeError(f"CONTRIBUTORS.md section {NEXT_SECTION!r} not found")
+    return content[:table_start] + new_table + "\n\n" + content[end:]
+
 AUTHOR = "rudi193-cmd"
 REPO = "rudi193-cmd/willow-2.0"
 
@@ -159,14 +186,7 @@ def main():
         repo = pr["repository"]["nameWithOwner"]
         new_table += f"| [{repo}](https://github.com/{repo}) | {owner} | {pr['title']} | [PR #{pr['number']}]({pr['url']}) closed |\n"
 
-    pattern = (
-        r"\| Project \| Maintainer \| What we contributed \| Status \|\n"
-        r"\|---------\|-----------\|---------------------\|--------\|\n"
-        r"(?:\|.*\|\n)*"
-    )
-    updated, count = re.subn(pattern, new_table, content, count=1)
-    if count != 1:
-        raise RuntimeError("CONTRIBUTORS.md upstream table header not found — regex did not match")
+    updated = replace_upstream_table(content, new_table)
 
     with open("CONTRIBUTORS.md", "w", encoding="utf-8") as f:
         f.write(updated)
