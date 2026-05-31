@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from pathlib import Path
 
 from willow.fylgja.project_env import (
@@ -318,7 +317,10 @@ def install_project(
 
 def build_claude_hooks_block(package_root: Path) -> dict:
     """Claude global hooks using unified hook runner (absolute paths for ~/.claude)."""
-    cmd = lambda m: hook_python_command(package_root, "claude", m)
+
+    def cmd(m):
+        return hook_python_command(package_root, "claude", m)
+
     return {
         "SessionStart": [
             {"hooks": [{"type": "command", "command": cmd("session_start"),

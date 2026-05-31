@@ -72,8 +72,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - python-version: "3.10"
-            with-coverage: false
+          # openclaw-sap-gate requires Python >=3.11 (see requirements.txt)
           - python-version: "3.11"
             with-coverage: true
           - python-version: "3.12"
