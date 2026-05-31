@@ -109,3 +109,8 @@ def test_install_project_writes_agent_config(tmp_path, monkeypatch):
     assert (repo / ".willow" / "active-agent").read_text().strip() == "hanuman"
     assert (repo / ".cursor" / "hooks.json").is_symlink()
     assert (repo / ".mcp.json").is_symlink()
+    settings_link = repo / ".cursor" / "settings.local.json"
+    assert settings_link.is_symlink()
+    canon = wh / "agents" / "hanuman" / "settings.local.json"
+    assert canon.is_file()
+    assert settings_link.resolve() == canon.resolve()
