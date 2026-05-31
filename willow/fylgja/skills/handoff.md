@@ -72,14 +72,27 @@ Q17: "What is the next single bite?"
      Set `compact_receipt` to `{"tokens_before": N, "tokens_after": M, "turns_dropped": K}` if
      context was compacted this session, otherwise `null`.
 
-4. **Write FRANK ledger entry** — call `ledger_write` with `event_type="check_in"`,
+4. **Write markdown file** — submit a Kart task using `script_body` to call
+   `willow.fylgja.handoff_write.write_session_handoff(agent, body)`, where `agent` is your
+   agent name and `body` is the full handoff text drafted in step 2. This writes the
+   canonical v2 YAML frontmatter and body to
+   `~/.willow/handoffs/{agent}/session_handoff-{date}{letter}_{agent}.md`.
+   Do NOT write manually to `docs/handoffs/` — that directory is deprecated and not indexed.
+   Example script_body:
+   ```python
+   from willow.fylgja.handoff_write import write_session_handoff
+   path = write_session_handoff("willow", """# HANDOFF: ...\n...""")
+   print(path)
+   ```
+
+5. **Write FRANK ledger entry** — call `ledger_write` with `event_type="check_in"`,
    `summary`, `shipped` (list), `open_decisions` (list), `atoms_written` (every `kb_ingest`
    ID this session — required if any), `gaps_flagged`, `next_bite` (Q17 verbatim).
 
-5. **Rebuild DB** — call `handoff_rebuild`. This re-indexes all KB handoff atoms so the
+6. **Rebuild DB** — call `handoff_rebuild`. This re-indexes all KB handoff atoms so the
    next session's `handoff_latest` call returns current state.
 
-6. **Confirm** — report the KB atom ID and Q17.
+7. **Confirm** — report the KB atom ID, markdown file path, and Q17.
 
 ## Rules
 
@@ -92,4 +105,7 @@ Q17: "What is the next single bite?"
 - Never skip `handoff_rebuild` — the next session reads from that index.
 - Never skip `ledger_write` — startup reads it at boot. A missing entry means the next
   session starts blind.
+- Never skip step 4 (markdown write) — `handoff_latest` uses both KB and SQLite markdown index;
+  without the file, the next session may get a stale or empty result.
+- Do NOT write to `docs/handoffs/` — that directory is deprecated and not scanned by the indexer.
 - Do NOT write to `~/Ashokoa/` — that path does not exist on this machine.
