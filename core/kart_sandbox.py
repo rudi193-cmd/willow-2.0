@@ -220,6 +220,29 @@ def task_allows_network(task_text: str) -> bool:
     return any(line.strip() == _ALLOW_NET_DIRECTIVE for line in task_text.splitlines())
 
 
+def _parse_fleet_env_file(path: Path, prefixes: tuple[str, ...]) -> dict[str, str]:
+    """Parse a shell KEY=VALUE env file. Skips comments and blank lines.
+    Only includes keys matching prefixes. Strips surrounding quotes from values."""
+    result: dict[str, str] = {}
+    try:
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key = key.strip()
+            if not key or not key.startswith(prefixes):
+                continue
+            val = val.strip()
+            if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
+                val = val[1:-1]
+            if val:
+                result[key] = val
+    except Exception:
+        pass
+    return result
+
+
 def kart_env(root: Path | None = None) -> dict[str, str]:
     repo = root or willow_repo_root()
     cfg = load_sandbox_config(repo)
@@ -234,6 +257,14 @@ def kart_env(root: Path | None = None) -> dict[str, str]:
     for key, val in os.environ.items():
         if key.startswith(prefixes):
             env[key] = val
+
+    # Supplement with fleet env file so API keys (ANTHROPIC_API_KEY, GROQ_API_KEY, …)
+    # reach bwrap tasks even when the calling process (MCP server, kart worker) didn't
+    # inherit them from the user's shell. os.environ values take priority.
+    _fleet_env_path = Path.home() / "github" / ".willow" / "env"
+    for k, v in _parse_fleet_env_file(_fleet_env_path, prefixes).items():
+        if k not in env:
+            env[k] = v
 
     # Resolved repo wins over inherited env (MCP may pass $HOME or a stale path).
     if repo:

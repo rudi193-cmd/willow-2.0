@@ -35,6 +35,12 @@ class TestSafeAgents(unittest.TestCase):
         perms = permissions_for_agent("willow")
         self.assertIn("handoff_rebuild", perms)
 
+    def test_willow_gets_intake_and_jeles(self):
+        perms = permissions_for_agent("willow")
+        self.assertIn("intake", perms)
+        self.assertIn("jeles_fetch", perms)
+        self.assertNotIn("fleet_admin", perms)
+
     def test_skirnir_gets_handoff_rebuild(self):
         perms = permissions_for_agent("skirnir")
         self.assertIn("handoff_rebuild", perms)
