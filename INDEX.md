@@ -165,14 +165,12 @@
 | `.ci-willow` |
 | `.kart-scripts` |
 | `.pre-commit-config.yaml` |
-| `Ashokoa` |
 | `CHANGELOG.md` |
 | `CONTRIBUTING.md` |
 | `agents/heimdallr` |
 | `agents/loki` |
 | `agents/willow` |
 | `apps/law-gazelle` |
-| `dashboard-fresh` |
 | `docs/.nojekyll` |
 | `docs/AGENT_IDENTITY.md` |
 | `docs/LANDING_DESIGN.md` |
@@ -190,7 +188,6 @@
 | `docs/kb` |
 | `docs/static` |
 | `docs/templates` |
-| `personal` |
 | `sap/MCP_SPEC.lock.json` |
 | `sap/adapters` |
 | `sap/mcp_enrich.py` |
