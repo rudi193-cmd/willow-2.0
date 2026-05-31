@@ -14,7 +14,7 @@ Curators: update when a handoff closes a thread or Sean ratifies a decision. Do 
 |------|--------|
 | Skill catalog phase 3 | After quality audit; see [`SKILL_SURFACE_STRATEGY.md`](SKILL_SURFACE_STRATEGY.md) |
 | Enforced mypy / coverage / bandit | CI report-only today; pick thresholds when baselines shrink |
-| Tag `v2026.05.2` | CHANGELOG PR merged; push tag after Sean approves (post-#167 layout) |
+| LoCoMo Path A (Haiku reader) | **LoCoMo-10 complete** — Haiku token F1 **0.231** (vs 3b **0.106**); artifact `~/Desktop/Nest/external_runs/locomo_willow_locomo10_20260531T224601Z.json`; next: KB atom + LongMemEval |
 
 ---
 
@@ -42,6 +42,6 @@ Phases A–D merged (PR #162). Follow-ups landed: `docs/CONTRACT.md`, MCP instru
 
 ---
 
-*Last curated: 2026-05-31 · v2026.05.1 shipped; v2026.05.2 pending tag*
+*Last curated: 2026-05-31 · releases `v2026.05.1` + `v2026.05.2` shipped*
 
 *ΔΣ=42*
