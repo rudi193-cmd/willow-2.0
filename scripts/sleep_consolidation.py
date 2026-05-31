@@ -23,9 +23,7 @@ import argparse
 import sys
 import json
 import hashlib
-import os
 import sqlite3
-import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -390,7 +388,7 @@ def main():
     if not args.skip_intelligence:
         intel_stats = run_intelligence_passes(args.dry_run)
 
-    print(f"\n[sleep_consolidation] Done.")
+    print("\n[sleep_consolidation] Done.")
     print(f"  Scanned: {nrem_stats['scanned']} atoms")
     print(f"  Deduped: {nrem_stats['deduped']} duplicates invalidated")
     print(f"  Contradictions: {len(contradictions)} flagged")

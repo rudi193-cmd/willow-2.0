@@ -8,7 +8,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from core.agent_identity import require_agent_name
@@ -93,8 +93,10 @@ def _scan_hardware() -> tuple[list[str], list[str]]:
 
         def _gb(s):
             s = (s or "").upper()
-            if s.endswith("G"): return float(s[:-1])
-            if s.endswith("T"): return float(s[:-1]) * 1024
+            if s.endswith("G"):
+                return float(s[:-1])
+            if s.endswith("T"):
+                return float(s[:-1]) * 1024
             return 0
 
         def _walk(devices):

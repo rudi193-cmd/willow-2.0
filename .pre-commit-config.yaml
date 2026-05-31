@@ -1,0 +1,38 @@
+# Willow first-party quality hooks — matches CI lint + path-guard (Phase 2).
+# Install: pip install -e ".[dev]" && pre-commit install && pre-commit install --hook-type pre-push
+minimum_pre_commit_version: "3.5.0"
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.0
+    hooks:
+      - id: ruff
+        files: ^(core|sap|willow|tests|scripts)/
+        args: [--fix]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        exclude: ^worktrees/
+      - id: check-toml
+      - id: detect-private-key
+
+  - repo: local
+    hooks:
+      - id: path-guard
+        name: path guard (no legacy home paths)
+        entry: bash scripts/path_guard.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: mypy-report
+        name: mypy (report-only)
+        entry: bash scripts/mypy_report.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

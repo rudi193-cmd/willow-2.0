@@ -69,7 +69,7 @@ class TestNoticeWitness:
         with patch("core.notice._NOTICES_LOG", log):
             notice("ssn 123-45-6789", session_id="sess-abc", surface="prompt")
         assert log.exists()
-        lines = [json.loads(l) for l in log.read_text().strip().splitlines()]
+        lines = [json.loads(line) for line in log.read_text().strip().splitlines()]
         assert len(lines) == 1
         assert lines[0]["type"] == "id:ssn"
         assert lines[0]["surface"] == "prompt"

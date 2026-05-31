@@ -158,13 +158,13 @@ def friendly_text(raw: str) -> str:
     # Collapse multiple blank lines
     result = []
     prev_blank = False
-    for l in lines:
-        if l.strip() == "":
+    for line in lines:
+        if line.strip() == "":
             if not prev_blank:
-                result.append(l)
+                result.append(line)
             prev_blank = True
         else:
-            result.append(l)
+            result.append(line)
             prev_blank = False
 
     return "\n".join(result).strip()

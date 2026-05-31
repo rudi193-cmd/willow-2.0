@@ -16,7 +16,6 @@ import os
 import time
 import urllib.error
 import urllib.request
-from typing import Optional
 
 _BASE   = "https://api.anthropic.com/v1"
 _BETA   = "managed-agents-2026-04-01"

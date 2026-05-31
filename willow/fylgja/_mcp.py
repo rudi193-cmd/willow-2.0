@@ -228,7 +228,6 @@ def _subprocess_call(tool_name: str, arguments: dict, timeout: int) -> dict:
     env.setdefault("WILLOW_PG_DB", "willow_20")
     env.setdefault("WILLOW_PG_USER", os.environ.get("USER", ""))
 
-    import threading
 
     def _read_line(stream, wait_secs) -> str | None:
         """Read one non-empty line from stream with a wall-clock timeout."""

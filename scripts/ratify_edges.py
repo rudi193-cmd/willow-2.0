@@ -90,7 +90,7 @@ def main():
         else:
             deferred.append(e["id"])
 
-    print(f"\nValidation summary:")
+    print("\nValidation summary:")
     print(f"  → promote (both atoms live):  {len(promote_ids)}")
     print(f"  → deferred (atom not in PG):  {len(deferred)}  (left as 'proposed')")
 

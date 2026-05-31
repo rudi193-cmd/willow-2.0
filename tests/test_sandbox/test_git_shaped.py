@@ -84,7 +84,7 @@ def test_json_roundtrip(tmp_path: Path) -> None:
 def test_preview_does_not_mutate_original() -> None:
     c = create_issue("p")
     advance(c, ShapeState.draft, actor="x")
-    orig = copy.deepcopy(c)
+    copy.deepcopy(c)
     pv = preview_advance(c, ShapeState.open, actor="y", note="peek")
     assert c.state == ShapeState.draft
     assert len(c.history) == 1

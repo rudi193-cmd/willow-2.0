@@ -2,7 +2,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-from sap.handoff_index import handoff_select_sql, select_latest_handoff
+from sap.handoff_index import handoff_select_sql
 from willow.fylgja.install_project import (
     build_claude_hooks_block,
     install_project,

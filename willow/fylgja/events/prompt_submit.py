@@ -96,12 +96,13 @@ def detect_feedback(prompt: str) -> list[dict]:
 
 def _read_anchor_state() -> dict:
     try:
-        import sys as _sys, os as _os
+        import sys as _sys
+        import os as _os
         _root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "../../../.."))
         if _root not in _sys.path:
             _sys.path.insert(0, _root)
         from core import soil
-        record = soil.get(f"agent/anchor", AGENT)
+        record = soil.get("agent/anchor", AGENT)
         if record:
             return record
     except Exception:
@@ -111,12 +112,13 @@ def _read_anchor_state() -> dict:
 
 def _write_anchor_state(state: dict) -> None:
     try:
-        import sys as _sys, os as _os
+        import sys as _sys
+        import os as _os
         _root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "../../../.."))
         if _root not in _sys.path:
             _sys.path.insert(0, _root)
         from core import soil
-        soil.put(f"agent/anchor", AGENT, state)
+        soil.put("agent/anchor", AGENT, state)
         return
     except Exception:
         pass
@@ -376,7 +378,8 @@ def _inject_stabilization_brief() -> None:
     if not is_first_turn():
         return
     try:
-        import sys as _sys, os as _os
+        import sys as _sys
+        import os as _os
         _root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "../../../.."))
         if _root not in _sys.path:
             _sys.path.insert(0, _root)
@@ -397,7 +400,7 @@ def _inject_stabilization_brief() -> None:
                          (f" (+{len(invalidated)-4} more)" if len(invalidated) > 4 else ""))
         for assumption in brief.get("do_not_assume", [])[:3]:
             lines.append(f"  Do not assume: {assumption}")
-        lines.append(f"  Full brief: SOIL willow/stabilization_brief/latest")
+        lines.append("  Full brief: SOIL willow/stabilization_brief/latest")
         print("\n".join(lines))
         # Clear flag — one-time injection per push
         soil.put("willow/flags", "stabilization_needed", {**flag, "value": False, "injected_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()})

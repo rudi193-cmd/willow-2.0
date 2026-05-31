@@ -218,7 +218,7 @@ def test_kb_search_latency_benchmark(pg):
     for i in range(N_QUERIES):
         q = topics[i % len(topics)]
         t_s = time.perf_counter()
-        rows = pg.knowledge_search(q, limit=10)
+        pg.knowledge_search(q, limit=10)
         latencies.append((time.perf_counter() - t_s) * 1000)  # ms
 
     latencies.sort()

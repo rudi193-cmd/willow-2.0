@@ -433,8 +433,6 @@ def hybrid_search(
     from core.pg_bridge import embed  # type: ignore
 
     ranked_lists: list[list[dict]] = []
-    vec_available = False
-    bm25_available = False
 
     # --- Leg 1: pgvector ANN ---
     try:
@@ -445,7 +443,6 @@ def hybrid_search(
             )
             if vec_rows:
                 ranked_lists.append(vec_rows)
-                vec_available = True
     except Exception:
         pass  # Ollama down or table issue — continue to BM25
 
@@ -458,7 +455,6 @@ def hybrid_search(
             )
             if bm25_rows:
                 ranked_lists.append(bm25_rows)
-                bm25_available = True
         except ImportError:
             pass  # rank_bm25 not installed
         except Exception:

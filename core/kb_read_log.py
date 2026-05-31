@@ -8,7 +8,7 @@ digest source and task briefer. Stored in SOIL — non-blocking, never raises.
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 from core import soil

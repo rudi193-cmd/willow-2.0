@@ -6,7 +6,6 @@ import tempfile
 from pathlib import Path
 
 from sap.mai import tools as mai_tools
-from sap.mai import parser
 
 
 def _list_mai_tools():

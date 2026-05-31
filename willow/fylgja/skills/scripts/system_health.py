@@ -394,7 +394,7 @@ LIMIT 5;
         for row in rows:
             parts = row.split("\t")
             if len(parts) >= 4:
-                tbl, dead, live, pct = parts[0], parts[1], parts[2], parts[3]
+                tbl, dead, _live, pct = parts[0], parts[1], parts[2], parts[3]
                 worst.append(f"  {tbl}: {dead} dead tuples ({pct}%)")
                 if float(pct) > 20:
                     needs_vacuum = True
@@ -456,7 +456,7 @@ def check_fork_audit(repo_path: Path) -> Check:
                     f"  [{age_days:3d}d]  {branch:<40}  {head}{flag}"
                 )
 
-        stale_count = sum(1 for l in lines_out if "STALE" in l)
+        stale_count = sum(1 for line in lines_out if "STALE" in line)
         level  = WARN if stale_count > 0 else HEALTHY
         detail = f"{len(forks)} worktree(s), {stale_count} stale"
         extra  = "ALL WORKTREES:\n" + "\n".join(lines_out)

@@ -6,6 +6,7 @@
 
 | Path | Description |
 |------|-------------|
+| `.mcp.json` | MCP server configuration (per-machine, gitignored) |
 | `AGENTS.md` | Agent registry and personas |
 | `CLAUDE.md` | Claude Code pointer → willow.md |
 | `GEMINI.md` | Gemini runtime pointer → willow.md |
@@ -95,6 +96,7 @@
 | `app.py` | Application entry point |
 | `bin/` | Executables |
 | `core/` | Shared core utilities — pg_bridge, config, helpers |
+| `gaps.db` | SQLite gaps tracking database |
 | `migrations/` | Database migrations |
 | `pyproject.toml` | Python project config |
 | `requirements.txt` | Python dependencies |
@@ -147,6 +149,12 @@
 | `tests/` | Test suite |
 | `wiki/` | Wiki content |
 
+## External
+
+| Path | Description |
+|------|-------------|
+| `awesome-claude-skills/` | Submodule — community Claude skills collection |
+
 ## Archive (deprecated)
 
 | Path | Description |
@@ -157,9 +165,15 @@
 
 | Path |
 |------|
+| `.ci-willow` |
+| `.kart-scripts` |
+| `.pre-commit-config.yaml` |
+| `Ashokoa` |
 | `agents/heimdallr` |
 | `agents/loki` |
 | `agents/willow` |
+| `apps/law-gazelle` |
+| `dashboard-fresh` |
 | `docs/.nojekyll` |
 | `docs/AGENT_IDENTITY.md` |
 | `docs/LANDING_DESIGN.md` |
@@ -177,6 +191,8 @@
 | `docs/kb` |
 | `docs/static` |
 | `docs/templates` |
+| `mcp-memory-service` |
+| `personal` |
 | `sap/MCP_SPEC.lock.json` |
 | `sap/adapters` |
 | `sap/mcp_enrich.py` |
@@ -185,4 +201,5 @@
 | `sap/mcp_registry.json` |
 | `sap/spec` |
 | `setup.sh` |
+| `stubs` |
 | `willow/skill-catalog.jsonl` |

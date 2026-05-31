@@ -186,7 +186,8 @@ def _is_isolated_directory() -> bool:
 
 def main():
     if _is_isolated_directory():
-        import sys as _sys; _sys.exit(0)
+        import sys as _sys
+        _sys.exit(0)
 
     _t0 = _time.monotonic()
 

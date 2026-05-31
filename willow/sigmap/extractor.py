@@ -258,7 +258,7 @@ def _extract_regex(source: str, patterns: list[re.Pattern]) -> list[str]:
     """Extract signature-like strings using a list of regex patterns."""
     sigs = []
     seen = set()
-    lines = source.splitlines()
+    source.splitlines()
     for pat in patterns:
         for m in pat.finditer(source):
             line_start = source.rfind("\n", 0, m.start()) + 1

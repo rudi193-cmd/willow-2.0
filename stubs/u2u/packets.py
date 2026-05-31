@@ -1,0 +1,2 @@
+class PacketType:
+    NOTE: object

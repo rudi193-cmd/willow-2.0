@@ -155,10 +155,10 @@ class TestFallbackSearchCascade:
 
     def test_empty_query_safe(self):
         pg = _make_pg()
-        with patch("willow.sigmap.fallback._level1_pgvector", return_value=[]) as mock1, \
-             patch("willow.sigmap.fallback._level2_hybrid", return_value=[]) as mock2, \
-             patch("willow.sigmap.fallback._level3_ast_symbol", return_value=[]) as mock3, \
-             patch("willow.sigmap.fallback._level4_ilike", return_value=[]) as mock4:
+        with patch("willow.sigmap.fallback._level1_pgvector", return_value=[]), \
+             patch("willow.sigmap.fallback._level2_hybrid", return_value=[]), \
+             patch("willow.sigmap.fallback._level3_ast_symbol", return_value=[]), \
+             patch("willow.sigmap.fallback._level4_ilike", return_value=[]):
             results = fallback_search("", pg)
         assert results == []
 
@@ -178,7 +178,7 @@ class TestFallbackSearchCascade:
         with patch("willow.sigmap.fallback._level1_pgvector", return_value=[]) as mock1, \
              patch("willow.sigmap.fallback._level2_hybrid", return_value=[]) as mock2, \
              patch("willow.sigmap.fallback._level3_ast_symbol", return_value=level3_results), \
-             patch("willow.sigmap.fallback._level4_ilike", return_value=[]) as mock4:
+             patch("willow.sigmap.fallback._level4_ilike", return_value=[]):
 
             results = fallback_search("test", pg, start_level=3, threshold=3)
 
@@ -208,8 +208,8 @@ class TestFallbackSearchCascade:
 
         with patch("willow.sigmap.fallback._level1_pgvector", return_value=[]), \
              patch("willow.sigmap.fallback._level2_hybrid", return_value=level2_results), \
-             patch("willow.sigmap.fallback._level3_ast_symbol", return_value=[]) as mock3, \
-             patch("willow.sigmap.fallback._level4_ilike", return_value=[]) as mock4:
+             patch("willow.sigmap.fallback._level3_ast_symbol", return_value=[]), \
+             patch("willow.sigmap.fallback._level4_ilike", return_value=[]):
 
             results = fallback_search("test", pg, threshold=0)
 

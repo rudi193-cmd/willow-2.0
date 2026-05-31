@@ -2,7 +2,6 @@
 """One-shot: rewrite live willow-2.0 / willow_20 wiring to willow-2.0 / willow_20."""
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 HOME = Path.home()

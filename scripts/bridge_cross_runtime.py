@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from session_indexer import parse_session, extract_text
+from session_indexer import parse_session
 
 CLAUDE_ROOT = Path.home() / ".claude" / "projects" / "-home-sean-campbell-willow-2-0"
 CURSOR_ROOT = (

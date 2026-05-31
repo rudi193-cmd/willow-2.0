@@ -61,7 +61,7 @@ class TestAppend:
                 session_id="sess123",
                 agent="hanuman",
             )
-        lines = [l for l in p.read_text().splitlines() if l.strip()]
+        lines = [line for line in p.read_text().splitlines() if line.strip()]
         assert len(lines) == 1
         entry = json.loads(lines[0])
         assert entry["type"] == ledger.OBSERVATION
@@ -74,7 +74,7 @@ class TestAppend:
             for i in range(5):
                 ledger_mod.append(f"entry {i}", entry_type=ledger.ACTION, agent="hanuman")
             p = ledger_mod._ledger_path("hanuman")
-        lines = [l for l in p.read_text().splitlines() if l.strip()]
+        lines = [line for line in p.read_text().splitlines() if line.strip()]
         assert len(lines) == 5
 
     def test_content_is_truncated_at_2000(self, tmp_path):

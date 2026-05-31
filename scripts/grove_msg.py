@@ -92,7 +92,7 @@ def cmd_watch(args):
 
     try:
         while True:
-            ready = select.select([conn], [], [], 30)
+            select.select([conn], [], [], 30)
             conn.poll()
             while conn.notifies:
                 conn.notifies.pop()

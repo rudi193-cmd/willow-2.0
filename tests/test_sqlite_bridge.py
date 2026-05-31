@@ -160,7 +160,7 @@ def test_knowledge_search_tier_filter(db):
     db.ingest_atom("Frontier atom", "f summary", tier="frontier")
     db.ingest_atom("Canonical atom", "c summary", tier="canonical")
     frontier = db.knowledge_search("atom", tier="frontier")
-    ids = [r["id"] for r in frontier]
+    [r["id"] for r in frontier]
     assert all(db.knowledge_search("atom", tier="frontier")[0]["tier"] == "frontier" for r in frontier)
     canonical = db.knowledge_search("atom", tier="canonical")
     assert all(r["tier"] == "canonical" for r in canonical)

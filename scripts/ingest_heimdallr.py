@@ -53,7 +53,7 @@ def main():
                     summary = paras[0][:600] if paras else text[:400]
                 summary = summary[:800]
 
-                gaps = _extract_section(text, "## Gaps") or _extract_section(text, "## 4. Open Flags")
+                _extract_section(text, "## Gaps") or _extract_section(text, "## 4. Open Flags")
 
                 atom_id = bridge.ingest_atom(
                     title=f"[Heimdallr] {title}",

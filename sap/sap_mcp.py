@@ -44,7 +44,6 @@ from sap.handoff_index import (
     extract_next_bite,
     handoff_select_sql,
     select_best_handoff,
-    select_latest_handoff,
 )
 from typing import AsyncIterator
 
@@ -62,7 +61,7 @@ if _core_str not in sys.path:
     sys.path.insert(1, _core_str)
 
 # ── Version ───────────────────────────────────────────────────────────────────
-from core.version import VERSION, sync_installed_version
+from core.version import VERSION
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -589,7 +588,9 @@ async def fleet_restart(app_id: str) -> dict:
     logger.info("[w2] fleet_restart app_id=%s — process exiting", app_id)
     import threading
     def _delayed_exit():
-        import time; time.sleep(0.2)
+        import time
+
+        time.sleep(0.2)
         os._exit(0)
     threading.Thread(target=_delayed_exit, daemon=True).start()
     return {
@@ -4109,7 +4110,6 @@ async def session_review(
         # Tension scan inline if requested
         if run_tension:
             try:
-                tensions = []
                 atoms = pg.knowledge_search("", limit=30)
                 seen: set = set()
                 for atom in atoms[:10]:

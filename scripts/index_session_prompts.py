@@ -94,7 +94,6 @@ def main():
     pg = PgBridge()
     pg._ensure_conn()
     ingested = errors = 0
-    import uuid as _uuid
 
     for key, session_id, prompt_text in candidates:
         try:

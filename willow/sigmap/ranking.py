@@ -135,7 +135,7 @@ def rank(
 
     query_tokens = tokenize(query)
     intent = _detect_intent(query_tokens)
-    query_token_set = set(query_tokens)
+    set(query_tokens)
 
     # Build reverse graph for hub suppression
     rev_graph: dict[str, list[str]] = {}
@@ -145,13 +145,13 @@ def rank(
                 rev_graph.setdefault(dst, []).append(src)
 
     # Build path-to-entry index for graph traversal
-    path_index = {e["path"]: e for e in entries}
+    {e["path"]: e for e in entries}
 
     scored = []
     for entry in entries:
         path = entry.get("path", "")
         sigs = entry.get("sigs", [])
-        tier = entry.get("tier", "balanced")
+        entry.get("tier", "balanced")
 
         # --- Vendor / node_modules → always 0.0 ---
         if _is_vendor(path):
