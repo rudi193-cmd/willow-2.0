@@ -55,13 +55,13 @@ _AGENT_ROSTER = _agent_roster()
 INTENT_CONFIDENCE_THRESHOLD = float(os.environ.get("WILLOW_INTENT_THRESHOLD", "0.35"))
 
 _INTENT_AGENT_MAP: dict[str, str] = {
-    "debug":     "ganesha",   # Diagnostics — debugging, error analysis
-    "explain":   "willow",    # Primary interface — explanations and KB queries
-    "refactor":  "hanz",      # Code — implementation, refactoring
-    "review":    "hanz",      # Code — review and audit
-    "test":      "hanz",      # Code — test writing
-    "integrate": "kart",      # Infrastructure — wiring, integration work
-    "navigate":  "jeles",     # Librarian — search, find, locate
+    "debug":     "heimdallr",  # Infrastructure/builds — debugging, error analysis
+    "explain":   "willow",     # Primary interface — explanations and KB queries
+    "refactor":  "heimdallr",  # Infrastructure/builds — implementation, refactoring
+    "review":    "loki",       # Audit/ledger — review and audit
+    "test":      "heimdallr",  # Infrastructure/builds — test writing
+    "integrate": "kart",       # Task execution — wiring, integration work
+    "navigate":  "willow",     # Primary coordinator — orient, plan, what's next
 }
 
 _rules_cache: Optional[list] = None
