@@ -1,8 +1,6 @@
-@markdownai v1.0
-
 # docs/handoffs/ — DEPRECATED
 
-This directory is NOT the active handoff location. Do not write session handoffs here.
+This directory is **not** the active handoff location. Do not write session handoffs here.
 
 ## Active locations
 
@@ -11,14 +9,12 @@ This directory is NOT the active handoff location. Do not write session handoffs
 | Session handoffs (v2) | `~/.willow/handoffs/{agent}/` |
 | Flat continuity anchors | `~/.willow/handoffs/{agent}-{date}.md` |
 
-## Files in this directory
+## Historical files
 
-The files here are old-format or topic handoffs from earlier in the project. They do not conform to the v2 schema and will not be surfaced by `handoff_latest`. They are kept for historical reference only.
+Pre-v2 session copies live in [`../../archive/docs/handoffs/`](../../archive/docs/handoffs/). Not indexed by `handoff_latest`.
+
+`.gitignore` blocks new `docs/handoffs/*` except this README.
 
 ## v2 schema
 
-See `willow/fylgja/skills/boot.md` — "Handoff authoring — v2 schema" section.
-
-Required frontmatter: `format: v2`, `session: YYYY-MM-DD{letter}`, `agent:`, `date:`, `runtime:`.
-Required sections: `## What I Now Understand`, `## Open Threads`, `## What We Agreed On`, `## Questions`.
-Required: `Q17: <next bite>` inside `## Questions`.
+See `willow/fylgja/skills/handoff.md`.

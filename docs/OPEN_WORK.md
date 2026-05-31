@@ -33,14 +33,9 @@ Curators: update when a handoff closes a thread or Sean ratifies a decision. Do 
 
 ---
 
-## Documentation hygiene (this effort)
+## Documentation hygiene
 
-| Phase | Status |
-|-------|--------|
-| A — Index hygiene, superpowers → archive | In PR |
-| B — Agent entry collapse | In PR |
-| C — Handoff/gap lifecycle + this page | In PR |
-| D — Wiki refresh vs `master` | In PR |
+Phases A–D landed on `feat/doc-architecture` (PR #162). Follow-up: public `docs/CONTRACT.md`, MCP instruction split, `docs/handoffs/` archived + gitignored.
 
 ---
 
