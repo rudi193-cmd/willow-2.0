@@ -157,7 +157,7 @@ Already partially there:
 | **1** | `willow/skill-catalog.jsonl` — **50** high-value skills | babysit, loop, deploy, review, handoff, tdd, … with class + twin path |
 | **2** | `scripts/skill_catalog_scan.py` — scan path, emit JSONL | `python scripts/skill_catalog_scan.py --write-seed` refreshes seed; full tree → 800+ rows |
 | **3** | Steward hook: weekly ClawHub/awesome delta → Grove `#upstream` | **Done** — `willow.sh skills steward run-once` |
-| **4** | `skill_adopt.py` — import one SKILL.md → draft Fylgja + class | Semi-automated fork |
+| **4** | `scripts/skill_adopt.py` — import one SKILL.md → draft Fylgja + class | Scaffold — `willow/fylgja/skills/drafts/` |
 | **5** | Agent policy in `safe_agents` / manifest | Block class E at runtime |
 
 **Not in scope:** Mirroring all of ClawHub. **In scope:** Willow becomes the **execution OS** that external skills must target.
