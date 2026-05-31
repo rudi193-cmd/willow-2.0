@@ -11,4 +11,4 @@ starlette>=0.37.0
 uvicorn>=0.30.0
 aiohttp>=3.13.5
 psutil
-openclaw-sap-gate @ git+https://github.com/rudi193-cmd/openclaw-sap-gate.git
+openclaw-sap-gate @ git+https://github.com/rudi193-cmd/openclaw-sap-gate.git@710860045db25bee4b3fb2cfe5831ad04661c813
