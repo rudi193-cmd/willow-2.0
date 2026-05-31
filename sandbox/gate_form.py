@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 @dataclass
 class NewFeatureGate:
-    """Answers required by docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md §4."""
+    """Answers required by archive/docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md §4."""
 
     state_touch: str  # which state 0–7 this moves
     open_pr_equivalent: str

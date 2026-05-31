@@ -2,14 +2,21 @@
 
 b17: AGNTW · ΔΣ=42
 
-**Contract:** [`willow.md`](willow.md) — read it first. Boot: run `/boot` — steps in [`willow/fylgja/skills/boot.md`](willow/fylgja/skills/boot.md).
+**Contract:** [`willow.md`](willow.md) — read first. **Boot:** [`willow/fylgja/skills/boot.md`](willow/fylgja/skills/boot.md) (`/boot`).
 
-**IDE wiring:** `./willow agents active <id>` then `./willow agents install <id> --ide all` — one agent per session; see [`docs/AGENT_IDENTITY.md`](docs/AGENT_IDENTITY.md). Check rails: `./willow agents check`.
+| Need | Doc |
+|------|-----|
+| Doc map (humans + agents) | [`docs/INDEX.md`](docs/INDEX.md) |
+| MCP tools (annotated registry) | [`sap/mcp_registry.json`](sap/mcp_registry.json) |
+| MCP onboarding (thin) | [`sap/ONBOARDING.md`](sap/ONBOARDING.md) |
+| Agent identity / IDE wiring | [`docs/AGENT_IDENTITY.md`](docs/AGENT_IDENTITY.md) |
+| Powers router | [`willow/fylgja/powers/registry.json`](willow/fylgja/powers/registry.json) |
+| Open backlog (not blockers) | [`docs/OPEN_WORK.md`](docs/OPEN_WORK.md) |
 
-**Claude Code:** `python3 -m willow.fylgja.install` wires hooks to `~/.claude/settings.json`.
+**IDE:** `./willow agents active <id>` then `./willow agents install <id> --ide all` · check: `./willow agents check`
 
-**Branding:** [`docs/BRANDING.md`](docs/BRANDING.md) (`b17: … · ΔΣ=42`; SAP uses `b20: SAPMCP2`).
+**Claude Code hooks:** `python3 -m willow.fylgja.install`
 
-**Documentation templates:** [`docs/templates/README.md`](docs/templates/README.md) — dev log, ADR, handoff, task, release (copy templates; do not edit `.template.md` files in place).
+Do not duplicate boot steps or tool tables here — they drift. Change `willow.md` or `boot.md` instead.
 
 *ΔΣ=42*

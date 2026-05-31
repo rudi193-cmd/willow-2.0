@@ -1,0 +1,49 @@
+# Open work (curated)
+
+b17: OPWORK · ΔΣ=42
+
+**Not install blockers.** This page tracks fleet backlog items that are open but not broken in `master`. For engineering gaps (something misleads or fails today), see [`KNOWN_GAPS.md`](KNOWN_GAPS.md). For human ratifications (R1–R9), see [`../wiki/active-decisions.md`](../wiki/active-decisions.md).
+
+Curators: update when a handoff closes a thread or Sean ratifies a decision. Do not dump raw handoff files here.
+
+---
+
+## Near term
+
+| Item | Notes |
+|------|--------|
+| Skill catalog phase 3 | After quality audit; see [`SKILL_SURFACE_STRATEGY.md`](SKILL_SURFACE_STRATEGY.md) |
+| Enforced mypy / coverage / bandit | CI report-only today; pick thresholds when baselines shrink |
+| First GitHub Release `v2026.05.1` | Update `CHANGELOG` `[Unreleased]` first; tag matches `VERSION` |
+| SAFE manifest failures | `ratatosk`, `ask-jeles`, `utety-chat` still failing `fleet_status` |
+| Agent IDE rebound verify | Pick one agent, `./willow agents install <id> --ide all`, fresh IDE session |
+
+---
+
+## Cross-runtime / ops
+
+| Item | Notes |
+|------|--------|
+| teachers-app redirect loop | HTTP + localStorage `cos_config`; devtools investigation |
+| teachers-app git | No remote; mostly untracked |
+| Upstream PR #5 (claude-deep-review) | Awaiting re-review |
+| GEMINI_API_KEY | Deferred — Groq + Ollama sufficient |
+| Bulk branch delete | `scripts/list_stale_branches.sh` lists only; ~88+ remotes |
+| `openclaw_discord_watch.py` | Untracked; ship or ignore |
+
+---
+
+## Documentation hygiene (this effort)
+
+| Phase | Status |
+|-------|--------|
+| A — Index hygiene, superpowers → archive | In PR |
+| B — Agent entry collapse | In PR |
+| C — Handoff/gap lifecycle + this page | In PR |
+| D — Wiki refresh vs `master` | In PR |
+
+---
+
+*Last curated: 2026-05-31 · source: session handoffs + fleet status*
+
+*ΔΣ=42*

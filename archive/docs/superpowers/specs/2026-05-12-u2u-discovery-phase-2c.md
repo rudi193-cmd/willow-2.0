@@ -3,7 +3,7 @@
 **b17:** U2U2C · ΔΣ=42  
 **Status:** Draft  
 **Owner:** sean + hanuman  
-**Refs:** `safe-app-grove/u2u/`, KB `DD0808D1` (U2U Core v0.1.0 handoff — Plan B specced, not built), `docs/superpowers/specs/2026-05-12-sovereign-edges-phase-1.md` (G4 loopback proof prerequisite), **parent umbrella** `docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` (**Phases 0–3**) on branch **`wt/sovereign-edges-phase1`**.
+**Refs:** `safe-app-grove/u2u/`, KB `DD0808D1` (U2U Core v0.1.0 handoff — Plan B specced, not built), `archive/docs/superpowers/specs/2026-05-12-sovereign-edges-phase-1.md` (G4 loopback proof prerequisite), **parent umbrella** `archive/docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` (**Phases 0–3**) on branch **`wt/sovereign-edges-phase1`**.
 
 **Branch discipline:** This spec and **all** Phase 2C implementation live only on **`wt/u2u-phase-2c`** in worktree **`willow-1.9-wt-u2u-phase-2c`**. Do **not** merge to **`master`** until Sean ratifies.
 
@@ -46,7 +46,7 @@ Today, **u2u core** (identity, packets, consent, contacts) can run **on loopback
 
 ## 5. Deliverables (ordered)
 
-1. **Invite artifact** — versioned JSON (or wire string) containing: **inviter** identity ref, **endpoint hint** (host:port or “use reply channel”), **nonce**, **expiry**, **signature**. Document schema in-repo (`safe-app-grove/u2u/docs/` or `docs/superpowers/`).
+1. **Invite artifact** — versioned JSON (or wire string) containing: **inviter** identity ref, **endpoint hint** (host:port or “use reply channel”), **nonce**, **expiry**, **signature**. Document schema in-repo (`safe-app-grove/u2u/docs/` or `archive/docs/superpowers/`).
 2. **Importer CLI or subcommand** — `python -m u2u invite create` / `invite accept <file>` (exact UX TBD) — **fails closed** on bad sig, expiry, or consent deny.
 3. **Consent integration** — new contact starts **pending** until local operator approves (reuse `ConsentGate` patterns); **no** auto-allow from discovery alone.
 4. **Audit log** — append-only local log (file or sqlite under `~/.willow` / app dir TBD) for: invite created, invite received, consent outcome. No KB writes unless Sean ratifies separate ingest flow.

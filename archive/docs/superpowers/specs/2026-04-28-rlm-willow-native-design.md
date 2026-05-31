@@ -126,7 +126,7 @@ willow-1.9/
 │   └── agents/
 │       └── rlm-subcall.md
 ├── .gitignore              (add .claude/rlm_state/)
-└── docs/superpowers/specs/
+└── archive/docs/superpowers/specs/
     └── 2026-04-28-rlm-willow-native-design.md  (this file)
 ```
 

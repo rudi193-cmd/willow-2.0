@@ -3,7 +3,7 @@
 **b17:** WLGSM · ΔΣ=42  
 **Status:** Ratified (process canon — implement features *through* these transitions)  
 **Owner:** sean + hanuman  
-**Refs:** `willow/fylgja/powers/agent-rails.md`, `willow/fylgja/skills/startup.md`, `docs/superpowers/specs/2026-04-22-fylgja-design.md`
+**Refs:** `willow/fylgja/powers/agent-rails.md`, `willow/fylgja/skills/startup.md`, `archive/docs/superpowers/specs/2026-04-22-fylgja-design.md`
 
 ---
 

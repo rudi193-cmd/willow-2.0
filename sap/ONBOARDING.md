@@ -2,75 +2,34 @@
 
 b20: SAPMCP2 · ΔΣ=42
 
-You are on Willow: local-first memory and tasks for an agent fleet. Orient before you act.
+Thin pointer — full contract lives in [`willow.md`](../willow.md). Boot sequence: [`willow/fylgja/skills/boot.md`](../willow/fylgja/skills/boot.md).
 
----
-
-## Boot (parallel)
+## Orient (parallel)
 
 ```
-fleet_status(app_id=<your-agent-id>)      → Postgres + SOIL + Ollama
-handoff_latest(app_id=<your-agent-id>)    → last session — in-flight, pending
+fleet_status(app_id=<your-agent-id>)
+handoff_latest(app_id=<your-agent-id>)
 ```
 
-`app_id` is your own agent name (e.g. `hanuman`, `loki`). It is your identity to the gate — not a target selector.
+`app_id` = your agent name (caller identity), not a dispatch target. If `fleet_status` is degraded or down: report and **stop**.
 
-If `fleet_status` is degraded or down: say so and **stop**.
+Then: Grove inbox/history · `kb_search` on your task.
 
-Then: `grove_get_history` (Grove MCP) · `kb_search` on your task.
+Shell fallback: `./willow.sh fleet_status` · `./willow.sh handoff_latest`
 
-Human-readable fallback: `./willow.sh fleet_status` · `./willow.sh handoff_latest`
+## Tools
 
-Contract: [`willow.md`](../willow.md)
+**Registry (source of truth):** [`mcp_registry.json`](mcp_registry.json) — grouped prefixes, 80+ tools.
 
----
+**Profiles (reduce IDE noise):** [`../docs/MCP_TOOL_PROFILES.md`](../docs/MCP_TOOL_PROFILES.md)
 
-## Tool groups
+Grove messaging (`grove_*`) lives on the **Grove MCP** server (`safe-app-willow-grove`).
 
-| Group | Tools | Purpose |
-|-------|-------|---------|
-| KB | `kb_search`, `kb_ingest`, `kb_get`, `kb_query`, `kb_at` | Long-term atoms |
-| SOIL | `soil_get`, `soil_put`, `soil_search`, `soil_list`, `soil_update` | Structured local records |
-| Fleet | `fleet_status`, `fleet_health`, `fleet_agents`, `fleet_system_status` | Health + registry |
-| Tasks | `agent_task_submit`, `agent_task_list`, `agent_task_status` | Kart queue |
-| Ops | `agent_dispatch`, `agent_route`, `infer_*` | Dispatch + LLM |
-| Memory | `mem_check`, `mem_ratify`, `mem_jeles_*` | Gate + Jeles |
-| Handoffs | `handoff_latest`, `handoff_search` | Continuity |
-| Ledger | `ledger_read`, `ledger_write` | FRANK audit chain |
-| Forks | `fork_create`, `fork_status`, `fork_list` | Worktree isolation |
-| Index | `index_search`, `index_feedback` | Opus tier |
-| Soul | `tension_scan`, `dream_check`, `dream_run` | Pattern + synthesis |
-| Nest | `nest_scan`, `nest_queue`, `nest_file` | Intake queue |
+## Rules (one line each)
 
-Grove messaging (`grove_send_message`, `grove_get_history`, …) lives in the **Grove MCP** server (`safe-app-willow-grove`).
-
----
-
-## Pull before push
-
-Read Grove history before you post or build. Another agent may have already named it, built it, or killed it. Skipping history is how we duplicate.
-
----
-
-## Where to write
-
-Your namespace only. `hanuman/` if you are Hanuman — not `public/`, not `loki/` unless authorized.
-
----
-
-## Naming
-
-- `kb_search` before `kb_ingest`
-- SOIL collections: `agent/topic`
-- Kart: `agent_task_submit` with a full shell command string
-- Grove channels: `general`, `architecture`, `handoffs`, `alerts`
-
----
-
-## One rule
-
-Archive, do not delete. Stale atoms → `domain='archived'`. Nothing removed without explicit instruction.
-
----
+- `kb_search` before design; `mem_check` before `kb_ingest`
+- Pull Grove history before non-trivial posts
+- Shell work → `agent_task_submit` (Kart), not raw Bash when MCP is up
+- Write in your namespace only; archive stale atoms, do not delete
 
 *ΔΣ=42*

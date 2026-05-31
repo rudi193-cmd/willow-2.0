@@ -8,7 +8,7 @@
 
 **Tech Stack:** bash, Python 3.13, git, systemd
 
-**Spec:** `docs/superpowers/specs/2026-04-24-willow-19-design.md` — "What Stable and Shippable Means"
+**Spec:** `archive/docs/superpowers/specs/2026-04-24-willow-19-design.md` — "What Stable and Shippable Means"
 
 **Run after:** Phases 1, 2, and 3 complete.
 
@@ -24,7 +24,7 @@
 - `scripts/ingest_heimdallr.py` — Apr 20-22 sessions → KB atoms
 
 **Mark complete:**
-- `docs/superpowers/plans/2026-04-23-willow-18.md` Gap 2 checkbox
+- `archive/docs/superpowers/plans/2026-04-23-willow-18.md` Gap 2 checkbox
 
 ---
 
@@ -138,11 +138,11 @@ Update `HANDOFF_DIR` in the script to match.
 ## Task 3: Mark 1.8 Gap 2 closed
 
 **Files:**
-- Modify: `docs/superpowers/plans/2026-04-23-willow-18.md`
+- Modify: `archive/docs/superpowers/plans/2026-04-23-willow-18.md`
 
 - [ ] **Step 1: Update the checkbox**
 
-In `docs/superpowers/plans/2026-04-23-willow-18.md`, find Gap 2 and mark it done:
+In `archive/docs/superpowers/plans/2026-04-23-willow-18.md`, find Gap 2 and mark it done:
 
 ```markdown
 ### - [x] Gap 2: Orchestration terminal plan not checked off
@@ -151,8 +151,8 @@ In `docs/superpowers/plans/2026-04-23-willow-18.md`, find Gap 2 and mark it done
 Change the sub-steps to checked:
 
 ```markdown
-- [x] Mark all tasks in `willow-dashboard/docs/superpowers/plans/2026-04-22-orchestration-terminal.md` as `[x]`
-- [x] Mark all tasks in `willow-dashboard/docs/superpowers/plans/2026-04-21-ui-mission-control.md` as `[x]`
+- [x] Mark all tasks in `willow-dashboard/archive/docs/superpowers/plans/2026-04-22-orchestration-terminal.md` as `[x]`
+- [x] Mark all tasks in `willow-dashboard/archive/docs/superpowers/plans/2026-04-21-ui-mission-control.md` as `[x]`
 - [x] Commit as "docs: mark orchestration terminal and UI mission control plans complete"
 ```
 
@@ -161,7 +161,7 @@ Both plans are already fully checked off (37/37 and 28/28) — this is closing t
 - [ ] **Step 2: Commit**
 
 ```bash
-git add docs/superpowers/plans/2026-04-23-willow-18.md
+git add archive/docs/superpowers/plans/2026-04-23-willow-18.md
 git commit -m "docs: close 1.8 Gap 2 — orchestration terminal + UI mission control plans complete"
 ```
 
@@ -540,5 +540,5 @@ When Task 8 is done:
 
 ---
 
-*Previous: `docs/superpowers/plans/2026-04-24-willow-19-phase3-skills-grove.md`*
-*Spec: `docs/superpowers/specs/2026-04-24-willow-19-design.md`*
+*Previous: `archive/docs/superpowers/plans/2026-04-24-willow-19-phase3-skills-grove.md`*
+*Spec: `archive/docs/superpowers/specs/2026-04-24-willow-19-design.md`*

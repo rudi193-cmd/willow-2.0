@@ -140,7 +140,7 @@
 | `docs/lore/` | Fleet lore and naming context |
 | `docs/nomenclature/` | Term definitions and glossary |
 | `docs/runbooks/` | Operational runbooks |
-| `docs/superpowers/` | Superpower/power documentation |
+| `docs/superpowers/` | Redirect stub → archive/docs/superpowers |
 | `docs/testing/` | Testing guides |
 | `docs/willow-handoff.md` | Handoff protocol documentation |
 | `sandbox/` | Experimental and scratch area |
@@ -169,6 +169,7 @@
 | `docs/MCP_SPEC_COMPLIANCE.md` |
 | `docs/MCP_TOOL_PROFILES.md` |
 | `docs/OPENCLAW_DISCORD_SETUP.md` |
+| `docs/OPEN_WORK.md` |
 | `docs/RUNTIME_AND_INFERENCE.md` |
 | `docs/SKILL_AUDIT_CURSOR_VS_WILLOW.md` |
 | `docs/SKILL_SURFACE_STRATEGY.md` |

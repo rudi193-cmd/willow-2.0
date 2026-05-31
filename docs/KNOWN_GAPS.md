@@ -24,6 +24,7 @@ The Postgres bridge incident (GAP-001) was fixed in April 2026 and archived May 
 
 | Kind | Doc |
 |------|-----|
+| Curated backlog (not broken in master) | [`OPEN_WORK.md`](OPEN_WORK.md) |
 | Human decisions (R1–R9, legacy DB, SAP dev mode) | [`../wiki/active-decisions.md`](../wiki/active-decisions.md) |
 | Security tracking (P1/P2, some fixed in beta) | [`../SECURITY_AUDIT.md`](../SECURITY_AUDIT.md) |
 | Beta gate (what we fixed for outside users) | [`BETA_AUDIT_REPORT.md`](BETA_AUDIT_REPORT.md) |

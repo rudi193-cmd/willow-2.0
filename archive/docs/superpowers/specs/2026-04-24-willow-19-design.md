@@ -109,7 +109,7 @@ Anthropic and back without touching code.
 
 **What it is:** A named, bounded unit of work that any Willow component can participate in.
 The primitive that makes history legible and changes reversible.
-Full spec: `docs/superpowers/specs/2026-04-24-willow-forks.md` (status: approved).
+Full spec: `archive/docs/superpowers/specs/2026-04-24-willow-forks.md` (status: approved).
 
 **Decisions (resolved 2026-04-24):**
 1. Auto-fork on session start — yes, automatic

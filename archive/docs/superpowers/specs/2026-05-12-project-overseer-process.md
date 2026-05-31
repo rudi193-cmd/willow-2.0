@@ -6,7 +6,7 @@
 **Branch discipline:** This process spec and the **`overseer`** power live on **`wt/overseer`** in worktree **`willow-1.9-wt-overseer`** until ratified merge to **`master`**. The primary **`master`** checkout does not contain these files until then.
 
 **Owner:** sean + hanuman  
-**Refs:** `willow/fylgja/powers/overseer.md`, `willow/fylgja/powers/worktree.md`, `willow/fylgja/powers/plan.md`, `willow/fylgja/powers/verify.md`, `scripts/run_overseer.py` (Phase 0 conductor: run log under `.overseer/`, digest template, MCP checklist, human gate, worktree scaffold), `docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md`, `docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` (Phase 0 prior-art pattern, branch `wt/sovereign-edges-phase1`)
+**Refs:** `willow/fylgja/powers/overseer.md`, `willow/fylgja/powers/worktree.md`, `willow/fylgja/powers/plan.md`, `willow/fylgja/powers/verify.md`, `scripts/run_overseer.py` (Phase 0 conductor: run log under `.overseer/`, digest template, MCP checklist, human gate, worktree scaffold), `archive/docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md`, `archive/docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` (Phase 0 prior-art pattern, branch `wt/sovereign-edges-phase1`)
 
 ---
 
@@ -64,7 +64,7 @@ Every overseen initiative should leave behind:
 | Artifact | Purpose |
 |----------|--------|
 | **Git:** `wt/<slug>` + worktree path | Isolation proof. |
-| **Optional spec** under `docs/superpowers/specs/*.md` | Human contract (may live only on task branch until merge). |
+| **Optional spec** under `archive/docs/superpowers/specs/*.md` | Human contract (may live only on task branch until merge). |
 | **KB atom** (`willow_knowledge_ingest`, domain `hanuman` unless overridden) | Fleet-resumable pointer: branch, path, merge gate. |
 | **Cursor memory** (`memory/*.md` + `MEMORY.md` index) | IDE-resumable pointer + KB id. |
 | **`.overseer/runs/…`** (when using `scripts/run_overseer.py`) | Timestamped run log: `PHASE0_DIGEST.md`, `MCP_CHECKLIST.md`, `CLOSEOUT.md` — gitignored; not a substitute for KB/Grove. |
