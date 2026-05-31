@@ -1312,9 +1312,11 @@ class PgBridge:
         self._ensure_conn()
         filters, params = [], []
         if agent:
-            filters.append("agent=%s"); params.append(agent)
+            filters.append("agent=%s")
+            params.append(agent)
         if session_id:
-            filters.append("session_id=%s"); params.append(session_id)
+            filters.append("session_id=%s")
+            params.append(session_id)
         where = ("WHERE " + " AND ".join(filters)) if filters else ""
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(f"SELECT * FROM journal {where} ORDER BY created_at DESC LIMIT %s",

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import ast
 import logging
-import os
 import re
 import sqlite3
 from datetime import datetime, timezone

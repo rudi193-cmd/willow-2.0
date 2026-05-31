@@ -75,6 +75,16 @@ def _get(url: str, headers: dict | None = None) -> Optional[dict | list]:
         return None
 
 
+def _get_html(url: str, headers: dict | None = None) -> Optional[str]:
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": _UA, **(headers or {})})
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
+            return r.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        log.warning("GET html %s failed: %s", url[:80], e)
+        return None
+
+
 def _write_cache(query: str, results: dict[str, list]) -> None:
     """Append search results to daily JSONL cache with annotation fields."""
     import hashlib
@@ -195,7 +205,7 @@ def search_doaj(query: str, limit: int = 5) -> list[dict]:
     for item in (data.get("results") or [])[:limit]:
         bib = item.get("bibjson") or {}
         doi = next((i.get("id", "") for i in (bib.get("identifier") or []) if i.get("type") == "doi"), "")
-        link = next((l.get("url", "") for l in (bib.get("link") or [])), "")
+        link = next((item.get("url", "") for item in (bib.get("link") or [])), "")
         results.append(_result(
             title=bib.get("title", ""),
             url=f"https://doi.org/{doi}" if doi else link,
@@ -1035,8 +1045,6 @@ def search_gutenberg(query: str, limit: int = 5) -> list[dict]:
         title = book.get("title", "")
         authors = ", ".join(a.get("name", "") for a in (book.get("authors") or []))
         bid = book.get("id", "")
-        formats = book.get("formats", {})
-        url_html = formats.get("text/html", "") or formats.get("application/epub+zip", "")
         subjects = "; ".join((book.get("subjects") or [])[:3])
         results.append(_result(
             title=title,
@@ -1836,7 +1844,8 @@ def _load_registry() -> dict[str, dict]:
             WHERE  fn_name IS NOT NULL
         """)
         rows = cur.fetchall()
-        cur.close(); bridge.conn.close()
+        cur.close()
+        bridge.conn.close()
         if rows:
             _REGISTRY_CACHE = {
                 row[0]: {
@@ -1882,7 +1891,8 @@ def _load_routes() -> list[tuple[list[str], list[str]]]:
             ORDER BY domain
         """)
         rows = cur.fetchall()
-        cur.close(); bridge.conn.close()
+        cur.close()
+        bridge.conn.close()
         if rows:
             _ROUTES_CACHE = [(list(row[0]), list(row[1])) for row in rows if row[0] and row[1]]
             _ROUTES_LOADED_AT = now
