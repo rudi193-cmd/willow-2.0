@@ -27,4 +27,10 @@ Edit and commit these in **willow-config**, not in public willow-2.0.
 
 Deployed manifests and apps: `~/github/SAFE/Agents`, `~/github/SAFE/Applications` (`~/SAFE` → symlink).
 
+Personal/archive data: `~/github/sean-data-vault` (`~/sean-data-vault` → symlink). Legacy 1.9 agent index stubs: `~/github/archive/legacy-agents-home` (`~/agents` → symlink).
+
+## Host layout script
+
+`bash scripts/consolidate_github_layout.sh` — wire home symlinks, move untracked drops out of willow-2.0, run `link_fleet_home`. See `~/github/README-fleet-layout.md`.
+
 Templates for new machines: `fleet.env.example`, `settings.global.template.json` (in willow-2.0 only).

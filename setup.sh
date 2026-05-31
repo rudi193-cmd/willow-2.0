@@ -43,6 +43,7 @@ mkdir -p "${GITHUB_ROOT}/SAFE/Applications" "${GITHUB_ROOT}/SAFE/Agents"
 [[ -e "${HOME}/.willow" ]] || ln -sfn "${WILLOW_HOME}" "${HOME}/.willow"
 [[ -e "${HOME}/SAFE" ]] || ln -sfn "${GITHUB_ROOT}/SAFE" "${HOME}/SAFE"
 [[ -e "${HOME}/willow-2.0" ]] || ln -sfn "${REPO_ROOT}" "${HOME}/willow-2.0"
+[[ -d "${GITHUB_ROOT}/safe-app-store" && ! -e "${HOME}/safe-app-store" ]] && ln -sfn "${GITHUB_ROOT}/safe-app-store" "${HOME}/safe-app-store"
 
 hdr "~/github/.willow (willow-config)"
 if [[ -d "${WILLOW_HOME}/.git" ]]; then
