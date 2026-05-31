@@ -6,6 +6,26 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2026.05.2] - 2026-05-31
+
+Patch release: tag aligns with post-`2026.05.1` fleet layout, documentation, and operator tooling (#162–#167).
+
+### Added
+
+- `/release` skill and fylgja command symlink — full gate sequence for tagged GitHub Releases.
+- Fleet layout scripts: `consolidate_github_layout.sh`, `consolidate_home_clones.py`, `audit_safe_paths.py`, `repair_safe_layout.sh`, `sync_safe_agent_manifests.py`.
+- Fleet hardening scan and upstream worktree maintenance (`fleet_hardening_scan.py`, `cleanup_worktrees.sh`, `restore_upstream_worktrees.sh`).
+- Doc architecture (phases A–D): `docs/CONTRACT.md`, `sap/MCP_INSTRUCTIONS.md`, handoffs archive and `docs/handoffs/` README.
+
+### Changed
+
+- Canonical fleet data under `~/github/`; legacy paths (`~/SAFE`, `~/willow-2.0`, `~/.willow`, `~/agents`) symlink back.
+- awesome-claude-skills resolved from `~/github/awesome-claude-skills` sibling.
+
+### Fixed
+
+- Upstream contribution tracker: CONTRIBUTORS table conflict markers (#163).
+
 ## [2026.05.1] - 2026-05-31
 
 First tagged release of Willow 2.0. Baseline code from the 1.9→2.0 rewrite plus the full quality audit (phases 0–3) and infrastructure hardening completed this sprint. See [`docs/CODE_DIFF_1.9_to_2.0.md`](docs/CODE_DIFF_1.9_to_2.0.md) for the full 1.9→2.0 delta.

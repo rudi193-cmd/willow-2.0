@@ -14,9 +14,7 @@ Curators: update when a handoff closes a thread or Sean ratifies a decision. Do 
 |------|--------|
 | Skill catalog phase 3 | After quality audit; see [`SKILL_SURFACE_STRATEGY.md`](SKILL_SURFACE_STRATEGY.md) |
 | Enforced mypy / coverage / bandit | CI report-only today; pick thresholds when baselines shrink |
-| First GitHub Release `v2026.05.1` | Update `CHANGELOG` `[Unreleased]` first; tag matches `VERSION` |
-| SAFE manifest failures | `ratatosk`, `ask-jeles`, `utety-chat` still failing `fleet_status` |
-| Agent IDE rebound verify | Pick one agent, `./willow agents install <id> --ide all`, fresh IDE session |
+| Tag `v2026.05.2` | CHANGELOG PR merged; push tag after Sean approves (post-#167 layout) |
 
 ---
 
@@ -44,6 +42,6 @@ Phases A–D merged (PR #162). Follow-ups landed: `docs/CONTRACT.md`, MCP instru
 
 ---
 
-*Last curated: 2026-05-31 · source: session handoffs + fleet status*
+*Last curated: 2026-05-31 · v2026.05.1 shipped; v2026.05.2 pending tag*
 
 *ΔΣ=42*
