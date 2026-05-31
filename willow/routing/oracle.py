@@ -61,7 +61,7 @@ _INTENT_AGENT_MAP: dict[str, str] = {
     "review":    "loki",       # Audit/ledger — review and audit
     "test":      "heimdallr",  # Infrastructure/builds — test writing
     "integrate": "kart",       # Task execution — wiring, integration work
-    "navigate":  "hanuman",    # Corpus/migrations — search, find, locate
+    "navigate":  "willow",     # Primary coordinator — orient, plan, what's next
 }
 
 _rules_cache: Optional[list] = None
