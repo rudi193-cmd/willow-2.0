@@ -38,9 +38,46 @@ jobs:
           path: mypy-report.txt
           if-no-files-found: ignore
 
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install bandit
+        run: pip install bandit
+
+      - name: Bandit (first-party, report-only)
+        run: bandit -r core sap willow -ll -f txt 2>&1 | tee bandit-report.txt || true
+
+      - name: Upload bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.txt
+          if-no-files-found: ignore
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.10"
+            with-coverage: false
+          - python-version: "3.11"
+            with-coverage: true
+          - python-version: "3.12"
+            with-coverage: false
 
     services:
       postgres:
@@ -77,13 +114,14 @@ jobs:
 
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt coverage
+          pip install -r requirements.txt
+          if [ "${{ matrix.with-coverage }}" = "true" ]; then pip install coverage; fi
           sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep
 
       - name: Prepare CI SAFE + USER stubs
@@ -98,10 +136,14 @@ jobs:
           WILLOW_MCP_PROFILE: full
         run: bash scripts/comfort_check.sh --ci
 
-      - name: Run test suite with coverage (report-only)
+      - name: Run test suite
         run: |
-          coverage run -m pytest --ignore=tests/adversarial/e2e -v --timeout=120
-          coverage report -m --include='core/*,sap/*,willow/*' || true
+          if [ "${{ matrix.with-coverage }}" = "true" ]; then
+            coverage run -m pytest --ignore=tests/adversarial/e2e -v --timeout=120
+            coverage report -m --include='core/*,sap/*,willow/*' || true
+          else
+            python3 -m pytest --ignore=tests/adversarial/e2e -v --timeout=120
+          fi
 
   path-guard:
     runs-on: ubuntu-latest

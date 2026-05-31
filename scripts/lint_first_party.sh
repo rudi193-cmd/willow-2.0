@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# First-party lint scope — matches CI lint job (Phase 1).
+# First-party lint scope — matches CI lint job.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"

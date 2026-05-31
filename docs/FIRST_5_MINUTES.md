@@ -23,6 +23,14 @@ pip install -e .
 python3 seed.py
 ```
 
+**Optional — pre-commit hooks** (ruff + path guard; mypy on push):
+
+```bash
+pip install -e ".[dev]"
+pre-commit install
+pre-commit install --hook-type pre-push
+```
+
 **What you should see:** setup steps scrolling, then your shell prompt back. No panic unless it stops with an error.
 
 Default database name is **`willow_20`**. If you still have `willow_19` from an old install, see [`CODE_DIFF_1.9_to_2.0.md`](CODE_DIFF_1.9_to_2.0.md).

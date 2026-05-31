@@ -29,6 +29,8 @@ dev = [
     "ruff",
     "mypy",
     "coverage",
+    "pre-commit>=3.5.0",
+    "bandit>=1.8.0",
 ]
 
 [tool.pytest.ini_options]
@@ -67,6 +69,17 @@ extend-exclude = [
 "willow/fylgja/events/post_tool.py" = ["E402"]
 "willow/fylgja/events/stop_slow.py" = ["E402"]
 "willow/hooks/post_push.py" = ["E402"]
+
+[tool.bandit]
+exclude_dirs = [
+    "tests",
+    ".venv",
+    ".venv-dev",
+    "worktrees",
+    "stubs",
+    "archive",
+    "mcp-memory-service",
+]
 
 [tool.mypy]
 python_version = "3.10"

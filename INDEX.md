@@ -167,6 +167,7 @@
 |------|
 | `.ci-willow` |
 | `.kart-scripts` |
+| `.pre-commit-config.yaml` |
 | `Ashokoa` |
 | `agents/heimdallr` |
 | `agents/loki` |
