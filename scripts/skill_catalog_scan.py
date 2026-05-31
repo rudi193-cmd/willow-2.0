@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -12,6 +13,36 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sap.mai.tools import _strip_yaml_frontmatter
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def awesome_claude_skills_root() -> Path | None:
+    """Sibling clone under ~/github/ (legacy: in-repo willow-2.0/awesome-claude-skills)."""
+    env = os.environ.get("WILLOW_AWESOME_CLAUDE_SKILLS", "").strip()
+    if env:
+        p = Path(env).expanduser().resolve()
+        return p if p.is_dir() else None
+    for candidate in (
+        Path.home() / "github" / "awesome-claude-skills",
+        REPO_ROOT / "awesome-claude-skills",
+    ):
+        if candidate.is_dir():
+            return candidate.resolve()
+    return None
+
+
+def _catalog_relative_path(skill_path: Path, repo: Path = REPO_ROOT) -> str:
+    resolved = skill_path.resolve()
+    try:
+        return str(resolved.relative_to(repo.resolve()))
+    except ValueError:
+        pass
+    home = Path.home().resolve()
+    try:
+        return str(Path("~") / resolved.relative_to(home))
+    except ValueError:
+        return str(resolved)
 
 # Curated overrides for known skills (id → extra fields). Scanner still fills path/description.
 CURATED: dict[str, dict[str, Any]] = {
@@ -509,11 +540,7 @@ def scan_file(skill_path: Path, *, scan_root: Path | None = None) -> dict[str, A
     text = raw
     execution_class = classify_execution(text, default="E" if source != "fylgja" else "B")
     risk, risk_signals = classify_risk(text)
-    rel = None
-    try:
-        rel = str(skill_path.resolve().relative_to(Path.cwd().resolve()))
-    except ValueError:
-        rel = str(skill_path.resolve())
+    rel = _catalog_relative_path(skill_path)
 
     record: dict[str, Any] = {
         "id": skill_id,
@@ -603,7 +630,7 @@ def main() -> int:
         "roots",
         nargs="*",
         type=Path,
-        help="Directories to scan (default: cursor skills-cursor, fylgja/skills, awesome-claude-skills)",
+        help="Directories to scan (default: cursor skills-cursor, fylgja/skills, ~/github/awesome-claude-skills)",
     )
     parser.add_argument("-o", "--output", type=Path, default=default_out)
     parser.add_argument(
@@ -631,11 +658,13 @@ def main() -> int:
 
     include_flat = args.include_fylgja_flat and not args.no_fylgja_flat
     home = Path.home()
+    ac_root = awesome_claude_skills_root()
     default_roots = [
         home / ".cursor" / "skills-cursor",
         repo / "willow" / "fylgja" / "skills",
-        repo / "awesome-claude-skills",
     ]
+    if ac_root:
+        default_roots.append(ac_root)
     roots = args.roots if args.roots else [r for r in default_roots if r.is_dir()]
     if not roots:
         print("No scan roots found.", file=sys.stderr)

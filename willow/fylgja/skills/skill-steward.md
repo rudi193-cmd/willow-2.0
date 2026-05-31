@@ -47,7 +47,7 @@ Creates `~/.openclaw/skills/` with bundled starters (`clawhub`, `github`, `memor
 
 | Source | Path |
 |--------|------|
-| awesome-claude | `awesome-claude-skills/` (git pull if repo) |
+| awesome-claude | `~/github/awesome-claude-skills/` (`WILLOW_AWESOME_CLAUDE_SKILLS` override) |
 | cursor | `~/.cursor/skills-cursor/` |
 | openclaw | `~/.openclaw/skills/` (after openclaw-setup) |
 

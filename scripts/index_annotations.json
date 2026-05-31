@@ -141,8 +141,6 @@
     ".cursor":              {"description": "Cursor IDE config — commands, rules", "group": "dev"},
     ".willow":              {"description": "Runtime state — session anchors, handoffs, MCP config", "group": "dev"},
 
-    "awesome-claude-skills": {"description": "Submodule — community Claude skills collection", "group": "external"},
-
     "archive":              {"description": "Deprecated and superseded code — do not build on", "group": "archive"}
   }
 }
