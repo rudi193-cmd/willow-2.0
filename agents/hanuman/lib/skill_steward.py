@@ -32,11 +32,12 @@ def repo_root() -> Path:
 
 def default_source_roots(root: Path | None = None) -> dict[str, Path]:
     """External skill trees to watch (not Willow Fylgja blessed set)."""
-    root = root or repo_root()
+    from scripts.skill_catalog_scan import awesome_claude_skills_root
+
     home = Path.home()
     out: dict[str, Path] = {}
-    ac = root / "awesome-claude-skills"
-    if ac.is_dir():
+    ac = awesome_claude_skills_root()
+    if ac:
         out["awesome-claude"] = ac
     cursor = home / ".cursor" / "skills-cursor"
     if cursor.is_dir():
@@ -332,7 +333,11 @@ def run_once(
     root = repo_root()
     roots = default_source_roots(root)
     if not roots:
-        return {"skipped": True, "reason": "no_scan_roots", "hint": "clone awesome-claude-skills or install cursor skills-cursor"}
+        return {
+            "skipped": True,
+            "reason": "no_scan_roots",
+            "hint": "clone ~/github/awesome-claude-skills or install cursor skills-cursor",
+        }
 
     git_heads: dict[str, str | None] = {}
     if sync_git:

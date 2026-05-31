@@ -152,12 +152,6 @@
 | `tests/` | Test suite |
 | `wiki/` | Wiki content |
 
-## External
-
-| Path | Description |
-|------|-------------|
-| `awesome-claude-skills/` | Submodule — community Claude skills collection |
-
 ## Archive (deprecated)
 
 | Path | Description |
