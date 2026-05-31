@@ -31,6 +31,7 @@ sap/log/*.md
 
 # Cursor Fylgja hooks — per-machine absolute paths; run install_cursor
 .cursor/hooks.json
+.cursor/settings.local.json
 
 # Claude Code worktrees
 .claude/worktrees/
@@ -74,3 +75,6 @@ archive/*.db
 
 # Kart ephemeral scripts (agent_task_submit script_body)
 .kart-scripts/
+
+# Generated API reference (scripts/build_api_docs.sh)
+docs/api/

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 from pathlib import Path
 
@@ -125,15 +126,58 @@ def write_agent_mcp(agent: str, package_root: Path, dry_run: bool) -> None:
     _write_json(cfg / "mcp.json", render_mcp_config(agent, package_root), dry_run)
 
 
-def _symlink_to(link: Path, rel_target: Path, dry_run: bool) -> None:
+def fleet_home() -> Path:
+    return Path(os.environ.get("WILLOW_HOME", str(Path.home() / "github" / ".willow")))
+
+
+def canonical_local_settings(agent: str) -> Path:
+    """Per-agent IDE local settings live under WILLOW_HOME, not in the repo."""
+    return fleet_home() / "agents" / agent.strip().lower() / "settings.local.json"
+
+
+def ensure_canonical_local_settings(agent: str, package_root: Path, dry_run: bool) -> Path:
+    """Create or patch WILLOW_HOME/agents/<agent>/settings.local.json from repo template."""
+    canon = canonical_local_settings(agent)
+    template = package_root / "willow" / "fylgja" / "config" / "settings.local.json"
     if dry_run:
-        print(f"[install_project] Would symlink {link} → {rel_target}")
+        print(f"[install_project] Would ensure canonical {canon}")
+        return canon
+    canon.parent.mkdir(parents=True, exist_ok=True)
+    if canon.is_file():
+        try:
+            data = json.loads(canon.read_text(encoding="utf-8"))
+        except Exception:
+            data = {}
+    elif template.is_file():
+        data = json.loads(template.read_text(encoding="utf-8"))
+    else:
+        data = {}
+    env = data.setdefault("env", {})
+    if not isinstance(env, dict):
+        env = {}
+        data["env"] = env
+    env["WILLOW_AGENT_NAME"] = agent
+    env["AGENT_NAME"] = agent
+    tmp = canon.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(canon)
+    print(f"[install_project] Canonical local settings → {canon}")
+    return canon
+
+
+def _symlink_to(link: Path, target: Path, dry_run: bool) -> None:
+    if dry_run:
+        print(f"[install_project] Would symlink {link} → {target}")
         return
     link.parent.mkdir(parents=True, exist_ok=True)
+    dest = target.resolve() if target.is_absolute() else (link.parent / target).resolve()
+    rel = os.path.relpath(dest, start=link.parent.resolve())
     if link.exists() or link.is_symlink():
+        if link.is_symlink() and link.resolve() == dest:
+            return
         link.unlink()
-    link.symlink_to(rel_target)
-    print(f"[install_project] Symlinked {link} → {rel_target}")
+    link.symlink_to(rel)
+    print(f"[install_project] Symlinked {link} → {dest}")
 
 
 def install_cursor(agent: str, package_root: Path, dry_run: bool) -> None:
@@ -152,9 +196,8 @@ def install_cursor(agent: str, package_root: Path, dry_run: bool) -> None:
         Path("..") / "agents" / agent / "config" / "mcp.json",
         dry_run,
     )
-    local = package_root / ".cursor" / "settings.local.json"
-    local_data = {"env": {"WILLOW_AGENT_NAME": agent, "AGENT_NAME": agent}}
-    _write_json(local, local_data, dry_run)
+    canon = ensure_canonical_local_settings(agent, package_root, dry_run)
+    _symlink_to(package_root / ".cursor" / "settings.local.json", canon, dry_run)
 
 
 def install_claude_project(agent: str, package_root: Path, dry_run: bool) -> None:
@@ -163,8 +206,8 @@ def install_claude_project(agent: str, package_root: Path, dry_run: bool) -> Non
         Path("..") / "willow" / "fylgja" / "config" / "claude-settings.json",
         dry_run,
     )
-    local = package_root / ".claude" / "settings.local.json"
-    _write_json(local, {"env": {"WILLOW_AGENT_NAME": agent, "AGENT_NAME": agent}}, dry_run)
+    canon = ensure_canonical_local_settings(agent, package_root, dry_run)
+    _symlink_to(package_root / ".claude" / "settings.local.json", canon, dry_run)
 
 
 def install_claude_global(agent: str, package_root: Path, dry_run: bool) -> None:

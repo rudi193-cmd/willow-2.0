@@ -169,6 +169,8 @@
 | `.kart-scripts` |
 | `.pre-commit-config.yaml` |
 | `Ashokoa` |
+| `CHANGELOG.md` |
+| `CONTRIBUTING.md` |
 | `agents/heimdallr` |
 | `agents/loki` |
 | `agents/willow` |

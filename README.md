@@ -98,7 +98,7 @@ Repo map: [`docs/ROOT_LAYOUT.md`](docs/ROOT_LAYOUT.md). Deeper architecture: [`w
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.11+ (3.12 supported; CI matrix covers both)
 - PostgreSQL 15+ with pgvector (or SQLite on Termux)
 - GPG (SAFE app identity)
 - [Ollama](https://ollama.com) for local inference
@@ -120,6 +120,7 @@ Optional: `./willow.sh providers enable anthropic YOUR_KEY` (or OpenAI / Gemini)
 | Start here | |
 |------------|---|
 | [FIRST_5_MINUTES.md](docs/FIRST_5_MINUTES.md) | Install and first green checks |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Dev setup, CI, releases, branch hygiene |
 | [QUICKSTART.md](docs/QUICKSTART.md) | Technical onboarding |
 | [CONCEPT.md](docs/CONCEPT.md) | Why local-first |
 | [IDE_INTEGRATION.md](docs/IDE_INTEGRATION.md) | Cursor / Claude Code MCP |

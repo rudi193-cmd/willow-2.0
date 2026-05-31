@@ -3,10 +3,12 @@
     "cursor": {
       "hooks_file": "willow/fylgja/config/cursor-hooks.json",
       "cli_file": "willow/fylgja/config/cursor-cli.json",
+      "local_settings": "{{WILLOW_HOME}}/agents/{agent}/settings.local.json",
       "symlinks": {
         ".cursor/hooks.json": "../willow/fylgja/config/cursor-hooks.json",
         ".cursor/cli.json": "../willow/fylgja/config/cursor-cli.json",
-        ".cursor/mcp.json": "../agents/{agent}/config/mcp.json"
+        ".cursor/mcp.json": "../agents/{agent}/config/mcp.json",
+        ".cursor/settings.local.json": "{{WILLOW_HOME}}/agents/{agent}/settings.local.json"
       }
     },
     "claude": {
@@ -14,7 +16,7 @@
       "symlinks": {
         ".claude/settings.json": "../willow/fylgja/config/claude-settings.json"
       },
-      "local_settings": ".claude/settings.local.json"
+      "local_settings": "{{WILLOW_HOME}}/agents/{agent}/settings.local.json"
     },
     "codex": {
       "toml_template": "willow/fylgja/config/codex-mcp.toml.template",

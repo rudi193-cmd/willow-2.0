@@ -24,6 +24,8 @@ cd ~/willow-2.0
 
 Open the **`willow-2.0`** repo in Cursor/Claude — not `~/.willow` (that is private config only).
 
+Per-agent IDE permissions and env overrides live at **`$WILLOW_HOME/agents/<agent>/settings.local.json`**. `install_project` symlinks that file into `.cursor/settings.local.json` and `.claude/settings.local.json` — do not commit those symlinks or a repo-local copy.
+
 ## Per-agent Postgres
 
 | Table / channel | Columns |
