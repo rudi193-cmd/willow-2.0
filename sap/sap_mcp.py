@@ -135,7 +135,7 @@ def _discover_handoff_dirs() -> str:
 _DEFAULT_HANDOFF_DIRS = _discover_handoff_dirs()
 HANDOFF_DIRS = os.environ.get("WILLOW_HANDOFF_DIRS", _DEFAULT_HANDOFF_DIRS)
 
-_ONBOARDING = (Path(__file__).parent / "ONBOARDING.md").read_text(encoding="utf-8")
+_MCP_INSTRUCTIONS = (Path(__file__).parent / "MCP_INSTRUCTIONS.md").read_text(encoding="utf-8")
 
 # ── Global state (initialized in lifespan) ────────────────────────────────────
 pg:    "PgBridge | None" = None  # type: ignore[type-arg]
@@ -313,7 +313,7 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[None]:
 
 mcp = FastMCP(
     "willow2",
-    instructions=_ONBOARDING,
+    instructions=_MCP_INSTRUCTIONS,
     lifespan=_lifespan,
 )
 

@@ -129,6 +129,7 @@
 | `docs/FIRST_5_MINUTES.md` | Install and first-run quickstart |
 | `docs/FOR_AHS.md` | Beta reader decoder ring (Warhammer lexicon overlay) |
 | `docs/IDE_INTEGRATION.md` | IDE setup guide — Cursor and Claude Code MCP wiring |
+| `docs/KNOWN_GAPS.md` | Broken-in-master engineering gaps |
 | `docs/OPEN_WORK.md` | Curated open backlog (not install blockers) |
 | `docs/QUICKSTART.md` | Quickstart guide |
 | `docs/RAFT_ANALYSIS_SUMMARY.md` | RAFT analysis summary |
@@ -165,7 +166,7 @@
 | `agents/willow` |
 | `docs/.nojekyll` |
 | `docs/AGENT_IDENTITY.md` |
-| `docs/KNOWN_GAPS.md` |
+| `docs/CONTRACT.md` |
 | `docs/LANDING_DESIGN.md` |
 | `docs/MCP_SPEC_COMPLIANCE.md` |
 | `docs/MCP_TOOL_PROFILES.md` |
@@ -181,6 +182,7 @@
 | `docs/kb` |
 | `docs/static` |
 | `docs/templates` |
+| `sap/MCP_INSTRUCTIONS.md` |
 | `sap/MCP_SPEC.lock.json` |
 | `sap/adapters` |
 | `sap/mcp_enrich.py` |

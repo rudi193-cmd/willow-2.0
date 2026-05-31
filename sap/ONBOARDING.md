@@ -2,7 +2,15 @@
 
 b20: SAPMCP2 · ΔΣ=42
 
-Thin pointer — full contract lives in [`willow.md`](../willow.md). Boot sequence: [`willow/fylgja/skills/boot.md`](../willow/fylgja/skills/boot.md).
+**Two surfaces — do not duplicate:**
+
+| Surface | File | Audience |
+|---------|------|----------|
+| MCP server `instructions` | [`MCP_INSTRUCTIONS.md`](MCP_INSTRUCTIONS.md) | IDE injects this at connect (keep minimal) |
+| Human/agent doc | this file | Repo readers — links to full contract |
+
+Full fleet contract: [`willow.md`](../willow.md) (private **willow-config**; public snapshot: [`../docs/CONTRACT.md`](../docs/CONTRACT.md)).  
+Boot sequence: [`willow/fylgja/skills/boot.md`](../willow/fylgja/skills/boot.md).
 
 ## Orient (parallel)
 
