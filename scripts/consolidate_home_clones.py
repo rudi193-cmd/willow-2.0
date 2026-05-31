@@ -18,6 +18,7 @@ GITHUB = os.path.join(HOME, "github")
 SCRIPT = os.path.join(GITHUB, "willow-2.0", "scripts", "consolidate_github_layout.sh")
 
 MOVES: list[tuple[str, str | None]] = [
+    ("SAFE", None),
     ("claude-deep-review", None),
     ("litellm", None),
     ("ngrok-python", None),

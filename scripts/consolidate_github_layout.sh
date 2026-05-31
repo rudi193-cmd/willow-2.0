@@ -178,10 +178,12 @@ for name in "${ARCHIVE_REPOS[@]}"; do
   dedupe_home_clone "$name" "archive/${name}"
 done
 
+echo "==> SAFE deploy tree (~ -> ~/github/SAFE, then ~/SAFE symlink back)"
+move_into_github "${HOME_DIR}/SAFE" "${GITHUB}/SAFE" "${HOME_DIR}/SAFE"
+
 echo "==> Fleet symlinks (legacy paths -> ~/github/*)"
-mkdir -p "${GITHUB}/SAFE/Applications" "${GITHUB}/SAFE/Agents"
+mkdir -p "${GITHUB}/.willow/store" "${GITHUB}/.willow/secrets" "${GITHUB}/.willow/logs"
 link_if_missing "${WILLOW_HOME}" "${HOME_DIR}/.willow"
-link_if_missing "${GITHUB}/SAFE" "${HOME_DIR}/SAFE"
 link_if_missing "${REPO_ROOT}" "${HOME_DIR}/willow-2.0"
 if [[ -d "${GITHUB}/safe-app-store" ]]; then
   link_if_missing "${GITHUB}/safe-app-store" "${HOME_DIR}/safe-app-store"
