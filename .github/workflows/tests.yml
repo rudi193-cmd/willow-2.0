@@ -54,8 +54,8 @@ jobs:
       - name: Install bandit
         run: pip install bandit
 
-      - name: Bandit (first-party, report-only)
-        run: bandit -r core sap willow -ll -f txt 2>&1 | tee bandit-report.txt || true
+      - name: Bandit (first-party, enforced)
+        run: bandit -r core sap willow -ll -f txt 2>&1 | tee bandit-report.txt
 
       - name: Upload bandit report
         if: always()
@@ -139,7 +139,7 @@ jobs:
         run: |
           if [ "${{ matrix.with-coverage }}" = "true" ]; then
             coverage run -m pytest --ignore=tests/adversarial/e2e -v --timeout=120
-            coverage report -m --include='core/*,sap/*,willow/*' || true
+            coverage report -m --include='core/*,sap/*,willow/*' --fail-under=10
           else
             python3 -m pytest --ignore=tests/adversarial/e2e -v --timeout=120
           fi
