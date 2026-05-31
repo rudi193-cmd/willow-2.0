@@ -174,7 +174,7 @@ class TestRrfFuse:
         heavy = _atom("HEAVY", weight=100.0)
         light = _atom("LIGHT", weight=1.0)
         # Both appear at same rank — without weight col, scores should be equal
-        fused = _rrf_fuse([[heavy, light], [heavy, light]], weight_col=False)
+        _rrf_fuse([[heavy, light], [heavy, light]], weight_col=False)
         # HEAVY is first in both lists, so it gets a higher RRF score anyway;
         # but if we put them at equal ranks the scores must be equal
         both_equal = _rrf_fuse([[heavy], [light]], weight_col=False)
@@ -273,7 +273,7 @@ class TestHybridSearch:
         with patch("core.pg_bridge.embed", return_value=None), \
              patch("willow.ranking.hybrid._bm25_search",
                    side_effect=ImportError("no rank_bm25")):
-            results = hybrid_search("test query", pg)
+            hybrid_search("test query", pg)
         # Should have called the fallback
         pg.knowledge_search.assert_called_once()
 
@@ -388,5 +388,5 @@ class TestBm25SearchStandalone:
         pg = _mock_pg([_atom("A")])
         with patch("willow.ranking.hybrid._bm25_search",
                    side_effect=ImportError("no rank_bm25")):
-            results = bm25_search("test", pg)
+            bm25_search("test", pg)
         pg.knowledge_search.assert_called_once()

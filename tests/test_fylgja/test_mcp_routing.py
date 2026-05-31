@@ -1,5 +1,4 @@
 """tests/test_fylgja/test_mcp_routing.py"""
-import os
 
 import pytest
 

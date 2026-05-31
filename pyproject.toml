@@ -28,6 +28,7 @@ dev = [
     "pytest-timeout>=2.1.0",
     "ruff",
     "mypy",
+    "coverage",
 ]
 
 [tool.pytest.ini_options]
@@ -60,6 +61,12 @@ extend-exclude = [
 "sap/sap_mcp.py" = ["E402"]
 "sap/unified_mcp.py" = ["E402"]
 "core/jeles_sources.py" = ["E402"]
+"scripts/**" = ["E402"]
+"tests/**" = ["E402"]
+"willow/forks.py" = ["E402"]
+"willow/fylgja/events/post_tool.py" = ["E402"]
+"willow/fylgja/events/stop_slow.py" = ["E402"]
+"willow/hooks/post_push.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.10"

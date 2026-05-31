@@ -178,7 +178,7 @@ def link_atoms_for_session() -> dict:
 
                 # Batch lookup: find all commit atoms matching any commit in branch
                 cur2 = linker.bridge.conn.cursor()
-                placeholders = ",".join(["%s"] * len(commits))
+                ",".join(["%s"] * len(commits))
                 cur2.execute(f"""
                     SELECT id, content->>'commit' FROM knowledge
                     WHERE source_type = 'commit'

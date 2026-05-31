@@ -14,13 +14,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 LIMIT = int(os.environ.get("KART_POLL_LIMIT", "10"))
 
 # Backward compat for tests that patch workflow helpers on this module.
-from core.kart_execute import (  # noqa: E402
-    _call_llm,
-    _queue_phases,
-    _resolve_template,
-    run_goal_task as _run_goal_task,
-    run_workflow_phase as _run_workflow_phase,
-)
 
 
 def main() -> int:

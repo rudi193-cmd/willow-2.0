@@ -1,5 +1,4 @@
 """Unit tests for core.ratification.classify_ratification_class()."""
-import pytest
 
 from core.ratification import classify_ratification_class
 

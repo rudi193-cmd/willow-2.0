@@ -67,13 +67,13 @@ def run_compost() -> None:
         lines = _tail_lines(TURNS_FILE, TURNS_TAIL)
     except Exception:
         return
-    turns = [l for l in lines if _line_ts(l) > cursor]
+    turns = [line for line in lines if _line_ts(line) > cursor]
     if len(turns) < 3:
         return
     now = datetime.now(timezone.utc).isoformat()
     today = now[:10].replace("-", "")
     snippet = " / ".join(
-        l.strip() for l in turns[-6:] if l.strip() and not l.startswith("[")
+        line.strip() for line in turns[-6:] if line.strip() and not line.startswith("[")
     )[:200] or f"{len(turns)} turns"
     result = call("kb_ingest", {
         "app_id": AGENT,
@@ -460,7 +460,8 @@ def _is_isolated_directory() -> bool:
 
 def main():
     if _is_isolated_directory():
-        import sys as _sys; _sys.exit(0)
+        import sys as _sys
+        _sys.exit(0)
 
     try:
         raw = sys.stdin.read()

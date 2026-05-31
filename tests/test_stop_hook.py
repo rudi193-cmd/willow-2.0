@@ -14,7 +14,6 @@ import os
 import sys
 from pathlib import Path
 
-import pytest
 
 # Deterministic identity before importing the hook (resolve_agent_name reads
 # WILLOW_AGENT first; otherwise it falls back to the repo's active-agent file).

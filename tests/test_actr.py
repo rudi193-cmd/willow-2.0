@@ -1,5 +1,4 @@
 # b17: EBB0F  ΔΣ=42
-import math
 from datetime import datetime, timezone, timedelta
 from core.actr import activation, score_atoms
 

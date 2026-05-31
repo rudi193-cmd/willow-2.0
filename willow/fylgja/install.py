@@ -6,7 +6,6 @@ Project wiring: python3 -m willow.fylgja.install_project <agent> --ide all
 """
 import argparse
 import json
-import sys
 from pathlib import Path
 
 from willow.fylgja.install_project import build_claude_hooks_block, install_project as unified_install_project

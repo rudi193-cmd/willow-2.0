@@ -88,7 +88,7 @@ def test_chunk_pass_clusters_insights():
         return {"summary": "Postgres connection pattern", "importance": 8}
 
     with patch("core.intelligence._ygg_structured", fake_ygg):
-        result = intel.chunk_pass(fake_store)
+        intel.chunk_pass(fake_store)
 
     assert len(calls_ygg) >= 1
     chunk_puts = [

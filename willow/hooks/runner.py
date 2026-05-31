@@ -213,11 +213,9 @@ def run_pipeline(category: Optional[str] = None, run_id: Optional[str] = None) -
         # Determine status
         if result['timed_out']:
             status = 'timeout'
-            changed = False
             summary['errors'] += 1
         elif result['returncode'] != 0:
             status = 'error'
-            changed = False
             summary['errors'] += 1
         else:
             # Hook succeeded — check for stall
@@ -227,11 +225,9 @@ def run_pipeline(category: Optional[str] = None, run_id: Optional[str] = None) -
 
             if _is_stalled(input_hash, output_hash):
                 status = 'stalled'
-                changed = False
                 summary['stalled'] += 1
             else:
                 status = 'ok'
-                changed = True
                 summary['executed'] += 1
 
         # Log execution

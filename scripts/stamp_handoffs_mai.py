@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from sap.mai.tools import _is_markdownai_content, _markdownai_body
+from sap.mai.tools import _is_markdownai_content
 
 _HEADER = "@markdownai v1.0\n\n"
 _SKIP_PARTS = {"archive", "tasks"}

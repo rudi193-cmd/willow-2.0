@@ -1,5 +1,4 @@
 import json
-import subprocess
 from unittest.mock import patch, MagicMock
 from willow.fylgja._mcp import call, _subprocess_call
 
@@ -70,7 +69,7 @@ def test_call_sends_correct_jsonrpc_envelope():
         _subprocess_call("willow_status", {"app_id": "hanuman"}, timeout=10)
 
     payload = "".join(captured["chunks"])
-    lines = [l.strip() for l in payload.splitlines() if l.strip()]
+    lines = [line.strip() for line in payload.splitlines() if line.strip()]
     init_payload = json.loads(lines[0])
     initialized = json.loads(lines[1])
     tool_payload = json.loads(lines[2])

@@ -91,9 +91,9 @@ def main() -> None:
 
     try:
         raw = sys.stdin.read()
-        data = json.loads(raw) if raw.strip() else {}
+        json.loads(raw) if raw.strip() else {}
     except Exception:
-        data = {}
+        pass
 
     stack = _gather_stack()
     ok = _write_stack(stack)

@@ -7,7 +7,6 @@ Prefer: python3 -m willow.fylgja.install_project <agent> --ide cursor
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 from willow.fylgja.install_project import install_project

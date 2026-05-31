@@ -55,7 +55,8 @@ class TestSummarize:
             return resp
         with patch("sap.clients.professor_client._ask_ollama", mock_ask):
             from agents.orin import tasks as t
-            import importlib; importlib.reload(t)
+            import importlib
+            importlib.reload(t)
             t.summarize("content", context="extra context")
         assert any("extra context" in u for u in captured)
 

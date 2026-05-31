@@ -129,7 +129,7 @@ def index_directory(
         graph, rev_graph = build_graph(root, files)
     except Exception as e:
         log.warning("[sigmap] graph build failed: %s", e)
-        graph, rev_graph = {}, {}
+        _graph, _rev_graph = {}, {}
 
     indexed = 0
     skipped = 0

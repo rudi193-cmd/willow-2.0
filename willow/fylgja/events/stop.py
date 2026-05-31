@@ -306,7 +306,6 @@ def _infer_3b_summarize(content: str, timeout: int = 10) -> dict:
         # Model sometimes returns multiple JSON objects — parse all and merge
         decoder = json.JSONDecoder()
         merged: dict = {}
-        pos = 0
         remaining = text.lstrip()
         while remaining:
             try:
@@ -496,7 +495,8 @@ def _launch_slow_path(session_id: str) -> None:
 
 def main():
     if _is_isolated_directory():
-        import sys as _sys; _sys.exit(0)
+        import sys as _sys
+        _sys.exit(0)
 
     _t0 = _time.monotonic()
 

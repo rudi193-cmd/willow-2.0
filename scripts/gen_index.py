@@ -2,7 +2,6 @@
 """Generate INDEX.md from the live repo tree + scripts/index_annotations.json."""
 
 import json
-import os
 from datetime import date
 from pathlib import Path
 

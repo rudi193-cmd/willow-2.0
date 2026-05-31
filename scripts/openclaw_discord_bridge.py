@@ -232,7 +232,6 @@ def _poll_inbound(since_ms: int, agent_id: str) -> list[dict]:
 
 
 def _ensure_channel(conn, name: str) -> int:
-    from core import grove_db
 
     cur = conn.cursor()
     cur.execute("SELECT id FROM channels WHERE name = %s", (name,))

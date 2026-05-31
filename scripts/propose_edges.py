@@ -141,9 +141,9 @@ def propose_edges(atoms: list[dict]) -> list[dict]:
         add(handoff_atoms[i]["id"], handoff_atoms[i-1]["id"], FOLLOWS, "handoff sequence")
 
     # 3. Session atoms → nearest handoff (same session prefix)
-    handoff_map = {a["id"]: a for a in handoff_atoms}
+    {a["id"]: a for a in handoff_atoms}
     for sa in session_atoms:
-        session_id = sa.get("evidence", "")
+        sa.get("evidence", "")
         # Link session atoms that describe resolving things to handoffs
         text = (sa["evidence"] + " " + sa["title"]).lower()
         if any(w in text for w in ["resolved", "done", "fixed", "merged", "committed"]):
