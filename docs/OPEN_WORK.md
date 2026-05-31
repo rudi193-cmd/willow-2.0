@@ -14,7 +14,7 @@ Curators: update when a handoff closes a thread or Sean ratifies a decision. Do 
 |------|--------|
 | Skill catalog phase 3 | After quality audit; see [`SKILL_SURFACE_STRATEGY.md`](SKILL_SURFACE_STRATEGY.md) |
 | Enforced mypy / coverage / bandit | CI report-only today; pick thresholds when baselines shrink |
-| LoCoMo Path A (Haiku reader) | **LoCoMo-10 complete** — Haiku token F1 **0.231** (vs 3b **0.106**); artifact `~/Desktop/Nest/external_runs/locomo_willow_locomo10_20260531T224601Z.json`; next: KB atom + LongMemEval |
+| LoCoMo Path A memory v2 | **Phase 1 shipped** in `~/Desktop/Nest/locomo_memory.py` — dated atoms, session summaries, hybrid retrieval; re-run Haiku on host with `--memory-profile v2 --force-ingest` |
 
 ---
 
