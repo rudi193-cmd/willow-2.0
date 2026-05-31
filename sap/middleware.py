@@ -47,6 +47,9 @@ _INFRA_IDS = frozenset({
     "orin",                                                        # 7b batch processor
 })
 
+# Primary MCP identity — skip per-tool ACL (manifest still synced for other runtimes)
+_INFRA_ACL_BYPASS = frozenset({"willow"})
+
 # Shared executor — PGP check, memory sanitizer, and sync tool dispatch
 _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="willow-tool")
 
@@ -352,9 +355,13 @@ def sap_gate(*, write: bool = False):
                 elif not await loop.run_in_executor(_executor, sap_authorized, app_id):
                     return {"error": "unauthorized", "app_id": app_id, "tool": fn.__name__}
 
-            # 4. Per-tool ACL
-            if _SAP_GATE and not await loop.run_in_executor(
-                _executor, sap_permitted, app_id, fn.__name__
+            # 4. Per-tool ACL (willow = primary interface, no capability gate)
+            if (
+                _SAP_GATE
+                and app_id not in _INFRA_ACL_BYPASS
+                and not await loop.run_in_executor(
+                    _executor, sap_permitted, app_id, fn.__name__
+                )
             ):
                 return {"error": "not_permitted", "app_id": app_id, "tool": fn.__name__}
 

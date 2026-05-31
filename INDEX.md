@@ -183,6 +183,7 @@
 | `docs/SKILL_AUDIT_CURSOR_VS_WILLOW.md` |
 | `docs/SKILL_SURFACE_STRATEGY.md` |
 | `docs/WILLOW_CONFIG.md` |
+| `docs/corpus` |
 | `docs/dev-log-2026-05-27-fleet-github-layout.md` |
 | `docs/handoffs` |
 | `docs/index.html` |

@@ -119,7 +119,13 @@ AGENT_PERMISSION_EXTRA: dict[str, list[str]] = {
     "loki": ["ledger_read_perm", "ledger_write_perm", "ledger_audit"],
     "vishwakarma": ["app_manage", "pipeline"],
     "orin": ["infer_batch"],
-    "willow": ["handoff_rebuild", "infer_speak", "voice_keyterms"],
+    # Primary interface — full memory/knowledge plane; no fleet_admin/pipeline
+    "willow": [
+        "handoff_rebuild", "infer_speak", "voice_keyterms",
+        "intake", "jeles_fetch", "knowledge_write_ext",
+        "soul", "skill_manage", "code_graph",
+        "ledger_write_perm", "routine_manage", "workflow_manage",
+    ],
     "ada": ["fleet_health", "kb_backup"],
     "steve": ["agent_dispatch", "fleet_governance"],
 }
