@@ -129,7 +129,7 @@
 | `docs/FIRST_5_MINUTES.md` | Install and first-run quickstart |
 | `docs/FOR_AHS.md` | Beta reader decoder ring (Warhammer lexicon overlay) |
 | `docs/IDE_INTEGRATION.md` | IDE setup guide — Cursor and Claude Code MCP wiring |
-| `docs/KNOWN_GAPS.md` | Known gaps and outstanding issues |
+| `docs/OPEN_WORK.md` | Curated open backlog (not install blockers) |
 | `docs/QUICKSTART.md` | Quickstart guide |
 | `docs/RAFT_ANALYSIS_SUMMARY.md` | RAFT analysis summary |
 | `docs/ROOT_LAYOUT.md` | Repo root layout reference |
@@ -165,11 +165,11 @@
 | `agents/willow` |
 | `docs/.nojekyll` |
 | `docs/AGENT_IDENTITY.md` |
+| `docs/KNOWN_GAPS.md` |
 | `docs/LANDING_DESIGN.md` |
 | `docs/MCP_SPEC_COMPLIANCE.md` |
 | `docs/MCP_TOOL_PROFILES.md` |
 | `docs/OPENCLAW_DISCORD_SETUP.md` |
-| `docs/OPEN_WORK.md` |
 | `docs/RUNTIME_AND_INFERENCE.md` |
 | `docs/SKILL_AUDIT_CURSOR_VS_WILLOW.md` |
 | `docs/SKILL_SURFACE_STRATEGY.md` |
