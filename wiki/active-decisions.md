@@ -1,6 +1,6 @@
 # Active decisions
 
-*Maintained synthesis · Willow 2.0 · 2026-05-19*
+*Maintained synthesis · Willow 2.0 · 2026-05-31*
 
 Pending explicit human ratification. Until then, the fleet documents and waits — or treats dev behavior as intentional where noted.
 
@@ -47,5 +47,7 @@ When Sean ratifies: update this page and ingest a KB atom with the decision.
 ## 2.0 beta note
 
 [`docs/BETA_AUDIT_REPORT.md`](../docs/BETA_AUDIT_REPORT.md) — packaging, tests, security smells addressed for first outside user. R1–R9 are product/governance, not install blockers.
+
+Curated fleet backlog (not gaps): [`docs/OPEN_WORK.md`](../docs/OPEN_WORK.md).
 
 *ΔΣ=42*

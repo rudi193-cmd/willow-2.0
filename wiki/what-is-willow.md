@@ -1,6 +1,6 @@
 # What is Willow
 
-*Maintained synthesis · Willow 2.0 · 2026-05-19*
+*Maintained synthesis · Willow 2.0 · 2026-05-31*
 
 ---
 

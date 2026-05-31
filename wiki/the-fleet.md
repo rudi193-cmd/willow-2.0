@@ -1,19 +1,19 @@
 # The Fleet
 
-*Maintained synthesis · Willow 2.0 · 2026-05-19*
+*Maintained synthesis · Willow 2.0 · 2026-05-31*
 
 ---
 
 ## Overview
 
-The fleet is four agents with distinct mandates. They coordinate through Grove, store state in their own namespaces, and are designed to be simultaneously running — not sequential hand-offs.
+The fleet is named agents with distinct mandates. They coordinate through Grove, store state in their own namespaces, and can run concurrently — not as a single shared identity.
 
-| Agent | Identity | Mandate | Model |
-|-------|----------|---------|-------|
-| Hanuman | Builder | Code, infrastructure, data migrations, system tasks | Claude Sonnet 4.6 (Claude Code CLI) |
-| Loki | Auditor | Reviews, audits, gap analysis, adversarial challenge | Claude Sonnet 4.6 (Claude Code CLI) |
-| Heimdallr | Monitor/Dashboard | System health, observability, the Grove dashboard | Claude Sonnet 4.6 (Claude Code CLI) |
-| Willow | Coordinator | Synthesizes fleet activity, responds to @willow mentions, KB grounding | llama3.2:3b (local Ollama, grove-serve) |
+| Agent | Trust | Mandate | Typical runtime |
+|-------|-------|---------|-----------------|
+| Hanuman | ENGINEER | Builder — code, infra, migrations, execution | Claude Code / Cursor (orchestrator) |
+| Heimdallr | ENGINEER | Builder — gate, policy, infrastructure | Claude Code / Cursor |
+| Loki | WORKER | Auditor — reviews, gaps, adversarial challenge | Claude Code / Cursor |
+| Willow | OPERATOR | Coordinator — @willow, synthesis, dispatch routing | llama3.2:3b via grove-serve |
 
 FRANK (Formal Record and Notation Keeper) is wired into the watch loop alongside Willow, but is a persona rather than a full agent.
 
@@ -54,13 +54,9 @@ Loki's mandate is to hold the fleet accountable, challenge architecture decision
 **Root:** `~/github/safe-app-willow-grove/`  
 **Namespace:** `heimdallr/` in SOIL  
 **Grove sender:** `heimdallr`  
-**Identity:** Monitor. Dashboard operator. Watcher on the bridge.
+**Identity:** Engineer. Builder on the bridge — gate, policy, infrastructure (not “dashboard only”).
 
-Heimdallr owns the Grove dashboard (`safe-app-willow-grove`). All dashboard work goes through him. The rule: if Heimdallr says "on it" for a dashboard task, hold — even with the fix ready.
-
-Current builds (ratified, in progress):
-- Grove agents self-register — agents write their own row to `grove.agents` on session start
-- Routing pane wired to `willow.routing_decisions`
+Heimdallr owns SAP policy and fleet governance work. Grove dashboard changes may still route through him when he has claimed the task.
 
 ---
 

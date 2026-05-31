@@ -41,6 +41,7 @@
 | Path | Description |
 |------|-------------|
 | `sap/` | Safe Application Protocol — gate, manifest system, MCP server |
+| `sap/MCP_INSTRUCTIONS.md` | Minimal text injected as MCP server instructions |
 | `sap/ONBOARDING.md` | SAP onboarding guide for agents |
 | `sap/README.md` | SAP module readme |
 | `sap/clients/` | Client adapters |
@@ -126,10 +127,12 @@
 | `docs/BRANDING.md` | Branding guidelines |
 | `docs/CODE_DIFF_1.9_to_2.0.md` | Migration notes from Willow 1.9 to 2.0 |
 | `docs/CONCEPT.md` | Local-first AI stack concept doc — the why behind Willow |
+| `docs/CONTRACT.md` | Public fleet contract snapshot (from willow-config) |
 | `docs/FIRST_5_MINUTES.md` | Install and first-run quickstart |
 | `docs/FOR_AHS.md` | Beta reader decoder ring (Warhammer lexicon overlay) |
 | `docs/IDE_INTEGRATION.md` | IDE setup guide — Cursor and Claude Code MCP wiring |
-| `docs/KNOWN_GAPS.md` | Known gaps and outstanding issues |
+| `docs/KNOWN_GAPS.md` | Broken-in-master engineering gaps |
+| `docs/OPEN_WORK.md` | Curated open backlog (not install blockers) |
 | `docs/QUICKSTART.md` | Quickstart guide |
 | `docs/RAFT_ANALYSIS_SUMMARY.md` | RAFT analysis summary |
 | `docs/ROOT_LAYOUT.md` | Repo root layout reference |
@@ -140,7 +143,7 @@
 | `docs/lore/` | Fleet lore and naming context |
 | `docs/nomenclature/` | Term definitions and glossary |
 | `docs/runbooks/` | Operational runbooks |
-| `docs/superpowers/` | Superpower/power documentation |
+| `docs/superpowers/` | Redirect stub → archive/docs/superpowers |
 | `docs/testing/` | Testing guides |
 | `docs/willow-handoff.md` | Handoff protocol documentation |
 | `sandbox/` | Experimental and scratch area |

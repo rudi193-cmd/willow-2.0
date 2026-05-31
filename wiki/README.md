@@ -4,7 +4,7 @@ The synthesis layer. Living pages — what every session needs without re-derivi
 
 RAG returns fragments. Wiki answers compound.
 
-**Maintained for Willow 2.0** · default DB `willow_20` · see [`docs/CODE_DIFF_1.9_to_2.0.md`](../docs/CODE_DIFF_1.9_to_2.0.md) for the 1.9 cut.
+**Maintained for Willow 2.0** · default DB `willow_20` · human router: [`docs/INDEX.md`](../docs/INDEX.md) · backlog: [`docs/OPEN_WORK.md`](../docs/OPEN_WORK.md)
 
 ---
 

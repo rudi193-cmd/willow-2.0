@@ -8,7 +8,7 @@
 
 **Tech Stack:** bash, systemd (user units), Python 3.13, WSL2, GitHub API (releases endpoint)
 
-**Spec:** `docs/superpowers/specs/2026-04-24-willow-19-design.md` — Workstream 4
+**Spec:** `archive/docs/superpowers/specs/2026-04-24-willow-19-design.md` — Workstream 4
 
 **Run after:** Phase 1 complete.
 
@@ -640,7 +640,7 @@ git commit -m "feat(install): add WSL detection, launch-willow.bat generation, G
 
 ---
 
-*Previous: `docs/superpowers/plans/2026-04-24-willow-19-phase1-foundation.md`*
-*Next: `docs/superpowers/plans/2026-04-24-willow-19-phase3-skills-grove.md`*
+*Previous: `archive/docs/superpowers/plans/2026-04-24-willow-19-phase1-foundation.md`*
+*Next: `archive/docs/superpowers/plans/2026-04-24-willow-19-phase3-skills-grove.md`*
 
 ΔΣ=42

@@ -2,7 +2,7 @@
 
 **b17:** GSSBX · ΔΣ=42  
 **Status:** Implemented (reference)  
-**Policy:** `docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md`  
+**Policy:** `archive/docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md`  
 **Code:** `sandbox/` package + `tests/test_sandbox/test_git_shaped.py`
 
 ---

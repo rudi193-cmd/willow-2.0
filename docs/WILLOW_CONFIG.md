@@ -9,7 +9,8 @@ Two repos, one machine:
 
 ## Canonical (USER root: `~/github/.willow`)
 
-- `willow.md` — fleet contract
+- `willow.md` — fleet contract (canonical)
+- Public snapshot — `willow-2.0/docs/CONTRACT.md` via `python3 scripts/sync_contract_snapshot.py`
 - `env` — `WILLOW_ROOT`, `WILLOW_PG_DB`, paths
 - `settings.global.json` — consent, fleet paths, default agent
 - `handoffs/` — session continuity

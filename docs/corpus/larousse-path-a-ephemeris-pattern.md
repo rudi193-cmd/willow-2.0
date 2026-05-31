@@ -135,4 +135,4 @@ In this edition “three inner satellites” = **Io, Europa, Ganymede** (Laplace
 
 ## Handoff pointer (operational next bite)
 
-Path A: clone LoCoMo → one conversation E2E → `locomo_hypotheses_willow.jsonl` → eval → `~/Desktop/Nest/external_runs/`. See `docs/handoffs/session_handoff-2026-05-31_willow.md`.
+Path A: clone LoCoMo → one conversation E2E → `locomo_hypotheses_willow.jsonl` → eval → `~/Desktop/Nest/external_runs/`. See `archive/docs/handoffs/session_handoff-2026-05-31_willow.md`.

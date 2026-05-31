@@ -47,7 +47,6 @@ Use the right artifact for the right lifespan. Do not dump a whole session into 
 
 | Artifact | Example |
 |----------|---------|
-| Dev log (complete) | [`../dev-log-2026-05-27-session-complete.md`](../dev-log-2026-05-27-session-complete.md) |
 | Dev log (summary) | [`../dev-log-2026-05-27-fleet-github-layout.md`](../dev-log-2026-05-27-fleet-github-layout.md) |
 | ADR | [`../adrs/ADR-20260525-post-push-stabilization.md`](../adrs/ADR-20260525-post-push-stabilization.md) |
 | Task | `~/github/.willow/tasks/T-20260528-github-fleet-layout.md` |

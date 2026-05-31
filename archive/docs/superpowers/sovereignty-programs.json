@@ -9,16 +9,16 @@
       "title": "Sovereign edges — full program (Phases 0–3)",
       "owner": "sean + hanuman",
       "status": "draft",
-      "umbrella_spec": "docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md",
+      "umbrella_spec": "archive/docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md",
       "child_specs": [
-        "docs/superpowers/specs/2026-05-12-sovereign-edges-phase-1.md",
-        "docs/superpowers/specs/2026-05-12-u2u-discovery-phase-2c.md"
+        "archive/docs/superpowers/specs/2026-05-12-sovereign-edges-phase-1.md",
+        "archive/docs/superpowers/specs/2026-05-12-u2u-discovery-phase-2c.md"
       ],
       "kb_refs": ["013CDE08", "61B8FD6B", "932B35B3", "DD0808D1", "B81FE312"],
       "phase2_tracks": [
         { "id": "2A", "name": "Inbound / tunnel (ngrok-shaped)", "branch": null, "worktree": null, "status": "not_started" },
         { "id": "2B", "name": "Static / Pages (Cloudflare-shaped)", "branch": null, "worktree": null, "status": "not_started" },
-        { "id": "2C", "name": "U2U discovery", "branch": "wt/u2u-phase-2c", "worktree": "willow-1.9-wt-u2u-phase-2c", "spec": "docs/superpowers/specs/2026-05-12-u2u-discovery-phase-2c.md", "status": "in_flight" }
+        { "id": "2C", "name": "U2U discovery", "branch": "wt/u2u-phase-2c", "worktree": "willow-1.9-wt-u2u-phase-2c", "spec": "archive/docs/superpowers/specs/2026-05-12-u2u-discovery-phase-2c.md", "status": "in_flight" }
       ],
       "worktrees": [
         { "label": "Phase 1 spec + discipline", "branch": "wt/sovereign-edges-phase1", "path": "willow-1.9-wt-sovereign-edges-phase1" },
@@ -33,7 +33,7 @@
       "title": "Sovereign git forge — replacing the GitHub-shaped edge",
       "owner": "sean + hanuman",
       "status": "draft",
-      "umbrella_spec": "docs/superpowers/specs/2026-05-12-github-forge-sovereignty.md",
+      "umbrella_spec": "archive/docs/superpowers/specs/2026-05-12-github-forge-sovereignty.md",
       "parent_umbrella_ids": ["sovereign-edges"],
       "phase2_first_pick_options": [
         { "id": "2A", "name": "Mirror-only (GitHub still canonical origin)" },
@@ -45,7 +45,7 @@
           "label": "Git forge initiative",
           "branch": "wt/github-forge-sovereignty",
           "path": "willow-1.9-wt-github-forge-sovereignty",
-          "spec": "docs/superpowers/specs/2026-05-12-github-forge-sovereignty.md"
+          "spec": "archive/docs/superpowers/specs/2026-05-12-github-forge-sovereignty.md"
         }
       ]
     }
@@ -54,12 +54,12 @@
     {
       "id": "wlgsm",
       "b17": "WLGSM",
-      "path": "docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md"
+      "path": "archive/docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md"
     },
     {
       "id": "overseer-process",
       "b17": "OVSR1",
-      "path": "docs/superpowers/specs/2026-05-12-project-overseer-process.md"
+      "path": "archive/docs/superpowers/specs/2026-05-12-project-overseer-process.md"
     },
     {
       "id": "run-overseer-script",

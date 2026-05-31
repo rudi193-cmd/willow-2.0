@@ -1,7 +1,5 @@
 # Dev log — Fleet session: apps, infra, layout, GitHub (2026-05-27)
 
-> **Full extract:** [`dev-log-2026-05-27-session-complete.md`](dev-log-2026-05-27-session-complete.md) — all 51 user turns, 1,299 tool calls, issues register, CI runs, file lists.
-
 **Session span:** Full multi-hour arc — Grove/systemd/app troubleshooting → two-repo correction → identity → path audit → `~/github/` move → CI green  
 **Operator:** Sean Campbell  
 **Machine:** ThinkPad (`sean-campbell-ThinkPad-P15s-Gen-2i`)  

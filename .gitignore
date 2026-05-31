@@ -47,7 +47,10 @@ apps/smart-home/tuya-raw.json
 apps/smart-home/snapshot.json
 apps/smart-home/debug.log
 
-# Claude Code runtime artifacts
+# Session handoffs belong in ~/.willow/handoffs/ — not the public repo
+docs/handoffs/*
+!docs/handoffs/README.md
+
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
 

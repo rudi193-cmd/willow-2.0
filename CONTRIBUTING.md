@@ -6,7 +6,7 @@ Thank you for helping tend the tree. This doc covers setup, quality gates, PR ex
 
 1. Read [`docs/FIRST_5_MINUTES.md`](docs/FIRST_5_MINUTES.md) — install, health checks, optional pre-commit.
 2. Read [`docs/AGENT_IDENTITY.md`](docs/AGENT_IDENTITY.md) if you wire an IDE — one agent per session, canonical settings under `WILLOW_HOME`.
-3. Search [`docs/INDEX.md`](docs/INDEX.md) and the KB before building something that may already exist.
+3. Search [`docs/INDEX.md`](docs/INDEX.md), [`docs/OPEN_WORK.md`](docs/OPEN_WORK.md), and the KB before building something that may already exist.
 
 ## Development setup
 

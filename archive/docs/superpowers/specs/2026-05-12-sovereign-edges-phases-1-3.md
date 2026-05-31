@@ -3,7 +3,7 @@
 **b17:** SEDG3 · ΔΣ=42  
 **Status:** Draft (umbrella — binds phased work across worktrees)  
 **Owner:** sean + hanuman  
-**Refs:** KB `013CDE08`, `61B8FD6B`, `932B35B3`, `DD0808D1`, `B81FE312` (worktree-only discipline); `docs/superpowers/specs/2026-05-12-github-forge-sovereignty.md` (sibling program — GitHub-shaped forge edge)
+**Refs:** KB `013CDE08`, `61B8FD6B`, `932B35B3`, `DD0808D1`, `B81FE312` (worktree-only discipline); `archive/docs/superpowers/specs/2026-05-12-github-forge-sovereignty.md` (sibling program — GitHub-shaped forge edge)
 
 **Branch discipline:** This umbrella spec lives on **`wt/sovereign-edges-phase1`** in worktree **`willow-1.9-wt-sovereign-edges-phase1`** until Sean ratifies merge to **`master`**. Child specs on **other** task branches are linked by **filename + branch name**; they are not merged until their own ratification.
 
@@ -65,7 +65,7 @@
 
 ## 3. Phase 1 — full specification (binding)
 
-**Canonical doc:** `docs/superpowers/specs/2026-05-12-sovereign-edges-phase-1.md` (this worktree).
+**Canonical doc:** `archive/docs/superpowers/specs/2026-05-12-sovereign-edges-phase-1.md` (this worktree).
 
 ### 3.1 Goals (recap)
 
@@ -127,7 +127,7 @@ All checklist items in Phase 1 doc **§8** are satisfied; evidence (tests / logs
 
 **Replaces:** “We only trust peers we hand-configured” with **one** consent-gated discovery channel.
 
-**Canonical doc:** `willow-1.9-wt-u2u-phase-2c` · branch **`wt/u2u-phase-2c`** · `docs/superpowers/specs/2026-05-12-u2u-discovery-phase-2c.md`.
+**Canonical doc:** `willow-1.9-wt-u2u-phase-2c` · branch **`wt/u2u-phase-2c`** · `archive/docs/superpowers/specs/2026-05-12-u2u-discovery-phase-2c.md`.
 
 **Done when:** That doc’s **§8** acceptance checklist is satisfied (C2 and/or C1 as ratified there).
 
@@ -141,7 +141,7 @@ All checklist items in Phase 1 doc **§8** are satisfied; evidence (tests / logs
 
 **Same sovereignty ethos, separate sequencing:** moving **canonical git + MR + CI identity** off **github.com** (or off GitHub-shaped SaaS) is **not** Phase 2A/2B/2C above — it is its own phased program so it does not pretend to be “just another tunnel.”
 
-**Canonical doc:** `docs/superpowers/specs/2026-05-12-github-forge-sovereignty.md` · intended branch **`wt/github-forge-sovereignty`** · worktree **`willow-1.9-wt-github-forge-sovereignty`** (create with overseer / `git worktree add` before trunk merge).
+**Canonical doc:** `archive/docs/superpowers/specs/2026-05-12-github-forge-sovereignty.md` · intended branch **`wt/github-forge-sovereignty`** · worktree **`willow-1.9-wt-github-forge-sovereignty`** (create with overseer / `git worktree add` before trunk merge).
 
 **Coordination:** Do not run **full** GitHub migration in the same calendar window as an active sovereign-edges **Phase 2** track unless Sean explicitly names **both** priorities and owners.
 
@@ -181,7 +181,7 @@ Phase 3 starts **after** the chosen Phase-2 track has been **live** long enough 
 
 ## 7. Worktree index (living document)
 
-Update this table when branches move. **Machine-readable copy (update in lockstep):** `docs/superpowers/sovereignty-programs.json`.
+Update this table when branches move. **Machine-readable copy (update in lockstep):** `archive/docs/superpowers/sovereignty-programs.json`.
 
 | Artifact | Branch | Worktree path |
 |----------|--------|----------------|

@@ -43,7 +43,7 @@ agent_task_submit  → queue shell work for Kart
 grove_get_history  → Grove MCP (sibling repo), not sap_mcp
 ```
 
-Full agent flow: [ONBOARDING.md](ONBOARDING.md)
+Full agent flow: [ONBOARDING.md](ONBOARDING.md) · MCP inject: [MCP_INSTRUCTIONS.md](MCP_INSTRUCTIONS.md)
 
 ---
 

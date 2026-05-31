@@ -28,7 +28,7 @@ Wallet cards: generic [`AXW-20.md`](nomenclature/AXW-20.md) · Necron [`AXW-20-N
 
 ## What to ignore on day one
 
-- `docs/superpowers/plans/` — 1.9 battle plans  
+- `archive/docs/superpowers/plans/` — 1.9 battle plans  
 - `b17` / Heraldry lines — agent checksums  
 - Persona cosplay unless you *are* that agent  
 

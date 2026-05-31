@@ -23,6 +23,10 @@ pip install -e .
 python3 seed.py
 ```
 
+**Agents without willow-config:** read [`docs/CONTRACT.md`](CONTRACT.md) for the public fleet contract snapshot. Full operator contract lives in private **willow-config** — see [`docs/WILLOW_CONFIG.md`](WILLOW_CONFIG.md).
+
+**Fleet operators:** clone `willow-config` to `~/github/.willow`, then run `bash setup.sh` so `willow.md` symlinks correctly.
+
 **Optional — pre-commit hooks** (ruff + path guard; mypy on push):
 
 ```bash

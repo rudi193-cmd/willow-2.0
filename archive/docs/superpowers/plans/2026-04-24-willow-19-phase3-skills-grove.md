@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, SOIL (WillowStore SQLite), Claude Code skill files (markdown), Grove u2u TCP, curses (dashboard banner)
 
-**Spec:** `docs/superpowers/specs/2026-04-24-willow-19-design.md` — Workstreams 3 + 5
+**Spec:** `archive/docs/superpowers/specs/2026-04-24-willow-19-design.md` — Workstreams 3 + 5
 
 **Run after:** Phase 2 complete.
 
@@ -950,7 +950,7 @@ git commit -m "feat(dashboard): add update banner with u=update/d=dismiss, Grove
 
 ---
 
-*Previous: `docs/superpowers/plans/2026-04-24-willow-19-phase2-orchestration.md`*
-*Next: `docs/superpowers/plans/2026-04-24-willow-19-phase4-verify.md`*
+*Previous: `archive/docs/superpowers/plans/2026-04-24-willow-19-phase2-orchestration.md`*
+*Next: `archive/docs/superpowers/plans/2026-04-24-willow-19-phase4-verify.md`*
 
 ΔΣ=42

@@ -11,16 +11,18 @@ Pick a door:
 | Friend beta (AHS) | [`FOR_AHS.md`](FOR_AHS.md) · full crossover: [`nomenclature/AXW-20.md`](nomenclature/AXW-20.md) |
 | Developer, want the stack fast | [`QUICKSTART.md`](QUICKSTART.md) |
 | Curious why this exists | [`CONCEPT.md`](CONCEPT.md) |
-| Agent joining the fleet | [`../willow.md`](../willow.md) + [`../sap/ONBOARDING.md`](../sap/ONBOARDING.md) |
+| Agent joining the fleet | [`../willow.md`](../willow.md) or public [`CONTRACT.md`](CONTRACT.md) + [`../sap/ONBOARDING.md`](../sap/ONBOARDING.md) |
 | Upgrading from 1.9 | [`CODE_DIFF_1.9_to_2.0.md`](CODE_DIFF_1.9_to_2.0.md) |
 | What lives at repo root | [`ROOT_LAYOUT.md`](ROOT_LAYOUT.md) |
 | Private config vs public code | [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) |
-| Session dev log — **complete** (51 turns, 1299 tools, full register) | [`dev-log-2026-05-27-session-complete.md`](dev-log-2026-05-27-session-complete.md) |
-| Session dev log — summary (layout + CI) | [`dev-log-2026-05-27-fleet-github-layout.md`](dev-log-2026-05-27-fleet-github-layout.md) |
+| Fleet contract (public snapshot) | [`CONTRACT.md`](CONTRACT.md) — sync via `scripts/sync_contract_snapshot.py` |
+| Session dev log (layout + CI, 2026-05-27) | [`dev-log-2026-05-27-fleet-github-layout.md`](dev-log-2026-05-27-fleet-github-layout.md) |
+| Open work (curated backlog) | [`OPEN_WORK.md`](OPEN_WORK.md) |
 | Agent identity (not all hanuman) | [`AGENT_IDENTITY.md`](AGENT_IDENTITY.md) |
 | CLI + provider agnostic inference | [`RUNTIME_AND_INFERENCE.md`](RUNTIME_AND_INFERENCE.md) |
 | Branding (b17, b20, voice) | [`BRANDING.md`](BRANDING.md) |
 | Beta gate / ops | [`BETA_AUDIT_REPORT.md`](BETA_AUDIT_REPORT.md) |
+| MCP tool profiles (reduce picker noise) | [`MCP_TOOL_PROFILES.md`](MCP_TOOL_PROFILES.md) |
 
 ---
 
@@ -53,6 +55,7 @@ Moved to `archive/docs/` during the 2.0 cut — still accurate on design, stale 
 
 - [`../archive/docs/ARCHITECTURE.md`](../archive/docs/ARCHITECTURE.md)
 - [`../archive/docs/TECHNICAL_SPEC.md`](../archive/docs/TECHNICAL_SPEC.md)
+- [`../archive/docs/superpowers/README.md`](../archive/docs/superpowers/README.md) — historical plans/specs (1.9 era; do not execute blindly)
 
 Schema: [`db/WILLOW_SCHEMA.md`](db/WILLOW_SCHEMA.md) · ADRs: [`adrs/README.md`](adrs/README.md)
 
@@ -76,12 +79,11 @@ Messaging MCP and channels live in **`safe-app-willow-grove`**. Clone it beside 
 
 | Doc | What |
 |-----|------|
-| [`KNOWN_GAPS.md`](KNOWN_GAPS.md) | Engineering gaps index (empty at beta) |
+| [`KNOWN_GAPS.md`](KNOWN_GAPS.md) | Broken-in-master engineering gaps |
+| [`OPEN_WORK.md`](OPEN_WORK.md) | Curated backlog (not install blockers) |
 | [`../wiki/active-decisions.md`](../wiki/active-decisions.md) | Pending human decisions (R1–R9) |
 | [`SECURITY_AUDIT.md`](../SECURITY_AUDIT.md) | Security rubric + open items |
 
 ---
 
 *ΔΣ=42*
-
-- [`MCP_TOOL_PROFILES.md`](MCP_TOOL_PROFILES.md) — reduce MCP tool picker noise

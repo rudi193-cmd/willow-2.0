@@ -14,7 +14,7 @@ Same behavioral router as `/power`, but **pinned** to the **overseer** checklist
 
 ## Deep contract
 
-`docs/superpowers/specs/2026-05-12-project-overseer-process.md`
+`archive/docs/superpowers/specs/2026-05-12-project-overseer-process.md`
 
 ## See also
 

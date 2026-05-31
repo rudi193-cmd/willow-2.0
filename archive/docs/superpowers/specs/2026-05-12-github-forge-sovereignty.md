@@ -6,7 +6,7 @@
 
 **Branch discipline:** This spec should live on **`wt/github-forge-sovereignty`** in worktree **`willow-1.9-wt-github-forge-sovereignty`** until ratified merge to **`master`**. If the file appears first on **`master`** during drafting, treat that as **provisional** — move or cherry-pick to the task branch before claiming the initiative is isolated.
 
-**Refs:** `docs/superpowers/sovereignty-programs.json` (quick machine index — update with branch moves), `docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` (sequencing ethos), `docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md` (shape over host), `docs/superpowers/specs/2026-05-12-project-overseer-process.md`, `scripts/run_overseer.py`
+**Refs:** `archive/docs/superpowers/sovereignty-programs.json` (quick machine index — update with branch moves), `archive/docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` (sequencing ethos), `archive/docs/superpowers/specs/2026-05-12-willow-git-shaped-state-machine.md` (shape over host), `archive/docs/superpowers/specs/2026-05-12-project-overseer-process.md`, `scripts/run_overseer.py`
 
 ---
 

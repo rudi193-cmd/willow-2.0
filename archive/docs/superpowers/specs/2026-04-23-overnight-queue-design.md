@@ -72,7 +72,7 @@ Track 1 unblocks startup orientation. Track 3 unblocks all overnight automation.
 
 Design spec approved (f964bc4). `writing-plans` was interrupted. This is the architecture that unifies everything. Must be written before any 1.8 code is touched.
 
-**Success:** Full implementation plan at `docs/superpowers/plans/2026-04-23-willow-18.md`.
+**Success:** Full implementation plan at `archive/docs/superpowers/plans/2026-04-23-willow-18.md`.
 
 ---
 

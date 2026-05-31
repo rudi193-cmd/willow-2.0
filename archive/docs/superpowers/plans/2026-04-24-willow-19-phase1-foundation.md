@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, PostgreSQL (willow_19), psycopg2, cryptography (Fernet), httpx, curses, MCP SDK, pytest
 
-**Spec:** `docs/superpowers/specs/2026-04-24-willow-19-design.md`
+**Spec:** `archive/docs/superpowers/specs/2026-04-24-willow-19-design.md`
 
 ---
 
@@ -1828,8 +1828,8 @@ Run this before marking Phase 1 done:
 
 ---
 
-*Phase 2 plan: `docs/superpowers/plans/2026-04-24-willow-19-phase2-orchestration.md`*
-*Phase 3 plan: `docs/superpowers/plans/2026-04-24-willow-19-phase3-skills-grove.md`*
-*Phase 4 plan: `docs/superpowers/plans/2026-04-24-willow-19-phase4-verify.md`*
+*Phase 2 plan: `archive/docs/superpowers/plans/2026-04-24-willow-19-phase2-orchestration.md`*
+*Phase 3 plan: `archive/docs/superpowers/plans/2026-04-24-willow-19-phase3-skills-grove.md`*
+*Phase 4 plan: `archive/docs/superpowers/plans/2026-04-24-willow-19-phase4-verify.md`*
 
 ΔΣ=42

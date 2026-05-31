@@ -125,6 +125,7 @@ Optional: `./willow.sh providers enable anthropic YOUR_KEY` (or OpenAI / Gemini)
 | [CONCEPT.md](docs/CONCEPT.md) | Why local-first |
 | [IDE_INTEGRATION.md](docs/IDE_INTEGRATION.md) | Cursor / Claude Code MCP |
 | [INDEX.md](docs/INDEX.md) | Full doc map |
+| [OPEN_WORK.md](docs/OPEN_WORK.md) | Curated open backlog |
 
 | Reference | |
 |-----------|---|
