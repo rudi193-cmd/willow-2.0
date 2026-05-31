@@ -27,6 +27,8 @@ Edit and commit these in **willow-config**, not in public willow-2.0.
 
 Deployed manifests and apps: `~/github/SAFE/Agents`, `~/github/SAFE/Applications` (`~/SAFE` → symlink).
 
+**SAFE move + audit:** `bash scripts/repair_safe_layout.sh` then `python3 scripts/audit_safe_paths.py`. After re-sign: `python3 scripts/sync_safe_agent_manifests.py --force` and `./willow.sh verify`.
+
 Personal/archive data: `~/github/sean-data-vault` (`~/sean-data-vault` → symlink). Legacy 1.9 agent index stubs: `~/github/archive/legacy-agents-home` (`~/agents` → symlink).
 
 ## Host layout script

@@ -8,7 +8,8 @@
         "WILLOW_AGENT_NAME": "heimdallr",
         "WILLOW_GROVE_ROOT": "/home/sean-campbell/github/safe-app-willow-grove",
         "WILLOW_PG_DB": "willow_20",
-        "WILLOW_SAFE_ROOT": "/home/sean-campbell/SAFE/Applications"
+        "WILLOW_SAFE_ROOT": "/home/sean-campbell/github/SAFE/Applications",
+        "WILLOW_AGENTS_ROOT": "/home/sean-campbell/github/SAFE/Agents"
       }
     }
   }

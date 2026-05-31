@@ -121,10 +121,69 @@ move_into_github() {
   fi
 }
 
+# When ~/name and ~/github/<dest_name> both exist, keep github copy and replace ~ with symlink.
+dedupe_home_clone() {
+  local name="$1"
+  local dest_sub="${2:-$name}"
+  local src="${HOME_DIR}/${name}"
+  local dest="${GITHUB}/${dest_sub}"
+  local backlink="${HOME_DIR}/${name}"
+
+  if [[ ! -e "$src" ]]; then
+    return 0
+  fi
+  if [[ -L "$src" ]]; then
+    echo "OK (already symlink): ${backlink}"
+    return 0
+  fi
+  if [[ ! -e "$dest" ]]; then
+    move_into_github "$src" "$dest" "$backlink"
+    return 0
+  fi
+  echo "==> dedupe ~/${name} → github/${dest_sub}"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] rm -rf ${src} && ln -sfn ${dest} ${backlink}"
+    return 0
+  fi
+  if rm -rf "$src" 2>/dev/null; then
+    :
+  else
+    echo "  WARN busy — close handles then: rm -rf ${src} && ln -sfn ${dest} ${backlink}"
+    return 0
+  fi
+  run ln -sfn "$dest" "$backlink"
+}
+
+echo "==> Side repos at ~ → ~/github/* (or dedupe if already under github/)"
+SIDE_REPOS=(
+  claude-deep-review
+  litellm
+  ngrok-python
+  python-sdk
+)
+for name in "${SIDE_REPOS[@]}"; do
+  dedupe_home_clone "$name"
+done
+
+echo "==> Personal / small trees"
+dedupe_home_clone "journal" "sean-data-vault/journal"
+
+echo "==> Stale worktrees → ~/github/archive/"
+mkdir -p "${GITHUB}/archive"
+ARCHIVE_REPOS=(
+  willow-2.0-wt-grove-bidir
+  willow-wt
+)
+for name in "${ARCHIVE_REPOS[@]}"; do
+  dedupe_home_clone "$name" "archive/${name}"
+done
+
+echo "==> SAFE deploy tree (~ -> ~/github/SAFE, then ~/SAFE symlink back)"
+move_into_github "${HOME_DIR}/SAFE" "${GITHUB}/SAFE" "${HOME_DIR}/SAFE"
+
 echo "==> Fleet symlinks (legacy paths -> ~/github/*)"
-mkdir -p "${GITHUB}/SAFE/Applications" "${GITHUB}/SAFE/Agents"
+mkdir -p "${GITHUB}/.willow/store" "${GITHUB}/.willow/secrets" "${GITHUB}/.willow/logs"
 link_if_missing "${WILLOW_HOME}" "${HOME_DIR}/.willow"
-link_if_missing "${GITHUB}/SAFE" "${HOME_DIR}/SAFE"
 link_if_missing "${REPO_ROOT}" "${HOME_DIR}/willow-2.0"
 if [[ -d "${GITHUB}/safe-app-store" ]]; then
   link_if_missing "${GITHUB}/safe-app-store" "${HOME_DIR}/safe-app-store"
@@ -166,7 +225,9 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
 fi
 
 echo "==> Summary"
-for p in .willow SAFE willow-2.0 safe-app-store sean-data-vault agents; do
+for p in .willow SAFE willow-2.0 safe-app-store sean-data-vault agents \
+  claude-deep-review journal litellm ngrok-python python-sdk \
+  willow-2.0-wt-grove-bidir willow-wt; do
   f="${HOME_DIR}/${p}"
   if [[ -L "$f" ]]; then
     echo "  ~/${p} -> $(readlink "$f")"
