@@ -87,3 +87,7 @@ issue_body.md
 
 # Generated API reference (scripts/build_api_docs.sh)
 docs/api/
+
+# LoCoMo benchmark — run artifacts and downloaded dataset files
+willow/bench/locomo/external_runs/
+willow/bench/locomo/data/
