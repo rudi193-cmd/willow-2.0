@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import List, Protocol, runtime_checkable
 
 QA_PROMPT_TEMPLATE = """You extract short factual answers from context. Output ONLY the answer — nothing else.
