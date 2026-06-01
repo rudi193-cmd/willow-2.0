@@ -51,7 +51,39 @@ If `/tmp/willow-dispatch-inbox-{agent}.json` exists → read, surface, delete.
 Grove unavailable = degraded, not fatal. Continue.
 
 **6. KB topic** *(parallel with 3–5)*
-`kb_search(semantic=true, query=<current task or session topic>)` — check before acting.
+Extract the key topic or entity from the user's first message — strip filler phrases ("is an interesting subject", "I've been thinking about", "tell me about", etc.) and search on the core noun or concept. Examples: "NASA is an interesting subject" → `NASA`; "I've been thinking about cathedrals" → `cathedrals`; "fix the kart symlink" → use as-is.
+
+`kb_search(semantic=true, query=<extracted topic>)` — do not use the raw sentence as the query; embedding models match phrase structure, not topic.
+
+After the search, classify the tone of the first message and pick one output mode for surfacing results in the boot report:
+
+| Mode | When | Output shape |
+|---|---|---|
+| **Direct** | Clear task or question | KB hits as context, standard boot report continues |
+| **Bridge** | Casual or ambient topic | 1–2 sentences connecting the topic to the actual open work |
+| **Sideways** | Off-topic or random | Surface the most unexpected KB atom that resonates with the topic |
+| **Story seed** | Creative, poetic, or philosophical | 2–3 sentences weaving the topic into current open threads |
+| **One-liner** | Any tone | Single dry observation connecting the two |
+
+If no KB hits land above 0.5 distance: skip the mode entirely, continue normally.
+
+**Mode examples:**
+
+*Direct* — "Fix the kart symlink" → "PR #170 is already open for this. CI is the gate."
+*Direct* — "What's the LoCoMo baseline?" → "KB atom 0C7BA8F0: token_f1=0.1062, 1540 questions. Full-10 pending smoke pass."
+
+*Bridge* — "NASA is an interesting subject" → "NASA's answer to temporal uncertainty: name the gap, build an instrument, then wait. The temporal gap in LoCoMo (cat-3 = 0.1001) is named. The instrument is `_is_counterfactual_query()`. Waiting on the smoke."
+*Bridge* — "I've been thinking about cathedrals" → "Built on the assumption the builders won't see the spire. PR #151 is that kind of work — nobody celebrates the scaffold."
+
+*Sideways* — "NASA is an interesting subject" → pulls autocatalytic closure atom: "Above a critical density, self-maintenance becomes inevitable. The retrieval pool is at 38 candidates. Might be past the threshold."
+*Sideways* — "Byzantine art is fascinating" → pulls iconography atom: "Fixed representation, variable interpretation. That's what session summary atoms are doing."
+
+*Story seed* — "NASA is an interesting subject" → "In 1977 Voyager left with a golden record — the whole mountain, not the herb. This session has a smoke test running in external_runs/. The record plays when we check."
+*Story seed* — "I've been thinking about time" → "The ship that knows its position can calculate where it's been. The ship that only knows where it's been has to guess. LoCoMo cat-3 is the second ship."
+
+*One-liner* — "NASA is an interesting subject" → "They also had a temporal gap problem. Took 8 minutes to know if it worked."
+*One-liner* — "I like Mondays" → "Six open threads disagree."
+*One-liner* — "What's the meaning of life?" → "42. It's been there the whole time. *ΔΣ=42*"
 
 **7. Persona**
 Read `~/.willow/willow-2.0-active-persona`. The hook injects picker context into system context only — **the user cannot see it**. You must render the picker as visible text in your boot response so the user can confirm or switch.
