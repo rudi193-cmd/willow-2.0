@@ -185,6 +185,14 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
         if p.is_symlink():
             args += ["--symlink", target, link_path]
 
+    # If ~/.willow doesn't exist on the host (common when it hasn't been symlinked
+    # yet) but ~/github/.willow does, inject a symlink so scripts using ~/.willow
+    # paths work inside the container.
+    _home_willow = Path.home() / ".willow"
+    _github_willow = Path.home() / "github" / ".willow"
+    if not _home_willow.exists() and _github_willow.is_dir():
+        args += ["--symlink", str(_github_willow), str(_home_willow)]
+
     # psycopg2's default socket dir is /var/run/postgresql. collect_bind_mounts
     # resolves the /var/run → /run symlink, so the socket ends up mounted at
     # /run/postgresql but never at /var/run/postgresql. Add a direct bind at
