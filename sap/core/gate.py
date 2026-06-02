@@ -46,12 +46,31 @@ LOG_DIR = Path(__file__).parent.parent / "log"
 
 # Dev fallback: search $WILLOW_DEV_SAFE_ROOT/safe-app-<app_id>/ when SAFE_ROOT lacks the folder.
 # PGP is skipped for dev paths — logged as dev_access_granted, not access_granted.
-# WARNING: if this var is set in a production shell environment, it silently disables PGP verification.
-# Unset it in prod launch scripts: unset WILLOW_DEV_SAFE_ROOT
-_DEV_SAFE_ROOT = Path(os.environ["WILLOW_DEV_SAFE_ROOT"]) if os.environ.get("WILLOW_DEV_SAFE_ROOT") else None
-if _DEV_SAFE_ROOT is not None:
+#
+# FAIL-CLOSED: WILLOW_DEV_SAFE_ROOT alone is not sufficient. WILLOW_ALLOW_DEV_GATE=1 must also
+# be set to activate the bypass. If WILLOW_DEV_SAFE_ROOT is set without WILLOW_ALLOW_DEV_GATE=1
+# (e.g. accidentally copied into a prod shell), the dev path is disabled and an error is logged.
+_DEV_SAFE_ROOT: "Path | None" = None
+if os.environ.get("WILLOW_DEV_SAFE_ROOT"):
     import sys as _sys
-    print(f"[gate] WARNING: WILLOW_DEV_SAFE_ROOT is set ({_DEV_SAFE_ROOT}) — PGP gate disabled for dev manifests. Unset in production.", file=_sys.stderr, flush=True)
+    if os.environ.get("WILLOW_ALLOW_DEV_GATE") == "1":
+        _DEV_SAFE_ROOT = Path(os.environ["WILLOW_DEV_SAFE_ROOT"])
+        print(
+            f"[gate] WARNING: dev bypass active — WILLOW_DEV_SAFE_ROOT={_DEV_SAFE_ROOT}, "
+            "PGP skipped for dev manifests. Do not set WILLOW_ALLOW_DEV_GATE=1 in production.",
+            file=_sys.stderr, flush=True,
+        )
+    else:
+        print(
+            "[gate] ERROR: WILLOW_DEV_SAFE_ROOT is set but WILLOW_ALLOW_DEV_GATE=1 is not — "
+            "dev bypass DISABLED (fail-closed). Set both vars intentionally in dev environments.",
+            file=_sys.stderr, flush=True,
+        )
+
+
+def gate_mode() -> str:
+    """Return the current PGP gate mode: 'pgp_enforced' or 'dev_bypass'."""
+    return "dev_bypass" if _DEV_SAFE_ROOT is not None else "pgp_enforced"
 
 _EXPECTED_FP = os.environ.get(
     "WILLOW_PGP_FINGERPRINT",
