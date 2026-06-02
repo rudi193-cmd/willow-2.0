@@ -687,6 +687,12 @@ def run_migrations(conn: "psycopg2.connection") -> None:
             conn.rollback()
 
 
+class EmbedDegradedError(RuntimeError):
+    """Raised by semantic search methods when the embedder is unavailable.
+    Callers that want keyword fallback should catch this explicitly or let it
+    propagate to a broader except block (kb_search already does this)."""
+
+
 def _rrf_merge(ann_results: list, ilike_results: list, k: int = 60) -> list:
     scores = {}
     for rank, row in enumerate(ann_results):
@@ -1193,10 +1199,7 @@ class PgBridge:
                                    fields: Optional[list] = None) -> list:
         vec = embed(query)
         if vec is None:
-            return self.knowledge_search(
-                query, limit=limit, project=project,
-                include_embedding=include_embedding, fields=fields,
-            )
+            raise EmbedDegradedError("embedder unavailable — keyword search only")
         ann = self._knowledge_ann(
             vec, limit=limit, project=project,
             include_embedding=include_embedding, fields=fields,
@@ -1210,7 +1213,7 @@ class PgBridge:
     def search_opus_semantic(self, query: str, limit: int = 20) -> list:
         vec = embed(query)
         if vec is None:
-            return self.search_opus(query, limit=limit)
+            raise EmbedDegradedError("embedder unavailable — keyword search only")
         self._ensure_conn()
         vec_str = str(vec)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -1227,7 +1230,7 @@ class PgBridge:
                                days_ago: Optional[int] = None) -> list:
         vec = embed(query)
         if vec is None:
-            return []
+            raise EmbedDegradedError("embedder unavailable — keyword search only")
         self._ensure_conn()
         vec_str = str(vec)
         filters = ["embedding IS NOT NULL", "invalid_at IS NULL"]
