@@ -446,6 +446,25 @@ _MIGRATIONS = [
         status TEXT NOT NULL DEFAULT 'pending', input JSONB, output JSONB,
         error TEXT, task_id TEXT, started_at TIMESTAMPTZ, ended_at TIMESTAMPTZ
     )""",
+    # GAP 3 — migrate legacy tier values to canonical vocabulary.
+    # observed/fetched/hypothesis/NULL → frontier
+    # validated/ratified             → canonical
+    # verified                       → contested
+    # Idempotent: WHERE clause only matches atoms that still have legacy tiers.
+    """UPDATE knowledge SET tier = CASE
+        WHEN tier IN ('validated', 'ratified') THEN 'canonical'
+        WHEN tier = 'verified' THEN 'contested'
+        ELSE 'frontier'
+    END
+    WHERE tier NOT IN ('frontier', 'contested', 'canonical', 'superseded')
+       OR tier IS NULL""",
+    # Tighten CHECK constraint to the 4 canonical values only.
+    """DO $$ BEGIN
+        ALTER TABLE knowledge DROP CONSTRAINT IF EXISTS knowledge_tier_check;
+        ALTER TABLE knowledge ADD CONSTRAINT knowledge_tier_check CHECK (
+            tier IN ('frontier', 'contested', 'canonical', 'superseded')
+        );
+    EXCEPTION WHEN others THEN NULL; END $$""",
 ]
 
 _INDEXES = """
@@ -993,7 +1012,7 @@ class PgBridge:
                 "source_type": record.get("source_type"),
                 "category":    record.get("category"),
                 "embedding":   vec_str,
-                "tier":        record.get("tier", "observed"),
+                "tier":        normalize_tier(record.get("tier", "frontier")),
                 "confidence":  record.get("confidence", 1.0),
             })
         self.conn.commit()
@@ -1002,7 +1021,7 @@ class PgBridge:
     def ingest_atom(self, title: str, summary: str, source_type: str = "mcp",
                     source_id: str = "", category: str = "general",
                     domain: Optional[str] = None, keywords: Optional[list] = None,
-                    tags: Optional[list] = None, tier: str = "observed",
+                    tags: Optional[list] = None, tier: str = "frontier",
                     confidence: float = 1.0) -> Optional[str]:
         """sap_mcp.py compatibility wrapper for willow_knowledge_ingest."""
         try:
@@ -1130,13 +1149,8 @@ class PgBridge:
         if not include_invalid:
             filters.append("invalid_at IS NULL")
         if tier:
-            canonical = normalize_tier(tier)
-            # Also match legacy values that map to the same canonical tier.
-            legacy = [k for k, v in _TIER_COMPAT.items() if v == canonical]
-            all_values = [canonical] + legacy
-            placeholders = ",".join(["%s"] * len(all_values))
-            filters.append(f"tier IN ({placeholders})")
-            params.extend(all_values)
+            filters.append("tier = %s")
+            params.append(normalize_tier(tier))
         where_template = " AND ".join(f"({f})" for f in filters)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             select_sql, _ = self._knowledge_select_cols(fields=fields, include_embedding=include_embedding)
