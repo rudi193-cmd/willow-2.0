@@ -1,5 +1,5 @@
 setuptools>=68
-psycopg2-binary>=2.9.0
+psycopg2-binary>=2.9.12
 pgvector>=0.4.2
 cryptography>=48.0.0
 mcp>=1.6.0,<2.0.0
