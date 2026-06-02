@@ -484,12 +484,19 @@ async def fleet_status(app_id: str) -> dict:
 
     metabolic = await loop.run_in_executor(_executor, _check_metabolic)
 
+    try:
+        from sap.core.gate import gate_mode as _gate_mode
+        _gm = _gate_mode()
+    except Exception:
+        _gm = "unknown"
+
     return {
         "local_store": {"collections": len(local_stats), "records": local_count},
         "postgres":    pg_stats if pg_stats else ("not_connected" if pg is None else "connected"),
         "ollama":      ollama,
         "manifests":   manifests,
         "metabolic":   metabolic,
+        "gate_mode":   _gm,
         "mode":        "portless",
     }
 
