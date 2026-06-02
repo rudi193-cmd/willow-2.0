@@ -1,10 +1,13 @@
 # core/embedder.py
+import os
 import re
+import sys
 import time
 import requests
 
-OLLAMA_URL = "http://localhost:11434/api/embeddings"
-MODEL = "nomic-embed-text"
+_OLLAMA_BASE = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_URL = os.environ.get("OLLAMA_EMBED_URL", f"{_OLLAMA_BASE}/api/embeddings")
+MODEL = os.environ.get("WILLOW_EMBED_MODEL", "nomic-embed-text")
 TIMEOUT_S = 25
 _RETRIES = 2
 _RETRY_DELAY_S = 3
@@ -47,7 +50,12 @@ def embed(text: str) -> list[float] | None:
             resp.raise_for_status()
             return resp.json()["embedding"]
         except requests.exceptions.ConnectionError:
-            # Service not running — don't retry, return immediately.
+            print(
+                f"[embedder] ConnectionError: {OLLAMA_URL} unreachable — "
+                "semantic search degraded to keyword-only. "
+                f"Set OLLAMA_EMBED_URL or start Ollama (model: {MODEL}).",
+                file=sys.stderr,
+            )
             return None
         except Exception:
             if attempt < _RETRIES - 1:
