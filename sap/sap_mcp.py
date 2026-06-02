@@ -336,6 +336,26 @@ def _check_ollama() -> dict:
         return {"running": False}
 
 
+def _check_metabolic() -> dict:
+    import sqlite3 as _sqlite3
+    result: dict = {"last_briefing": None, "socket": "unknown"}
+    briefings_db = Path.home() / ".willow" / "store" / "briefings" / "daily.db"
+    if briefings_db.exists():
+        try:
+            conn = _sqlite3.connect(str(briefings_db))
+            row = conn.execute(
+                "SELECT id, created FROM records ORDER BY created DESC LIMIT 1"
+            ).fetchone()
+            conn.close()
+            if row:
+                result["last_briefing"] = row[1]
+        except Exception:
+            pass
+    socket_path = Path.home() / ".willow" / "metabolic.sock"
+    result["socket"] = "active" if socket_path.exists() else "inactive"
+    return result
+
+
 def _normalize_local_paths(text: str) -> str:
     """Reduce PII leakage from local filesystem paths in written content."""
     try:
@@ -462,11 +482,14 @@ async def fleet_status(app_id: str) -> dict:
     except Exception as e:
         manifests = {"error": str(e)}
 
+    metabolic = await loop.run_in_executor(_executor, _check_metabolic)
+
     return {
         "local_store": {"collections": len(local_stats), "records": local_count},
         "postgres":    pg_stats if pg_stats else ("not_connected" if pg is None else "connected"),
         "ollama":      ollama,
         "manifests":   manifests,
+        "metabolic":   metabolic,
         "mode":        "portless",
     }
 

@@ -279,11 +279,26 @@ def soil_reflection_pass(store, collection_patterns: list[str], dry_run: bool = 
     return written
 
 
+def demote_stale_pass(dry_run: bool = False) -> int:
+    """Apply recency decay to all atoms not visited in 7+ days. Returns count updated."""
+    if dry_run:
+        return 0
+    try:
+        pgb = _load_pg_bridge()
+        bridge = pgb.PgBridge()
+        return bridge.demote_stale(cutoff_days=7)
+    except Exception as _e:
+        import sys as _sys
+        print(f"[norn] demote_stale pass error: {_e}", file=_sys.stderr)
+        return 0
+
+
 def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> dict:
     """Run all Norn jobs including intelligence passes. Returns report dict."""
     composted = compost_pass(dry_run=dry_run)
     communities = community_pass(dry_run=dry_run)
     heartbeat = measure_heartbeat()
+    demoted = demote_stale_pass(dry_run=dry_run)
 
     draugr_count = serendipity_count = dark_matter_count = 0
     revelation_count = mirror_count = mycorrhizal_count = 0
@@ -341,6 +356,7 @@ def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> di
         "communities": communities,
         "heartbeat": heartbeat,
         "squeakdog": heartbeat > 0.6,
+        "demoted": demoted,
         "draugr": draugr_count,
         "serendipity": serendipity_count,
         "dark_matter": dark_matter_count,
