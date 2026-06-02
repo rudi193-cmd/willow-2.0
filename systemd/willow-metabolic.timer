@@ -1,0 +1,11 @@
+[Unit]
+Description=Willow Metabolic Service — Nightly Norn Pass
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+Unit=willow-metabolic.service
+
+[Install]
+WantedBy=timers.target

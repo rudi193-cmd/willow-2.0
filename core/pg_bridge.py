@@ -922,6 +922,34 @@ class PgBridge:
             """, (atom_id, atom_id))
         self.conn.commit()
 
+    def demote_stale(self, cutoff_days: int = 7) -> int:
+        """Bulk recency-decay update for all atoms not visited within cutoff_days.
+        Uses the same decay formula as demote(). Returns count of atoms updated.
+        """
+        self._ensure_conn()
+        with self.conn.cursor() as cur:
+            cur.execute("""
+                UPDATE knowledge
+                SET weight = GREATEST(0.1,
+                    1.0 + ln(1.0 + visit_count) *
+                    CASE
+                        WHEN COALESCE(last_visited, now() - INTERVAL '180 days') >= now() - INTERVAL '7 days'
+                        THEN 1.0
+                        ELSE GREATEST(0.1,
+                            1.0 - (0.9 / 173.0) *
+                            LEAST(173, EXTRACT(EPOCH FROM (
+                                now() - COALESCE(last_visited, now() - INTERVAL '180 days')
+                            )) / 86400.0 - 7)
+                        )
+                    END
+                )
+                WHERE invalid_at IS NULL
+                  AND COALESCE(last_visited, valid_at) < now() - INTERVAL %s
+            """, (f'{cutoff_days} days',))
+            count = cur.rowcount
+        self.conn.commit()
+        return count
+
     def knowledge_put(self, record: dict) -> str:
         self._ensure_conn()
         title = record.get("title") or ""
