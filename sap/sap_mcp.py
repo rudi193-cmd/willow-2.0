@@ -1402,6 +1402,16 @@ async def kart_task_run(
         seen: set = set()
         results = []
 
+        # Snapshot active task IDs at call start so we only report tasks that
+        # were pending/running when this call began — not historical completed
+        # tasks sitting in Postgres from prior sessions.
+        initial_active_ids = {
+            r["id"]
+            for r in pg.tasks_by_status(
+                agent=agent, statuses=["pending", "running"], limit=limit * 4
+            )
+        }
+
         while _time.monotonic() < deadline:
             rows = pg.tasks_by_status(agent=agent, limit=limit * 4)
             active = [r for r in rows if r.get("status") in ("pending", "running")]
@@ -1410,6 +1420,7 @@ async def kart_task_run(
                 for r in rows
                 if r.get("status") in ("complete", "failed", "completed")
                 and r["id"] not in seen
+                and r["id"] in initial_active_ids
             ]
             for r in done:
                 seen.add(r["id"])
