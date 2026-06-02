@@ -26,7 +26,7 @@ _BANNER = """
 ║   Nothing in the fleet executes without it.                      ║
 ║                                                                  ║
 ║   Check:  curl http://localhost:7777/health                      ║
-║   Start:  ./willow.sh grove_serve                                ║
+║   Start:  ./willow.sh start  (manages grove-serve.service)       ║
 ║                                                                  ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
