@@ -40,8 +40,8 @@ _BUILTIN_PERSONAS: dict[str, dict] = {
     "oakenscroll": {
         "label": "Oakenscroll",
         "desc": "Professor, Dept. of Numerical Ethics & Accidental Cosmology, UTETY",
-        "source": "seeds",
-        "seed_ids": ["OAKENSCROLL_SEED_v1", "OAKENSCROLL_SEED_v2", "OAKENSCROLL_SEED_v3"],
+        "source": "file",
+        "path": _persona_path("oakenscroll"),
     },
     "hanuman": {
         "label": "Hanuman",
@@ -269,7 +269,14 @@ def load_persona(name: str) -> str:
     p = personas[name]
     source = p["source"]
     if source == "seeds":
-        return load_from_seeds(p["seed_ids"])
+        content = load_from_seeds(p["seed_ids"])
+        if content:
+            return content
+        # Fallback to .md file if seeds unavailable (seed_sections table missing etc.)
+        fallback = _persona_path(name)
+        if Path(fallback).exists():
+            return load_from_file(fallback, p["label"])
+        return ""
     if source == "file":
         return load_from_file(p["path"], p["label"])
     return ""
