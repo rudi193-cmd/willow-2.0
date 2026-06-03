@@ -173,12 +173,13 @@ def test_rrf_merge_shared_result_scores_higher():
     assert ids[0] == "SHARED", "Shared result should rank first"
 
 
-def test_knowledge_search_semantic_falls_back_when_embed_none():
-    from core.pg_bridge import PgBridge
+def test_knowledge_search_semantic_raises_when_embed_none():
+    import pytest
+    from core.pg_bridge import PgBridge, EmbedDegradedError
     pg = PgBridge()
     with patch("core.pg_bridge.embed", return_value=None):
-        results = pg.knowledge_search_semantic("test fallback query")
-    assert isinstance(results, list)
+        with pytest.raises(EmbedDegradedError):
+            pg.knowledge_search_semantic("test fallback query")
 
 
 def test_search_jeles_semantic_days_ago_filter():
