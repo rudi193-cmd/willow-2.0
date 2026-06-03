@@ -79,18 +79,12 @@ def test_community_pass_continues_after_per_project_failure(monkeypatch):
     monkeypatch.setattr(metabolic, "_load_pg_bridge", lambda: fake_pgb)
 
     # Two projects — first raises, second must still be attempted
-    original_community_pass = metabolic.community_pass
-
-    def patched_get_projects(bridge):
-        return [("proj_a", 10), ("proj_b", 10)]
-
     # Patch the initial query by monkeypatching bridge.conn.cursor fetchall for the project query
     class FakeBridgeWithProjects(FakeBridge):
         _project_query_done = False
 
         def __init__(self):
             super().__init__()
-            outer_cursor = self
 
             class ProjectCursor(FakeCursor):
                 def fetchall(self_inner):
