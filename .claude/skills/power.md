@@ -1,1 +1,0 @@
-/home/sean-campbell/willow-2.0/willow/fylgja/skills/power.md
