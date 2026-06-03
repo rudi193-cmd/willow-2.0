@@ -127,24 +127,34 @@ def community_pass(dry_run: bool = False) -> int:
             communities_written += 1
             continue
         community_id = f"community_{project}_{datetime.now(timezone.utc).strftime('%Y%m')}"
-        with bridge.conn.cursor() as cur:
-            cur.execute("""
-                SELECT title FROM knowledge
-                WHERE project = %s AND invalid_at IS NULL
-                ORDER BY valid_at DESC LIMIT 20
-            """, (project,))
-            titles = [r[0] for r in cur.fetchall() if r[0]]
-        if not titles:
-            continue
-        bridge.knowledge_put({
-            "id": community_id,
-            "project": project,
-            "title": f"Community node — {project}",
-            "summary": f"{count} atoms. Themes: {', '.join(titles[:5])}",
-            "source_type": "community_detection",
-            "category": "community",
-        })
-        communities_written += 1
+        try:
+            with bridge.conn.cursor() as cur:
+                cur.execute("""
+                    SELECT title FROM knowledge
+                    WHERE project = %s AND invalid_at IS NULL
+                    ORDER BY valid_at DESC LIMIT 20
+                """, (project,))
+                titles = [r[0] for r in cur.fetchall() if r[0]]
+            if not titles:
+                continue
+            bridge.knowledge_put({
+                "id": community_id,
+                "project": project,
+                "title": f"Community node — {project}",
+                "summary": f"{count} atoms. Themes: {', '.join(titles[:5])}",
+                "source_type": "community_detection",
+                "category": "community",
+            })
+            communities_written += 1
+        except Exception as exc:
+            print(
+                f"[community_pass] project={project!r} failed ({exc!r}) — reconnecting",
+                file=sys.stderr,
+            )
+            try:
+                bridge = pgb.PgBridge()
+            except Exception:
+                pass
 
     return communities_written
 
