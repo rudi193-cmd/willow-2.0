@@ -1,1 +1,0 @@
-../../willow/fylgja/commands/power.md

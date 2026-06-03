@@ -1,1 +1,0 @@
-../../../willow/fylgja/skills/rlm/SKILL.md
