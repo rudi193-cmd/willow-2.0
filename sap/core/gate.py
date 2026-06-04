@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import re as _re
+import socket as _socket
 import subprocess
 from pathlib import Path
 from datetime import datetime, timezone
@@ -54,8 +55,6 @@ LOG_DIR = Path(__file__).parent.parent / "log"
 # HOSTNAME CHECK: When WILLOW_DEV_HOSTNAMES is set (comma-separated), the bypass only activates
 # on listed hostnames — fail-closed if the current host is not in the list. When not set,
 # any hostname is accepted (backwards compatible) but a warning is emitted.
-import socket as _socket
-
 _DEV_HOSTNAMES_RAW = os.environ.get("WILLOW_DEV_HOSTNAMES", "")
 _DEV_HOSTNAMES: frozenset = (
     frozenset(h.strip() for h in _DEV_HOSTNAMES_RAW.split(",") if h.strip())

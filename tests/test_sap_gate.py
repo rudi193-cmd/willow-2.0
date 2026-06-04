@@ -232,7 +232,8 @@ class TestDevBypassHostnameCheck:
 
     def test_dev_hostnames_parsed_from_env(self):
         """WILLOW_DEV_HOSTNAMES parses comma-separated list correctly."""
-        import importlib, os
+        import importlib
+        import os
         saved = {k: os.environ.get(k) for k in (
             "WILLOW_DEV_SAFE_ROOT", "WILLOW_ALLOW_DEV_GATE", "WILLOW_DEV_HOSTNAMES"
         )}
@@ -253,7 +254,8 @@ class TestDevBypassHostnameCheck:
 
     def test_dev_hostnames_empty_when_env_not_set(self):
         """WILLOW_DEV_HOSTNAMES not set → empty frozenset."""
-        import importlib, os
+        import importlib
+        import os
         saved = {k: os.environ.get(k) for k in (
             "WILLOW_DEV_SAFE_ROOT", "WILLOW_ALLOW_DEV_GATE", "WILLOW_DEV_HOSTNAMES"
         )}
