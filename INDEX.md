@@ -181,6 +181,7 @@
 | `docs/handoffs` |
 | `docs/index.html` |
 | `docs/kb` |
+| `docs/provenance` |
 | `docs/static` |
 | `docs/templates` |
 | `sap/MCP_SPEC.lock.json` |
