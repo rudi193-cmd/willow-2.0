@@ -37,8 +37,6 @@ BRIDGE_PATH = HANDOFF_DIR / "cross-runtime.json"
 # Live threads — keep in sync with handoffs/hanuman/session_handoff-2026-05-28d_hanuman.md
 JELES_OPEN = [
     "GEMINI_API_KEY deferred (Groq + Ollama sufficient)",
-    "teachers-app redirect loop — devtools + localStorage cos_config",
-    "teachers-app git — no remote; most files untracked",
     "Commit local path migration — safe-app-willow-grove, willow-2.0 scripts, .willow env",
     "Upstream PR #5 (claude-deep-review) — awaiting re-review",
     "Upstream PR #1032 (mcp-memory-service) — awaiting maintainer",
