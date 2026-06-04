@@ -51,7 +51,7 @@ _INFRA_IDS = frozenset({
 _INFRA_ACL_BYPASS = frozenset({"willow"})
 
 # Shared executor — PGP check, memory sanitizer, and sync tool dispatch
-_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="willow-tool")
+_executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="willow-tool")
 
 # Gleipnir is not thread-safe (in-memory dict); serialize access
 _gleipnir_lock = asyncio.Lock()

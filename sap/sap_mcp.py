@@ -2432,7 +2432,10 @@ async def mem_check(
             collection=collection or f"{effective_domain}/atoms",
         )
 
-    return await loop.run_in_executor(_executor, _check)
+    try:
+        return await asyncio.wait_for(loop.run_in_executor(_executor, _check), timeout=15.0)
+    except asyncio.TimeoutError:
+        return {"flags": ["TIMEOUT"], "recommendation": "mem_check timed out — executor pool likely saturated; retry or use kb_ingest directly.", "evidence": {}}
 
 
 # ── Tools — index_ domain (Opus) ──────────────────────────────────────────────
