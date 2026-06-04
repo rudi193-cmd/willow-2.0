@@ -173,6 +173,104 @@ class TestScopePathIntegration:
         assert "story-timeline/user-abc123/atoms/" in params
 
 
+class TestDevBypassHostnameCheck:
+    """Tests for WILLOW_DEV_HOSTNAMES hostname gate check."""
+
+    def test_gate_mode_pgp_enforced_when_no_dev_root(self):
+        original = gate._DEV_SAFE_ROOT
+        try:
+            gate._DEV_SAFE_ROOT = None
+            assert gate.gate_mode() == "pgp_enforced"
+        finally:
+            gate._DEV_SAFE_ROOT = original
+
+    def test_gate_mode_dev_bypass_when_dev_root_set(self):
+        from pathlib import Path
+        original = gate._DEV_SAFE_ROOT
+        try:
+            gate._DEV_SAFE_ROOT = Path("/tmp/fake-dev")
+            assert gate.gate_mode() == "dev_bypass"
+        finally:
+            gate._DEV_SAFE_ROOT = original
+
+    def test_hostname_detail_not_active_by_default(self):
+        original = gate._DEV_HOSTNAME_CHECK
+        try:
+            gate._DEV_HOSTNAME_CHECK = "not_active"
+            assert gate.gate_hostname_detail() == "not_active"
+        finally:
+            gate._DEV_HOSTNAME_CHECK = original
+
+    def test_hostname_detail_passed_when_host_in_allowlist(self):
+        original = gate._DEV_HOSTNAME_CHECK
+        try:
+            gate._DEV_HOSTNAME_CHECK = "passed:my-dev-host"
+            assert gate.gate_hostname_detail() == "passed:my-dev-host"
+        finally:
+            gate._DEV_HOSTNAME_CHECK = original
+
+    def test_hostname_detail_blocked_implies_fail_closed(self):
+        """When hostname blocked, _DEV_SAFE_ROOT must be None (pgp_enforced)."""
+        original_root = gate._DEV_SAFE_ROOT
+        original_check = gate._DEV_HOSTNAME_CHECK
+        try:
+            gate._DEV_SAFE_ROOT = None
+            gate._DEV_HOSTNAME_CHECK = "blocked:prod-server"
+            assert gate.gate_hostname_detail() == "blocked:prod-server"
+            assert gate.gate_mode() == "pgp_enforced"
+        finally:
+            gate._DEV_SAFE_ROOT = original_root
+            gate._DEV_HOSTNAME_CHECK = original_check
+
+    def test_hostname_detail_unchecked_when_no_allowlist(self):
+        original = gate._DEV_HOSTNAME_CHECK
+        try:
+            gate._DEV_HOSTNAME_CHECK = "unchecked"
+            assert gate.gate_hostname_detail() == "unchecked"
+        finally:
+            gate._DEV_HOSTNAME_CHECK = original
+
+    def test_dev_hostnames_parsed_from_env(self):
+        """WILLOW_DEV_HOSTNAMES parses comma-separated list correctly."""
+        import importlib, os
+        saved = {k: os.environ.get(k) for k in (
+            "WILLOW_DEV_SAFE_ROOT", "WILLOW_ALLOW_DEV_GATE", "WILLOW_DEV_HOSTNAMES"
+        )}
+        try:
+            # Clear dev bypass so reload doesn't activate it
+            for k in ("WILLOW_DEV_SAFE_ROOT", "WILLOW_ALLOW_DEV_GATE", "WILLOW_DEV_HOSTNAMES"):
+                os.environ.pop(k, None)
+            os.environ["WILLOW_DEV_HOSTNAMES"] = "host-a, host-b , host-c"
+            importlib.reload(gate)
+            assert gate._DEV_HOSTNAMES == frozenset({"host-a", "host-b", "host-c"})
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+            importlib.reload(gate)
+
+    def test_dev_hostnames_empty_when_env_not_set(self):
+        """WILLOW_DEV_HOSTNAMES not set → empty frozenset."""
+        import importlib, os
+        saved = {k: os.environ.get(k) for k in (
+            "WILLOW_DEV_SAFE_ROOT", "WILLOW_ALLOW_DEV_GATE", "WILLOW_DEV_HOSTNAMES"
+        )}
+        try:
+            for k in ("WILLOW_DEV_SAFE_ROOT", "WILLOW_ALLOW_DEV_GATE", "WILLOW_DEV_HOSTNAMES"):
+                os.environ.pop(k, None)
+            importlib.reload(gate)
+            assert gate._DEV_HOSTNAMES == frozenset()
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+            importlib.reload(gate)
+
+
 class TestAuthorizedCrossAppEdgeCases:
     """Edge cases and boundary conditions."""
 

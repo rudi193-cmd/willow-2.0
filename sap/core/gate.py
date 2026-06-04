@@ -50,16 +50,51 @@ LOG_DIR = Path(__file__).parent.parent / "log"
 # FAIL-CLOSED: WILLOW_DEV_SAFE_ROOT alone is not sufficient. WILLOW_ALLOW_DEV_GATE=1 must also
 # be set to activate the bypass. If WILLOW_DEV_SAFE_ROOT is set without WILLOW_ALLOW_DEV_GATE=1
 # (e.g. accidentally copied into a prod shell), the dev path is disabled and an error is logged.
+#
+# HOSTNAME CHECK: When WILLOW_DEV_HOSTNAMES is set (comma-separated), the bypass only activates
+# on listed hostnames — fail-closed if the current host is not in the list. When not set,
+# any hostname is accepted (backwards compatible) but a warning is emitted.
+import socket as _socket
+
+_DEV_HOSTNAMES_RAW = os.environ.get("WILLOW_DEV_HOSTNAMES", "")
+_DEV_HOSTNAMES: frozenset = (
+    frozenset(h.strip() for h in _DEV_HOSTNAMES_RAW.split(",") if h.strip())
+    if _DEV_HOSTNAMES_RAW.strip() else frozenset()
+)
+
 _DEV_SAFE_ROOT: "Path | None" = None
+_DEV_HOSTNAME_CHECK: str = "not_active"
 if os.environ.get("WILLOW_DEV_SAFE_ROOT"):
     import sys as _sys
     if os.environ.get("WILLOW_ALLOW_DEV_GATE") == "1":
-        _DEV_SAFE_ROOT = Path(os.environ["WILLOW_DEV_SAFE_ROOT"])
-        print(
-            f"[gate] WARNING: dev bypass active — WILLOW_DEV_SAFE_ROOT={_DEV_SAFE_ROOT}, "
-            "PGP skipped for dev manifests. Do not set WILLOW_ALLOW_DEV_GATE=1 in production.",
-            file=_sys.stderr, flush=True,
-        )
+        _current_host = _socket.gethostname()
+        if _DEV_HOSTNAMES and _current_host not in _DEV_HOSTNAMES:
+            _DEV_SAFE_ROOT = None
+            _DEV_HOSTNAME_CHECK = f"blocked:{_current_host}"
+            print(
+                f"[gate] ERROR: dev bypass BLOCKED — hostname '{_current_host}' not in "
+                "WILLOW_DEV_HOSTNAMES allowlist. Add this hostname or unset WILLOW_DEV_SAFE_ROOT.",
+                file=_sys.stderr, flush=True,
+            )
+        else:
+            _DEV_SAFE_ROOT = Path(os.environ["WILLOW_DEV_SAFE_ROOT"])
+            if _DEV_HOSTNAMES:
+                _DEV_HOSTNAME_CHECK = f"passed:{_current_host}"
+                print(
+                    f"[gate] WARNING: dev bypass active — host '{_current_host}' in "
+                    f"WILLOW_DEV_HOSTNAMES allowlist. WILLOW_DEV_SAFE_ROOT={_DEV_SAFE_ROOT}, "
+                    "PGP skipped for dev manifests.",
+                    file=_sys.stderr, flush=True,
+                )
+            else:
+                _DEV_HOSTNAME_CHECK = "unchecked"
+                print(
+                    f"[gate] WARNING: dev bypass active — WILLOW_DEV_SAFE_ROOT={_DEV_SAFE_ROOT}, "
+                    "PGP skipped for dev manifests. "
+                    "Set WILLOW_DEV_HOSTNAMES to restrict bypass to known dev hosts. "
+                    "Do not set WILLOW_ALLOW_DEV_GATE=1 in production.",
+                    file=_sys.stderr, flush=True,
+                )
     else:
         print(
             "[gate] ERROR: WILLOW_DEV_SAFE_ROOT is set but WILLOW_ALLOW_DEV_GATE=1 is not — "
@@ -71,6 +106,18 @@ if os.environ.get("WILLOW_DEV_SAFE_ROOT"):
 def gate_mode() -> str:
     """Return the current PGP gate mode: 'pgp_enforced' or 'dev_bypass'."""
     return "dev_bypass" if _DEV_SAFE_ROOT is not None else "pgp_enforced"
+
+
+def gate_hostname_detail() -> str:
+    """Return the hostname check result for the dev bypass.
+
+    Values:
+      'not_active'       — dev bypass is off (normal operation)
+      'unchecked'        — bypass on, WILLOW_DEV_HOSTNAMES not set (any host accepted)
+      'passed:<host>'    — bypass on, hostname matched allowlist
+      'blocked:<host>'   — bypass blocked, hostname not in allowlist (fail-closed)
+    """
+    return _DEV_HOSTNAME_CHECK
 
 _EXPECTED_FP = os.environ.get(
     "WILLOW_PGP_FINGERPRINT",
