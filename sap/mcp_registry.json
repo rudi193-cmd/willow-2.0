@@ -225,6 +225,8 @@
 
     "routing_log_read":     {"group": "routing", "tier": "extended", "description": "Read routing_decisions log. Filter by session_id if provided."},
 
+    "source_trail_verify":  {"group": "source_trail", "tier": "extended", "description": "source-trail: extract claims from text and verify each against trusted sources (Jeles academic + press tier). Returns {claims, total, matched}."},
+
     "session_query":        {"group": "session", "tier": "extended", "description": "Query session_index and session_messages (stats, search, recent)."},
 
     "workflow_cancel":      {"group": "workflow", "tier": "extended", "description": "Cancel a running or pending workflow run."},

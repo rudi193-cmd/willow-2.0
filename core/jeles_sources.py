@@ -55,6 +55,7 @@ _SOURCE_CONFIDENCE: dict[str, float] = {
     "chronicling_america": 0.85, "dpla": 0.83, "semantic_scholar": 0.87,
     "pubchem": 0.92,
     "wikipedia": 0.60,
+    "psychiatric_times": 0.75,  # trade press, not peer-reviewed
 }
 
 
@@ -1741,6 +1742,52 @@ def search_ig_nobel(query: str, limit: int = 5) -> list[dict]:
     return results
 
 
+def search_psychiatric_times(query: str, limit: int = 5) -> list[dict]:
+    """Psychiatric Times — clinical psychiatry news, case reports, and review articles.
+    HTML scraper (no API key). Press tier — trade press, not peer-reviewed."""
+    import re as _re
+    url = (
+        "https://www.psychiatrictimes.com/search#q="
+        + urllib.parse.quote(query)
+        + "&t=All"
+    )
+    html = _get_html(url)
+    if not html:
+        return []
+
+    results: list[dict] = []
+    # Article links under /view/ path
+    link_re = _re.compile(
+        r'href="(/view/[a-z0-9-]{5,120})"[^>]*>\s*([^<]{10,200})\s*</a>',
+        _re.S,
+    )
+    date_re = _re.compile(
+        r'\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4})\b'
+    )
+    seen: set[str] = set()
+    for m in link_re.finditer(html):
+        path = m.group(1)
+        title = _re.sub(r'\s+', ' ', m.group(2)).strip()
+        if path in seen or not title:
+            continue
+        seen.add(path)
+        nearby = html[max(0, m.start() - 200): m.start() + 400]
+        date_m = date_re.search(nearby)
+        date = date_m.group(1) if date_m else ""
+        results.append(_result(
+            title=title,
+            url=f"https://www.psychiatrictimes.com{path}",
+            source="psychiatric_times",
+            institution="Psychiatric Times",
+            snippet="",
+            date=date,
+            rid=path,
+        ))
+        if len(results) >= limit:
+            break
+    return results
+
+
 # ── Source registry ────────────────────────────────────────────────────────────
 
 SOURCES: dict[str, dict] = {
@@ -1808,6 +1855,8 @@ SOURCES: dict[str, dict] = {
     "datagov":          {"name": "data.gov",                "domain": ["government", "data", "us"],          "key_required": False},
     "uk_legislation":   {"name": "legislation.gov.uk",      "domain": ["law", "government", "uk"],           "key_required": False},
     "eu_data":          {"name": "data.europa.eu",          "domain": ["government", "data", "europe"],      "key_required": False},
+    # Clinical trade press
+    "psychiatric_times": {"name": "Psychiatric Times",      "domain": ["psychiatry", "mental_health", "medicine"], "key_required": False},
     # Opt-in only — general reference, not suitable for academic citation
     "wikipedia":        {"name": "Wikipedia",               "domain": ["general", "reference"],              "fn_name": "search_wikipedia",        "key_required": False, "opt_in": True},
 }
@@ -1956,6 +2005,14 @@ _DOMAIN_ROUTES: list[tuple[list[str], list[str]]] = [
       "illustration", "tapestry", "mosaic", "rembrandt", "vermeer", "picasso",
       "van gogh", "monet", "museum collection", "art history"],
      ["met", "cleveland", "vam", "wikidata", "europeana"]),
+
+    (["psychiatry", "psychiatric", "mental health", "mental illness", "depression",
+      "anxiety", "bipolar", "schizophrenia", "psychosis", "ptsd", "adhd",
+      "autism", "ocd", "personality disorder", "substance use", "addiction",
+      "suicide", "self-harm", "antidepressant", "antipsychotic", "ssri", "snri",
+      "benzodiazepine", "therapy", "psychotherapy", "cbt", "dbt", "dsm",
+      "psychiatric medication", "mental disorder"],
+     ["psychiatric_times", "pubmed", "europepmc"]),
 
     (["disease", "drug", "medicine", "treatment", "syndrome", "virus", "bacteria",
       "health", "clinical", "therapy", "gene", "protein", "vaccine", "cancer",
@@ -2188,6 +2245,7 @@ _DOMAIN_SOURCES: dict[str, list[str]] = {
     "music":      ["musicbrainz", "openlibrary"],
     "art":        ["met", "cleveland", "vam", "wikidata", "europeana"],
     "medicine":   ["pubmed", "europepmc", "pubchem"],
+    "psychiatry": ["psychiatric_times", "pubmed", "europepmc"],
     "chemistry":  ["pubchem", "crossref", "arxiv"],
     "physics":    ["arxiv", "semantic_scholar", "openalex"],
     "space":      ["nasa", "arxiv", "openalex"],
