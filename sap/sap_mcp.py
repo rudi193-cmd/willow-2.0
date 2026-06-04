@@ -485,10 +485,12 @@ async def fleet_status(app_id: str) -> dict:
     metabolic = await loop.run_in_executor(_executor, _check_metabolic)
 
     try:
-        from sap.core.gate import gate_mode as _gate_mode
+        from sap.core.gate import gate_mode as _gate_mode, gate_hostname_detail as _gate_hostname_detail
         _gm = _gate_mode()
+        _ghd = _gate_hostname_detail()
     except Exception:
         _gm = "unknown"
+        _ghd = "unknown"
 
     return {
         "local_store": {"collections": len(local_stats), "records": local_count},
@@ -497,6 +499,7 @@ async def fleet_status(app_id: str) -> dict:
         "manifests":   manifests,
         "metabolic":   metabolic,
         "gate_mode":   _gm,
+        "gate_hostname_check": _ghd,
         "mode":        "portless",
     }
 
