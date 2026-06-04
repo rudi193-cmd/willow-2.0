@@ -1930,6 +1930,26 @@ async def mem_jeles_web_search(
 
 @mcp.tool()
 @sap_gate()
+async def source_trail_verify(
+    app_id:  str,
+    text:    str,
+    sources: list = [],
+) -> dict:
+    """source-trail: Extract verifiable factual claims from text and check each
+    against trusted sources. Two tiers: academic (Jeles — 29 institutions) and
+    press (Psychiatric Times, trade sources). Returns {claims, total, matched}
+    where each claim carries {claim, matched, title, url, date, source, tier, confidence}."""
+    logger.info("[w2] source_trail_verify app_id=%s text_len=%d", app_id, len(text))
+    from core.source_trail import verify_text
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor, verify_text,
+        text, sources or None, 2,
+    )
+
+
+@mcp.tool()
+@sap_gate()
 async def mem_jeles_ask(
     app_id:   str,
     question: str,
