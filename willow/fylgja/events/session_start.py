@@ -15,6 +15,7 @@ from core.agent_identity import require_agent_name
 from willow.fylgja._mcp import call
 from willow.fylgja._grove import call as _grove_call
 from willow.fylgja._state import reset_turn_count
+from willow.fylgja.events._stack_snapshot import normalize_stack_record
 
 try:
     from willow.context.dedup import reset_session as _dedup_reset
@@ -394,18 +395,32 @@ def _run_silent_startup() -> dict:
 
     # 5b. Stack snapshot — read authoritative open-state written by stop.py
     try:
-        snap = call("soil_get", {
+        raw = call("soil_get", {
             "app_id": AGENT,
             "collection": f"{AGENT}/stack",
-            "key": "current",
+            "record_id": "current",
         }, timeout=5)
-        if isinstance(snap, dict):
-            result["stack_snapshot"] = snap
-            # Prefer snapshot's open_threads over handoff title if richer
+        snap = normalize_stack_record(raw)
+        result["stack_snapshot"] = snap
+        if snap:
             if not result["handoff_title"] and snap.get("handoff_title"):
                 result["handoff_title"] = snap["handoff_title"]
-    except Exception:
+            if snap.get("open_threads") and not result["handoff_threads"]:
+                result["handoff_threads"] = snap.get("open_threads") or []
+            if snap.get("open_decisions"):
+                result.setdefault("stack_open_decisions", snap.get("open_decisions"))
+    except Exception as e:
         result["stack_snapshot"] = {}
+        result["mcp_errors"].append({"step": "stack", "error": str(e)[:80]})
+
+    if result.get("recent_traces") and not result.get("stack_snapshot"):
+        result["mcp_errors"].append({
+            "step": "stack_missing",
+            "error": (
+                f"{len(result['recent_traces'])} recent trace(s) but no "
+                f"{AGENT}/stack/current snapshot"
+            )[:120],
+        })
 
     if result["next_bite"]:
         result["handoff_summary"] = result["next_bite"][:200]
