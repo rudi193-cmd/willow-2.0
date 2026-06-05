@@ -336,6 +336,27 @@ def sap_gate(*, write: bool = False):
             elif _p_action == "warn":
                 asyncio.create_task(_emit_policy_warn(app_id, fn.__name__, _p_rule))
 
+            # 1.6. Identity bind — app_id must match WILLOW_AGENT_NAME (warn or strict)
+            try:
+                from willow.fylgja.identity_bind import check_app_id as _check_app_id
+
+                _id_action, _id_msg = _check_app_id(app_id)
+            except Exception:
+                _id_action, _id_msg = "ok", None
+            if _id_action == "block":
+                return {
+                    "error": "identity_mismatch",
+                    "message": _id_msg,
+                    "app_id": app_id,
+                    "tool": fn.__name__,
+                    "expected": os.environ.get("WILLOW_AGENT_NAME", ""),
+                }
+            if _id_action == "warn" and _id_msg:
+                print(f"[w2] identity bind: {_id_msg}", file=sys.stderr, flush=True)
+                asyncio.create_task(
+                    _emit_policy_warn(app_id, fn.__name__, f"identity/{_id_msg}")
+                )
+
             # 2. Gleipnir rate limit
             if _GLEIPNIR:
                 async with _gleipnir_lock:

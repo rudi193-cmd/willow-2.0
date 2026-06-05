@@ -59,6 +59,7 @@
 
     "fleet_tool_guide":   {"group": "fleet",  "tier": "minimal", "description": "Grouped catalog of MCP tools for the active WILLOW_MCP_PROFILE. Call when unsure which tool to use."},
     "fleet_status":       {"group": "fleet",  "tier": "minimal", "description": "Primary health check — Postgres, SOIL, Ollama, manifests. app_id is YOUR agent name."},
+    "fleet_identity_status": {"group": "fleet", "description": "Identity matrix: active-agent vs MCP env vs Cursor MCP vs Grove sender; lists drift."},
     "fleet_health":       {"group": "fleet",  "description": "Detailed health report across all fleet components."},
     "fleet_agents":       {"group": "fleet",  "description": "List registered agents and their manifest status."},
     "fleet_system_status":{"group": "fleet",  "description": "System-level status (CPU, RAM, disk, services)."},

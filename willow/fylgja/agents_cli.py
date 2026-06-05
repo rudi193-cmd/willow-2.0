@@ -12,6 +12,7 @@ from pathlib import Path
 
 from willow.fylgja.claude_plugin import check_claude_plugin_layout
 from willow.fylgja.install_project import install_project
+from willow.fylgja.identity_bind import collect_identity_matrix, drift_lines
 from willow.fylgja.project_env import (
     list_agent_identities,
     read_active_agent,
@@ -70,18 +71,49 @@ def cmd_list(root: Path) -> int:
     return 0
 
 
-def cmd_active(root: Path, agent: str) -> int:
+def cmd_active(root: Path, agent: str, *, install: bool = False) -> int:
     if agent not in list_agent_identities(root):
         print(f"Unknown agent {agent!r} — no agents/{agent}/config/identity.json")
         return 1
     write_active_agent(root, agent)
     print(f"Active agent → {agent}")
-    print(f"Run: ./willow agents install {agent} --ide all")
+    if install:
+        install_project(agent_name=agent, ides=["all"], package_root=root, dry_run=False)
+        matrix = collect_identity_matrix(root)
+        if matrix.get("coherent"):
+            print("Identity matrix: coherent")
+        else:
+            print("Identity matrix — remaining drift:")
+            for line in matrix.get("drift") or []:
+                print(f"  · {line}")
+        return 0
+
+    drift = drift_lines(root, agent)
+    if drift:
+        print("WARNING — identity drift (MCP env may not match active-agent):")
+        for line in drift:
+            print(f"  · {line}")
+        print(f"Fix: ./willow agents install {agent} --ide all")
+        print("     or: ./willow agents active {agent} --install")
+    else:
+        print(f"Identity OK — run install if IDE wiring changed: ./willow agents install {agent} --ide all")
     return 0
 
 
-def cmd_install(agent: str, ides: list[str], dry_run: bool) -> int:
-    install_project(agent_name=agent, ides=ides, dry_run=dry_run)
+def cmd_install(agent: str, ides: list[str], dry_run: bool, root: Path) -> int:
+    active = read_active_agent(root)
+    if active and active != agent and not dry_run:
+        print(
+            f"WARNING: installing {agent!r} but active-agent is {active!r} "
+            f"— install updates .cursor/mcp.json and identity for {agent}"
+        )
+    install_project(agent_name=agent, ides=ides, package_root=root, dry_run=dry_run)
+    if not dry_run:
+        matrix = collect_identity_matrix(root)
+        if not matrix.get("coherent"):
+            print("Post-install drift:")
+            for line in matrix.get("drift") or []:
+                print(f"  · {line}")
     return 0
 
 
@@ -156,6 +188,10 @@ def cmd_check(root: Path) -> int:
     except Exception as e:
         issues.append(f"Kart sandbox import failed: {e}")
 
+    matrix = collect_identity_matrix(root)
+    for line in matrix.get("drift") or []:
+        issues.append(f"identity drift: {line}")
+
     if issues:
         print("MCP enforcement check — ISSUES:")
         for item in issues:
@@ -181,6 +217,11 @@ def main(argv: list[str] | None = None) -> int:
 
     p_active = sub.add_parser("active", help="Set .willow/active-agent")
     p_active.add_argument("agent", help="Agent id (e.g. hanuman)")
+    p_active.add_argument(
+        "--install",
+        action="store_true",
+        help="Run install --ide all immediately after setting active agent",
+    )
 
     p_install = sub.add_parser("install", help="Wire IDE + MCP for an agent")
     p_install.add_argument("agent", help="Agent id")
@@ -207,12 +248,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "list":
         return cmd_list(root)
     if args.command == "active":
-        return cmd_active(root, args.agent.strip())
+        return cmd_active(root, args.agent.strip(), install=args.install)
     if args.command == "install":
         ides = ["all"] if args.ide.strip().lower() == "all" else [
             x.strip() for x in args.ide.split(",") if x.strip()
         ]
-        return cmd_install(args.agent.strip(), ides, args.dry_run)
+        return cmd_install(args.agent.strip(), ides, args.dry_run, root)
     if args.command == "check":
         return cmd_check(root)
     if args.command == "sync-manifests":

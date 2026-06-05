@@ -85,6 +85,11 @@ def render_mcp_config(agent: str, package_root: Path | None = None) -> dict:
 
     rendered = _render_template(template, values)
     config = json.loads(rendered)
+    willow_env = config.get("mcpServers", {}).get("willow", {}).get("env", {})
+    if isinstance(willow_env, dict):
+        willow_env["WILLOW_AGENT_NAME"] = agent
+        willow_env["GROVE_SENDER"] = agent
+        willow_env["GROVE_NAME"] = agent
 
     # Preserve operator secrets and extra env from existing MCP configs
     dest = agent_config_dir(root, agent) / "mcp.json"
