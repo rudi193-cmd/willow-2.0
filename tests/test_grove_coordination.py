@@ -34,4 +34,24 @@ def test_node_has_2_0_stub(store):
     nodes = node_list(store)
     node = next(n for n in nodes if n["addr"] == "test@host:8550")
     assert "2.0_stub" in node
-    assert node["2.0_stub"]["hns_opt_in"] is None
+    stub = node["2.0_stub"]
+    assert stub["hns_opt_in"] is None
+    assert stub["hns_quota_gb"] is None
+    assert stub["cpu_cores"] is not None
+    assert stub["cpu_cores"] >= 1
+    assert stub["models_loaded"] == []
+
+
+def test_node_announce_hns_params(store):
+    node_announce(store, "gpu@host:8550", "GPU Node", "2.0.0", hns_opt_in=True, hns_quota_gb=4.0)
+    node = next(n for n in node_list(store) if n["addr"] == "gpu@host:8550")
+    assert node["2.0_stub"]["hns_opt_in"] is True
+    assert node["2.0_stub"]["hns_quota_gb"] == 4.0
+
+
+def test_node_announce_preserves_hns_on_reannounce(store):
+    node_announce(store, "gpu@host:8550", "GPU Node", "2.0.0", hns_opt_in=True, hns_quota_gb=4.0)
+    node_announce(store, "gpu@host:8550", "GPU Node", "2.0.0")
+    node = next(n for n in node_list(store) if n["addr"] == "gpu@host:8550")
+    assert node["2.0_stub"]["hns_opt_in"] is True
+    assert node["2.0_stub"]["hns_quota_gb"] == 4.0
