@@ -412,20 +412,11 @@ def _kart_next_pending() -> Optional[str]:
 def _handle_silence_feed(pending: int) -> None:
     next_task = _kart_next_pending()
     if next_task:
-        task_id, task_text = next_task
-        _grove_post(f"Queue has {pending} pending — activating next task: {task_text[:80]}", "general")
-        # Mark the task as running so Kart picks it up
-        try:
-            conn = psycopg2.connect(_dsn())
-            with conn.cursor() as cur:
-                cur.execute(
-                    "UPDATE public.tasks SET status = 'running' WHERE id = %s AND status = 'pending'",
-                    (task_id,)
-                )
-            conn.commit()
-            conn.close()
-        except Exception as e:
-            log.error("silence_feed: failed to activate task %s: %s", task_id, e)
+        _task_id, task_text = next_task
+        _grove_post(
+            f"Queue has {pending} pending — next: {task_text[:80]} (kart-worker will claim)",
+            "general",
+        )
     else:
         _grove_post("Queue has pending tasks but couldn't fetch next — check Kart.", "general")
 

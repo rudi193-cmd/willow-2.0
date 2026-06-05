@@ -144,14 +144,47 @@ def test_ledger_verify_clean_chain(pg):
     assert result["count"] >= 1
 
 
+# ── Kart queue (Phase 0) ──────────────────────────────────────────────────────
+
+def test_pending_tasks_does_not_claim(pg):
+    task_id = pg.submit_task("echo read-only pending", submitted_by="test", agent="test")
+    assert task_id is not None
+    listed = pg.pending_tasks(agent="test", limit=20)
+    assert any(t["id"] == task_id for t in listed)
+    row = pg.task_status(task_id)
+    assert row["status"] == "pending"
+    pg.claim_kart_tasks(agent="test", limit=20)
+    pg.task_complete(task_id, {"ok": True}, "completed")
+
+
+def test_reap_stale_tasks(pg):
+    task_id = pg.submit_task("echo stale reap", submitted_by="test", agent="test")
+    with pg.conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE tasks
+            SET status = 'running', updated_at = now() - interval '2 hours'
+            WHERE id = %s
+            """,
+            (task_id,),
+        )
+    pg.conn.commit()
+    reaped = pg.reap_stale_tasks(max_age_seconds=3600, agent="test")
+    assert task_id in reaped
+    row = pg.task_status(task_id)
+    assert row["status"] == "failed"
+    assert row["result"].get("error") == "orphaned_running_reaped"
+
+
 # ── Task complete ─────────────────────────────────────────────────────────────
 
 def test_task_complete(pg):
     task_id = pg.submit_task("echo phase1 test", submitted_by="test", agent="test")
     assert task_id is not None
-    # pending_tasks() atomically claims the task (pending → running) before we can complete it
-    claimed = pg.pending_tasks(agent="test", limit=10)
-    assert any(t["id"] == task_id for t in claimed), "task was not claimed by pending_tasks"
+    pending = pg.pending_tasks(agent="test", limit=10)
+    assert any(t["id"] == task_id for t in pending), "task should appear in read-only pending list"
+    claimed = pg.claim_kart_tasks(agent="test", limit=10)
+    assert any(t["id"] == task_id for t in claimed), "task was not claimed by claim_kart_tasks"
     ok = pg.task_complete(task_id, {"stdout": "phase1 test"}, "completed")
     assert ok is True
     row = pg.task_status(task_id)

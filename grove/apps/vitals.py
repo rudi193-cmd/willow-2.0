@@ -54,13 +54,13 @@ def _kart_ok() -> dict:
         cur.execute("""
             SELECT
                 COUNT(*) FILTER (WHERE status='running') AS running,
-                COUNT(*) FILTER (WHERE status='queued')  AS queued
+                COUNT(*) FILTER (WHERE status='pending') AS pending
             FROM public.tasks
         """)
         row = cur.fetchone()
-        return {"ok": True, "running": row[0] or 0, "queued": row[1] or 0}
+        return {"ok": True, "running": row[0] or 0, "pending": row[1] or 0}
     except Exception:
-        return {"ok": False, "running": 0, "queued": 0}
+        return {"ok": False, "running": 0, "pending": 0}
     finally:
         if conn is not None:
             grove_db.release_connection(conn)
@@ -87,7 +87,8 @@ def format_vitals_line(v: dict) -> str:
     model_str = f"{model}:{ver}" if ver else model
 
     kart = v.get('kart', {})
-    kart_str = (f"kart {kart['running']}/{kart['running']+kart['queued']}"
+    pending = kart.get("pending", kart.get("queued", 0))
+    kart_str = (f"kart {kart['running']}/{kart['running'] + pending}"
                 if kart.get('ok') else "kart○")
     soil_str = f"soil{dot(v['soil']['ok'])}"
 

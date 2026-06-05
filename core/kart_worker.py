@@ -78,6 +78,7 @@ def kart_loop(interval: int = 5) -> None:
 
     logger.info("kart daemon started (poll=%ds)", interval)
     pg = None
+    active_task_id: str | None = None
     while True:
         try:
             _cur_mtime = _self_path.stat().st_mtime
@@ -94,6 +95,20 @@ def kart_loop(interval: int = 5) -> None:
             if pg is None:
                 pg = PgBridge()
 
+            import os as _os
+
+            stale_s = int(_os.environ.get("KART_STALE_SECONDS", "3600"))
+            exempt = [
+                x.strip()
+                for x in _os.environ.get("KART_REAP_EXEMPT_IDS", "").split(",")
+                if x.strip()
+            ]
+            reaped = pg.reap_stale_tasks(
+                max_age_seconds=stale_s, exempt_ids=exempt
+            )
+            if reaped:
+                logger.warning("kart reaped stale running tasks: %s", reaped)
+
             batch = pg.claim_kart_tasks(limit=1)
             if not batch:
                 time.sleep(interval)
@@ -101,6 +116,7 @@ def kart_loop(interval: int = 5) -> None:
 
             row = batch[0]
             task_id = row["id"]
+            active_task_id = task_id
             task_text = row.get("task") or ""
             submitted_by = row.get("submitted_by") or "?"
             logger.info(
@@ -126,8 +142,19 @@ def kart_loop(interval: int = 5) -> None:
                     task_id,
                     result.get("error", result),
                 )
+            active_task_id = None
         except Exception as e:
             logger.error("kart loop error: %s", e)
+            if pg is not None and active_task_id:
+                try:
+                    pg.task_complete(
+                        active_task_id,
+                        {"error": str(e), "context": "daemon_exception"},
+                        "failed",
+                    )
+                except Exception:
+                    pass
+                active_task_id = None
             try:
                 if pg is not None:
                     pg.close()
