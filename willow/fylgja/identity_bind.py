@@ -10,7 +10,6 @@ import os
 from pathlib import Path
 
 from willow.fylgja.project_env import (
-    load_mcp_env,
     read_active_agent,
     repo_root,
     resolve_agent_name,
