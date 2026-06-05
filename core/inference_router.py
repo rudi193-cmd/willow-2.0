@@ -147,32 +147,41 @@ def _try_fleet(system: str, user: str) -> Optional[str]:
 
 
 def _try_hns(system: str, user: str) -> Optional[str]:
-    """Route to the best HNS-opted-in node. Returns None if no node qualifies."""
+    """Route to the best HNS-opted-in node. Returns None if no node qualifies or quota full."""
     try:
         from willow_store import WillowStore
         from willow.hns_scheduler import select_node
+        from willow.hns_enforcer import acquire, release
         store = WillowStore()
         model = os.environ.get("WILLOW_INFERENCE_OLLAMA_MODEL", _OLLAMA_MODEL)
         node = select_node(store, model)
         if node is None:
             return None
-        ollama_url = node.get("2.0_stub", {}).get("ollama_url") or _OLLAMA_URL
-        body = json.dumps({
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            "stream": False,
-        }).encode()
-        req = urllib.request.Request(
-            f"{ollama_url.rstrip('/')}/api/chat",
-            data=body,
-            headers={"Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req, timeout=int(os.environ.get("WILLOW_INFERENCE_TIMEOUT", "300"))) as r:
-            data = json.load(r)
-            return (data.get("message") or {}).get("content", "").strip() or None
+        node_addr = node.get("addr", "")
+        allowed, job_id = acquire(store, node_addr, model)
+        if not allowed:
+            return None
+        try:
+            ollama_url = node.get("2.0_stub", {}).get("ollama_url") or _OLLAMA_URL
+            body = json.dumps({
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                "stream": False,
+            }).encode()
+            req = urllib.request.Request(
+                f"{ollama_url.rstrip('/')}/api/chat",
+                data=body,
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=int(os.environ.get("WILLOW_INFERENCE_TIMEOUT", "300"))) as r:
+                data = json.load(r)
+                return (data.get("message") or {}).get("content", "").strip() or None
+        finally:
+            if job_id:
+                release(store, node_addr, job_id)
     except Exception:
         return None
 
