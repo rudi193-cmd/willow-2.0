@@ -42,7 +42,42 @@ def test_prompt_submit_block_first_turn_with_selection_emits_visible(tmp_path, m
     # Selection in prompt → gate skips, PERSONA-VISIBLE instruction emitted
     state = tmp_path / "active-persona"
     monkeypatch.setattr(p, "STATE_FILE", state)
+    monkeypatch.setattr(p, "fleet_agent_id", lambda: "hanuman")
     block = p.prompt_submit_block(is_first=True, prompt="hanuman")
     assert "PERSONA-VISIBLE" in block
     assert "Paste the PERSONA block" in block
     assert "PERSONA-GATE" not in block
+    assert "PERSONA-IDENTITY" in block
+    assert "Fleet identity remains **hanuman**" in block
+
+
+def test_persona_identity_banner_on_switch(tmp_path, monkeypatch):
+    state = tmp_path / "active-persona"
+    monkeypatch.setattr(p, "STATE_FILE", state)
+    monkeypatch.setattr(p, "fleet_agent_id", lambda: "hanuman")
+    banner = p.persona_identity_banner("skirnir", switched=True)
+    assert "Persona changed to" in banner
+    assert "Fleet identity remains **hanuman**" in banner
+    assert "./willow agents active" in banner
+
+
+def test_fleet_named_persona_collision_warns_but_allows(tmp_path, monkeypatch):
+    monkeypatch.setattr(p, "fleet_agent_id", lambda: "hanuman")
+    monkeypatch.setenv("WILLOW_PERSONA_AGENT_BLOCK", "warn")
+    allowed, msg = p.check_persona_fleet_collision("loki")
+    assert allowed is True
+    assert msg and "loki" in msg and "hanuman" in msg
+
+
+def test_fleet_named_persona_collision_strict_blocks(tmp_path, monkeypatch):
+    state = tmp_path / "active-persona"
+    monkeypatch.setattr(p, "STATE_FILE", state)
+    monkeypatch.setattr(p, "fleet_agent_id", lambda: "hanuman")
+    monkeypatch.setenv("WILLOW_PERSONA_AGENT_BLOCK", "strict")
+    assert p.set_active_persona("loki") is False
+
+
+def test_render_picker_shows_fleet_identity(monkeypatch):
+    monkeypatch.setattr(p, "fleet_agent_id", lambda: "hanuman")
+    text = p.render_picker("skirnir")
+    assert "Fleet identity: **hanuman**" in text
