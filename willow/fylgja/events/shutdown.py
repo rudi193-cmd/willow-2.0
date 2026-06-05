@@ -131,15 +131,13 @@ def run_handoff_rebuild() -> None:
 def run_stack_snapshot(session_id: str) -> None:
     """Write authoritative open-state record to SOIL. Boot step 9 reads this."""
     try:
+        from willow.fylgja.events._stack_snapshot import parse_agent_task_list
+
         tasks: list = []
         try:
-            result = call("agent_task_list", {"app_id": AGENT}, timeout=8)
-            if isinstance(result, list):
-                tasks = [
-                    {"id": t.get("id", ""), "title": t.get("title", ""), "status": t.get("status", "")}
-                    for t in result
-                    if t.get("status") not in ("completed", "cancelled", "done")
-                ]
+            tasks = parse_agent_task_list(
+                call("agent_task_list", {"app_id": AGENT}, timeout=8)
+            )
         except Exception:
             pass
 
@@ -165,8 +163,8 @@ def run_stack_snapshot(session_id: str) -> None:
         call("soil_put", {
             "app_id": AGENT,
             "collection": f"{AGENT}/stack",
-            "key": "current",
-            "value": {
+            "record_id": "current",
+            "record": {
                 "id": "current",
                 "session_id": session_id,
                 "written_at": datetime.now(timezone.utc).isoformat(),
