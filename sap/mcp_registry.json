@@ -201,6 +201,7 @@
     "kb_promote":         {"group": "kb",     "tier": "extended", "description": "Promote or demote a knowledge atom to a new lifecycle tier."},
 
     "ledger_verify":      {"group": "ledger", "tier": "standard", "description": "Verify the FRANK ledger hash chain. Returns valid=True or broken_at=<id>."},
+    "ledger_repair":      {"group": "ledger", "description": "Recompute ledger hashes after chain fork. dry_run=True default; confirm=True to apply."},
 
     "mem_binder_edge_update": {"group": "mem", "tier": "extended", "description": "Binder: update proposed edge status (proposed → approved | rejected)."},
     "mem_binder_list_edges":  {"group": "mem", "tier": "extended", "description": "Binder: list proposed edges, filter by agent or status."},
