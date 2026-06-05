@@ -109,6 +109,7 @@ def node_announce(
             "vram_gb":       round(vram_gb, 1) if vram_gb > 0 else None,
             "cpu_cores":     _detect_cpu_cores(),
             "models_loaded": _query_ollama_models(),
+            "ollama_url":    os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434"),
             "hns_opt_in":    hns_opt_in if hns_opt_in is not None else existing_stub.get("hns_opt_in"),
             "hns_quota_gb":  hns_quota_gb if hns_quota_gb is not None else existing_stub.get("hns_quota_gb"),
         },

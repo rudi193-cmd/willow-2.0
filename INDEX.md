@@ -195,4 +195,5 @@
 | `setup.sh` |
 | `stubs` |
 | `willow/bench` |
+| `willow/hns_scheduler.py` |
 | `willow/skill-catalog.jsonl` |

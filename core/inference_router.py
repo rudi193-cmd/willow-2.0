@@ -146,6 +146,37 @@ def _try_fleet(system: str, user: str) -> Optional[str]:
         return None
 
 
+def _try_hns(system: str, user: str) -> Optional[str]:
+    """Route to the best HNS-opted-in node. Returns None if no node qualifies."""
+    try:
+        from willow_store import WillowStore
+        from willow.hns_scheduler import select_node
+        store = WillowStore()
+        model = os.environ.get("WILLOW_INFERENCE_OLLAMA_MODEL", _OLLAMA_MODEL)
+        node = select_node(store, model)
+        if node is None:
+            return None
+        ollama_url = node.get("2.0_stub", {}).get("ollama_url") or _OLLAMA_URL
+        body = json.dumps({
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "stream": False,
+        }).encode()
+        req = urllib.request.Request(
+            f"{ollama_url.rstrip('/')}/api/chat",
+            data=body,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=int(os.environ.get("WILLOW_INFERENCE_TIMEOUT", "300"))) as r:
+            data = json.load(r)
+            return (data.get("message") or {}).get("content", "").strip() or None
+    except Exception:
+        return None
+
+
 def _chain(mode: str) -> list[tuple[str, Callable[[str, str], Optional[str]]]]:
     local = [("ollama", _try_ollama)]
     cloud = [
@@ -154,7 +185,10 @@ def _chain(mode: str) -> list[tuple[str, Callable[[str, str], Optional[str]]]]:
         ("openrouter", _try_openrouter),
         ("fleet", _try_fleet),
     ]
+    hns = [("hns", _try_hns)]
     m = (mode or "auto").strip().lower()
+    if m == "hns":
+        return hns + local + cloud
     if m == "local":
         return local
     if m == "cloud":
