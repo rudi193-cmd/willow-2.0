@@ -517,6 +517,25 @@ async def fleet_status(app_id: str) -> dict:
 
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
+async def fleet_identity_status(app_id: str) -> dict:
+    """Return the identity matrix: active-agent, MCP env, Cursor MCP symlink, hooks, Grove sender, drift."""
+    logger.info("[w2] fleet_identity_status app_id=%s", app_id)
+    loop = asyncio.get_running_loop()
+
+    def _collect():
+        from willow.fylgja.identity_bind import collect_identity_matrix, check_app_id
+
+        matrix = collect_identity_matrix()
+        action, msg = check_app_id(app_id)
+        matrix["mcp_caller_app_id"] = app_id
+        matrix["caller_bind"] = {"action": action, "message": msg}
+        return matrix
+
+    return await loop.run_in_executor(_executor, _collect)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
 async def fleet_health(app_id: str) -> dict:
     """Fast (<200ms) MCP server health check: circuit breaker state, pool usage,
     tool executor threads, uptime. Use to diagnose hangs without touching Postgres."""

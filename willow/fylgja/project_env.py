@@ -178,6 +178,8 @@ def merge_hook_env(repo: Path | None = None, agent: str = "") -> dict[str, str]:
 
     merged["WILLOW_AGENT_NAME"] = resolved
     merged.setdefault("AGENT_NAME", resolved)
+    merged.setdefault("GROVE_SENDER", resolved)
+    merged.setdefault("GROVE_NAME", resolved)
     merged["WILLOW_ROOT"] = str(root)
     merged["PYTHONPATH"] = str(root)
     return merged
