@@ -131,6 +131,14 @@ def _sanitize_id(record_id: str) -> str:
     return "".join(c for c in str(record_id) if c.isalnum() or c in "_-")
 
 
+def _inject_soil_id(db_id: str, record: dict) -> dict:
+    """Inject the DB row id into the record as _soil_id if no id field is present.
+    Ensures every record returned by list/search is identifiable for soil_get/soil_update."""
+    if "id" not in record and "_id" not in record:
+        record["_soil_id"] = db_id
+    return record
+
+
 # ── Schema migration helpers ───────────────────────────────────────────────────
 
 def _ensure_columns(conn: sqlite3.Connection) -> None:
@@ -388,10 +396,10 @@ class WillowStore:
         ts_cols = self._ts_cols(conn)
         order = f"ORDER BY {ts_cols[0]} DESC" if ts_cols else ""
         rows = conn.execute(
-            f"SELECT data FROM records WHERE deleted = 0 {order}"
+            f"SELECT id, data FROM records WHERE deleted = 0 {order}"
         ).fetchall()
         conn.close()
-        return [json.loads(r["data"]) for r in rows]
+        return [_inject_soil_id(r["id"], json.loads(r["data"])) for r in rows]
 
     def all(self, collection: str) -> list:
         """Alias for list() — sap_mcp.py compatibility."""
@@ -405,7 +413,7 @@ class WillowStore:
             return self.list(collection)
         conn = self._conn(collection)
         rows = conn.execute(
-            "SELECT data FROM records WHERE deleted = 0"
+            "SELECT id, data FROM records WHERE deleted = 0"
         ).fetchall()
         conn.close()
         results = []
@@ -414,7 +422,7 @@ class WillowStore:
                 text = row["data"].lower()
                 if not all(t in text for t in tokens):
                     continue
-            record = json.loads(row["data"])
+            record = _inject_soil_id(row["id"], json.loads(row["data"]))
             if after:
                 ts = record.get("timestamp") or record.get("date") or ""
                 if ts <= after:
