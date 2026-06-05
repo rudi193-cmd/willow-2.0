@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Mapping
+from pathlib import Path
 
 
 _SESSION_TOKEN_RE = re.compile(r"session_handoff-(\d{4}-\d{2}-\d{2})([a-z]?)", re.IGNORECASE)
@@ -126,6 +128,18 @@ def extract_next_bite(questions: list, summary: str = "") -> str:
     return ""
 
 
+def handoff_is_empty_stub(handoff: Mapping[str, object]) -> bool:
+    """True for KB session stubs with no open threads, questions, or next bite."""
+    if not str(handoff.get("filename") or "").startswith("kb_"):
+        return False
+    open_threads = _parse_json_list(handoff.get("open_threads"))
+    questions = _parse_json_list(handoff.get("questions"))
+    if open_threads or questions:
+        return False
+    summary = str(handoff.get("summary") or "")
+    return not extract_next_bite(questions, summary)
+
+
 def handoff_richness_score(handoff: Mapping[str, object]) -> tuple:
     """Rank handoff candidates: recency first, richness breaks same-session ties."""
     open_threads = _parse_json_list(handoff.get("open_threads"))
@@ -139,7 +153,8 @@ def handoff_richness_score(handoff: Mapping[str, object]) -> tuple:
     # Date and letter suffix are primary — a newer session always beats an older one.
     # Richness only breaks ties within the exact same date+suffix.
     date, suffix, filename, mtime = sort_key
-    return (date, suffix, len(open_threads), len(questions), len(summary), filename, mtime)
+    substance = 0 if handoff_is_empty_stub(handoff) else 1
+    return (date, suffix, substance, len(open_threads), len(questions), len(summary), filename, mtime)
 
 
 def select_best_handoff(candidates: list[dict]) -> dict | None:
@@ -147,3 +162,56 @@ def select_best_handoff(candidates: list[dict]) -> dict | None:
     if not candidates:
         return None
     return max(candidates, key=handoff_richness_score)
+
+
+def scan_markdown_handoffs(agent: str, handoffs_root: Path) -> list[dict]:
+    """Read v2 session handoff markdown when SQLite index is missing or stale."""
+    if not agent:
+        return []
+    agent_dir = handoffs_root / agent
+    if not agent_dir.is_dir():
+        return []
+
+    from sap.tools.build_handoff_db import (
+        has_handoff_body_marker,
+        has_valid_frontmatter,
+        matches_agent_suffix,
+        parse_session_handoff,
+    )
+
+    candidates: list[dict] = []
+    for path in sorted(agent_dir.glob("session_handoff-*.md")):
+        if not matches_agent_suffix(path.name, agent):
+            continue
+        try:
+            content = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if not has_valid_frontmatter(content) and not has_handoff_body_marker(content):
+            continue
+        parsed = parse_session_handoff(content, path.name)
+        open_threads = _parse_json_list(parsed.get("open_threads"))
+        questions = _parse_json_list(parsed.get("questions"))
+        agreements = _parse_json_list(parsed.get("agreements"))
+        capabilities = parsed.get("capabilities")
+        if isinstance(capabilities, str):
+            try:
+                capabilities = json.loads(capabilities)
+            except Exception:
+                capabilities = []
+        if not isinstance(capabilities, list):
+            capabilities = []
+        mtime = path.stat().st_mtime
+        candidates.append({
+            "filename": path.name,
+            "date": parsed.get("handoff_date") or "",
+            "summary": parsed.get("summary") or "",
+            "open_threads": open_threads,
+            "questions": questions,
+            "agreements": agreements if isinstance(agreements, list) else [],
+            "capabilities": capabilities,
+            "_source": "markdown",
+            "_valid_at": parsed.get("handoff_date") or "",
+            "mtime": mtime,
+        })
+    return candidates

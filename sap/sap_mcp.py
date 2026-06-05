@@ -43,8 +43,10 @@ from pathlib import Path
 from sap.handoff_index import (
     extract_next_bite,
     handoff_select_sql,
+    scan_markdown_handoffs,
     select_best_handoff,
 )
+from sap.handoff_paths import discover_handoff_dirs, handoff_db_path, handoffs_root
 from typing import AsyncIterator
 
 # ── Path setup ────────────────────────────────────────────────────────────────
@@ -107,33 +109,12 @@ _MCP_AGENT = require_agent_name()
 STORE_ROOT = os.environ.get("WILLOW_STORE_ROOT", str(_SAP_ROOT / "store"))
 HANDOFF_DB = os.environ.get(
     "WILLOW_HANDOFF_DB",
-    str(Path.home() / "github" / ".willow" / "handoffs" / _MCP_AGENT / "handoffs.db"),
+    str(handoff_db_path(_MCP_AGENT)),
 )
-def _discover_handoff_dirs() -> str:
-    """Auto-discover all agent subdirectories under handoffs/.
-
-    Scans handoffs/ for subdirectories so new agents are picked up without
-    code or env changes. Falls back to _MCP_AGENT-only if the root is absent.
-    Appends the Nest dir for _MCP_AGENT if it exists.
-    """
-    _handoffs_root = Path.home() / "github" / ".willow" / "handoffs"
-    dirs: list[str] = []
-    if _handoffs_root.is_dir():
-        dirs = [
-            str(sub)
-            for sub in sorted(_handoffs_root.iterdir())
-            if sub.is_dir() and not sub.name.startswith(".")
-        ]
-    if not dirs:
-        dirs = [str(_handoffs_root / _MCP_AGENT)]
-    _nest = Path.home() / "github" / ".willow" / "Nest" / _MCP_AGENT
-    if _nest.is_dir():
-        dirs.append(str(_nest))
-    return ":".join(dirs)
-
-
-_DEFAULT_HANDOFF_DIRS = _discover_handoff_dirs()
-HANDOFF_DIRS = os.environ.get("WILLOW_HANDOFF_DIRS", _DEFAULT_HANDOFF_DIRS)
+HANDOFF_DIRS = os.environ.get(
+    "WILLOW_HANDOFF_DIRS",
+    discover_handoff_dirs(_MCP_AGENT),
+)
 
 _MCP_INSTRUCTIONS = (Path(__file__).parent / "MCP_INSTRUCTIONS.md").read_text(encoding="utf-8")
 
@@ -2808,8 +2789,20 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
             except Exception as _e:
                 logger.warning("[w2] handoff_latest sqlite query failed: %s", _e)
 
-        # Pick the richest handoff across both stores (substance beats empty recency)
-        candidates = [r for r in (kb_result, sqlite_result) if r is not None]
+        # --- Markdown on disk (fallback when handoffs.db missing or index stale) ---
+        markdown_result: dict | None = None
+        if agent_filter:
+            try:
+                md_candidates = scan_markdown_handoffs(agent_filter, handoffs_root())
+                if md_candidates:
+                    markdown_result = select_best_handoff(md_candidates)
+            except Exception as _e:
+                logger.warning("[w2] handoff_latest markdown scan failed: %s", _e)
+
+        # Pick the richest handoff across KB, SQLite, and markdown (substance beats empty recency)
+        candidates = [
+            r for r in (kb_result, sqlite_result, markdown_result) if r is not None
+        ]
         if not candidates:
             return {"error": "No session handoffs found."}
         result = select_best_handoff(candidates) or candidates[0]
