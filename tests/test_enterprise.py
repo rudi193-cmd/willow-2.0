@@ -41,7 +41,7 @@ def pg():
 
 @pytest.mark.slow
 def test_kart_queue_drain_under_load(pg):
-    """Submit 50 echo tasks, drain via pending_tasks + task_complete, assert no leaks."""
+    """Submit 50 echo tasks, drain via claim_kart_tasks + task_complete, assert no leaks."""
     N = 50
     tag = f"KART-{pg.gen_id(6)}"
 
@@ -67,7 +67,7 @@ def test_kart_queue_drain_under_load(pg):
     for _ in range(10):  # max 10 poll cycles
         if not remaining:
             break
-        batch = pg.pending_tasks(agent="kart", limit=N)
+        batch = pg.claim_kart_tasks(agent="kart", limit=N)
         if not batch:
             break
         for t in batch:

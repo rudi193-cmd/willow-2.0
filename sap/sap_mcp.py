@@ -484,6 +484,16 @@ async def fleet_status(app_id: str) -> dict:
 
     metabolic = await loop.run_in_executor(_executor, _check_metabolic)
 
+    kart_stats: dict = {}
+    if pg and hasattr(pg, "kart_queue_stats"):
+        try:
+            stale_s = int(os.environ.get("KART_STALE_SECONDS", "3600"))
+            kart_stats = await loop.run_in_executor(
+                _executor, pg.kart_queue_stats, "kart", stale_s
+            )
+        except Exception as e:
+            kart_stats = {"error": str(e)}
+
     try:
         from sap.core.gate import gate_mode as _gate_mode, gate_hostname_detail as _gate_hostname_detail
         _gm = _gate_mode()
@@ -498,6 +508,7 @@ async def fleet_status(app_id: str) -> dict:
         "ollama":      ollama,
         "manifests":   manifests,
         "metabolic":   metabolic,
+        "kart":        kart_stats,
         "gate_mode":   _gm,
         "gate_hostname_check": _ghd,
         "mode":        "portless",
@@ -1398,7 +1409,7 @@ async def agent_task_status(app_id: str, task_id: str) -> dict:
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
 async def agent_task_list(app_id: str, agent: str = "kart", limit: int = 10) -> dict:
-    """List pending tasks in the Postgres task queue."""
+    """List pending tasks in the Postgres task queue (read-only; does not claim)."""
     logger.info("[w2] agent_task_list app_id=%s agent=%s", app_id, agent)
     if not pg:
         return _no_pg()
@@ -1424,9 +1435,18 @@ async def kart_task_run(
         return _no_pg()
     loop = asyncio.get_running_loop()
 
+    def _reap_exempt_ids() -> list[str]:
+        raw = os.environ.get("KART_REAP_EXEMPT_IDS", "")
+        return [x.strip() for x in raw.split(",") if x.strip()]
+
     def _run():
         import time as _time
         from core.kart_execute import drain_claimed_tasks, kart_timeout
+
+        stale_s = int(os.environ.get("KART_STALE_SECONDS", "3600"))
+        reaped = pg.reap_stale_tasks(
+            max_age_seconds=stale_s, agent=agent, exempt_ids=_reap_exempt_ids()
+        )
 
         timeout = kart_timeout("poll")
         grace = min(2, timeout)
@@ -1488,7 +1508,10 @@ async def kart_task_run(
                     "executed_by": "fallback",
                 })
 
-        return {"executed": len(results), "results": results}
+        out = {"executed": len(results), "results": results}
+        if reaped:
+            out["reaped_stale"] = reaped
+        return out
 
     return await loop.run_in_executor(_executor, _run)
 

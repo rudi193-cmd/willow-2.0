@@ -1702,8 +1702,77 @@ class PgBridge:
         return rows
 
     def pending_tasks(self, agent: str = "kart", limit: int = 10) -> list:
-        """Alias for claim_kart_tasks (backward compat)."""
-        return self.claim_kart_tasks(limit=limit, agent=agent)
+        """Read-only list of pending tasks (oldest first). Does not claim."""
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, task, status, result, submitted_by, created_at, updated_at
+                FROM tasks
+                WHERE agent = %s AND status = 'pending'
+                ORDER BY created_at ASC
+                LIMIT %s
+            """, (agent, limit))
+            return [dict(r) for r in cur.fetchall()]
+
+    def reap_stale_tasks(
+        self,
+        max_age_seconds: int = 3600,
+        agent: str = "kart",
+        exempt_ids: list | None = None,
+    ) -> list[str]:
+        """Mark orphaned running tasks failed (null result, older than max_age)."""
+        self._ensure_conn()
+        exempt = list(exempt_ids or [])
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                UPDATE tasks
+                SET status = 'failed',
+                    result = jsonb_build_object(
+                        'error', 'orphaned_running_reaped',
+                        'previous_status', 'running',
+                        'reaped_at', now()::text,
+                        'max_age_seconds', %s
+                    ),
+                    updated_at = now()
+                WHERE agent = %s
+                  AND status = 'running'
+                  AND result IS NULL
+                  AND updated_at < now() - make_interval(secs => %s)
+                  AND (CARDINALITY(%s::text[]) = 0 OR id::text <> ALL(%s::text[]))
+                RETURNING id
+                """,
+                (max_age_seconds, agent, max_age_seconds, exempt, exempt),
+            )
+            reaped = [str(r["id"]) for r in cur.fetchall()]
+        self.conn.commit()
+        return reaped
+
+    def kart_queue_stats(
+        self, agent: str = "kart", stale_seconds: int = 3600
+    ) -> dict:
+        """Read-only Kart queue summary for fleet_status / vitals."""
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'pending') AS pending,
+                    COUNT(*) FILTER (WHERE status = 'running') AS running,
+                    COUNT(*) FILTER (
+                        WHERE status = 'running'
+                          AND result IS NULL
+                          AND updated_at < now() - make_interval(secs => %s)
+                    ) AS stale_running,
+                    COUNT(*) FILTER (WHERE status IN ('completed', 'complete')) AS completed,
+                    COUNT(*) FILTER (WHERE status = 'failed') AS failed
+                FROM tasks
+                WHERE agent = %s
+                """,
+                (stale_seconds, agent),
+            )
+            row = cur.fetchone()
+            return dict(row) if row else {}
 
     def task_complete(self, task_id: str, result: dict, status: str = "completed") -> bool:
         self._ensure_conn()

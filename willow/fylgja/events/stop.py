@@ -384,12 +384,20 @@ def _write_stack_snapshot(session_id: str) -> None:
     def _fetch_tasks() -> list:
         try:
             result = call("agent_task_list", {"app_id": _AGENT}, timeout=8)
-            if isinstance(result, list):
-                return [
-                    {"id": t.get("id", ""), "title": t.get("title", ""), "status": t.get("status", "")}
-                    for t in result
-                    if t.get("status") not in ("completed", "cancelled", "done")
-                ]
+            rows: list = []
+            if isinstance(result, dict):
+                rows = result.get("pending") or []
+            elif isinstance(result, list):
+                rows = result
+            return [
+                {
+                    "id": t.get("id", ""),
+                    "title": (t.get("task") or t.get("title", ""))[:80],
+                    "status": t.get("status", "pending"),
+                }
+                for t in rows
+                if isinstance(t, dict)
+            ]
         except Exception:
             pass
         return []
