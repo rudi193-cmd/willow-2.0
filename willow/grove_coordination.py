@@ -1,8 +1,10 @@
 # willow/grove_coordination.py — Grove coordination helpers. b17: GRVC1  ΔΣ=42
 from __future__ import annotations
+import json
 import os
 import shutil
 import subprocess
+import urllib.request
 import uuid
 from datetime import datetime, timezone
 from core.willow_store import WillowStore
@@ -34,6 +36,17 @@ def _detect_cpu_cores() -> int:
         return os.cpu_count() or 1
     except Exception:
         return 1
+
+
+def _query_ollama_models() -> list[str]:
+    """Return model names currently available in Ollama. Empty list on any error."""
+    base = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+    try:
+        with urllib.request.urlopen(f"{base}/api/tags", timeout=3) as resp:
+            data = json.loads(resp.read())
+        return [m["name"] for m in data.get("models", [])]
+    except Exception:
+        return []
 
 
 _NODES_COL   = "grove/nodes"
@@ -95,7 +108,7 @@ def node_announce(
             "gpu":           gpu_name,
             "vram_gb":       round(vram_gb, 1) if vram_gb > 0 else None,
             "cpu_cores":     _detect_cpu_cores(),
-            "models_loaded": existing_stub.get("models_loaded", []),
+            "models_loaded": _query_ollama_models(),
             "hns_opt_in":    hns_opt_in if hns_opt_in is not None else existing_stub.get("hns_opt_in"),
             "hns_quota_gb":  hns_quota_gb if hns_quota_gb is not None else existing_stub.get("hns_quota_gb"),
         },
