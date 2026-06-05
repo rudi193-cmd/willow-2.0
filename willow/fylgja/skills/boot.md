@@ -85,8 +85,9 @@ If no KB hits land above 0.5 distance: skip the mode entirely, continue normally
 *One-liner* — "I like Mondays" → "Six open threads disagree."
 *One-liner* — "What's the meaning of life?" → "42. It's been there the whole time. *ΔΣ=42*"
 
-**7. Persona**
-Read `~/.willow/willow-2.0-active-persona`. The hook injects picker context into system context only — **the user cannot see it**. You must render the picker as visible text in your boot response so the user can confirm or switch.
+**7. Persona** *(voice overlay — not fleet identity)*
+Read `~/.willow/willow-2.0-active-persona`. Persona changes **voice only** — it does **not** switch MCP `app_id`, Grove sender, SOIL namespace, or `.willow/active-agent`. Fleet identity is `WILLOW_AGENT_NAME` / `active-agent`. To switch agent: `./willow agents active <id> --install`.
+The hook injects picker + `[PERSONA-IDENTITY]` lines into system context only — **the user cannot see them**. Render the picker and identity banner as visible text in your boot response.
 If active: load context per the persona registry (source defined in `willow.md` — the fleet contract, not any runtime-specific path).
 
 **8. Corrections + Preferences**
@@ -161,7 +162,7 @@ Then respond to the user.
 - Grove unavailable = degraded, not fatal. Continue.
 - Never report "postgres unknown" without probing first (step 3).
 - Compact summaries only — no full diffs, no full handoff content.
-- Persona picker must be rendered as visible text in the boot response — hook injection is system context only, the user cannot see it without explicit render.
+- Persona picker and `[PERSONA-IDENTITY]` banner must be visible in the boot response — hook injection is system-only. Never imply persona switch changed fleet agent id.
 - No hardcoded names or paths — use `[user]`, `[agent]`, env vars, or parameters.
 - If anchor missing or stale (> 2h): run /startup after for deeper recovery.
 

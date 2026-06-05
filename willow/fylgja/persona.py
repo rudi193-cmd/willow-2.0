@@ -8,6 +8,7 @@ Wired from session_start (picker) and prompt_submit (selection + context).
 from __future__ import annotations
 
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -76,6 +77,9 @@ _BUILTIN_PERSONAS: dict[str, dict] = {
 
 _BUILTIN_LIST = ["oakenscroll", "hanuman", "loki", "skirnir", "vishwakarma", "none"]
 
+# Built-in persona keys that double as fleet agent ids — easy to confuse with active-agent.
+_FLEET_NAMED_PERSONAS = frozenset(k for k in _BUILTIN_PERSONAS if k != "none")
+
 # Legacy aliases — kept so callers that imported PERSONAS/PERSONA_LIST directly still work.
 PERSONAS = _BUILTIN_PERSONAS
 PERSONA_LIST = _BUILTIN_LIST
@@ -138,6 +142,70 @@ def get_personas() -> tuple[dict[str, dict], list[str]]:
     return combined, combined_list
 
 
+def persona_agent_block_mode() -> str:
+    """off | warn | strict — when a fleet-named persona != active-agent."""
+    raw = os.environ.get("WILLOW_PERSONA_AGENT_BLOCK", "warn").strip().lower()
+    if raw in ("off", "0", "false", "no"):
+        return "off"
+    if raw in ("strict", "enforce", "block"):
+        return "strict"
+    return "warn"
+
+
+def fleet_agent_id() -> str:
+    """Canonical fleet agent (active-agent, then WILLOW_AGENT_NAME, then hook resolution)."""
+    try:
+        from willow.fylgja.project_env import read_active_agent, repo_root, resolve_agent_name
+
+        root = repo_root()
+        active = read_active_agent(root)
+        if active:
+            return active.strip().lower()
+        try:
+            return resolve_agent_name(root).strip().lower()
+        except EnvironmentError:
+            pass
+    except Exception:
+        pass
+    return os.environ.get("WILLOW_AGENT_NAME", "").strip().lower()
+
+
+def persona_identity_banner(persona_key: str, *, switched: bool = False) -> str:
+    """Clarify persona overlay vs fleet MCP/Grove/SOIL identity."""
+    personas, _ = get_personas()
+    label = personas.get(persona_key, {}).get("label", persona_key.capitalize())
+    fleet = fleet_agent_id() or "(unset)"
+    verb = "Persona changed to" if switched else "Persona active"
+    return "\n".join([
+        f"[PERSONA-IDENTITY] {verb} **{label}** (voice overlay only).",
+        f"[PERSONA-IDENTITY] Fleet identity remains **{fleet}** "
+        "(`.willow/active-agent` / `WILLOW_AGENT_NAME`).",
+        "[PERSONA-IDENTITY] Persona does not change MCP `app_id`, Grove sender, or SOIL namespace.",
+        "[PERSONA-IDENTITY] Switch fleet agent: `./willow agents active <id> --install`",
+    ])
+
+
+def check_persona_fleet_collision(persona_key: str) -> tuple[bool, str | None]:
+    """
+    Warn or block when user picks a persona whose key matches a fleet agent id
+    but active-agent is different (looks like an agent switch, is not).
+    Returns (allowed, message).
+    """
+    mode = persona_agent_block_mode()
+    if mode == "off" or persona_key in ("", "none") or persona_key not in _FLEET_NAMED_PERSONAS:
+        return True, None
+    fleet = fleet_agent_id()
+    if not fleet or persona_key == fleet:
+        return True, None
+    msg = (
+        f"Persona {persona_key!r} matches a fleet agent id but active-agent is {fleet!r}. "
+        "This changes voice only — not MCP app_id, Grove sender, or SOIL namespace."
+    )
+    if mode == "strict":
+        return False, msg
+    return True, msg
+
+
 def active_persona() -> str:
     if STATE_FILE.exists():
         name = STATE_FILE.read_text(encoding="utf-8").strip().lower()
@@ -151,6 +219,9 @@ def set_active_persona(name: str) -> bool:
     key = (name or "").strip().lower()
     personas, _ = get_personas()
     if key not in personas:
+        return False
+    allowed, _msg = check_persona_fleet_collision(key)
+    if not allowed:
         return False
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(key + "\n", encoding="utf-8")
@@ -173,6 +244,11 @@ def render_picker(active: str = "", *, blocking: bool = False) -> str:
     create_num = len(persona_list) + 1
     lines.append(f"  {create_num}. + Create new persona")
     lines.append(bar)
+    fleet = fleet_agent_id()
+    if fleet:
+        lines.append(
+            f"  Fleet identity: **{fleet}** (persona is voice only — does not switch agent)"
+        )
     if active:
         if blocking:
             lines.append(
@@ -333,13 +409,29 @@ def prompt_submit_block(*, is_first: bool, prompt: str) -> str:
             parts.append(render_create_prompt())
             return "\n".join(parts)
         if choice:
-            set_active_persona(choice)
+            allowed, collision_msg = check_persona_fleet_collision(choice)
+            if not allowed:
+                parts.append(render_picker(active, blocking=True))
+                parts.append(
+                    f"[PERSONA-BLOCK] {collision_msg}\n"
+                    "[PERSONA-BLOCK] Run `./willow agents active <id> --install` to switch fleet agent."
+                )
+                return "\n".join(parts)
+            if not set_active_persona(choice):
+                parts.append(render_picker(active, blocking=True))
+                parts.append("[PERSONA-BLOCK] Could not set persona — invalid choice.")
+                return "\n".join(parts)
             active = choice
+            switched = True
+            parts.append(persona_identity_banner(choice, switched=switched))
+            if collision_msg:
+                parts.append(f"[PERSONA-WARN] {collision_msg}")
             # Choice confirmed — show picker and proceed to boot
             parts.append(render_picker(active, blocking=False))
             parts.append(
                 "[PERSONA-VISIBLE] Paste the PERSONA block above into your user-visible reply "
-                "(markdown fenced block). Persona confirmed — proceed with boot."
+                "(markdown fenced block). Include the PERSONA-IDENTITY lines. "
+                "Persona confirmed — proceed with boot."
             )
         else:
             # No selection in this message — gate: show picker, stop, wait for user
@@ -357,6 +449,7 @@ def prompt_submit_block(*, is_first: bool, prompt: str) -> str:
             return "\n".join(parts)
     elif active:
         parts.append(render_status(active))
+        parts.append(persona_identity_banner(active, switched=False))
 
     if active and active != "none":
         context = load_persona(active)
