@@ -1,10 +1,13 @@
 from sap.handoff_index import (
     extract_next_bite,
+    handoff_is_empty_stub,
     handoff_richness_score,
     latest_handoff_sort_key,
+    scan_markdown_handoffs,
     select_best_handoff,
     select_latest_handoff,
 )
+from sap.handoff_paths import handoffs_root
 
 
 def test_latest_handoff_prefers_semantic_session_recency_over_mtime():
@@ -87,3 +90,39 @@ def test_handoff_richness_score_orders_by_open_threads():
         "date": "2026-05-25",
     }
     assert handoff_richness_score(rich) > handoff_richness_score(sparse)
+
+
+def test_empty_kb_stub_loses_to_richer_markdown_same_day():
+    empty_kb = {
+        "filename": "kb_C4A81DCA.json",
+        "date": "2026-06-04",
+        "summary": "Long upstream sweep summary with no structured continuity fields.",
+        "open_threads": [],
+        "questions": [],
+        "_valid_at": "2026-06-04T12:00:00",
+    }
+    rich_md = {
+        "filename": "session_handoff-2026-06-04g_hanuman.md",
+        "date": "2026-06-04",
+        "summary": "Audit complete",
+        "open_threads": ["phase-0-kart", "identity-drift"],
+        "questions": ["Q17: Open worktree fix/kart-phase0-state-machine"],
+        "_valid_at": "2026-06-04",
+    }
+    assert handoff_is_empty_stub(empty_kb)
+    assert not handoff_is_empty_stub(rich_md)
+    best = select_best_handoff([empty_kb, rich_md])
+    assert best is not None
+    assert best["filename"] == "session_handoff-2026-06-04g_hanuman.md"
+
+
+def test_scan_markdown_handoffs_finds_hanuman_session_files():
+    root = handoffs_root()
+    if not (root / "hanuman").is_dir():
+        return
+    found = scan_markdown_handoffs("hanuman", root)
+    names = {c["filename"] for c in found}
+    assert any(n.startswith("session_handoff-2026-06-04") for n in names)
+    rich = select_best_handoff(found)
+    assert rich is not None
+    assert rich.get("open_threads") or rich.get("questions")

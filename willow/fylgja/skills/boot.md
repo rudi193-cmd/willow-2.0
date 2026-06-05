@@ -102,7 +102,7 @@ Prefer this over handoff title when richer. This is the authoritative "what was 
 Empty → skip. Surface count in boot report.
 
 **11. Ledger** *(mandatory)*
-`ledger_read(project=[user], limit=3)` — newest entry `content.atoms_written` → priority IDs to skim.
+`ledger_read(project=<agent>, limit=3)` — use the fleet agent id (`WILLOW_AGENT_NAME` / `active-agent`), not the OS username. Newest entry `content.atoms_written` → priority IDs to skim.
 
 **12. KB continuity + registry orientation** *(parallel)*
 Read `willow/fylgja/config/startup_continuity.json` — run each `kb_searches[]` entry in parallel. Skim titles/summaries — full atom only if tied to open flag or handoff gap. All empty → skip.

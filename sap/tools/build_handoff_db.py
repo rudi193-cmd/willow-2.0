@@ -14,15 +14,25 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-_DEFAULT_FOLDER = Path(__file__).parent
-DB_PATH = Path(os.environ.get("WILLOW_HANDOFF_DB", str(_DEFAULT_FOLDER / "handoffs.db")))
+from sap.handoff_paths import discover_handoff_dirs, handoff_db_path
 
-_TOOL_AGENT = require_agent_name()
-_DEFAULT_DIRS = ":".join([
-    str(_DEFAULT_FOLDER),
-    str(Path.home() / ".willow" / "Nest" / _TOOL_AGENT),
-])
-_HANDOFF_DIRS_RAW = os.environ.get("WILLOW_HANDOFF_DIRS", _DEFAULT_DIRS)
+
+def _default_db_path() -> Path:
+    agent = os.environ.get("WILLOW_AGENT_NAME", "").strip()
+    if agent:
+        return handoff_db_path(agent)
+    return Path(__file__).parent / "handoffs.db"
+
+
+def _default_scan_dirs() -> str:
+    agent = os.environ.get("WILLOW_AGENT_NAME", "").strip()
+    if agent:
+        return discover_handoff_dirs(agent)
+    return str(Path(__file__).parent)
+
+
+DB_PATH = Path(os.environ.get("WILLOW_HANDOFF_DB", str(_default_db_path())))
+_HANDOFF_DIRS_RAW = os.environ.get("WILLOW_HANDOFF_DIRS", _default_scan_dirs())
 
 # Strip the "+" prefix used for recursive dirs — treat all as flat for now
 SCAN_DIRS = [
@@ -329,6 +339,7 @@ def kb_to_sqlite(conn: sqlite3.Connection) -> int:
 
 
 def build_db():
+    tool_agent = require_agent_name()
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     if DB_PATH.exists():
         DB_PATH.unlink()
@@ -388,7 +399,7 @@ def build_db():
         ftype = classify_file(f.name)
 
         if ftype == "session":
-            if not matches_agent_suffix(f.name, _TOOL_AGENT):
+            if not matches_agent_suffix(f.name, tool_agent):
                 suffix_skipped.append(f.name)
                 continue
             try:

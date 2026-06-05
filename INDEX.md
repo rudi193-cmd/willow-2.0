@@ -192,6 +192,7 @@
 | `docs/templates` |
 | `sap/MCP_SPEC.lock.json` |
 | `sap/adapters` |
+| `sap/handoff_paths.py` |
 | `sap/mcp_enrich.py` |
 | `sap/mcp_guide.py` |
 | `sap/mcp_profiles.py` |
