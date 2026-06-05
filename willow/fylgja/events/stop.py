@@ -189,9 +189,10 @@ def _write_session_composite(session_id: str) -> None:
     if call is None:
         return
     try:
-        sid = (session_id or "unknown")[:8]
+        from willow.fylgja.events._session_store import session_composite_record_id
+
         record = {
-            "id": f"session-{sid}",
+            "id": session_composite_record_id(session_id),
             "session_id": session_id or "unknown",
             "date": datetime.now(timezone.utc).isoformat(),
             "turn_count": 0,

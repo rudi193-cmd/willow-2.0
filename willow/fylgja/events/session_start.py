@@ -8,7 +8,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 from core.agent_identity import require_agent_name
@@ -286,7 +286,7 @@ def _ensure_grove_mcp() -> str:
 
 
 
-def _run_silent_startup() -> dict:
+def _run_silent_startup(session_id: str = "") -> dict:
     """
     Silent startup — 5 targeted MCP calls, writes session_anchor.json.
     Removed: fork_create, skill_load, knowledge_search, atoms/store, skills/store.
@@ -343,22 +343,23 @@ def _run_silent_startup() -> dict:
         except Exception:
             pass
 
-    # 3. Next bite from latest session composite — bounded date-key lookup
+    # 3. Next bite from session composite (same key stop.py writes)
     try:
-        _today = datetime.now().strftime("%Y%m%d")
-        _yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+        from willow.fylgja.events._session_store import session_composite_lookup_ids
+
         session = None
-        for _date in (_today, _yesterday):
+        for store_id in session_composite_lookup_ids(session_id):
             try:
-                session = call("store_get", {
+                row = call("store_get", {
                     "app_id": AGENT,
                     "collection": f"{AGENT}/sessions/store",
-                    "id": f"session-{_date}",
+                    "id": store_id,
                 }, timeout=5)
-                if session:
+                if isinstance(row, dict) and row and not row.get("error"):
+                    session = row
                     break
             except Exception:
-                break
+                continue
         if session:
             result["next_bite"] = session.get("next_bite", "")
     except Exception as e:
@@ -610,7 +611,7 @@ def main():
 
     with _cf.ThreadPoolExecutor(max_workers=5) as ex:
         hw_future = ex.submit(_scan_hardware)
-        startup_future = ex.submit(_run_silent_startup)
+        startup_future = ex.submit(_run_silent_startup, session_id)
         ex.submit(_send_heartbeat)
         dispatch_future = ex.submit(_subscribe_dispatch)
         projects_future = ex.submit(_run_boot_projects_check)
