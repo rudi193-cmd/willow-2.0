@@ -494,6 +494,13 @@ async def fleet_status(app_id: str) -> dict:
         except Exception as e:
             kart_stats = {"error": str(e)}
 
+    frank_ledger: dict = {}
+    if pg and hasattr(pg, "ledger_verify"):
+        try:
+            frank_ledger = await loop.run_in_executor(_executor, pg.ledger_verify)
+        except Exception as e:
+            frank_ledger = {"error": str(e)}
+
     try:
         from sap.core.gate import gate_mode as _gate_mode, gate_hostname_detail as _gate_hostname_detail
         _gm = _gate_mode()
@@ -509,6 +516,7 @@ async def fleet_status(app_id: str) -> dict:
         "manifests":   manifests,
         "metabolic":   metabolic,
         "kart":        kart_stats,
+        "frank_ledger": frank_ledger,
         "gate_mode":   _gm,
         "gate_hostname_check": _ghd,
         "mode":        "portless",
@@ -2623,6 +2631,35 @@ async def ledger_verify(app_id: str) -> dict:
         return _no_pg()
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_executor, pg.ledger_verify)
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def ledger_repair(
+    app_id: str,
+    dry_run: bool = True,
+    confirm: bool = False,
+) -> dict:
+    """Recompute FRANK ledger prev_hash/hash chain in created_at order.
+
+    dry_run=True (default) reports how many rows would change.
+    Set confirm=True and dry_run=False to apply repairs (e.g. after concurrent-append fork).
+    """
+    logger.info(
+        "[w2] ledger_repair app_id=%s dry_run=%s confirm=%s",
+        app_id, dry_run, confirm,
+    )
+    if not pg:
+        return _no_pg()
+    if not dry_run and not confirm:
+        return {
+            "error": "confirmation_required",
+            "message": "Pass confirm=True with dry_run=False to repair the chain",
+        }
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor, pg.ledger_repair_chain, dry_run
+    )
 
 
 @mcp.tool(annotations={"readOnlyHint": True})

@@ -2128,17 +2128,36 @@ class PgBridge:
 
     # ── Ledger ───────────────────────────────────────────────────────────────
 
+    _LEDGER_LOCK_KEY = 8817001  # pg_advisory_xact_lock id for frank_ledger append
+
+    @staticmethod
+    def _ledger_payload(event_type: str, content) -> str:
+        if isinstance(content, str):
+            try:
+                content = json.loads(content)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return json.dumps(
+            {"event_type": event_type, "content": content}, sort_keys=True
+        )
+
+    @classmethod
+    def _ledger_hash(cls, prev_hash: str | None, event_type: str, content) -> str:
+        payload = cls._ledger_payload(event_type, content)
+        return hashlib.sha256(f"{prev_hash or ''}{payload}".encode()).hexdigest()
+
     def ledger_append(self, project: str, event_type: str, content: dict) -> str:
-        # Known limitation: not concurrency-safe — two writers can fork the hash chain.
-        # Single-writer model assumed. Tracked for Plan 3: SELECT FOR UPDATE if needed.
+        """Append with transactional advisory lock — serializes chain head updates."""
         self._ensure_conn()
         record_id = str(uuid.uuid4())
         with self.conn.cursor() as cur:
-            cur.execute("SELECT hash FROM frank_ledger ORDER BY created_at DESC LIMIT 1")
+            cur.execute("SELECT pg_advisory_xact_lock(%s)", (self._LEDGER_LOCK_KEY,))
+            cur.execute(
+                "SELECT hash FROM frank_ledger ORDER BY created_at DESC LIMIT 1"
+            )
             row = cur.fetchone()
             prev_hash = row[0] if row else None
-            payload = json.dumps({"event_type": event_type, "content": content}, sort_keys=True)
-            new_hash = hashlib.sha256(f"{prev_hash or ''}{payload}".encode()).hexdigest()
+            new_hash = self._ledger_hash(prev_hash, event_type, content)
             cur.execute("""
                 INSERT INTO frank_ledger (id, project, event_type, content, prev_hash, hash)
                 VALUES (%s, %s, %s, %s, %s, %s)
@@ -2175,16 +2194,65 @@ class PgBridge:
             return {"valid": True, "broken_at": None, "count": 0}
         prev = None
         for record_id, event_type, content, prev_hash, stored_hash in rows:
-            payload = json.dumps(
-                {"event_type": event_type, "content": content}, sort_keys=True
-            )
-            expected = hashlib.sha256(f"{prev or ''}{payload}".encode()).hexdigest()
+            expected = self._ledger_hash(prev, event_type, content)
             if expected != stored_hash:
                 return {"valid": False, "broken_at": record_id, "count": len(rows)}
             if prev_hash != prev:
                 return {"valid": False, "broken_at": record_id, "count": len(rows)}
             prev = stored_hash
         return {"valid": True, "broken_at": None, "count": len(rows)}
+
+    def ledger_repair_chain(self, dry_run: bool = False) -> dict:
+        """
+        Recompute prev_hash/hash for all rows in created_at order.
+        Fixes forks from concurrent ledger_append without changing content.
+        """
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id, event_type, content, prev_hash, hash "
+                "FROM frank_ledger ORDER BY created_at ASC"
+            )
+            rows = [dict(r) for r in cur.fetchall()]
+        if not rows:
+            return {"repaired": 0, "dry_run": dry_run, "valid_after": True}
+
+        prev: str | None = None
+        updates: list[tuple[str | None, str, str]] = []
+        for row in rows:
+            new_hash = self._ledger_hash(prev, row["event_type"], row["content"])
+            if row["prev_hash"] != prev or row["hash"] != new_hash:
+                updates.append((prev, new_hash, row["id"]))
+            prev = new_hash
+
+        if dry_run:
+            return {
+                "dry_run": True,
+                "would_repair": len(updates),
+                "count": len(rows),
+                "valid_after": len(updates) == 0,
+            }
+
+        with self.conn.cursor() as cur:
+            cur.execute("SELECT pg_advisory_xact_lock(%s)", (self._LEDGER_LOCK_KEY,))
+            for prev_hash, new_hash, record_id in updates:
+                cur.execute(
+                    """
+                    UPDATE frank_ledger
+                    SET prev_hash = %s, hash = %s
+                    WHERE id = %s
+                    """,
+                    (prev_hash, new_hash, record_id),
+                )
+        self.conn.commit()
+        verify = self.ledger_verify()
+        return {
+            "dry_run": False,
+            "repaired": len(updates),
+            "count": len(rows),
+            "valid_after": verify.get("valid", False),
+            "broken_at": verify.get("broken_at"),
+        }
 
     # ── Postgres Edges ───────────────────────────────────────────────────────────
 
