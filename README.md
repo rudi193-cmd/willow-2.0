@@ -6,7 +6,7 @@
 
 Willow keeps a knowledge graph on hardware you control, exposes it through an MCP server, and runs local inference with Ollama by default. Cloud API keys are optional. Your data stays in Postgres (desktop) or SQLite (Termux).
 
-**Found family:** This repo is tended for the people who show up in real life — not as users, as kin. If you're **[AHS](docs/FOR_AHS.md)** (AllHailSeizure: beta reader, r/LLMPhysics, optional Necron decoder ring) or **[Felix](README-FELIX.md)** (Windows/WSL install path), those pages are your front door. Everyone else: keep reading below.
+**Found family:** This repo is tended for the people who show up in real life — not as users, as kin. If you're **[AHS](docs/FOR_AHS.md)** (AllHailSeizure: beta reader, r/LLMPhysics, optional Necron decoder ring, Windows port contributor) or **[Felix](README-FELIX.md)** (Windows/WSL install path), those pages are your front door. Everyone else: keep reading below.
 
 ---
 
@@ -15,11 +15,12 @@ Willow keeps a knowledge graph on hardware you control, exposes it through an MC
 | Piece | What it does |
 |-------|----------------|
 | **Knowledge base** | Atoms that survive across sessions, models, and IDEs |
-| **SAP MCP** | ~40 tools — search memory, fleet health, tasks, handoffs, inference |
+| **SAP MCP** | 80+ tools — search memory, fleet health, tasks, handoffs, inference |
 | **SAFE gate** | Every tool call checked against manifests before it runs |
 | **SOIL** | Fast structured state on disk (per agent / collection) |
 | **Grove** | Terminal dashboard + LAN remote control (`./willow.sh serve`) |
 | **Fylgja** | Skills and powers — Markdown behaviors any model can follow |
+| **HNS** | Routes inference to the best available node by VRAM — activate with `WILLOW_INFERENCE_PROVIDER=hns` |
 
 IDEs connect via MCP (`sap/sap_mcp.py`). Humans use `./willow.sh` and the docs below.
 
@@ -46,6 +47,8 @@ Then:
 ```
 
 **Termux:** same clone, then `python3 seed.py --termux --skip-pg` (SQLite instead of Postgres). Details in [`docs/QUICKSTART.md`](docs/QUICKSTART.md).
+
+**Windows:** use `install-windows.ps1` and `seed-windows.py` instead. Postgres must be installed separately — `seed.py` uses `apt-get` and will not work on Windows. Details in [`docs/QUICKSTART.md`](docs/QUICKSTART.md).
 
 Default database name is **`willow_20`**. Upgrading from 1.9? See [`docs/CODE_DIFF_1.9_to_2.0.md`](docs/CODE_DIFF_1.9_to_2.0.md).
 
@@ -102,6 +105,7 @@ Repo map: [`docs/ROOT_LAYOUT.md`](docs/ROOT_LAYOUT.md). Deeper architecture: [`w
 - PostgreSQL 15+ with pgvector (or SQLite on Termux)
 - GPG (SAFE app identity)
 - [Ollama](https://ollama.com) for local inference
+- **Windows:** use `install-windows.ps1` + `seed-windows.py`; `pywin32` and `windows-curses` are platform-scoped in `requirements.txt`. See [`docs/QUICKSTART.md`](docs/QUICKSTART.md).
 
 Optional: `./willow.sh providers enable anthropic YOUR_KEY` (or OpenAI / Gemini).
 
