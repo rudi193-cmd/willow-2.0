@@ -104,6 +104,12 @@ except Exception as _pg_import_err:
 
 from willow_store import WillowStore
 
+try:
+    from willow.grove_coordination import node_announce as _node_announce
+except Exception as _gc_import_err:
+    _node_announce = None  # type: ignore[assignment]
+    logger.warning("grove_coordination import failed: %s", _gc_import_err)
+
 # ── Config ────────────────────────────────────────────────────────────────────
 _MCP_AGENT = require_agent_name()
 STORE_ROOT = os.environ.get("WILLOW_STORE_ROOT", str(_SAP_ROOT / "store"))
@@ -224,6 +230,19 @@ def _init_pg():
             return None
 
 
+def _startup_node_announce(s: "WillowStore") -> None:
+    """Register this node in the grove registry with live hardware + Ollama models."""
+    if _node_announce is None:
+        return
+    import socket as _socket
+    addr = f"{_MCP_AGENT}@{_socket.gethostname()}"
+    try:
+        _node_announce(s, addr=addr, name=_MCP_AGENT, willow_version=VERSION)
+        logger.info("[w2] node_announce: %s registered", addr)
+    except Exception as err:
+        logger.warning("[w2] node_announce failed: %s", err)
+
+
 def _startup_backfill_check() -> None:
     """Queue willow_embed_backfill task if NULL embeddings exist."""
     try:
@@ -268,6 +287,7 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[None]:
     pg    = await loop.run_in_executor(_executor, _init_pg)
     store = WillowStore(STORE_ROOT)
 
+    await loop.run_in_executor(_executor, _startup_node_announce, store)
     await loop.run_in_executor(_executor, _startup_backfill_check)
 
     logger.info("b20: SAPMCP2 ΔΣ=42  version=%s  pg=%s  store=%s",
