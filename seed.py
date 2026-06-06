@@ -17,6 +17,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -28,7 +29,7 @@ from pathlib import Path
 WILLOW_ROOT   = Path(__file__).parent
 VENV_DIR      = Path.home() / ".willow" / "venv"
 BOOT_CONFIG   = Path.home() / ".willow" / "seed-boot.json"
-BOOT_LOG      = Path("/tmp/willow-seed-debug.log")
+BOOT_LOG      = Path(tempfile.gettempdir()) / "willow-seed-debug.log"
 GROVE_DIR      = Path(os.environ.get(
     "WILLOW_GROVE_DIR",
     str(Path.home() / "github" / "safe-app-willow-grove"),
@@ -687,7 +688,7 @@ def _ensure_ollama() -> bool:
     """
     if not shutil.which("ollama"):
         print("  [ollama] not found — installing...")
-        install_script = Path("/tmp/ollama-install.sh")
+        install_script = Path(tempfile.gettempdir()) / "ollama-install.sh"
         try:
             urllib.request.urlretrieve("https://ollama.ai/install.sh", str(install_script))
             install_script.chmod(0o755)
@@ -1038,7 +1039,7 @@ def page_age_gate(win) -> dict:
 
     # Suspend curses so the guardian can work in the terminal if needed
     curses.endwin()
-    key_file = Path("/tmp/guardian.asc")
+    key_file = Path(tempfile.gettempdir()) / "guardian.asc"
     print("\n\n  === GUARDIAN: paste your PGP public key below, then save the file ===")
     print(f"  File path: {key_file}")
     print("  If the file is already there, just press Enter.")
@@ -1048,7 +1049,7 @@ def page_age_gate(win) -> dict:
     _fill_bg(win)
 
     if not key_file.exists() or not key_file.read_text().strip():
-        _safe(win, h // 2, 2, "  No key file found at /tmp/guardian.asc.", red)
+        _safe(win, h // 2, 2, f"  No key file found at {key_file}.", red)
         _safe(win, h // 2 + 1, 2, "  Guardian authorization skipped — flagged in config.", dim)
         win.refresh()
         time.sleep(2.5)

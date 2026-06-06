@@ -11,4 +11,8 @@ starlette>=0.37.0
 uvicorn>=0.48.0
 aiohttp>=3.13.5
 psutil
+portalocker>=2.7.0
+platformdirs>=3.0.0
+pywin32>=306; sys_platform == "win32"  # Windows only
+windows-curses>=2.3.0; sys_platform == "win32"  # Windows only
 openclaw-sap-gate @ git+https://github.com/rudi193-cmd/openclaw-sap-gate.git@710860045db25bee4b3fb2cfe5831ad04661c813

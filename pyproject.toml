@@ -20,6 +20,10 @@ dependencies = [
     "uvicorn>=0.48.0",
     "aiohttp>=3.13.5",
     "psutil",
+    "portalocker>=2.7.0",
+    "platformdirs>=3.0.0",
+    "pywin32>=306; sys_platform == 'win32'",
+    "windows-curses>=2.3.0; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]

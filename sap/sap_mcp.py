@@ -136,8 +136,6 @@ _ENV_SNAPSHOT_PREFIXES = ("WILLOW_", "GROVE_", "HOME", "USER", "PATH", "PGUSER",
 
 def _kill_stale_instances() -> None:
     """Terminate other sap_mcp.py processes FROM THIS REPO and their idle Postgres connections."""
-    import signal
-    import time
     import psutil  # type: ignore[import]
 
     my_pid = os.getpid()
@@ -157,22 +155,17 @@ def _kill_stale_instances() -> None:
 
     for pid in stale_pids:
         try:
-            os.kill(pid, signal.SIGTERM)
+            proc = psutil.Process(pid)
+            proc.terminate()  # SIGTERM on POSIX, TerminateProcess on Windows
             logger.info("[w2] sent SIGTERM to stale sap_mcp pid=%d", pid)
-        except ProcessLookupError:
+            try:
+                proc.wait(timeout=1)
+            except psutil.TimeoutExpired:
+                proc.kill()  # SIGKILL on POSIX, TerminateProcess on Windows
+        except psutil.NoSuchProcess:
             pass
         except Exception as err:
             logger.warning("[w2] could not kill pid=%d: %s", pid, err)
-
-    if stale_pids:
-        time.sleep(1)
-        for pid in stale_pids:
-            try:
-                os.kill(pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            except Exception:
-                pass
 
         # Terminate any Postgres connections left behind by the stale processes.
         try:
