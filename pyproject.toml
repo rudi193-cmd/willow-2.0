@@ -23,6 +23,7 @@ dependencies = [
     "portalocker>=2.7.0",
     "platformdirs>=3.0.0",
     "pywin32>=306; sys_platform == 'win32'",
+    "windows-curses>=2.3.0; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]
