@@ -12,63 +12,67 @@ Connects this Claude Code session to Discord so Sean can send commands from his 
 
 1. Starts `scripts/discord_remote.py run` as a background daemon (if not already running)
 2. Posts a "remote control online" message to Discord
-3. Enters a polling loop: checks Grove `hanuman` for inbound commands from `discord-bridge`, processes each one, posts the response back to Grove so the bridge forwards it to Discord
+3. Sets a persistent Monitor on the bridge log — fires immediately when an inbound Discord message arrives, no polling delay
+4. On each notification: reads Grove `hanuman` for the command, processes it, posts the response back so the bridge forwards it to Discord
 
 ## Steps
 
 ### 1. Start the bridge daemon
 
-Submit a background kart task to start the bridge if not already running:
-
+Tell the user to run in a separate terminal (daemon cannot persist inside bwrap/kart):
 ```
-agent_task_submit(
-  task="cd ~/github/willow-2.0 && source ~/github/.willow/env && python3 scripts/discord_remote.py status || python3 scripts/discord_remote.py run --interval 30 &",
-  app_id="hanuman"
-)
+cd ~/github/willow-2.0 && source ~/github/.willow/env && python3 scripts/discord_remote.py run --interval 15
 ```
 
-Check `discord_remote.py status` first — if already running, skip the start.
+Or check if it is already running: `python3 scripts/discord_remote.py status`.
 
 ### 2. Announce online
 
 Post to Grove `hanuman` as `hanuman`:
 ```
-grove_send_message(channel="hanuman", text="remote-control online — listening for Discord commands")
+grove_send_message(channel_name="hanuman", content="remote-control online — listening for Discord commands", sender="hanuman")
 ```
 
-The bridge will forward this to Discord within 30 seconds.
+The bridge will forward this to Discord within 15 seconds.
 
-### 3. Poll loop
+### 3. Set the Monitor
 
-Use `grove_get_history(channel_name="hanuman", limit=20, since_id=<cursor>)` to check for new messages.
+```python
+Monitor(
+    description="Discord inbound commands",
+    command="tail -n 0 -f ~/.willow/discord_remote.log | grep --line-buffered 'inbound Discord'",
+    persistent=True
+)
+```
 
-For each message where `sender == "discord-bridge"`:
-- Strip the `[Discord/<username>] ` prefix to get the raw command
-- Process it: answer questions, run fleet checks, execute tasks
-- Post the response to Grove `hanuman` as sender `hanuman`
-  - The bridge picks this up and forwards to Discord
+This fires a notification each time a new inbound Discord message lands — reaction time is bounded by the bridge poll interval (15s), not a separate Claude Code loop.
 
-Store the cursor in SOIL `hanuman/remote-control/cursor` between wakeups.
+### 4. On each Monitor notification
 
-### 4. Reschedule
+The notification line contains the Grove message id and a content snippet. When it fires:
+1. Call `grove_watch(channel_name="hanuman", since_id=<last_cursor>)` to get the full message
+2. Strip the `[Discord/<username>] ` prefix to get the raw command
+3. Process it — answer questions, run fleet checks, execute tasks as appropriate
+4. Post the response: `grove_send_message(channel_name="hanuman", content=<response>, sender="hanuman")`
+   - The bridge picks this up on its next poll and forwards to Discord
 
-After each cycle, call `ScheduleWakeup(delaySeconds=60, prompt="/remote-control", reason="polling Grove for Discord commands")` to keep the loop alive.
+Store `last_cursor` as the highest Grove message id seen so far (start from the id in the Monitor notification line).
+
+### 5. Stopping
+
+Sean types `stop remote-control` in Discord → bridge routes to Grove → Claude Code sees it in the Monitor notification, stops monitoring, posts "remote-control offline" to Grove.
 
 ## Commands Sean can send from Discord
 
-Any free-form message is routed to Claude Code as a command. Examples:
-- `fleet status` → run fleet_status and reply
+Any free-form message is routed to Claude Code. Examples:
+- `fleet status` → run fleet_status, reply with summary
 - `what's on the docket` → summarize open threads from handoff
 - `handoff hanuman` → post latest handoff summary
-- Anything else → Claude Code processes it and replies
-
-## Stopping
-
-Sean types `stop remote-control` in Discord → bridge routes to Grove → Claude Code stops rescheduling.
+- Anything else → Claude Code processes and replies
 
 ## Notes
 
-- Bridge daemon runs at `~/.willow/discord_remote.pid` / `~/.willow/discord_remote.log`
-- Token in `~/.willow/env` as `DISCORD_BOT_TOKEN`
+- Bridge daemon: `~/.willow/discord_remote.pid` / `~/.willow/discord_remote.log`
+- Token: `DISCORD_BOT_TOKEN` in `~/.willow/env`
 - Channel: `1509605940578615487`
-- Grove loop-prevention: bridge only forwards messages from `hanuman` sender to Discord (not its own `discord-bridge` posts)
+- Loop-prevention: bridge only forwards `hanuman`-sender Grove messages to Discord (not its own `discord-bridge` posts)
