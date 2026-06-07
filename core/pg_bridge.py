@@ -465,6 +465,13 @@ _MIGRATIONS = [
             tier IN ('frontier', 'contested', 'canonical', 'superseded')
         );
     EXCEPTION WHEN others THEN NULL; END $$""",
+    # BKT: skill_id on outcome_runs — records which skill a run was evaluating.
+    """DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='outcome_runs' AND column_name='skill_id') THEN
+            ALTER TABLE outcome_runs ADD COLUMN skill_id TEXT;
+        END IF;
+    END $$""",
 ]
 
 _INDEXES = """
@@ -1631,14 +1638,16 @@ class PgBridge:
             return dict(row) if row else None
 
     def outcome_run_create(self, outcome_agent_id: str, prompt: str, rubric: str,
-                            max_iterations: int = 3, created_by: str = "") -> str:
+                            max_iterations: int = 3, created_by: str = "",
+                            skill_id: str = "") -> str:
         self._ensure_conn()
         run_id = self.gen_id(10)
         with self.conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO outcome_runs (id, outcome_agent_id, prompt, rubric,"
-                " max_iterations, created_by) VALUES (%s,%s,%s,%s,%s,%s)",
-                (run_id, outcome_agent_id, prompt, rubric, max_iterations, created_by),
+                " max_iterations, created_by, skill_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                (run_id, outcome_agent_id, prompt, rubric, max_iterations, created_by,
+                 skill_id or None),
             )
         self.conn.commit()
         return run_id
@@ -1654,7 +1663,10 @@ class PgBridge:
                 vals.append(v)
         if not sets:
             return
-        if kwargs.get("status") in ("completed", "failed", "cancelled"):
+        _terminal = {"satisfied", "needs_revision", "max_iterations_reached",
+                     "failed", "interrupted"}
+        _status = kwargs.get("status", "")
+        if _status in ("completed", "failed", "cancelled") or _status in _terminal:
             sets.append("ended_at=now()")
         with self.conn.cursor() as cur:
             cur.execute(
@@ -1662,6 +1674,16 @@ class PgBridge:
                 vals + [run_id],
             )
         self.conn.commit()
+        if _status in _terminal:
+            try:
+                row = self.outcome_run_get(run_id)
+                if row and row.get("skill_id"):
+                    from core import skill_mastery as _sm
+                    _result = kwargs.get("result") or row.get("result") or _status
+                    _sm.record_outcome(row["skill_id"],
+                                       {"result": _result, "success": _result == "satisfied"})
+            except Exception:
+                pass
 
     def outcome_run_get(self, run_id: str) -> Optional[dict]:
         self._ensure_conn()
