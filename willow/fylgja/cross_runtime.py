@@ -7,7 +7,6 @@ and returns a compact anchor block for session_start.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from willow.fylgja.willow_home import willow_home
 

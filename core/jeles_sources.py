@@ -33,7 +33,6 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from pathlib import Path
 from typing import Optional
 
 from willow.fylgja.willow_home import willow_home

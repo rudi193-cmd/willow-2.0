@@ -11,7 +11,6 @@ Runs on socket activation. Three jobs then exits:
 Triggered by: session open, file lands in Nest, nightly timer, manual call.
 """
 import json
-import os
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
