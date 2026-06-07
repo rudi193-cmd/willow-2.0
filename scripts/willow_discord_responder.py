@@ -57,7 +57,15 @@ REPLY_SENDER = "hanuman"
 MY_ID = "willow-responder"
 DEFAULT_INTERVAL = 20
 DEFAULT_MODEL = "llama3.1:8b"
+TIER_3B = "llama3.2:3b"
+TIER_8B = "llama3.1:8b"
 CLAIMS_TTL_S = 3600  # prune claims older than 1 hour
+
+# Keywords that signal a trivially simple query → route to 3b regardless of length
+_SIMPLE_STARTS = (
+    "hi", "hello", "hey", "ping", "yo ", "sup ",
+    "status", "who are you", "what are you", "what's up", "whats up",
+)
 
 SYSTEM_PROMPT = (
     "You are Willow, the fleet coordinator for the Willow 2.0 agent fleet. "
@@ -253,12 +261,30 @@ def _kb_context(query: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Tier selection
+# ---------------------------------------------------------------------------
+
+def _select_tier(command: str, context: str) -> str:
+    """Return TIER_3B or TIER_8B based on query complexity and KB context availability."""
+    lc = command.lower().strip()
+    words = command.split()
+    # Trivial greetings / status pings always go to 3b
+    if any(lc.startswith(p) for p in _SIMPLE_STARTS) and len(words) <= 8:
+        return TIER_3B
+    # Short query with no KB context → 3b can handle it
+    if len(words) <= 10 and not context:
+        return TIER_3B
+    # KB context present or complex query → 8b
+    return TIER_8B
+
+
+# ---------------------------------------------------------------------------
 # Ollama inference
 # ---------------------------------------------------------------------------
 
-def _infer(command: str, context: str = "") -> str:
+def _infer(command: str, context: str = "", model: str = "") -> str:
     ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434").rstrip("/")
-    model = os.environ.get("WILLOW_RESPONDER_MODEL", DEFAULT_MODEL)
+    model = model or os.environ.get("WILLOW_RESPONDER_MODEL", DEFAULT_MODEL)
     system = SYSTEM_PROMPT if not context else f"{SYSTEM_PROMPT}\n\n{context}"
     payload = {
         "model": model,
@@ -409,7 +435,9 @@ def run_once() -> dict:
         context = _kb_context(command)
         if context:
             _log(f"kb_context grove_id={grove_id} | {len(context)} chars injected")
-        response = _infer(command, context)
+        tier = _select_tier(command, context)
+        _log(f"tier={tier} grove_id={grove_id}")
+        response = _infer(command, context, model=tier)
         res = _grove_post(response)
         if res.get("ok"):
             _log(f"replied grove_id={grove_id} → Grove id={res['id']} | {response[:60]}")
