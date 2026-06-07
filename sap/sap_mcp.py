@@ -1872,16 +1872,18 @@ async def skill_put(
     trigger:         str,
     auto_load:       bool = True,
     model_agnostic:  bool = True,
+    risk:            str = "low",
 ) -> dict:
-    """Store or update a Willow skill in the registry."""
-    logger.info("[w2] skill_put app_id=%s name=%s domain=%s", app_id, name, domain)
+    """Store or update a Willow skill in the registry.
+    risk: 'low' | 'medium' | 'high' — gates needs_scrutiny confirmation on load."""
+    logger.info("[w2] skill_put app_id=%s name=%s domain=%s risk=%s", app_id, name, domain, risk)
     loop = asyncio.get_running_loop()
 
     def _put():
         from willow.skills import skill_put as _skill_put
         skill_id = _skill_put(
             store, name=name, domain=domain, content=content, trigger=trigger,
-            auto_load=auto_load, model_agnostic=model_agnostic,
+            auto_load=auto_load, model_agnostic=model_agnostic, risk=risk,
         )
         return {"skill_id": skill_id}
 

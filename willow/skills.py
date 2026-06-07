@@ -13,6 +13,7 @@ def skill_put(
     trigger: str,
     auto_load: bool = True,
     model_agnostic: bool = True,
+    risk: str = "low",
 ) -> str:
     """Store or update a skill. Returns skill ID (= name)."""
     store.put(_COLLECTION, {
@@ -23,6 +24,7 @@ def skill_put(
         "trigger": trigger,
         "auto_load": auto_load,
         "model_agnostic": model_agnostic,
+        "risk": risk,
     })
     return name
 
@@ -68,7 +70,15 @@ def skill_load(
         scored.sort(key=_key, reverse=True)
     else:
         scored.sort(key=lambda x: x[0], reverse=True)
-    return [s for _, s in scored[:max_skills]]
+
+    from core import skill_mastery as _sm
+    result = []
+    for _, data in scored[:max_skills]:
+        sid = data.get("id") or data.get("name")
+        risk = data.get("risk", "low")
+        scrutiny = _sm.needs_scrutiny(sid, risk) if sid else False
+        result.append({**data, "needs_scrutiny": scrutiny})
+    return result
 
 
 def skill_list(
