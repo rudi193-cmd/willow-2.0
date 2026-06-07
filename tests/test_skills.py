@@ -90,3 +90,39 @@ def test_skill_load_mastery_bias_reranks_toward_mastered(store):
     _seed_overlap_pair(store)
     ranked = skill_load(store, context="alpha beta gamma", mastery_bias=5.0)
     assert ranked[0]["name"] == "low-overlap"
+
+
+# ── needs_scrutiny gate (#3b) ────────────────────────────────────────────────
+
+def test_skill_load_low_risk_never_needs_scrutiny(store):
+    skill_put(store, name="safe-skill", domain="session", content="c",
+              trigger="deploy", auto_load=True, risk="low")
+    results = skill_load(store, context="deploy")
+    assert results[0]["needs_scrutiny"] is False
+
+
+def test_skill_load_high_risk_unmastered_needs_scrutiny(store):
+    skill_put(store, name="release", domain="session", content="c",
+              trigger="release ship", auto_load=True, risk="high")
+    results = skill_load(store, context="release ship")
+    # No mastery record → p_known=0.0 < 0.95 → needs scrutiny
+    assert results[0]["needs_scrutiny"] is True
+
+
+def test_skill_load_high_risk_mastered_no_scrutiny(store):
+    from core import skill_mastery as sm
+    skill_put(store, name="cold-recovery", domain="session", content="c",
+              trigger="recovery restore", auto_load=True, risk="high")
+    # Drive mastery past threshold (0.95) with enough correct outcomes
+    for _ in range(20):
+        sm.record("cold-recovery", correct=True)
+    results = skill_load(store, context="recovery restore")
+    assert results[0]["needs_scrutiny"] is False
+
+
+def test_skill_put_risk_persists_in_skill_list(store):
+    skill_put(store, name="risky-op", domain="session", content="c",
+              trigger="t", auto_load=True, risk="medium")
+    listed = skill_list(store)
+    rec = next(s for s in listed if s["name"] == "risky-op")
+    assert rec["risk"] == "medium"
