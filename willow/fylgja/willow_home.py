@@ -43,6 +43,11 @@ def config_mode(package_root: Path | None = None) -> str:
     forced = os.environ.get("WILLOW_CONFIG_MODE", "").strip().lower()
     if forced in ("private-config", "public-fallback", "degraded"):
         return forced
+    home = fleet_home(package_root)
+    if (home / PUBLIC_FALLBACK_MARKER).is_file():
+        return "public-fallback"
+    if (home / "willow.md").is_file():
+        return "private-config"
     if private_config_available():
         return "private-config"
     return "public-fallback"

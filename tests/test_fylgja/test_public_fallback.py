@@ -75,6 +75,17 @@ def test_config_mode_public_when_forced(public_repo):
     assert fleet_home(public_repo) == public_repo / ".willow" / "generated"
 
 
+def test_config_mode_respects_explicit_willow_home(tmp_path, monkeypatch):
+    wh = tmp_path / "github" / ".willow"
+    wh.mkdir(parents=True)
+    (wh / "willow.md").write_text("# private test\n", encoding="utf-8")
+    monkeypatch.setenv("WILLOW_HOME", str(wh))
+    monkeypatch.delenv("WILLOW_CONFIG_MODE", raising=False)
+
+    assert config_mode(tmp_path / "repo") == "private-config"
+    assert fleet_home(tmp_path / "repo") == wh.resolve()
+
+
 def test_settings_template_uses_public_pack(public_repo):
     tpl = settings_template_path(public_repo)
     assert tpl.name == "settings.local.json"
