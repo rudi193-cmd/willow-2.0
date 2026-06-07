@@ -28,6 +28,31 @@ def private_config_available() -> bool:
     return contract.is_file() and not marker.is_file()
 
 
+def willow_home(package_root: Path | None = None) -> Path:
+    """Canonical fleet home ($WILLOW_HOME, private config, or public generated)."""
+    return fleet_home(package_root)
+
+
+def willow_home_alias() -> Path:
+    """Backward-compat alias path (~/.willow) — often symlinks to canonical home."""
+    return Path.home() / ".willow"
+
+
+def resolve_store_root(package_root: Path | None = None) -> Path:
+    if os.environ.get("WILLOW_STORE_ROOT"):
+        return Path(os.environ["WILLOW_STORE_ROOT"]).expanduser().resolve()
+    return willow_home(package_root) / "store"
+
+
+def resolve_secrets_path(package_root: Path | None = None) -> Path:
+    home = willow_home(package_root)
+    alias = willow_home_alias()
+    for candidate in (home / "secrets.sh", alias / "secrets.sh"):
+        if candidate.is_file():
+            return candidate
+    return home / "secrets.sh"
+
+
 def fleet_home(package_root: Path | None = None) -> Path:
     if os.environ.get("WILLOW_HOME"):
         return Path(os.environ["WILLOW_HOME"]).expanduser().resolve()

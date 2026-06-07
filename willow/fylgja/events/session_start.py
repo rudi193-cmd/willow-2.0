@@ -16,6 +16,7 @@ from willow.fylgja._mcp import call
 from willow.fylgja._grove import call as _grove_call
 from willow.fylgja._state import reset_turn_count
 from willow.fylgja.events._stack_snapshot import normalize_stack_record
+from willow.fylgja.project_env import repo_root
 
 try:
     from willow.context.dedup import reset_session as _dedup_reset
@@ -519,6 +520,23 @@ def _open_run() -> str | None:
         return None
 
 
+def _claude_memory_dir() -> Path | None:
+    """Resolve Claude Code project memory dir for the open repo (runtime-specific)."""
+    projects = Path.home() / ".claude" / "projects"
+    if not projects.is_dir():
+        return None
+    repo_name = repo_root().name.lower()
+    for entry in sorted(projects.iterdir()):
+        if not entry.is_dir():
+            continue
+        slug = entry.name.lower().lstrip("-")
+        if repo_name.replace("-", "") in slug.replace("-", ""):
+            memory = entry / "memory"
+            if memory.is_dir():
+                return memory
+    return None
+
+
 def _seed_corpus_corrections() -> None:
     """Populate corpus/corrections from memory feedback_*.md files (idempotent).
 
@@ -526,8 +544,8 @@ def _seed_corpus_corrections() -> None:
     corpus/corrections (read by session_start at boot) was never populated.
     This runs once per session; soil_put is idempotent by key so re-runs are safe.
     """
-    memory_dir = Path.home() / ".claude" / "projects" / "-home-sean-campbell-willow-2-0" / "memory"
-    if not memory_dir.exists():
+    memory_dir = _claude_memory_dir()
+    if memory_dir is None:
         return
 
     try:

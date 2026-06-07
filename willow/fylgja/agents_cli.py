@@ -20,6 +20,8 @@ from willow.fylgja.project_env import (
     write_active_agent,
 )
 
+_CHECK_IDES = ("cursor", "claude", "codex")
+
 
 def _global_claude_has_fylgja_pre_tool() -> bool:
     settings = Path.home() / ".claude" / "settings.json"
@@ -55,6 +57,14 @@ def _project_claude_stale_hooks(root: Path) -> list[str]:
                 if any(x in cmd for x in ("orchestrator.py", "session_close.py", "persona.py")):
                     stale.append(f"{event}: {cmd}")
     return stale
+
+
+def _codex_has_willow_mcp() -> bool:
+    target = Path.home() / ".codex" / "config.toml"
+    if not target.is_file():
+        return False
+    text = target.read_text(encoding="utf-8")
+    return "mcp_servers.willow" in text and "unified_mcp.sh" in text
 
 
 def cmd_list(root: Path) -> int:
@@ -93,10 +103,13 @@ def cmd_active(root: Path, agent: str, *, install: bool = False) -> int:
         print("WARNING — identity drift (MCP env may not match active-agent):")
         for line in drift:
             print(f"  · {line}")
-        print(f"Fix: ./willow agents install {agent} --ide all")
-        print("     or: ./willow agents active {agent} --install")
+        print(f"Fix: ./willow.sh agents install {agent} --ide all")
+        print("     or: ./willow.sh agents active {agent} --install")
     else:
-        print(f"Identity OK — run install if IDE wiring changed: ./willow agents install {agent} --ide all")
+        print(
+            f"Identity OK — run install if IDE wiring changed: "
+            f"./willow.sh agents install {agent} --ide all"
+        )
     return 0
 
 
@@ -140,7 +153,16 @@ def cmd_sync_manifests(force: bool, sign: bool, agent: str | None) -> int:
     return 0
 
 
-def cmd_check(root: Path) -> int:
+def cmd_check(root: Path, ides: list[str] | None = None) -> int:
+    selected = (
+        list(_CHECK_IDES)
+        if not ides or ides == ["all"]
+        else [i.strip().lower() for i in ides if i.strip()]
+    )
+    for ide in selected:
+        if ide not in _CHECK_IDES:
+            raise ValueError(f"Unknown IDE {ide!r} — choose from {_CHECK_IDES}")
+
     issues: list[str] = []
     active = read_active_agent(root)
     agents = list_agent_identities(root)
@@ -148,29 +170,48 @@ def cmd_check(root: Path) -> int:
     if not agents:
         issues.append("No repo agents — create agents/<id>/config/identity.json")
     if not active:
-        issues.append("No active agent — run: ./willow agents active <id>")
+        issues.append("No active agent — run: ./willow.sh agents active <id>")
 
     if active:
         mcp = root / "agents" / active / "config" / "mcp.json"
         if not mcp.is_file():
             issues.append(f"Missing {mcp.relative_to(root)}")
+        elif mcp.is_file():
+            try:
+                env = json.loads(mcp.read_text(encoding="utf-8"))["mcpServers"]["willow"]["env"]
+                for key in ("GROVE_SENDER", "GROVE_NAME"):
+                    if env.get(key) != active:
+                        issues.append(
+                            f"{mcp.relative_to(root)} missing {key}={active!r} "
+                            f"— run: ./willow.sh agents install {active} --ide all"
+                        )
+            except Exception:
+                issues.append(f"Could not parse Grove fields in {mcp.relative_to(root)}")
 
-    cursor_hooks = root / ".cursor" / "hooks.json"
-    if not cursor_hooks.is_symlink():
-        issues.append(".cursor/hooks.json not symlinked — run install --ide cursor")
+    if "cursor" in selected:
+        cursor_hooks = root / ".cursor" / "hooks.json"
+        if not cursor_hooks.is_symlink():
+            issues.append(".cursor/hooks.json not symlinked — run install --ide cursor")
 
-    stale = _project_claude_stale_hooks(root)
-    if stale:
-        issues.append("Project .claude/settings.json has stale hooks (blocks Fylgja):")
-        issues.extend(f"  · {s}" for s in stale)
+    if "claude" in selected:
+        stale = _project_claude_stale_hooks(root)
+        if stale:
+            issues.append("Project .claude/settings.json has stale hooks (blocks Fylgja):")
+            issues.extend(f"  · {s}" for s in stale)
 
-    if not _global_claude_has_fylgja_pre_tool():
+        if not _global_claude_has_fylgja_pre_tool():
+            issues.append(
+                "~/.claude/settings.json missing Fylgja PreToolUse — "
+                "run: ./willow.sh agents install <agent> --ide claude"
+            )
+
+        issues.extend(check_claude_plugin_layout(root))
+
+    if "codex" in selected and not _codex_has_willow_mcp():
         issues.append(
-            "~/.claude/settings.json missing Fylgja PreToolUse — "
-            "run: ./willow agents install <agent> --ide claude"
+            "~/.codex/config.toml missing Willow MCP — "
+            "run: ./willow.sh agents install <agent> --ide codex"
         )
-
-    issues.extend(check_claude_plugin_layout(root))
 
     hook = root / "willow" / "fylgja" / "bin" / "fylgja-hook"
     if not hook.is_file():
@@ -200,6 +241,7 @@ def cmd_check(root: Path) -> int:
 
     print("MCP enforcement check — OK")
     print(f"  active agent: {active}")
+    print(f"  surfaces: {', '.join(selected)}")
     print("  pre_tool blocks: PYTHONPATH=, python -m willow/sap/core, inline core imports")
     print("  session anchor injects [MCP-FIRST] each SessionStart")
     print("  Kart sandbox: willow/fylgja/config/kart-sandbox.json (worktrees auto-bound)")
@@ -208,7 +250,7 @@ def cmd_check(root: Path) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="./willow agents",
+        prog="./willow.sh agents",
         description="Repo agent identity, IDE wiring, MCP enforcement health",
     )
     sub = parser.add_subparsers(dest="command", required=True)
@@ -232,7 +274,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_install.add_argument("--dry-run", action="store_true")
 
-    sub.add_parser("check", help="Verify hooks, MCP config, enforcement rails")
+    p_check = sub.add_parser("check", help="Verify hooks, MCP config, enforcement rails")
+    p_check.add_argument(
+        "--ide",
+        default="all",
+        help="cursor,claude,codex or all (default: all)",
+    )
 
     p_sync = sub.add_parser(
         "sync-manifests",
@@ -255,7 +302,14 @@ def main(argv: list[str] | None = None) -> int:
         ]
         return cmd_install(args.agent.strip(), ides, args.dry_run, root)
     if args.command == "check":
-        return cmd_check(root)
+        ides = ["all"] if args.ide.strip().lower() == "all" else [
+            x.strip() for x in args.ide.split(",") if x.strip()
+        ]
+        try:
+            return cmd_check(root, ides=ides)
+        except ValueError as e:
+            print(str(e))
+            return 1
     if args.command == "sync-manifests":
         return cmd_sync_manifests(
             force=args.force,

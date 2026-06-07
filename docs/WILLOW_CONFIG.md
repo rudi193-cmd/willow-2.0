@@ -39,3 +39,15 @@ Templates for new machines: `fleet.env.example`, `settings.global.template.json`
 
 **Public-only clones:** see [`PUBLIC_REMOTE_BOOT.md`](PUBLIC_REMOTE_BOOT.md) — tracked pack at
 `willow/fylgja/config/public/`, materialized to `.willow/generated/` when private config is absent.
+
+## Path resolver
+
+| Function | Module | Resolves |
+|----------|--------|----------|
+| `fleet_home()` / `willow_home()` | `willow/fylgja/willow_home.py` | `$WILLOW_HOME` → private config or public generated |
+| `willow_home_alias()` | same | `~/.willow` (backward-compat reads) |
+| `resolve_store_root()` | same | `$WILLOW_STORE_ROOT` or `$WILLOW_HOME/store` |
+| `resolve_secrets_path()` | same | `$WILLOW_HOME/secrets.sh` |
+
+Verify live layout: `bash scripts/audit_canonical_home.sh`  
+Audit report: [`audits/CANONICAL_HOME_RUNTIME_AUDIT_2026-06-07.md`](audits/CANONICAL_HOME_RUNTIME_AUDIT_2026-06-07.md)

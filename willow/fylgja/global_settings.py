@@ -1,7 +1,7 @@
 """
 global_settings.py — Fleet-wide settings (canonical in private willow-config).
 
-Canonical: `~/.willow/settings.global.json` (git: rudi193-cmd/willow-config).
+Canonical: `$WILLOW_HOME/settings.global.json` (`~/github/.willow`; `~/.willow` alias OK).
 `willow-2.0/willow/fylgja/config/settings.global.json` symlinks in via `link_fleet_home`.
 Legacy `~/.willow/consent.json` is imported on first load and kept in sync on write.
 """
@@ -14,9 +14,11 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+from willow.fylgja.willow_home import fleet_home
+
 VERSION = 1
 
-WILLOW_HOME = Path(os.environ.get("WILLOW_HOME", Path.home() / "github" / ".willow"))
+WILLOW_HOME = fleet_home()
 SETTINGS_PATH = Path(
     os.environ.get("WILLOW_SETTINGS_GLOBAL", WILLOW_HOME / "settings.global.json")
 )

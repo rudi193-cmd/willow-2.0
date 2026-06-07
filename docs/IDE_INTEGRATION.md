@@ -92,13 +92,33 @@ Call **`fleet_tool_guide`** when unsure which tool to use (grouped catalog).
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `WILLOW_AGENT_NAME` | `agent` | Sets identity for handoff + grove |
-| `WILLOW_GROVE_ROOT` | `~/github/safe-app-willow-grove` | Path to grove repo (grove tools bundled in unified MCP) |
+| `WILLOW_HOME` | `~/github/.willow` | Canonical fleet config (`~/.willow` alias OK) |
+| `WILLOW_AGENT_NAME` | `active-agent` or `hanuman` | Identity for handoff, Grove, MCP `app_id` |
+| `GROVE_SENDER` / `GROVE_NAME` | same as agent | Set by `install_project` / `unified_mcp.sh` |
+| `WILLOW_GROVE_ROOT` | `~/github/safe-app-willow-grove` | Grove repo (tools bundled in unified MCP) |
 | `WILLOW_PG_DB` | `willow_20` | Postgres database name |
-| `WILLOW_SAFE_ROOT` | `~/SAFE/Applications` | Installed app manifests — required for SAP gate |
-| `WILLOW_AGENTS_ROOT` | `~/SAFE/Agents` | Agent manifests — required for agent authorization |
-| `WILLOW_STORE_ROOT` | `~/.willow/store` | SOIL store path |
+| `WILLOW_SAFE_ROOT` | `~/github/SAFE/Applications` | Installed app manifests — required for SAP gate |
+| `WILLOW_AGENTS_ROOT` | `~/github/SAFE/Agents` | Agent manifests — required for agent authorization |
+| `WILLOW_STORE_ROOT` | `$WILLOW_HOME/store` | SOIL store path |
 | `WILLOW_MCP_PROFILE` | `standard` | Tool picker filter: `minimal` \| `core` \| `standard` \| `full` |
+
+Path resolver: `willow/fylgja/willow_home.py` (`fleet_home`, `resolve_store_root`, …).
+
+---
+
+## Runtime parity (install + hooks)
+
+| Surface | Install | Check |
+|---------|---------|-------|
+| Cursor | `./willow.sh agents install <id> --ide cursor` | `./willow.sh agents check --ide cursor` |
+| Claude Code | `./willow.sh agents install <id> --ide claude` | `./willow.sh agents check --ide claude` |
+| Codex CLI | `./willow.sh agents install <id> --ide codex` | `./willow.sh agents check --ide codex` |
+| Gemini CLI | Manual MCP fragment (see `GEMINI.md`) | — |
+
+`install_project` re-renders MCP JSON (including `GROVE_SENDER` / `GROVE_NAME`) and exports
+`$WILLOW_HOME/mcp/willow-2.0.mcp.json` on every install.
+
+Layout audit: `bash scripts/audit_canonical_home.sh`
 
 ---
 

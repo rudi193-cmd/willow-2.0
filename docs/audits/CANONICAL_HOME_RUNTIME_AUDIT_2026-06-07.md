@@ -256,6 +256,10 @@ Split into four PRs after this audit merges:
 - CI comfort gate: warn on new `Path.home() / ".willow"` outside allowlist.
 - Test: `install_project` render includes Grove fields; Codex template parity.
 
+**Status (2026-06-07):** PR 1 partially landed via #232 (`willow_home.py` public fallback).
+Remediation implementation: `feat/canonical-home-remediation` — path resolvers, launcher defaults,
+Codex Grove fields, `agents check --ide`, MCP home export, `audit_canonical_home.sh`, docs.
+
 ---
 
 ## Verification Commands (operator)

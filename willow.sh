@@ -34,18 +34,25 @@ if [[ -z "${WILLOW_PYTHON:-}" ]]; then
 fi
 export WILLOW_PYTHON
 
-# ── User store always at ~/.willow/store/ — never inside the repo ─────────────
-export WILLOW_STORE_ROOT="${WILLOW_STORE_ROOT:-${HOME}/.willow/store}"
-export WILLOW_VAULT="${WILLOW_VAULT:-${HOME}/.willow/vault.db}"
-export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/SAFE/Applications}"
-export WILLOW_AGENTS_ROOT="${WILLOW_AGENTS_ROOT:-${HOME}/SAFE/Agents}"
+# ── Canonical fleet home ($WILLOW_HOME) — ~/.willow is a supported alias ───────
+export WILLOW_HOME="${WILLOW_HOME:-${HOME}/github/.willow}"
+export WILLOW_STORE_ROOT="${WILLOW_STORE_ROOT:-${WILLOW_HOME}/store}"
+export WILLOW_VAULT="${WILLOW_VAULT:-${WILLOW_HOME}/vault.db}"
+export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/github/SAFE/Applications}"
+export WILLOW_AGENTS_ROOT="${WILLOW_AGENTS_ROOT:-${HOME}/github/SAFE/Agents}"
 export WILLOW_PGP_FINGERPRINT="${WILLOW_PGP_FINGERPRINT:-}"
 
 # Postgres — Unix socket, willow_20 DB (clean break from 1.7)
 unset WILLOW_PG_HOST WILLOW_PG_PORT WILLOW_PG_PASS
 export WILLOW_PG_DB="${WILLOW_PG_DB:-willow_20}"
 export WILLOW_PG_USER="${WILLOW_PG_USER:-$(whoami)}"
+ACTIVE_AGENT_FILE="${WILLOW_ROOT}/.willow/active-agent"
+if [[ -z "${WILLOW_AGENT_NAME:-}" && -f "${ACTIVE_AGENT_FILE}" ]]; then
+    WILLOW_AGENT_NAME="$(tr -d '[:space:]' < "${ACTIVE_AGENT_FILE}")"
+fi
 export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
+export GROVE_SENDER="${GROVE_SENDER:-${WILLOW_AGENT_NAME}}"
+export GROVE_NAME="${GROVE_NAME:-${WILLOW_AGENT_NAME}}"
 
 # ── LLM provider keys — uncomment whichever is active ────────────────────────
 # export ANTHROPIC_API_KEY=""
