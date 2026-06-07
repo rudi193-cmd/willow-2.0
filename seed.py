@@ -619,14 +619,19 @@ def _ensure_postgres() -> bool:
 
     user = os.environ.get("USER", "")
 
+    _linux = sys.platform.startswith("linux")
     if subprocess.run(["pg_isready", "-q"], capture_output=True).returncode != 0:
-        subprocess.run(["sudo", "service", "postgresql", "start"], capture_output=True)
-        if subprocess.run(["pg_isready", "-q"], capture_output=True).returncode != 0:
-            print("  [postgres] not found — installing (requires sudo)...")
-            subprocess.run(
-                ["sudo", "apt-get", "install", "-y", "postgresql"], check=False
-            )
+        if _linux:
             subprocess.run(["sudo", "service", "postgresql", "start"], capture_output=True)
+        if subprocess.run(["pg_isready", "-q"], capture_output=True).returncode != 0:
+            if _linux:
+                print("  [postgres] not found — installing (requires sudo)...")
+                subprocess.run(
+                    ["sudo", "apt-get", "install", "-y", "postgresql"], check=False
+                )
+                subprocess.run(["sudo", "service", "postgresql", "start"], capture_output=True)
+            else:
+                print("  [postgres] not found — install PostgreSQL manually: https://www.postgresql.org/download/")
 
     if subprocess.run(["pg_isready", "-q"], capture_output=True).returncode != 0:
         print("  [postgres] could not start — fix manually then re-run seed.py")
@@ -634,10 +639,11 @@ def _ensure_postgres() -> bool:
 
     # Install pgvector matching the running postgres major version
     pg_ver = _pg_major_version()
-    subprocess.run(
-        ["sudo", "apt-get", "install", "-y", f"postgresql-{pg_ver}-pgvector"],
-        capture_output=True,
-    )
+    if _linux:
+        subprocess.run(
+            ["sudo", "apt-get", "install", "-y", f"postgresql-{pg_ver}-pgvector"],
+            capture_output=True,
+        )
     # Enable pgvector in willow_20 — requires superuser (apt installs the SO but doesn't activate it)
     subprocess.run(
         ["sudo", "-u", "postgres", "psql", "-c",
@@ -688,21 +694,29 @@ def _ensure_ollama() -> bool:
     """
     if not shutil.which("ollama"):
         print("  [ollama] not found — installing...")
-        install_script = Path(tempfile.gettempdir()) / "ollama-install.sh"
-        try:
-            urllib.request.urlretrieve("https://ollama.ai/install.sh", str(install_script))
-            install_script.chmod(0o755)
-            subprocess.run([str(install_script)], check=False)
-        except Exception as e:
-            print(f"  [ollama] install failed: {e} — semantic search unavailable")
+        if sys.platform.startswith("linux") or sys.platform == "darwin":
+            install_script = Path(tempfile.gettempdir()) / "ollama-install.sh"
+            try:
+                urllib.request.urlretrieve("https://ollama.ai/install.sh", str(install_script))
+                install_script.chmod(0o755)
+                subprocess.run([str(install_script)], check=False)
+            except Exception as e:
+                print(f"  [ollama] install failed: {e} — semantic search unavailable")
+                return False
+            finally:
+                install_script.unlink(missing_ok=True)
+        else:
+            print("  [ollama] install it manually: https://ollama.com/download")
             return False
-        finally:
-            install_script.unlink(missing_ok=True)
         if not shutil.which("ollama"):
             print("  [ollama] install did not land — semantic search unavailable")
             return False
 
-    if subprocess.run(["pgrep", "-f", "ollama serve"], capture_output=True).returncode != 0:
+    _pgrep = shutil.which("pgrep")
+    ollama_running = (
+        _pgrep and subprocess.run([_pgrep, "-f", "ollama serve"], capture_output=True).returncode == 0
+    )
+    if not ollama_running:
         subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(3)
 
