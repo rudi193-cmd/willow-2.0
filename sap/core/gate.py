@@ -150,7 +150,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "session_review", "session_query", "diagnostic_summary", "env_check",
     }),
     "skill_read": frozenset({
-        "skill_list", "skill_load",
+        "skill_list", "skill_load", "skill_mastery",
     }),
     "fleet_operator": frozenset({
         "fleet_health", "fleet_blast", "fleet_persona", "fleet_base17",

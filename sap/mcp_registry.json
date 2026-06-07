@@ -88,6 +88,7 @@
 
     "skill_list":         {"group": "skill",  "description": "List available Fylgja skills."},
     "skill_load":         {"group": "skill",  "description": "Load a skill by name — returns full skill content."},
+    "skill_mastery":      {"group": "skill",  "description": "Bayesian-Knowledge-Tracing mastery for a skill, or the N weakest skills."},
     "skill_put":          {"group": "skill",  "description": "Register or update a skill in the skill registry."},
 
     "mem_check":          {"group": "mem",    "description": "Gate check — validate a memory candidate before writing."},
