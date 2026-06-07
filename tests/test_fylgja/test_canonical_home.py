@@ -14,6 +14,22 @@ from willow.fylgja.willow_home import (
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
 
 
+def test_sap_inference_secrets_dir_respects_willow_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    from sap.core.inference import _secrets_dir
+
+    assert _secrets_dir() == tmp_path / "secrets"
+
+
+def test_sap_nest_queue_respects_willow_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    import importlib
+    import sap.core.nest_intake as nest_intake
+
+    importlib.reload(nest_intake)
+    assert nest_intake.QUEUE_FILE == tmp_path / "nest-queue.json"
+
+
 def test_seed_soil_path_respects_willow_home(tmp_path, monkeypatch):
     monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
     monkeypatch.delenv("WILLOW_STORE_ROOT", raising=False)

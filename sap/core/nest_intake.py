@@ -3,7 +3,7 @@ nest_intake.py — Nest intake backend for MCP tools.
 b17: B2DA2  ΔΣ=42
 
 Called by sap_mcp.py for willow_nest_scan / willow_nest_queue / willow_nest_file.
-Manages the review queue at ~/.willow/nest-queue.json.
+Manages the review queue at $WILLOW_HOME/nest-queue.json.
 """
 
 import json
@@ -11,12 +11,16 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
+from willow.fylgja.willow_home import willow_home
+
+_FLEET_HOME = willow_home()
+
 NEST_DIRS = [
     Path.home() / "Desktop" / "Nest",
-    Path.home() / ".willow" / "Nest" / "processed",
+    _FLEET_HOME / "Nest" / "processed",
 ]
 
-QUEUE_FILE = Path.home() / ".willow" / "nest-queue.json"
+QUEUE_FILE = _FLEET_HOME / "nest-queue.json"
 
 TRACK_TO_DEST = {
     # Sean's files — ~/personal/
@@ -27,9 +31,9 @@ TRACK_TO_DEST = {
     "photos_personal": Path.home() / "personal" / "photos" / "personal",
     "photos_camera":   Path.home() / "personal" / "photos" / "camera",
     "screenshots":     Path.home() / "personal" / "photos" / "screenshots",
-    # Agent artifacts — ~/.willow/
-    "handoffs":        Path.home() / ".willow" / "handoffs" / "filed",
-    "specs":           Path.home() / ".willow" / "specs",
+    # Agent artifacts — $WILLOW_HOME/
+    "handoffs":        _FLEET_HOME / "handoffs" / "filed",
+    "specs":           _FLEET_HOME / "specs",
 }
 
 

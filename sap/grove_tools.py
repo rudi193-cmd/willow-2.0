@@ -221,7 +221,9 @@ def register(mcp: "FastMCP") -> None:
         if not _GROVE_AVAILABLE:
             return _unavailable()
         from u2u.identity import Identity
-        identity_path = Path.home() / ".willow" / "grove_identity.json"
+        from willow.fylgja.willow_home import willow_home
+
+        identity_path = willow_home() / "grove_identity.json"
         identity = Identity.load_or_generate(identity_path)
         name = os.getenv("GROVE_NAME", os.getenv("USER", "me"))
         port = int(os.getenv("GROVE_PORT", "8550"))
