@@ -1,0 +1,18 @@
+[Unit]
+Description=Willow Discord responder — always-on Ollama-backed fallback for Discord commands
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+EnvironmentFile=-%h/github/.willow/env
+ExecStart=%h/github/willow-2.0/.venv-dev/bin/python3 %h/github/willow-2.0/scripts/willow_discord_responder.py run
+WorkingDirectory=%h/github/willow-2.0
+Restart=on-failure
+RestartSec=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=willow-discord-responder
+
+[Install]
+WantedBy=default.target

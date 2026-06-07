@@ -50,7 +50,19 @@ This fires a notification each time a new inbound Discord message lands — reac
 ### 4. On each Monitor notification
 
 The notification line contains the Grove message id and a content snippet. When it fires:
-1. Call `grove_watch(channel_name="hanuman", since_id=<last_cursor>)` to get the full message
+
+**4a. Claim the message first** (multi-agent coordination):
+
+Extract the grove_id from the notification line (`id=NNN`). Run:
+```python
+from scripts.willow_discord_responder import claim_for
+claimed = claim_for(grove_id=NNN, claimer_id="claude-code")
+```
+If `claimed` is False — `willow_discord_responder` already handled it. Skip.
+If `claimed` is True — proceed.
+
+**4b. Process and reply:**
+1. Call `grove_get_history(channel_name="hanuman", since_id=<last_cursor>)` to get the full message
 2. Strip the `[Discord/<username>] ` prefix to get the raw command
 3. Process it — answer questions, run fleet checks, execute tasks as appropriate
 4. Post the response: `grove_send_message(channel_name="hanuman", content=<response>, sender="hanuman")`
@@ -76,3 +88,5 @@ Any free-form message is routed to Claude Code. Examples:
 - Token: `DISCORD_BOT_TOKEN` in `~/.willow/env`
 - Channel: `1509605940578615487`
 - Loop-prevention: bridge only forwards `hanuman`-sender Grove messages to Discord (not its own `discord-bridge` posts)
+- Claim file: `~/.willow/discord_claims.json` — shared by Claude Code and `willow_discord_responder.py`. First claimer wins; claims expire after 1 hour.
+- Always-on fallback: `scripts/willow_discord_responder.py` (Ollama/llama3.1:8b) handles commands when no Claude Code session is live. Run as systemd service `willow-discord-responder.service`.
