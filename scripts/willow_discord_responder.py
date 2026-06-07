@@ -20,6 +20,7 @@ Usage:
   python3 scripts/willow_discord_responder.py run-once
   python3 scripts/willow_discord_responder.py status
   python3 scripts/willow_discord_responder.py stop
+  python3 scripts/willow_discord_responder.py restart [--interval 20]
 
 State:  ~/.willow/willow_responder_state.json
 Log:    ~/.willow/willow_responder.log
@@ -519,6 +520,31 @@ def cmd_stop() -> int:
         return 1
 
 
+def cmd_restart(interval: int) -> int:
+    if PID_PATH.is_file():
+        try:
+            pid = int(PID_PATH.read_text(encoding="utf-8").strip())
+            if _pid_alive(pid):
+                os.kill(pid, signal.SIGTERM)
+                _log(f"restart: sent SIGTERM to {pid}")
+                for _ in range(20):
+                    time.sleep(0.5)
+                    if not _pid_alive(pid):
+                        break
+                else:
+                    os.kill(pid, signal.SIGKILL)
+                    _log(f"restart: SIGKILL to {pid} after timeout")
+                    time.sleep(0.5)
+            PID_PATH.unlink(missing_ok=True)
+        except Exception as exc:
+            _log(f"restart: kill failed: {exc}")
+            PID_PATH.unlink(missing_ok=True)
+    else:
+        _log("restart: no PID file — starting fresh")
+    _log("restart: starting")
+    return cmd_run(interval)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -527,6 +553,8 @@ def main() -> int:
     sub.add_parser("run-once", help="Single poll cycle")
     sub.add_parser("status", help="Check if running + state")
     sub.add_parser("stop", help="Stop the daemon")
+    restart_p = sub.add_parser("restart", help="Stop the running daemon and start it again")
+    restart_p.add_argument("--interval", type=int, default=DEFAULT_INTERVAL)
 
     args = parser.parse_args()
     _load_env()
@@ -541,6 +569,8 @@ def main() -> int:
         return cmd_status()
     if args.cmd == "stop":
         return cmd_stop()
+    if args.cmd == "restart":
+        return cmd_restart(args.interval)
     return 1
 
 
