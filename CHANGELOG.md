@@ -9,6 +9,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - `core/bkt.py` — Bayesian Knowledge Tracing for skill-mastery estimation. Sibling of `core/actr.py`: dependency-free (no numpy/pandas) forward filter + EM fit + RMSE/accuracy/AUC evaluation, estimating an agent's latent mastery of a skill from its outcome history. Reimplements the pyBKT (CAHLR, MIT) algorithm for Termux/Windows parity.
+- `core/skill_mastery.py` — live per-skill mastery tracking built on `core/bkt.py`. Maps `core/outcomes.py` terminal results to correct/incorrect, advances mastery online, periodically refits parameters from each skill's own history, and persists one record per skill in the SOIL `bkt` collection. Read surface: `mastery()`, `all_mastery()`, `weakest()`.
 
 ## [2026.05.2] - 2026-05-31
 

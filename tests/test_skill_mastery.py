@@ -1,18 +1,8 @@
-"""SCRATCH / DRAFT — TDD spec for the planned core/skill_mastery.py (Extension #1)
-and the skill_mastery MCP tool (Extension #2). Written ahead of implementation.
+# b17: SKMS1  ΔΣ=42
+"""Tests for core/skill_mastery.py — live BKT mastery tracking per skill.
 
-Mirrors the structure of tests/test_s_tier_tools.py:
-  - REPO_ROOT on sys.path
-  - fixtures that set the one required env var (here WILLOW_STORE_ROOT) and import
-    the module under test, the way `split_identifier` / `policy_check` do
-  - test classes grouping behaviour
-  - the async MCP tool's inner ranking tested as a plain mirror function
-    (`_weakest`), exactly as test_s_tier_tools mirrors env_check._check()
-    (`_compute_delta`) and diagnostic_summary._diag() (`_compute_new_diags`)
-
-NOTE: lives in scratch/, NOT tests/ — pytest testpaths=["tests"], so CI does not
-collect this. It targets core/skill_mastery.py, which does not exist yet. Run it
-by hand once #1 lands:  python -m pytest scratch/test_skill_mastery.py
+SOIL is isolated per test via WILLOW_STORE_ROOT (soil._root() reads it at call
+time), the same monkeypatch-an-env idiom used in tests/test_s_tier_tools.py.
 """
 import sys
 from pathlib import Path
@@ -24,33 +14,27 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 
-# ── fixtures ──────────────────────────────────────────────────────────────────
-
 @pytest.fixture
 def store_root(tmp_path, monkeypatch):
-    """Isolate SOIL in a tmp store. Mirrors the env fixtures in
-    test_s_tier_tools.py (monkeypatch a required env var per test).
-    soil._root() reads WILLOW_STORE_ROOT at call time, so this isolates each test.
-    """
+    """Isolate SOIL in a tmp store for the duration of one test."""
     monkeypatch.setenv("WILLOW_STORE_ROOT", str(tmp_path / "store"))
     return tmp_path
 
 
 @pytest.fixture
 def sm(store_root):
-    """Import the (planned) skill_mastery module after the store env is set."""
+    """Import the skill_mastery module after the store env is set."""
     import core.skill_mastery as _mod
     return _mod
 
 
-# ── record(): online update + persistence (Extension #1) ─────────────────────
+# ── record(): online update + persistence ────────────────────────────────────
 
 class TestRecord:
     def test_seeds_defaults_for_new_skill(self, sm):
         rec = sm.record("skill/a", correct=True)
         assert rec["skill_id"] == "skill/a"
         assert rec["opportunities"] == 1
-        # the four BKT params are present and probabilistic
         for k in ("prior", "learn", "guess", "slip"):
             assert 0.0 <= rec["params"][k] <= 1.0
         assert 0.0 <= rec["p_known"] <= 1.0
@@ -73,19 +57,19 @@ class TestRecord:
         assert snap["opportunities"] == 2
 
     def test_history_is_capped(self, sm):
+        rec = None
         for _ in range(50):
             rec = sm.record("skill/a", correct=True, history_cap=10)
         assert len(rec["history"]) <= 10
 
     def test_refit_updates_params(self, sm):
-        # A skill answered correctly every time should, after a refit, learn a
-        # higher prior/learn than the seeded defaults.
         seeded = sm.record("skill/a", correct=True, refit_every=5)["params"]
         last = seeded
         for _ in range(9):
             last = sm.record("skill/a", correct=True, refit_every=5)["params"]
-        # params moved off the defaults once enough history accrued
+        # params moved off the seeded defaults once a refit fired
         assert last != seeded
+        assert "refit_at" in sm.mastery("skill/a")
 
 
 # ── record_outcome(): adapter over core/outcomes.py results ───────────────────
@@ -102,7 +86,7 @@ class TestRecordOutcome:
         assert via_outcome == pytest.approx(via_bool)
 
     def test_result_satisfied_maps_to_correct(self, sm):
-        # no explicit "success" key → fall back to result in outcomes._SUCCESS
+        # no "success" key → fall back to result in outcomes._SUCCESS
         via_outcome = sm.record_outcome("skill/x", {"result": "satisfied"})["p_known"]
         via_bool = sm.record("skill/y", correct=True)["p_known"]
         assert via_outcome == pytest.approx(via_bool)
@@ -126,32 +110,32 @@ class TestSnapshot:
         assert ids == {"skill/a", "skill/b"}
 
 
-# ── skill_mastery(weakest=N) inner ranking (Extension #2) ─────────────────────
+# ── weakest(): drill ranking for #3 ──────────────────────────────────────────
 
-class TestWeakestRanking:
-    """Test the tool's ranking independently of the async tool + sap_gate,
-    the way test_s_tier_tools mirrors env_check / diagnostic_summary inners."""
+class TestWeakest:
+    def _seed(self, sm):
+        sm.record("skill/lo", correct=False)             # lowest mastery
+        sm.record("skill/mid", correct=True)             # middle
+        for _ in range(5):
+            sm.record("skill/hi", correct=True)          # highest
 
-    def _weakest(self, records: list[dict], n: int) -> list[dict]:
-        """Mirrors the inner ranking of skill_mastery(weakest=N)."""
-        ranked = sorted(records, key=lambda r: r["p_known"])
-        return [{"skill_id": r["skill_id"], "mastery": r["p_known"]}
-                for r in ranked[:n]]
+    def test_orders_ascending_by_mastery(self, sm):
+        self._seed(sm)
+        out = sm.weakest(3)
+        assert [r["skill_id"] for r in out] == ["skill/lo", "skill/mid", "skill/hi"]
 
-    def test_orders_ascending_by_mastery(self):
-        records = [
-            {"skill_id": "hi", "p_known": 0.92},
-            {"skill_id": "lo", "p_known": 0.11},
-            {"skill_id": "mid", "p_known": 0.50},
-        ]
-        out = self._weakest(records, 3)
-        assert [r["skill_id"] for r in out] == ["lo", "mid", "hi"]
+    def test_limit_respected(self, sm):
+        self._seed(sm)
+        out = sm.weakest(2)
+        assert len(out) == 2
+        assert out[0]["skill_id"] == "skill/lo"
 
-    def test_limit_respected(self):
-        records = [{"skill_id": f"s{i}", "p_known": i / 10} for i in range(10)]
-        out = self._weakest(records, 3)
-        assert len(out) == 3
-        assert out[0]["skill_id"] == "s0"
+    def test_threshold_filters_mastered(self, sm):
+        self._seed(sm)
+        out = sm.weakest(5, threshold=0.5)
+        ids = [r["skill_id"] for r in out]
+        assert "skill/lo" in ids
+        assert "skill/hi" not in ids  # well above threshold
 
-    def test_empty_returns_empty(self):
-        assert self._weakest([], 5) == []
+    def test_empty_store_returns_empty(self, sm):
+        assert sm.weakest(5) == []
