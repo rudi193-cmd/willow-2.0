@@ -6,6 +6,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `core/bkt.py` — Bayesian Knowledge Tracing for skill-mastery estimation. Sibling of `core/actr.py`: dependency-free (no numpy/pandas) forward filter + EM fit + RMSE/accuracy/AUC evaluation, estimating an agent's latent mastery of a skill from its outcome history. Reimplements the pyBKT (CAHLR, MIT) algorithm for Termux/Windows parity.
+- `core/skill_mastery.py` — live per-skill mastery tracking built on `core/bkt.py`. Maps `core/outcomes.py` terminal results to correct/incorrect, advances mastery online, periodically refits parameters from each skill's own history, and persists one record per skill in the SOIL `bkt` collection. Read surface: `mastery()`, `all_mastery()`, `weakest()`.
+- `skill_mastery` MCP tool (`sap/sap_mcp.py`, registered in `sap/core/gate.py` `skill_read` group) — query a skill's BKT mastery, or the N weakest skills, over MCP.
+- Mastery-aware behaviour: `willow.skills.skill_load(..., mastery_bias=)` re-ranks candidate skills toward demonstrated mastery (default `0.0` keeps the historical overlap-only order); `core.skill_mastery.needs_scrutiny()` flags risky-and-unmastered skills for extra review, and `drills()` surfaces below-threshold skills to practise.
+
 ## [2026.05.2] - 2026-05-31
 
 Patch release: tag aligns with post-`2026.05.1` fleet layout, documentation, and operator tooling (#162–#167).

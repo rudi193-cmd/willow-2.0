@@ -1907,6 +1907,35 @@ async def skill_list(app_id: str, domain: str = "") -> dict:
     return await loop.run_in_executor(_executor, _list)
 
 
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def skill_mastery(app_id: str, skill_id: str = "", weakest: int = 0) -> dict:
+    """Bayesian-Knowledge-Tracing mastery for skills (read-only).
+    skill_id: one skill → mastery, p_next_correct, opportunities, mastered.
+    weakest=N: the N lowest-mastery skills (drill list)."""
+    logger.info("[w2] skill_mastery app_id=%s skill_id=%r weakest=%d", app_id, skill_id, weakest)
+    loop = asyncio.get_running_loop()
+
+    def _mastery():
+        from core import skill_mastery as _sm
+        if weakest and weakest > 0:
+            return {"weakest": _sm.weakest(weakest)}
+        if not skill_id:
+            return {"error": "provide skill_id or weakest=N"}
+        rec = _sm.mastery(skill_id)
+        if rec is None:
+            return {"error": "no mastery record", "skill_id": skill_id}
+        return {
+            "skill_id":       skill_id,
+            "mastery":        rec.get("p_known"),
+            "p_next_correct": rec.get("p_next_correct"),
+            "opportunities":  rec.get("opportunities"),
+            "mastered":       rec.get("mastered"),
+        }
+
+    return await loop.run_in_executor(_executor, _mastery)
+
+
 # ── Tools — mem_ domain (Jeles / Binder / Ratify) ────────────────────────────
 
 @mcp.tool()
