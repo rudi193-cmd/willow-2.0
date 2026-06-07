@@ -270,13 +270,37 @@ def _grove_post(content: str) -> dict:
 # State
 # ---------------------------------------------------------------------------
 
+def _grove_current_max_id() -> int:
+    """Return the current max Grove message id — used to skip history on first run."""
+    try:
+        from core import grove_db
+        conn = grove_db.get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT id FROM channels WHERE name = %s", (GROVE_CHANNEL,))
+            row = cur.fetchone()
+            if not row:
+                return 0
+            cid = row[0]
+            cur.execute("SELECT MAX(id) FROM messages WHERE channel_id = %s", (cid,))
+            row = cur.fetchone()
+            return int(row[0]) if row and row[0] else 0
+        finally:
+            grove_db.release_connection(conn)
+    except Exception:
+        return 0
+
+
 def _load_state() -> dict:
     if STATE_PATH.is_file():
         try:
             return json.loads(STATE_PATH.read_text(encoding="utf-8"))
         except Exception:
             pass
-    return {"grove_cursor": 0}
+    # No state file — start from current Grove head to avoid replaying all history
+    current = _grove_current_max_id()
+    _log(f"no state file — initializing cursor from Grove head (id={current})")
+    return {"grove_cursor": current}
 
 
 def _save_state(state: dict) -> None:
