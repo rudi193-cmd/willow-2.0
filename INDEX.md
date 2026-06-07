@@ -6,7 +6,6 @@
 
 | Path | Description |
 |------|-------------|
-| `.mcp.json` | MCP server configuration (per-machine, gitignored) |
 | `AGENTS.md` | Agent registry and personas |
 | `CLAUDE.md` | Claude Code pointer → willow.md |
 | `GEMINI.md` | Gemini runtime pointer → willow.md |
@@ -97,7 +96,6 @@
 | `app.py` | Application entry point |
 | `bin/` | Executables |
 | `core/` | Shared core utilities — pg_bridge, config, helpers |
-| `gaps.db` | SQLite gaps tracking database |
 | `migrations/` | Database migrations |
 | `pyproject.toml` | Python project config |
 | `requirements.txt` | Python dependencies |
@@ -162,17 +160,12 @@
 
 | Path |
 |------|
-| `.ci-willow` |
-| `.kart-scripts` |
 | `.pre-commit-config.yaml` |
-| `.worktrees` |
 | `CHANGELOG.md` |
 | `CONTRIBUTING.md` |
 | `agents/heimdallr` |
 | `agents/loki` |
 | `agents/willow` |
-| `apps/law-gazelle` |
-| `apps/star` |
 | `docs/.nojekyll` |
 | `docs/AGENT_IDENTITY.md` |
 | `docs/LANDING_DESIGN.md` |
@@ -183,7 +176,6 @@
 | `docs/SKILL_AUDIT_CURSOR_VS_WILLOW.md` |
 | `docs/SKILL_SURFACE_STRATEGY.md` |
 | `docs/WILLOW_CONFIG.md` |
-| `docs/audits` |
 | `docs/corpus` |
 | `docs/dev-log-2026-05-27-fleet-github-layout.md` |
 | `docs/handoffs` |
