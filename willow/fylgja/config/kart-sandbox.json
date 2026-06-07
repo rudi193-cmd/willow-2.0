@@ -74,6 +74,7 @@
     "{{HOME}}/.config/pypoetry",
     "{{HOME}}/.local/share/uv",
     "/run/user",
+    "{{XDG_RUNTIME_DIR}}",
     "/run/systemd/resolve"
   ],
   "worktree_scan_roots": [
