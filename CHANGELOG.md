@@ -6,12 +6,33 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2026.06.1] - 2026-06-07
+
+Patch release: canonical fleet-home remediation (#235), CI path-guard (#238), and fleet features landed since `v2026.06.0`.
+
 ### Added
 
-- `core/bkt.py` — Bayesian Knowledge Tracing for skill-mastery estimation. Sibling of `core/actr.py`: dependency-free (no numpy/pandas) forward filter + EM fit + RMSE/accuracy/AUC evaluation, estimating an agent's latent mastery of a skill from its outcome history. Reimplements the pyBKT (CAHLR, MIT) algorithm for Termux/Windows parity.
-- `core/skill_mastery.py` — live per-skill mastery tracking built on `core/bkt.py`. Maps `core/outcomes.py` terminal results to correct/incorrect, advances mastery online, periodically refits parameters from each skill's own history, and persists one record per skill in the SOIL `bkt` collection. Read surface: `mastery()`, `all_mastery()`, `weakest()`.
-- `skill_mastery` MCP tool (`sap/sap_mcp.py`, registered in `sap/core/gate.py` `skill_read` group) — query a skill's BKT mastery, or the N weakest skills, over MCP.
-- Mastery-aware behaviour: `willow.skills.skill_load(..., mastery_bias=)` re-ranks candidate skills toward demonstrated mastery (default `0.0` keeps the historical overlap-only order); `core.skill_mastery.needs_scrutiny()` flags risky-and-unmastered skills for extra review, and `drills()` surfaces below-threshold skills to practise.
+- **Canonical fleet home** — `willow/fylgja/willow_home.py` resolver; `$WILLOW_HOME` (default `~/github/.willow`) replaces hardcoded `Path.home() / ".willow"` across hooks, core, SAP, scripts, and launchers (#235).
+- `scripts/audit_canonical_home.sh` — operator audit for layout, symlinks, and identity matrix coherence.
+- `tests/test_fylgja/test_canonical_home.py` — resolver and layout regression coverage.
+- **CI path-guard** — `scripts/path_guard.sh` blocks new Python/shell hardcodes of `~/.willow` fleet-home paths (#238).
+- **Portable Willow pack** — public-fallback layout for GitHub-only clones; respects explicit `WILLOW_HOME` (#232).
+- **Skill mastery (BKT)** — `core/bkt.py`, `core/skill_mastery.py`, `skill_mastery` MCP tool; mastery-aware `skill_load` and drill surfacing (#231).
+- **Discord remote control** — REST bridge, Ollama-backed responder, claim coordination, tier routing, KB search, restart subcommand (#220–#228).
+- Stop hook auto-refreshes `current-projects` KB atom on session end (#230).
+- `CODEX.md` — Codex operator contract snapshot.
+
+### Changed
+
+- Fleet-wide path migration: `willow_home()` / `resolve_store_root()` in Python; `${WILLOW_HOME}` in shell (`willow.sh`, `sap/willow_mcp.sh`, hooks, Kart sandbox env).
+- Sleipnir install targets `private_home()` / `WILLOW_HOME`, not legacy `~/.willow` public fallback.
+
+### Fixed
+
+- Seed/platform: guard Linux-only `apt-get` and service calls (#229).
+- Kart bwrap: `DBUS_` / `XDG_` env prefixes and `XDG_RUNTIME_DIR` bind for `systemctl --user` (#224–#225).
+- Identity bind checks read disk MCP config, not stale shell `GROVE_SENDER` (#234).
+- Lint/import cleanup after `willow_home` migration (#235).
 
 ## [2026.05.2] - 2026-05-31
 
