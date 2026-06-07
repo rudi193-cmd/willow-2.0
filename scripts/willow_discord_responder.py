@@ -67,6 +67,9 @@ SYSTEM_PROMPT = (
     "If you don't know something, say so in one sentence."
 )
 
+KB_CONTEXT_LIMIT = 3  # atoms to inject per query
+KB_EMBED_MODEL = "nomic-embed-text"
+
 
 def _load_env() -> None:
     if WILLOW_ENV.is_file():
@@ -186,16 +189,81 @@ def read_claim(grove_id: int) -> str | None:
 
 
 # ---------------------------------------------------------------------------
+# KB search (pgvector via Postgres)
+# ---------------------------------------------------------------------------
+
+def _kb_embed(text: str) -> list | None:
+    """Get embedding vector from Ollama nomic-embed-text. Returns None on failure."""
+    ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434").rstrip("/")
+    payload = {"model": KB_EMBED_MODEL, "prompt": text}
+    req = urllib.request.Request(
+        f"{ollama_url}/api/embeddings",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read()).get("embedding")
+    except Exception as exc:
+        _log(f"kb_embed error: {exc}")
+        return None
+
+
+def _kb_context(query: str) -> str:
+    """Search KB via pgvector cosine similarity. Returns formatted context for injection."""
+    embedding = _kb_embed(query)
+    if not embedding:
+        return ""
+    vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
+    try:
+        from core import grove_db
+        conn = grove_db.get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT title, summary, content
+                FROM knowledge
+                WHERE embedding IS NOT NULL
+                  AND invalid_at IS NULL
+                ORDER BY embedding <=> %s::vector
+                LIMIT %s
+                """,
+                (vec_str, KB_CONTEXT_LIMIT),
+            )
+            rows = cur.fetchall()
+            if not rows:
+                return ""
+            parts = []
+            for title, summary, content in rows:
+                body = summary or ""
+                if not body and isinstance(content, dict):
+                    body = str(content.get("evidence") or content.get("summary") or "")[:300]
+                if body:
+                    parts.append(f"• {title}: {body[:300]}")
+            if not parts:
+                return ""
+            return "Relevant Willow knowledge:\n" + "\n".join(parts)
+        finally:
+            grove_db.release_connection(conn)
+    except Exception as exc:
+        _log(f"kb_context error: {exc}")
+        return ""
+
+
+# ---------------------------------------------------------------------------
 # Ollama inference
 # ---------------------------------------------------------------------------
 
-def _infer(command: str) -> str:
+def _infer(command: str, context: str = "") -> str:
     ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434").rstrip("/")
     model = os.environ.get("WILLOW_RESPONDER_MODEL", DEFAULT_MODEL)
+    system = SYSTEM_PROMPT if not context else f"{SYSTEM_PROMPT}\n\n{context}"
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system},
             {"role": "user", "content": command},
         ],
         "stream": False,
@@ -338,7 +406,10 @@ def run_once() -> dict:
             continue
 
         _log(f"claimed grove_id={grove_id} | {command[:60]}")
-        response = _infer(command)
+        context = _kb_context(command)
+        if context:
+            _log(f"kb_context grove_id={grove_id} | {len(context)} chars injected")
+        response = _infer(command, context)
         res = _grove_post(response)
         if res.get("ok"):
             _log(f"replied grove_id={grove_id} → Grove id={res['id']} | {response[:60]}")
