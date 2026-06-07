@@ -19,10 +19,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.pg_bridge import PgBridge
+from willow.fylgja.willow_home import willow_home
 
 
 def _load_groq_key() -> str:
-    creds_path = Path.home() / ".willow/secrets/credentials.json"
+    creds_path = willow_home(Path(__file__).resolve().parent.parent) / "secrets" / "credentials.json"
     with open(creds_path) as f:
         d = json.load(f)
     return d.get("GROQ_API_KEY") or d.get("GROQ_API_KEY_2") or d.get("GROQ_API_KEY_3", "")
@@ -177,7 +178,7 @@ def main():
 
     api_key = _load_groq_key()
     if not api_key:
-        print("No GROQ_API_KEY found in ~/.willow/secrets/credentials.json", flush=True)
+        print("No GROQ_API_KEY found in $WILLOW_HOME/secrets/credentials.json", flush=True)
         sys.exit(1)
 
     pg = PgBridge()

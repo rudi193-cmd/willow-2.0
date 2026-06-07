@@ -33,11 +33,32 @@ def _find_python() -> str:
 
 WILLOW_PYTHON = _find_python()
 
+
+def _willow_home_module():
+    """Load willow_home without importing the willow package (this file shadows it)."""
+    import importlib.util
+
+    path = WILLOW_ROOT / "willow" / "fylgja" / "willow_home.py"
+    spec = importlib.util.spec_from_file_location("_willow_home_resolver", path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load willow_home from {path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _fleet_home() -> Path:
+    return _willow_home_module().willow_home(WILLOW_ROOT)
+
+
 # ── Environment setup (mirrors willow.sh exports) ────────────────────────────
 def _setup_env() -> None:
+    wh = _willow_home_module()
+    fleet = wh.willow_home(WILLOW_ROOT)
     os.environ.setdefault("WILLOW_ROOT", str(WILLOW_ROOT))
-    os.environ.setdefault("WILLOW_STORE_ROOT", str(Path.home() / ".willow" / "store"))
-    os.environ.setdefault("WILLOW_VAULT", str(Path.home() / ".willow" / "vault.db"))
+    os.environ.setdefault("WILLOW_HOME", str(fleet))
+    os.environ.setdefault("WILLOW_STORE_ROOT", str(wh.resolve_store_root(WILLOW_ROOT)))
+    os.environ.setdefault("WILLOW_VAULT", str(fleet / "vault.db"))
     os.environ.setdefault("WILLOW_PG_DB", "willow_20")
     os.environ.setdefault("WILLOW_AGENT_NAME", "hanuman")
     existing = os.environ.get("PYTHONPATH", "")
@@ -60,9 +81,9 @@ def _pg_reachable(host: str = "localhost", port: int = 5432, timeout: float = 2.
         return False
 
 def _installed_version() -> str:
-    version_file = Path.home() / ".willow" / "version"
+    version_file = _fleet_home() / "version"
     repo_version_file = WILLOW_ROOT / "VERSION"
-    # Sync repo VERSION → ~/.willow/version (mirrors _willow_sync_version)
+    # Sync repo VERSION → $WILLOW_HOME/version (mirrors _willow_sync_version)
     if repo_version_file.exists():
         ver = repo_version_file.read_text().strip()
         if ver:

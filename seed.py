@@ -27,8 +27,6 @@ from pathlib import Path
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 WILLOW_ROOT   = Path(__file__).parent
-VENV_DIR      = Path.home() / ".willow" / "venv"
-BOOT_CONFIG   = Path.home() / ".willow" / "seed-boot.json"
 BOOT_LOG      = Path(tempfile.gettempdir()) / "willow-seed-debug.log"
 GROVE_DIR      = Path(os.environ.get(
     "WILLOW_GROVE_DIR",
@@ -39,6 +37,15 @@ GROVE_REPO     = "https://github.com/rudi193-cmd/safe-app-willow-grove.git"
 sys.path.insert(0, str(WILLOW_ROOT))
 
 from core.version import VERSION, sync_installed_version
+from willow.fylgja.willow_home import resolve_store_root, willow_home
+
+
+def _fleet_home() -> Path:
+    return willow_home(WILLOW_ROOT)
+
+
+VENV_DIR = _fleet_home() / "venv"
+BOOT_CONFIG = _fleet_home() / "seed-boot.json"
 
 
 # ── Venv bootstrap ────────────────────────────────────────────────────────────
@@ -55,7 +62,7 @@ def _ensure_venv() -> None:
             break
     venv_python = VENV_DIR / "bin" / "python3"
     if not venv_python.exists():
-        print("  [venv] creating ~/.willow/venv (Ubuntu 24.04 compatibility)...")
+        print(f"  [venv] creating {VENV_DIR} (Ubuntu 24.04 compatibility)...")
         subprocess.run([preferred, "-m", "venv", str(VENV_DIR)], check=True)
     os.execv(str(venv_python), [str(venv_python)] + sys.argv)
 
@@ -294,8 +301,9 @@ def _write_fp_to_profile(fp: str) -> None:
 def _vault_init() -> bool:
     try:
         from cryptography.fernet import Fernet
-        key_path   = Path.home() / ".willow" / ".master.key"
-        vault_path = Path.home() / ".willow" / "vault.db"
+        home = _fleet_home()
+        key_path   = home / ".master.key"
+        vault_path = home / "vault.db"
         if not key_path.exists():
             key_path.write_bytes(Fernet.generate_key())
             key_path.chmod(0o600)
@@ -311,8 +319,9 @@ def _vault_init() -> bool:
 def _vault_write(name: str, env_key: str, value: str) -> bool:
     try:
         from cryptography.fernet import Fernet
-        key_path   = Path.home() / ".willow" / ".master.key"
-        vault_path = Path.home() / ".willow" / "vault.db"
+        home = _fleet_home()
+        key_path   = home / ".master.key"
+        vault_path = home / "vault.db"
         f   = Fernet(key_path.read_bytes().strip())
         enc = f.encrypt(value.encode())
         conn = sqlite3.connect(str(vault_path))
@@ -327,8 +336,9 @@ def _vault_write(name: str, env_key: str, value: str) -> bool:
 def _vault_has(name: str) -> bool:
     try:
         from cryptography.fernet import Fernet
-        key_path   = Path.home() / ".willow" / ".master.key"
-        vault_path = Path.home() / ".willow" / "vault.db"
+        home = _fleet_home()
+        key_path   = home / ".master.key"
+        vault_path = home / "vault.db"
         if not vault_path.exists() or not key_path.exists():
             return False
         f    = Fernet(key_path.read_bytes().strip())
@@ -545,15 +555,15 @@ def _run_install(win, name_str: str, email: str, passphrase: str) -> str:
 
 # ── Individual install steps ──────────────────────────────────────────────────
 def _step_dirs() -> None:
-    home = Path.home()
-    for sub in (".willow", ".willow/store", ".willow/secrets", ".willow/logs"):
-        (home / sub).mkdir(parents=True, exist_ok=True)
-    (home / "SAFE" / "Applications").mkdir(parents=True, exist_ok=True)
+    fleet = _fleet_home()
+    for sub in ("store", "secrets", "logs"):
+        (fleet / sub).mkdir(parents=True, exist_ok=True)
+    (Path.home() / "SAFE" / "Applications").mkdir(parents=True, exist_ok=True)
     (Path.home() / "github").mkdir(parents=True, exist_ok=True)
 
 
 def _step_telemetry() -> None:
-    tel = Path.home() / ".willow" / "telemetry.json"
+    tel = _fleet_home() / "telemetry.json"
     if not tel.exists():
         tel.write_text(json.dumps({"enabled": False,
                                    "what": "Nothing is collected when disabled.",
@@ -891,7 +901,7 @@ def _step_grove_clone() -> None:
 
 
 def _step_grove_identity() -> None:
-    key_path = Path.home() / ".willow" / "identity.key"
+    key_path = _fleet_home() / "identity.key"
     if key_path.exists():
         return
     try:
@@ -917,10 +927,12 @@ def _step_grove_identity() -> None:
 
 def _step_env_profile(agent_name: str) -> None:
     """Add Willow env vars to shell profiles so the MCP server can start."""
+    fleet = _fleet_home()
     safe_root = str(Path.home() / "SAFE" / "Applications")
-    store_root = str(Path.home() / ".willow" / "store")
+    store_root = str(resolve_store_root(WILLOW_ROOT))
     pg_user = os.environ.get("USER", "")
     additions = {
+        "WILLOW_HOME":        str(fleet),
         "WILLOW_AGENT_NAME":  agent_name,
         "WILLOW_SAFE_ROOT":   safe_root,
         "WILLOW_STORE_ROOT":  store_root,
@@ -1437,7 +1449,7 @@ def page_features(win) -> dict:
 
 # ── Card creation ─────────────────────────────────────────────────────────────
 def _soil_path(collection: str) -> Path:
-    return Path.home() / ".willow" / "store" / collection
+    return resolve_store_root(WILLOW_ROOT) / collection
 
 
 def _soil_put(collection: str, record_id: str, data: dict) -> None:
@@ -1594,7 +1606,7 @@ def page_splash(win, cfg: dict) -> bool:
 
 # ── Launch Grove ──────────────────────────────────────────────────────────────
 def _grove_already_running() -> bool:
-    pid_file = Path.home() / ".willow" / "grove.pid"
+    pid_file = _fleet_home() / "grove.pid"
     try:
         pid = int(pid_file.read_text().strip())
         os.kill(pid, 0)
@@ -1609,7 +1621,7 @@ def _launch_dashboard(env_extra: dict | None = None) -> None:
         env.update(env_extra)
     if _grove_already_running():
         print("\nGrove is already running — switch to that window.")
-        print("If it's unresponsive, run:  kill $(cat ~/.willow/grove.pid)")
+        print(f"If it's unresponsive, run:  kill $(cat {_fleet_home() / 'grove.pid'})")
         return
     if GROVE_APP.exists():
         os.chdir(str(GROVE_DIR))

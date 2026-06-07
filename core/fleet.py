@@ -15,6 +15,8 @@ import time
 from pathlib import Path
 from typing import Callable
 
+from willow.fylgja.willow_home import willow_home
+
 _LOG_LOCK = threading.Lock()
 
 _REPO_ROOT   = Path(__file__).parent.parent
@@ -24,8 +26,9 @@ _SYS_PYTHON  = "/usr/bin/python3"
 _AGENTS_BIN  = _REPO_ROOT / "agents" / "hanuman" / "bin"
 _GROVE_DIR   = _REPO_ROOT
 _PY          = str(_VENV_DEV) if _VENV_DEV.exists() else (str(_VENV_PYTHON) if _VENV_PYTHON.exists() else _SYS_PYTHON)
-_LOG_FILE    = Path.home() / ".willow" / "fleet.log"
-_PID_FILE    = Path.home() / ".willow" / "grove.pid"
+_FLEET_HOME  = willow_home()
+_LOG_FILE    = _FLEET_HOME / "fleet.log"
+_PID_FILE    = _FLEET_HOME / "grove.pid"
 
 _log = logging.getLogger("fleet")
 _log.setLevel(logging.INFO)

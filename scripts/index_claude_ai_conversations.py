@@ -18,11 +18,13 @@ import sqlite3
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+_REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO))
 from core.pg_bridge import PgBridge
+from willow.fylgja.willow_home import willow_home
 
 DEFAULT_INPUT = Path.home() / "inbox" / "conversations.json"
-LOG_DB        = Path.home() / ".willow" / "claude_ai_index_log.db"
+LOG_DB        = willow_home(_REPO) / "claude_ai_index_log.db"
 DOMAIN        = "hanuman/corpus/claude-ai"
 DEPTH         = 1
 MIN_LENGTH    = 20

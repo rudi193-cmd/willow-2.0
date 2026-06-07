@@ -8,7 +8,7 @@ as knowledge atoms in the hanuman project (openclaw/inbound category).
 Usage (standalone / Kart):
     python3 sap/openclaw_ingest.py [--dry-run] [--since-ms <ms>] [--agent-id <id>]
 
-State file: ~/.willow/openclaw_ingest_cursor.json
+State file: $WILLOW_HOME/openclaw_ingest_cursor.json
   {"last_polled_ms": 1234567890000}
 """
 import argparse
@@ -20,7 +20,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-CURSOR_FILE = Path.home() / ".willow" / "openclaw_ingest_cursor.json"
+from willow.fylgja.willow_home import willow_home
+
+CURSOR_FILE = willow_home(Path(__file__).parent.parent) / "openclaw_ingest_cursor.json"
 SESSIONS_DIR_TMPL = str(Path.home() / ".openclaw" / "agents" / "{agent_id}" / "sessions")
 
 

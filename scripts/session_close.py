@@ -14,9 +14,14 @@ import sqlite3
 import sys
 from pathlib import Path
 
+_REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO))
+
+from willow.fylgja.willow_home import willow_home
+
 _REPO_SLUG   = str(Path(__file__).parent.resolve()).replace("/", "-").replace(".", "-")
 SESSIONS_DIR = Path.home() / ".claude" / "projects" / _REPO_SLUG
-DB_PATH      = Path.home() / ".willow" / "willow-2.0.db"
+DB_PATH      = willow_home(_REPO) / "willow-2.0.db"
 
 
 def latest_session_id() -> str | None:

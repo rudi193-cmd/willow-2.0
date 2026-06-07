@@ -33,13 +33,15 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from pathlib import Path
 from typing import Optional
+
+from willow.fylgja.willow_home import willow_home
 
 log = logging.getLogger("jeles.sources")
 
-_CREDS_PATH = Path.home() / ".willow" / "secrets" / "credentials.json"
-_CACHE_DIR  = Path.home() / ".willow" / "jeles_cache"
+_FLEET_HOME = willow_home()
+_CREDS_PATH = _FLEET_HOME / "secrets" / "credentials.json"
+_CACHE_DIR  = _FLEET_HOME / "jeles_cache"
 _TIMEOUT = 15
 _UA = "Willow-Jeles/2.0 (academic librarian; mailto:rudi193@gmail.com)"
 
@@ -2096,7 +2098,7 @@ def route_sources(query: str) -> list[str]:
 # that keyword matching misses.
 
 _OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
-_CENTROIDS_PATH = Path.home() / ".willow" / "jeles_centroids.json"
+_CENTROIDS_PATH = willow_home() / "jeles_centroids.json"
 
 # Representative sentences per domain — averaged into a centroid embedding.
 _DOMAIN_SEEDS: dict[str, list[str]] = {

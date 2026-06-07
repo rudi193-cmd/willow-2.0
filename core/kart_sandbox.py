@@ -187,14 +187,16 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
         if p.is_symlink():
             args += ["--symlink", target, link_path]
 
-    # ~/.willow is typically a symlink → ~/github/.willow. collect_bind_mounts
-    # resolves it to ~/github/.willow, deduplicates it against the existing
-    # ~/github mount, and never creates the ~/.willow path in the container.
-    # Re-add it as a symlink so scripts using ~/.willow paths work inside bwrap.
-    _home_willow = Path.home() / ".willow"
-    _github_willow = Path.home() / "github" / ".willow"
-    if _github_willow.is_dir() and (_home_willow.is_symlink() or not _home_willow.exists()):
-        args += ["--symlink", str(_github_willow), str(_home_willow)]
+    # ~/.willow is typically a symlink → $WILLOW_HOME. collect_bind_mounts
+    # resolves the canonical path, deduplicates it against an existing mount,
+    # and never creates the ~/.willow path in the container.
+    # Re-add it as a symlink so legacy ~/.willow paths work inside bwrap.
+    from willow.fylgja.willow_home import willow_home, willow_home_alias
+
+    _home_willow = willow_home_alias()
+    _canonical_willow = willow_home()
+    if _canonical_willow.is_dir() and (_home_willow.is_symlink() or not _home_willow.exists()):
+        args += ["--symlink", str(_canonical_willow), str(_home_willow)]
 
     # psycopg2's default socket dir is /var/run/postgresql. collect_bind_mounts
     # resolves the /var/run → /run symlink, so the socket ends up mounted at
@@ -269,7 +271,9 @@ def kart_env(root: Path | None = None) -> dict[str, str]:
     # Supplement with fleet env file so API keys (ANTHROPIC_API_KEY, GROQ_API_KEY, …)
     # reach bwrap tasks even when the calling process (MCP server, kart worker) didn't
     # inherit them from the user's shell. os.environ values take priority.
-    _fleet_env_path = Path.home() / "github" / ".willow" / "env"
+    from willow.fylgja.willow_home import willow_home
+
+    _fleet_env_path = willow_home(repo) / "env"
     for k, v in _parse_fleet_env_file(_fleet_env_path, prefixes).items():
         if k not in env:
             env[k] = v

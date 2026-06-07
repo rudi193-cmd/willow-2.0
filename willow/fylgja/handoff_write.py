@@ -10,9 +10,11 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
+from willow.fylgja.willow_home import willow_home
+
 
 def handoff_dir(agent: str) -> Path:
-    return Path.home() / ".willow" / "handoffs" / agent
+    return willow_home() / "handoffs" / agent
 
 
 def next_session_filename(agent: str, suffix: str = "") -> str:

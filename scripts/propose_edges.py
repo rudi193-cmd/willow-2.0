@@ -16,10 +16,14 @@ import sqlite3
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+_REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO))
 from core.pg_bridge import PgBridge
+from willow.fylgja.willow_home import willow_home
 
-_DEFAULT_SQLITE = Path(os.environ.get("WILLOW_20_DB", "~/.willow/willow-2.0.db")).expanduser()
+_DEFAULT_SQLITE = Path(
+    os.environ.get("WILLOW_20_DB", str(willow_home(_REPO) / "willow-2.0.db"))
+).expanduser()
 
 # ── Edge type vocabulary ──────────────────────────────────────────────────────
 REFERENCES  = "references"

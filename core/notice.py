@@ -18,13 +18,13 @@ from __future__ import annotations
 import json
 from core.agent_identity import require_agent_name
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import NamedTuple
 
 from core.pii_detect import PIIMatch, detect_all, redact_all
+from willow.fylgja.willow_home import willow_home
 
 _AGENT = require_agent_name()
-_NOTICES_LOG = Path.home() / ".willow" / f"notices_{_AGENT}.jsonl"
+_NOTICES_LOG = willow_home() / f"notices_{_AGENT}.jsonl"
 
 
 class NoticeResult(NamedTuple):

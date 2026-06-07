@@ -7,7 +7,7 @@ Usage:
     --claude 6e38bf78-7907-4d04-a45d-6d64ff08bb7c \\
     --cursor 91804daa-7082-4a23-8ce3-05182c36ac41
 
-Writes ~/.willow/handoffs/cross-runtime.json and prints summary.
+Writes $WILLOW_HOME/handoffs/cross-runtime.json and prints summary.
 """
 from __future__ import annotations
 
@@ -17,7 +17,11 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+_REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(_REPO))
+
+from willow.fylgja.willow_home import willow_home
 from session_indexer import parse_session
 
 CLAUDE_ROOT = Path.home() / ".claude" / "projects" / "-home-sean-campbell-willow-2-0"
@@ -29,9 +33,7 @@ CURSOR_ROOT = (
     / "agent-transcripts"
 )
 
-HANDOFF_DIR = Path.home() / "github" / ".willow" / "handoffs"
-if not HANDOFF_DIR.is_dir():
-    HANDOFF_DIR = Path.home() / ".willow" / "handoffs"
+HANDOFF_DIR = willow_home(_REPO) / "handoffs"
 BRIDGE_PATH = HANDOFF_DIR / "cross-runtime.json"
 
 # Live threads — keep in sync with handoffs/hanuman/session_handoff-2026-05-28d_hanuman.md

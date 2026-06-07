@@ -9,14 +9,18 @@ import pathlib
 import urllib.error
 import urllib.request
 
-_CREDS_PATH = pathlib.Path.home() / ".willow" / "secrets" / "credentials.json"
+
+def _creds_path() -> pathlib.Path:
+    from willow.fylgja.willow_home import willow_home
+
+    return willow_home() / "secrets" / "credentials.json"
 _NOVITA_URL = "https://api.novita.ai/v3/openai/chat/completions"
 _MODEL      = "meta-llama/llama-3.1-8b-instruct"
 
 
 def _load_key() -> str:
     try:
-        data = json.loads(_CREDS_PATH.read_text())
+        data = json.loads(_creds_path().read_text())
         key = data.get("NOVITA_API_KEY", "")
         if key and "HERE" not in key:
             return key

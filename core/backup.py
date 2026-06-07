@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from willow.fylgja.willow_home import willow_home as fleet_home
+
 
 def _safe_tar_members(tar: tarfile.TarFile, target_dir: Path):
     """Yield only members that extract inside target_dir — no path traversal."""
@@ -36,8 +38,8 @@ def create_backup(
     Create a timestamped backup of ~/.willow/ and optionally pg_dump willow_20.
     Returns path to the .tar.gz file.
     """
-    home = willow_home or (Path.home() / ".willow")
-    root = backup_root or (Path.home() / ".willow" / "backups")
+    home = willow_home or fleet_home()
+    root = backup_root or (fleet_home() / "backups")
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d-%H%M%S-%f")
     backup_dir = root / ts
     backup_dir.mkdir(parents=True, exist_ok=True)
@@ -78,7 +80,7 @@ def create_backup(
 def restore_backup(backup_path: Path, willow_home: Optional[Path] = None,
                    pg_db: str = "willow_20") -> None:
     """Restore from a backup directory. Unpacks tar into ~/.willow/."""
-    home_parent = (willow_home or (Path.home() / ".willow")).parent
+    home_parent = (willow_home or fleet_home()).parent
     backup_dir = backup_path if backup_path.is_dir() else backup_path.parent
 
     tar_files = list(backup_dir.glob("*.tar.gz"))

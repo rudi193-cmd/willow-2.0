@@ -4,9 +4,7 @@ import sqlite3
 from pathlib import Path
 from cryptography.fernet import Fernet
 
-
-_DEFAULT_VAULT = Path.home() / ".willow" / "vault.db"
-_DEFAULT_KEY   = Path.home() / ".willow" / "vault.key"
+from willow.fylgja.willow_home import willow_home
 
 
 class Vault:
@@ -15,8 +13,9 @@ class Vault:
         vault_path: Path | None = None,
         key_path: Path | None = None,
     ):
-        self._vault = Path(vault_path) if vault_path is not None else Path.home() / ".willow" / "vault.db"
-        self._key_path = Path(key_path) if key_path is not None else Path.home() / ".willow" / "vault.key"
+        home = willow_home()
+        self._vault = Path(vault_path) if vault_path is not None else home / "vault.db"
+        self._key_path = Path(key_path) if key_path is not None else home / "vault.key"
         self._fernet: Fernet | None = None
 
     def init(self) -> None:
@@ -80,10 +79,11 @@ class Vault:
 
 
 def default_vault() -> Vault:
-    """Return a Vault instance pointing at ~/.willow/vault.db, initialized."""
+    """Return a Vault instance pointing at $WILLOW_HOME/vault.db, initialized."""
     v = Vault()
-    db_exists  = (Path.home() / ".willow" / "vault.db").exists()
-    key_exists = (Path.home() / ".willow" / "vault.key").exists()
+    home = willow_home()
+    db_exists  = (home / "vault.db").exists()
+    key_exists = (home / "vault.key").exists()
     if db_exists and not key_exists:
         raise FileNotFoundError(
             f"Vault database exists but key file is missing: {v._key_path}\n"

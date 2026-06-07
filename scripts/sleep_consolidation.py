@@ -27,9 +27,16 @@ import sqlite3
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+_REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO))
 
+from willow.fylgja.willow_home import willow_home
 from core.pg_bridge import PgBridge
+
+_FLEET = willow_home(_REPO)
+WILLOW_20_DB = _FLEET / "willow-2.0.db"
+WILLOW_DIR = _FLEET
+ATOM_REVIEW = _FLEET / "atom_review_state.json"
 
 try:
     from willow.fylgja._mcp import call as _mcp_call
@@ -230,9 +237,6 @@ def update_decay(pg, dry_run: bool) -> int:
     return updated
 
 
-WILLOW_20_DB   = Path.home() / ".willow" / "willow-2.0.db"
-WILLOW_DIR     = Path.home() / ".willow"
-ATOM_REVIEW    = Path.home() / ".willow" / "atom_review_state.json"
 PROMOTE_THRESH = 0.72   # confidence >= this → auto-promote
 REJECT_THRESH  = 0.62   # confidence < this → auto-reject (skip forever)
 COLLECTION     = "atoms/session_semantic_candidates"

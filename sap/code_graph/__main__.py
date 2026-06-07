@@ -16,9 +16,13 @@ import os
 import sys
 from pathlib import Path
 
+from willow.fylgja.willow_home import willow_home
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
 _DEFAULT_DB = Path(os.environ.get(
     "WILLOW_CODE_GRAPH_DB",
-    str(Path.home() / ".willow" / "code_graph.db"),
+    str(willow_home(_REPO_ROOT) / "code_graph.db"),
 ))
 _DEFAULT_ROOT = Path(os.environ.get(
     "WILLOW_CODE_GRAPH_ROOT",
@@ -104,7 +108,7 @@ def main() -> None:
         prog="python3 -m sap.code_graph",
         description="Budget-aware Python symbol graph",
     )
-    p.add_argument("--db",   default="", help="DB path (default: ~/.willow/code_graph.db)")
+    p.add_argument("--db",   default="", help="DB path (default: $WILLOW_HOME/code_graph.db)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     pi = sub.add_parser("index", help="Index Python files → symbol graph")

@@ -17,9 +17,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+_REPO = Path(__file__).resolve().parent.parent
+
+sys.path.insert(0, str(_REPO))
+
+from willow.fylgja.willow_home import willow_home
+
 OPENCLAW_HOME = Path.home() / ".openclaw"
 SKILLS_DIR = OPENCLAW_HOME / "skills"
-VENDOR = Path.home() / ".willow" / "vendor" / "openclaw"
+VENDOR = willow_home(_REPO) / "vendor" / "openclaw"
 OPENCLAW_REPO = "https://github.com/openclaw/openclaw.git"
 
 # OpenClaw rejects unknown keys and malformed shapes (strict JSON schema).

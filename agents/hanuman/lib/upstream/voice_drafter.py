@@ -20,8 +20,9 @@ sys.path.insert(0, _ROOT)
 
 from core.llm_edge import respond
 from core import soil
+from willow.fylgja.willow_home import willow_home
 
-_VOICE_FILE = Path.home() / ".willow" / "upstream_steward" / "voice.md"
+_VOICE_FILE = willow_home(Path(__file__).resolve().parents[4]) / "upstream_steward" / "voice.md"
 _GH_AUTHOR = "rudi193-cmd"
 
 _SOIL_VOICE = "upstream_steward/voice"

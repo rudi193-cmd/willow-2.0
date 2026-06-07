@@ -62,6 +62,19 @@ _core_str = str(_WILLOW_CORE)
 if _core_str not in sys.path:
     sys.path.insert(1, _core_str)
 
+
+def _fleet_home() -> Path:
+    from willow.fylgja.willow_home import willow_home
+
+    return willow_home(_SAP_ROOT)
+
+
+def _store_root() -> Path:
+    from willow.fylgja.willow_home import resolve_store_root
+
+    return resolve_store_root(_SAP_ROOT)
+
+
 # ── Version ───────────────────────────────────────────────────────────────────
 from core.version import VERSION
 
@@ -201,7 +214,7 @@ def _init_pg():
     except Exception as err:
         logger.error("[w2] pg init failed: %s — falling back to SQLite", err)
         try:
-            flag = Path.home() / "github" / ".willow" / "pg_failure.flag"
+            flag = _fleet_home() / "pg_failure.flag"
             flag.parent.mkdir(parents=True, exist_ok=True)
             flag.write_text(str(err))
         except Exception:
@@ -333,7 +346,7 @@ def _check_ollama() -> dict:
 def _check_metabolic() -> dict:
     import sqlite3 as _sqlite3
     result: dict = {"last_briefing": None, "socket": "unknown"}
-    briefings_db = Path.home() / ".willow" / "store" / "briefings" / "daily.db"
+    briefings_db = _store_root() / "briefings" / "daily.db"
     if briefings_db.exists():
         try:
             conn = _sqlite3.connect(str(briefings_db))
@@ -345,7 +358,7 @@ def _check_metabolic() -> dict:
                 result["last_briefing"] = row[1]
         except Exception:
             pass
-    socket_path = Path.home() / ".willow" / "metabolic.sock"
+    socket_path = _fleet_home() / "metabolic.sock"
     result["socket"] = "active" if socket_path.exists() else "inactive"
     return result
 
@@ -606,10 +619,10 @@ async def fleet_agents(app_id: str) -> dict:
     if not agents:
         agents = list(_static_agents)
 
-    # Merge locally registered agents from ~/.willow/agents.json
+    # Merge locally registered agents from $WILLOW_HOME/agents.json
     try:
         import json as _json
-        override = Path.home() / "github" / ".willow" / "agents.json"
+        override = _fleet_home() / "agents.json"
         if override.exists():
             existing = {a["name"] for a in agents}
             for entry in _json.loads(override.read_text()):
@@ -2458,7 +2471,7 @@ async def intake_promote(
                 elif tier == "binder_queue":
                     result = pg.jeles_register_jsonl(
                         agent=rec_agent,
-                        jsonl_path=str(Path.home() / "github" / ".willow" / "intake" / rec_agent),
+                        jsonl_path=str(_fleet_home() / "intake" / rec_agent),
                         session_id=f"binder-{rec_id}",
                         cwd="",
                         file_size=len(content),
@@ -3406,7 +3419,7 @@ async def kb_extract_from_session(
 @mcp.tool()
 @sap_gate(write=True)
 async def kb_backup(app_id: str, label: str = "") -> dict:
-    """Backup the Willow Postgres DB to ~/.willow/backups/ using pg_dump -Fc.
+    """Backup the Willow Postgres DB to $WILLOW_HOME/backups/ using pg_dump -Fc.
     label: optional tag appended to filename. Returns path and size on success."""
     logger.info("[w2] kb_backup app_id=%s label=%r", app_id, label)
     loop = asyncio.get_running_loop()
@@ -3419,7 +3432,7 @@ async def kb_backup(app_id: str, label: str = "") -> dict:
         if not shutil.which("pg_dump"):
             return {"error": "pg_dump not found in PATH"}
 
-        backup_dir = Path.home() / "github" / ".willow" / "backups"
+        backup_dir = _fleet_home() / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
 
         db_name = os.environ.get("WILLOW_PG_DB", "willow_20")
@@ -4775,7 +4788,7 @@ async def app_status(app_id: str, target_app_id: str = "") -> dict:
 
 _CODE_GRAPH_DB = Path(os.environ.get(
     "WILLOW_CODE_GRAPH_DB",
-    str(Path.home() / "github" / ".willow" / "code_graph.db"),
+    str(_fleet_home() / "code_graph.db"),
 ))
 _CODE_GRAPH_ROOT = Path(os.environ.get(
     "WILLOW_CODE_GRAPH_ROOT",

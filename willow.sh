@@ -10,10 +10,10 @@
 #   ./willow.sh agents [list|active|install|check] — agent IDE wiring + MCP rails
 #   ./willow.sh metabolic    — run Norn pass now
 #   ./willow.sh update       — check for updates and apply if available
-#   ./willow.sh export       — dump user data to ~/.willow/export.json
+#   ./willow.sh export       — dump user data to $WILLOW_HOME/export.json
 #   ./willow.sh purge <proj> — delete a project namespace entirely
 #   ./willow.sh ledger [proj] — show FRANK's ledger (optional project filter)
-#   ./willow.sh valhalla     — collect DPO training pairs to ~/.willow/valhalla/
+#   ./willow.sh valhalla     — collect DPO training pairs to $WILLOW_HOME/valhalla/
 #   ./willow.sh verify       — verify SAFE Applications + Agents manifests (.sig)
 
 set -euo pipefail
@@ -51,8 +51,9 @@ if [[ -z "${WILLOW_AGENT_NAME:-}" && -f "${ACTIVE_AGENT_FILE}" ]]; then
     WILLOW_AGENT_NAME="$(tr -d '[:space:]' < "${ACTIVE_AGENT_FILE}")"
 fi
 export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
-export GROVE_SENDER="${GROVE_SENDER:-${WILLOW_AGENT_NAME}}"
-export GROVE_NAME="${GROVE_NAME:-${WILLOW_AGENT_NAME}}"
+# Fleet launcher follows active agent — do not inherit stale human Grove handles from profile.
+export GROVE_SENDER="${WILLOW_AGENT_NAME}"
+export GROVE_NAME="${WILLOW_AGENT_NAME}"
 
 # ── LLM provider keys — uncomment whichever is active ────────────────────────
 # export ANTHROPIC_API_KEY=""
@@ -67,13 +68,13 @@ _willow_sync_version() {
         repo_ver="$(tr -d '[:space:]' < "${WILLOW_ROOT}/VERSION")"
     fi
     [[ -z "${repo_ver}" ]] && return
-    mkdir -p "${HOME}/.willow"
-    echo "${repo_ver}" > "${HOME}/.willow/version"
+    mkdir -p "${WILLOW_HOME}"
+    echo "${repo_ver}" > "${WILLOW_HOME}/version"
 }
 
 _willow_installed_version() {
     _willow_sync_version
-    cat "${HOME}/.willow/version" 2>/dev/null || echo "not installed"
+    cat "${WILLOW_HOME}/version" 2>/dev/null || echo "not installed"
 }
 
 # Jeles trusted sources registry — 54 sources from Loki audit (atom 44A246FD)
@@ -168,10 +169,11 @@ from pathlib import Path
 from sap.handoff_index import select_latest_handoff
 
 agent = os.environ.get('HANDOFF_AGENT', '')
-handoff_db = Path(os.environ.get('WILLOW_HANDOFF_DB', str(Path.home() / '.willow' / 'handoffs' / agent / 'handoffs.db')))
+from sap.handoff_paths import handoff_db_path, handoffs_root
+handoff_db = Path(os.environ.get('WILLOW_HANDOFF_DB', str(handoff_db_path(agent))))
 if not handoff_db.exists():
     candidates = sorted(
-        (Path.home() / '.willow' / 'handoffs').glob('*/handoffs.db'),
+        handoffs_root().glob('*/handoffs.db'),
         key=lambda p: p.stat().st_mtime,
         reverse=True,
     )
@@ -216,7 +218,7 @@ print(json.dumps({
 
     update)
         echo "Willow 2.0 — checking for updates"
-        CURRENT=$(cat "${HOME}/.willow/version" 2>/dev/null || echo "unknown")
+        CURRENT=$(cat "${WILLOW_HOME}/version" 2>/dev/null || echo "unknown")
         LATEST=$(curl -s --max-time 5 \
             "https://api.github.com/repos/rudi193-cmd/willow-2.0/releases/latest" \
             2>/dev/null | "${WILLOW_PYTHON}" -c \
@@ -230,11 +232,11 @@ print(json.dumps({
         echo "  Updating..."
         git -C "${WILLOW_ROOT}" pull origin master
         "${WILLOW_PYTHON}" "${WILLOW_ROOT}/root.py" --skip-gpg
-        echo "  Update complete. Version: $(cat "${HOME}/.willow/version")"
+        echo "  Update complete. Version: $(cat "${WILLOW_HOME}/version")"
         ;;
 
     export)
-        echo "Willow 2.0 — exporting user data to ~/.willow/export.json"
+        echo "Willow 2.0 — exporting user data to ${WILLOW_HOME}/export.json"
         WILLOW_PG_DB="${WILLOW_PG_DB}" "${WILLOW_PYTHON}" -c "
 import sys, json, os
 sys.path.insert(0, '${WILLOW_ROOT}')
@@ -244,7 +246,7 @@ store = WillowStore()
 data = {'store': {}}
 for col in store.collections():
     data['store'][col] = store.list(col)
-output = os.path.expanduser('~/.willow/export.json')
+output = os.path.join(os.environ['WILLOW_HOME'], 'export.json')
 with open(output, 'w') as f:
     json.dump(data, f, indent=2, default=str)
 print(f'  Exported to {output}')
@@ -320,11 +322,11 @@ print('  Snorri Sturluson would approve.')
         BACKUP_PATH="${2:-}"
         if [[ -z "${BACKUP_PATH}" ]]; then
             echo "Usage: willow.sh restore <path-to-backup-directory>"
-            echo "Backups live at: ~/.willow/backups/"
+            echo "Backups live at: ${WILLOW_HOME}/backups/"
             exit 1
         fi
         echo "  Restoring from: ${BACKUP_PATH}"
-        read -rp "  This overwrites ~/.willow/. Type OVERWRITE MY DATA to proceed: " CONFIRM
+        read -rp "  This overwrites ${WILLOW_HOME}/. Type OVERWRITE MY DATA to proceed: " CONFIRM
         if [[ "${CONFIRM}" != "OVERWRITE MY DATA" ]]; then
             echo "  Cancelled."
             exit 0
@@ -345,13 +347,13 @@ print('  Restore complete.')
         echo "  ║                  W I L L O W   N U K E                  ║"
         echo "  ╠══════════════════════════════════════════════════════════╣"
         echo "  ║                                                          ║"
-        echo "  ║  Deletes ~/.willow/ — your local Willow data folder.    ║"
+        echo "  ║  Deletes ${WILLOW_HOME}/ — your local Willow data folder. ║"
         echo "  ║                                                          ║"
         echo "  ║  What will be destroyed:                                 ║"
         echo "  ║    • Your API keys (vault)                               ║"
         echo "  ║    • Your GPG master key                                 ║"
-        echo "  ║    • Local SOIL SQLite store (~/.willow/store/)          ║"
-        echo "  ║    • All local backups (~/.willow/backups/)              ║"
+        echo "  ║    • Local SOIL SQLite store (\$WILLOW_HOME/store/)       ║"
+        echo "  ║    • All local backups (\$WILLOW_HOME/backups/)          ║"
         echo "  ║    • Your telemetry preferences                          ║"
         echo "  ║    • Version pin and session logs                        ║"
         echo "  ║                                                          ║"
@@ -374,8 +376,8 @@ print('  Restore complete.')
             exit 0
         fi
         echo ""
-        echo "  Deleting ~/.willow/ ..."
-        rm -rf "${HOME}/.willow/"
+        echo "  Deleting ${WILLOW_HOME}/ ..."
+        rm -rf "${WILLOW_HOME}/"
         echo "  Done."
         echo ""
         echo "  Your data is gone. The software remains."
@@ -397,7 +399,7 @@ bridge = PgBridge()
 store = WillowStore()
 count = collect_dpo_pairs(bridge, store)
 print(f'  Pairs collected: {count}')
-print(f'  Output: ~/.willow/valhalla/dpo_pairs.jsonl')
+print(f'  Output: {os.environ[\"WILLOW_HOME\"]}/valhalla/dpo_pairs.jsonl')
 print()
 print('  The Einherjar grow stronger.')
 "
@@ -507,7 +509,7 @@ else:
 
     check-updates)
         echo "Willow 2.0 — checking for updates"
-        CURRENT=$(grep -r '' "${HOME}/.willow/version" 2>/dev/null || echo "unknown")
+        CURRENT=$(grep -r '' "${WILLOW_HOME}/version" 2>/dev/null || echo "unknown")
         LATEST=$(curl -sf --max-time 10 \
             "https://api.github.com/repos/rudi193-cmd/willow-2.0/releases/latest" \
             2>/dev/null | "${WILLOW_PYTHON}" -c \
@@ -545,9 +547,9 @@ print(f'  Notification queued for {count} known node(s)')
 
     logs)
         _n="${2:-50}"
-        _log=$(ls -t "${HOME}/.willow/logs/"*.log 2>/dev/null | head -1)
+        _log=$(ls -t "${WILLOW_HOME}/logs/"*.log 2>/dev/null | head -1)
         if [[ -z "${_log}" ]]; then
-            echo "No logs found in ~/.willow/logs/"
+            echo "No logs found in ${WILLOW_HOME}/logs/"
         else
             echo "=== ${_log} (last ${_n} lines) ==="
             tail -n "${_n}" "${_log}"
@@ -557,7 +559,7 @@ print(f'  Notification queued for {count} known node(s)')
     serve)
         _port="${2:-7777}"
         echo "Willow Grove — command server on 0.0.0.0:${_port}"
-        echo "  Token: ${HOME}/.willow/grove_token"
+        echo "  Token: ${WILLOW_HOME}/grove_token"
         echo "  Share the token with trusted nodes: willow grove pair"
         echo ""
         PYTHONPATH="${WILLOW_ROOT}:${PYTHONPATH:-}" WILLOW_ROOT="${WILLOW_ROOT}" "${WILLOW_PYTHON}" "${WILLOW_ROOT}/core/grove_serve.py" --port "${_port}"
@@ -567,13 +569,13 @@ print(f'  Notification queued for {count} known node(s)')
         _grove_sub="${2:-}"
         case "${_grove_sub}" in
             pair)
-                TOKEN_FILE="${HOME}/.willow/grove_token"
+                TOKEN_FILE="${WILLOW_HOME}/grove_token"
                 if [[ ! -f "${TOKEN_FILE}" ]]; then
                     # Generate token by starting server briefly
                     "${WILLOW_PYTHON}" -c "
-import sys, secrets
+import os, sys, secrets
 from pathlib import Path
-tp = Path.home() / '.willow' / 'grove_token'
+tp = Path(os.environ['WILLOW_HOME']) / 'grove_token'
 tp.parent.mkdir(parents=True, exist_ok=True)
 token = secrets.token_hex(32)
 tp.write_text(token + '\n')
@@ -587,7 +589,7 @@ print(token)
                 echo "  $(grep -v '^$' "${TOKEN_FILE}" | head -1)"
                 echo ""
                 echo "  On the other node, save it with:"
-                echo "    echo <token> > ~/.willow/grove_token && chmod 600 ~/.willow/grove_token"
+                echo "    echo <token> > ${WILLOW_HOME}/grove_token && chmod 600 ${WILLOW_HOME}/grove_token"
                 echo ""
                 ;;
             send)
@@ -614,7 +616,7 @@ sys.path.insert(0, '${WILLOW_ROOT}')
 try:
     from pathlib import Path
     from u2u.contacts import ContactStore
-    store = ContactStore(Path.home() / '.willow' / 'grove_contacts.json')
+    store = ContactStore(Path(os.environ['WILLOW_HOME']) / 'grove_contacts.json')
     name = '${_addr}'.split('@')[0]
     contact = store.add('${_addr}', '${_pubkey}', name=name)
     print(f'  Added: {contact.name} ({contact.addr})')
@@ -626,7 +628,7 @@ except ImportError:
     print(f'  Contact saved to pending list for import later.')
     import json, datetime
     from pathlib import Path
-    pending = Path.home() / '.willow' / 'grove_contacts_pending.json'
+    pending = Path(os.environ['WILLOW_HOME']) / 'grove_contacts_pending.json'
     contacts = json.loads(pending.read_text()) if pending.exists() else []
     contacts.append({'addr': '${_addr}', 'pubkey': '${_pubkey}', 'added_at': datetime.datetime.now().isoformat()})
     pending.write_text(json.dumps(contacts, indent=2))
@@ -642,7 +644,7 @@ except ImportError:
 
     litellm-start)
         echo "Willow 2.0 — starting LiteLLM gateway"
-        CONFIG_FILE="${HOME}/.willow/litellm_config.yaml"
+        CONFIG_FILE="${WILLOW_HOME}/litellm_config.yaml"
         "${WILLOW_PYTHON}" -c "
 import sys, yaml, json
 sys.path.insert(0, '${WILLOW_ROOT}')
@@ -657,11 +659,11 @@ print('  Config written to ${CONFIG_FILE}')
         litellm --config "${CONFIG_FILE}" --port 4000 &
         echo "  LiteLLM gateway running at http://localhost:4000"
         echo "  PID: $!"
-        echo $! > "${HOME}/.willow/litellm.pid"
+        echo $! > "${WILLOW_HOME}/litellm.pid"
         ;;
 
     litellm-stop)
-        PID_FILE="${HOME}/.willow/litellm.pid"
+        PID_FILE="${WILLOW_HOME}/litellm.pid"
         if [[ -f "${PID_FILE}" ]]; then
             kill "$(cat "${PID_FILE}")" 2>/dev/null && echo "  LiteLLM stopped" || echo "  Already stopped"
             rm -f "${PID_FILE}"

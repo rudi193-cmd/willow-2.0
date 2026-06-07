@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from core import grove_db
 from grove.apps.base import App
 from grove import theme
+from willow.fylgja.willow_home import resolve_store_root
 
 
 def _pg_ok() -> tuple[bool, str]:
@@ -41,8 +42,7 @@ def _ollama_ok() -> dict:
 
 
 def _soil_ok() -> bool:
-    store = Path(os.environ.get("WILLOW_STORE_ROOT",
-                 str(Path.home() / ".willow" / "store")))
+    store = resolve_store_root(Path(__file__).resolve().parents[2])
     return store.exists()
 
 

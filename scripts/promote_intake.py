@@ -38,6 +38,7 @@ sys.path.insert(0, str(_ROOT))
 from core.agent_identity import require_agent_name
 from core.intake import read_pending, mark_promoted
 from core.pg_bridge import PgBridge
+from willow.fylgja.willow_home import willow_home
 from core.ratification import classify_ratification_class
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [prmint] %(message)s")
@@ -156,9 +157,7 @@ def _promote_record(pg: PgBridge, rec: dict, tier: str, dry_run: bool) -> bool:
         # Register in jeles_sessions as a binder-pending record
         result = pg.jeles_register_jsonl(
             agent=agent,
-            jsonl_path=str(
-                Path.home() / ".willow" / "intake" / agent
-            ),
+            jsonl_path=str(willow_home(_ROOT) / "intake" / agent),
             session_id=f"binder-{rec_id}",
             cwd=str(_ROOT),
             turn_count=0,

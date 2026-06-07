@@ -148,7 +148,9 @@ def _clear_run_file() -> None:
 
 def _err(msg: str) -> None:
     try:
-        log = Path.home() / ".willow" / "logs" / "run_ledger_errors.log"
+        from willow.fylgja.willow_home import willow_home
+
+        log = willow_home() / "logs" / "run_ledger_errors.log"
         log.parent.mkdir(parents=True, exist_ok=True)
         with open(log, "a") as f:
             f.write(f"{datetime.now(timezone.utc).isoformat()} {msg}\n")

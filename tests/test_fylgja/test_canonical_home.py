@@ -14,6 +14,67 @@ from willow.fylgja.willow_home import (
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
 
 
+def test_scripts_bridge_handoff_dir_respects_willow_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    import importlib
+    import scripts.bridge_cross_runtime as bridge
+
+    importlib.reload(bridge)
+    assert bridge.HANDOFF_DIR == tmp_path / "handoffs"
+
+
+def test_sap_inference_secrets_dir_respects_willow_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    from sap.core.inference import _secrets_dir
+
+    assert _secrets_dir() == tmp_path / "secrets"
+
+
+def test_sap_nest_queue_respects_willow_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    import importlib
+    import sap.core.nest_intake as nest_intake
+
+    importlib.reload(nest_intake)
+    assert nest_intake.QUEUE_FILE == tmp_path / "nest-queue.json"
+
+
+def test_seed_soil_path_respects_willow_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    monkeypatch.delenv("WILLOW_STORE_ROOT", raising=False)
+    import seed
+
+    assert seed._soil_path("hanuman/cards") == (tmp_path / "store" / "hanuman/cards").resolve()
+
+
+def test_willow_py_fleet_home_respects_env(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "willow_launcher",
+        PACKAGE_ROOT / "willow.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod._fleet_home() == tmp_path.resolve()
+
+
+def test_core_soil_store_respects_willow_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    monkeypatch.delenv("WILLOW_STORE_ROOT", raising=False)
+    from core.soil import _root
+
+    assert _root() == (tmp_path / "store").resolve()
+
+
+def test_fylgja_handoff_dir_respects_willow_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    from willow.fylgja.handoff_write import handoff_dir
+
+    assert handoff_dir("hanuman") == (tmp_path / "handoffs" / "hanuman").resolve()
+
+
 def test_willow_home_resolvers(tmp_path, monkeypatch):
     wh = tmp_path / "fleet"
     wh.mkdir()

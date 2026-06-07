@@ -24,9 +24,15 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-WILLOW_SH   = Path.home() / "github" / "willow-2.0" / "willow.sh"
-LOG_FILE    = Path.home() / ".willow" / "watchdog.log"
-PID_FILE    = Path.home() / ".willow" / "watchdog.pid"
+_REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO))
+
+from willow.fylgja.willow_home import willow_home
+
+_FLEET = willow_home(_REPO)
+WILLOW_SH = Path(os.environ.get("WILLOW_ROOT", str(_REPO))) / "willow.sh"
+LOG_FILE = _FLEET / "watchdog.log"
+PID_FILE = _FLEET / "watchdog.pid"
 MCP_PATTERN = "sap_mcp.py"
 DEFAULT_INTERVAL = 30  # seconds
 

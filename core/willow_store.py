@@ -3,7 +3,7 @@
 willow_store.py — SOIL: SQLite-backed user store.
 b17: SOIL1  ΔΣ=42
 
-WILLOW_STORE_ROOT defaults to ~/.willow/store/ — never inside the repo.
+WILLOW_STORE_ROOT defaults to $WILLOW_HOME/store/ — never inside the repo.
 Each collection is a SQLite database at {root}/{collection}.db.
 
 Security: path sanitization, symlink blocking, 100KB size limit, threading lock.
@@ -34,7 +34,7 @@ except ImportError:
     def embed(text):  # noqa: E306
         return None
 
-_DEFAULT_STORE_ROOT = Path.home() / ".willow" / "store"
+from willow.fylgja.willow_home import resolve_store_root
 
 MAX_RECORD_BYTES = 100_000  # 100KB per record
 
@@ -172,7 +172,7 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
 class WillowStore:
     def __init__(self, root: Optional[str] = None, rubric: Rubric = None):
         env_root = os.environ.get("WILLOW_STORE_ROOT")
-        self.root = Path(root or env_root or _DEFAULT_STORE_ROOT).resolve()
+        self.root = Path(root or env_root or resolve_store_root()).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.rubric = rubric or DEFAULT_RUBRIC
         self._lock = threading.Lock()

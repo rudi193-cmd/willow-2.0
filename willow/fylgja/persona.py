@@ -1,8 +1,8 @@
 """
 persona.py — session persona picker and context injection.
 
-State: ~/.willow/willow-2.0-active-persona
-User personas: ~/.willow/user-personas.json  +  ~/.willow/personas/<name>.md
+State: $WILLOW_HOME/willow-2.0-active-persona
+User personas: $WILLOW_HOME/user-personas.json  +  $WILLOW_HOME/personas/<name>.md
 Wired from session_start (picker) and prompt_submit (selection + context).
 """
 from __future__ import annotations
@@ -14,9 +14,12 @@ import sqlite3
 import sys
 from pathlib import Path
 
-STATE_FILE = Path.home() / ".willow" / "willow-2.0-active-persona"
-DB_PATH = Path.home() / ".willow" / "willow-2.0.db"
-USER_PERSONAS_FILE = Path.home() / ".willow" / "user-personas.json"
+from willow.fylgja.willow_home import willow_home
+
+_HOME = willow_home()
+STATE_FILE = _HOME / "willow-2.0-active-persona"
+DB_PATH = _HOME / "willow-2.0.db"
+USER_PERSONAS_FILE = _HOME / "user-personas.json"
 
 _CREATE_KEY = "__create__"
 

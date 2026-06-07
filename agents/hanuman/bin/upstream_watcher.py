@@ -30,11 +30,13 @@ from core.grove_gate import assert_grove as _assert_grove, grove_alive as _grove
 from agents.hanuman.lib.upstream.triage import Notification, classify, work_id
 from agents.hanuman.lib.upstream.analyzer import analyze
 from agents.hanuman.lib.upstream.voice_drafter import draft
+from willow.fylgja.willow_home import willow_home
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-_CURSOR_FILE = Path.home() / ".willow" / "upstream_steward" / "cursor.json"
-_CONFIG_FILE = Path.home() / ".willow" / "upstream_steward" / "config.yaml"
+_FLEET_HOME = willow_home(Path(__file__).resolve().parents[3])
+_CURSOR_FILE = _FLEET_HOME / "upstream_steward" / "cursor.json"
+_CONFIG_FILE = _FLEET_HOME / "upstream_steward" / "config.yaml"
 
 _SOIL_PENDING = "upstream_steward/pending"
 _SOIL_LOG = "upstream_steward/log"

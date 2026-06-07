@@ -16,11 +16,13 @@ import sqlite3
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+_REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO))
 from core.pg_bridge import PgBridge
+from willow.fylgja.willow_home import willow_home
 
-SESSIONS_DB = Path.home() / ".willow" / "claude_sessions_all.db"
-LOG_DB      = Path.home() / ".willow" / "corpus_index_log.db"
+SESSIONS_DB = willow_home(_REPO) / "claude_sessions_all.db"
+LOG_DB      = willow_home(_REPO) / "corpus_index_log.db"
 DOMAIN      = "hanuman/corpus"
 DEPTH       = 1
 MIN_LENGTH  = 80

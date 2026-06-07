@@ -28,6 +28,7 @@ if str(_ROOT) not in sys.path:
 
 from core import soil
 from core.pg_bridge import PgBridge
+from willow.fylgja.willow_home import willow_home
 
 _APP_ID = "hanuman"
 _BRIEF_COLLECTION = "willow/stabilization_brief"
@@ -36,7 +37,7 @@ _EVENTS_COLLECTION = "willow/push_events"
 _CORRECTIONS_COLLECTION = "corpus/corrections"
 _CODE_GRAPH_DB = Path(os.environ.get(
     "WILLOW_CODE_GRAPH_DB",
-    str(Path.home() / ".willow" / "code_graph.db"),
+    str(willow_home(Path(__file__).resolve().parents[3]) / "code_graph.db"),
 ))
 
 

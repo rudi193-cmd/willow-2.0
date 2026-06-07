@@ -33,8 +33,11 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-CONFIG_PATH = Path.home() / ".willow" / "openclaw_discord.json"
-STATE_PATH = Path.home() / ".willow" / "openclaw_discord_state.json"
+from willow.fylgja.willow_home import willow_home
+
+_FLEET = willow_home(_ROOT)
+CONFIG_PATH = _FLEET / "openclaw_discord.json"
+STATE_PATH = _FLEET / "openclaw_discord_state.json"
 WILLOW_SH = _ROOT / "willow.sh"
 _openclaw_bin_cache: Path | None = None
 

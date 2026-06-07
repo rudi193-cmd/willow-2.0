@@ -16,6 +16,7 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from core.atom_extractor import Atom
+from willow.fylgja.willow_home import willow_home
 
 
 @dataclass
@@ -186,7 +187,7 @@ def main() -> None:
     if not current:
         return
 
-    prev_path = Path.home() / ".willow" / "last_test_results.json"
+    prev_path = willow_home() / "last_test_results.json"
     previous = None
     if prev_path.exists():
         try:

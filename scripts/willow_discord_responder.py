@@ -46,11 +46,14 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-STATE_PATH = Path.home() / ".willow" / "willow_responder_state.json"
-LOG_PATH = Path.home() / ".willow" / "willow_responder.log"
-PID_PATH = Path.home() / ".willow" / "willow_responder.pid"
-CLAIMS_PATH = Path.home() / ".willow" / "discord_claims.json"
-WILLOW_ENV = Path.home() / "github" / ".willow" / "env"
+from willow.fylgja.willow_home import willow_home
+
+_FLEET = willow_home(_ROOT)
+STATE_PATH = _FLEET / "willow_responder_state.json"
+LOG_PATH = _FLEET / "willow_responder.log"
+PID_PATH = _FLEET / "willow_responder.pid"
+CLAIMS_PATH = _FLEET / "discord_claims.json"
+WILLOW_ENV = _FLEET / "env"
 
 GROVE_CHANNEL = "hanuman"
 INBOUND_SENDER = "discord-bridge"
