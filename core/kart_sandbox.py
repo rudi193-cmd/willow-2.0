@@ -49,12 +49,14 @@ def willow_repo_root() -> Path | None:
 def _template_ctx(root: Path | None) -> dict[str, str]:
     home = str(Path.home())
     repo = str(root or willow_repo_root() or Path.cwd())
+    xdg_runtime = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
     return {
         "HOME": home,
         "WILLOW_ROOT": repo,
         "WILLOW_GROVE_ROOT": os.environ.get("WILLOW_GROVE_ROOT", str(Path(home) / "github" / "safe-app-willow-grove")),
         "WILLOW_SAFE_ROOT": os.environ.get("WILLOW_SAFE_ROOT", str(Path(home) / "SAFE" / "Applications")),
         "WILLOW_AGENTS_ROOT": os.environ.get("WILLOW_AGENTS_ROOT", str(Path(home) / "SAFE" / "Agents")),
+        "XDG_RUNTIME_DIR": xdg_runtime,
     }
 
 
