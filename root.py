@@ -25,13 +25,16 @@ WILLOW_ROOT = Path(__file__).parent
 sys.path = [str(WILLOW_ROOT)] + [p for p in sys.path if "willow-1.7" not in p]
 
 from core.version import VERSION, sync_installed_version
-from willow.fylgja.willow_home import willow_home as _resolve_willow_home
+from willow.fylgja.willow_home import private_home
 from willow.platform_compat import IS_WSL, IS_POSIX
 
 
 def willow_home() -> Path:
     """USER root — ~/github/.willow or WILLOW_HOME."""
-    return _resolve_willow_home(WILLOW_ROOT)
+    env = os.environ.get("WILLOW_HOME", "").strip()
+    if env:
+        return Path(env).expanduser().resolve()
+    return private_home()
 
 
 def step_telemetry_init() -> None:
