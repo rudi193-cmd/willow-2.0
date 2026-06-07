@@ -270,6 +270,16 @@ def main():
         except Exception:
             pass
 
+    # BKT: record a successful boot outcome when the boot sentinel is written.
+    if tool_name == "Write":
+        _fp = tool_input.get("file_path", "")
+        if f"willow-boot-done-{_AGENT}" in _fp:
+            try:
+                from core import skill_mastery as _sm
+                _sm.record("boot", correct=True)
+            except Exception:
+                pass
+
     # Hook timing log
     _dur_ms = int((_time.monotonic() - _t0) * 1000)
     try:
