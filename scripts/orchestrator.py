@@ -18,7 +18,12 @@ import sqlite3
 import sys
 from pathlib import Path
 
-DB_PATH   = Path.home() / ".willow" / "willow-2.0.db"
+_REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO))
+
+from willow.fylgja.willow_home import willow_home
+
+DB_PATH   = willow_home(_REPO) / "willow-2.0.db"
 FLAG_FILE = Path("/tmp/willow-orchestrator-shown")
 
 # Trigger at 70% of ~180k-token effective context window

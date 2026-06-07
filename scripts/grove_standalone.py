@@ -7,8 +7,17 @@ Human-to-human over u2u. Launch: python3 -m grove
 import asyncio
 import os
 import socket
+import sys
 from datetime import datetime
 from pathlib import Path
+
+_REPO = Path(__file__).resolve().parent.parent
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
+
+from willow.fylgja.willow_home import willow_home
+
+_FLEET = willow_home(_REPO)
 
 from rich.markup import escape as _escape_markup
 
@@ -33,8 +42,8 @@ from u2u.sender import send_packet
 # Config
 # ---------------------------------------------------------------------------
 
-_IDENTITY_PATH = Path.home() / ".willow" / "grove_identity.json"
-_CONTACTS_PATH = Path.home() / ".willow" / "grove_contacts.json"
+_IDENTITY_PATH = _FLEET / "grove_identity.json"
+_CONTACTS_PATH = _FLEET / "grove_contacts.json"
 try:
     _PORT = int(os.getenv("GROVE_PORT", "8550"))
     if not (1 <= _PORT <= 65535):

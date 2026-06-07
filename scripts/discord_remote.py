@@ -42,10 +42,13 @@ import urllib.error
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-STATE_PATH = Path.home() / ".willow" / "discord_remote_state.json"
-LOG_PATH = Path.home() / ".willow" / "discord_remote.log"
-PID_PATH = Path.home() / ".willow" / "discord_remote.pid"
-WILLOW_ENV = Path.home() / "github" / ".willow" / "env"
+from willow.fylgja.willow_home import willow_home
+
+_FLEET = willow_home(_ROOT)
+STATE_PATH = _FLEET / "discord_remote_state.json"
+LOG_PATH = _FLEET / "discord_remote.log"
+PID_PATH = _FLEET / "discord_remote.pid"
+WILLOW_ENV = _FLEET / "env"
 
 DEFAULT_CHANNEL_ID = "1509605940578615487"
 DISCORD_API = "https://discord.com/api/v10"

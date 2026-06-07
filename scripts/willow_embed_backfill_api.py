@@ -30,13 +30,17 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+_REPO = pathlib.Path(__file__).parent.parent
+sys.path.insert(0, str(_REPO))
+
+from willow.fylgja.willow_home import willow_home
 
 import psycopg2
 import psycopg2.extras
 
-_VAULT_DB     = pathlib.Path.home() / ".willow" / "secrets" / ".willow_creds.db"
-_VAULT_KEY    = pathlib.Path.home() / ".willow" / "secrets" / ".willow_master.key"
+_SECRETS = willow_home(_REPO) / "secrets"
+_VAULT_DB = _SECRETS / ".willow_creds.db"
+_VAULT_KEY = _SECRETS / ".willow_master.key"
 _GEMINI_BASE  = "https://generativelanguage.googleapis.com/v1beta/models"
 _LOG_DIR      = pathlib.Path("/tmp")
 _SKIP_DOMAINS = (

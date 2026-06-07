@@ -14,6 +14,15 @@ from willow.fylgja.willow_home import (
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
 
 
+def test_scripts_bridge_handoff_dir_respects_willow_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    import importlib
+    import scripts.bridge_cross_runtime as bridge
+
+    importlib.reload(bridge)
+    assert bridge.HANDOFF_DIR == tmp_path / "handoffs"
+
+
 def test_sap_inference_secrets_dir_respects_willow_home(tmp_path, monkeypatch):
     monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
     from sap.core.inference import _secrets_dir
