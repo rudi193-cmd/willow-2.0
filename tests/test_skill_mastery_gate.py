@@ -17,7 +17,6 @@ from pathlib import Path
 # gate.py reads WILLOW_SAFE_ROOT at import time; be self-sufficient.
 os.environ.setdefault("WILLOW_SAFE_ROOT", "/tmp/willow-test-safe")
 
-import pytest
 from sap.core import gate
 
 TOOL = "skill_mastery"
