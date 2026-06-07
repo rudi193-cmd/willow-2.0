@@ -23,9 +23,17 @@ from datetime import datetime
 from pathlib import Path
 
 WILLOW_ROOT = Path(__file__).resolve().parent
-WILLOW_HOME = Path.home() / ".willow"
-BOOT_CONFIG = WILLOW_HOME / "seed-boot.json"
 sys.path.insert(0, str(WILLOW_ROOT))
+
+from willow.fylgja.willow_home import willow_home
+
+
+def _fleet_home() -> Path:
+    return willow_home(WILLOW_ROOT)
+
+
+WILLOW_HOME = _fleet_home()
+BOOT_CONFIG = WILLOW_HOME / "seed-boot.json"
 
 
 def ok(msg: str)   -> None: print(f"  [ok] {msg}")
@@ -159,7 +167,7 @@ def _ensure_dirs() -> None:
         WILLOW_HOME / "logs",
     ]:
         d.mkdir(parents=True, exist_ok=True)
-    ok(f"~/.willow layout ready ({WILLOW_HOME})")
+    ok(f"fleet home layout ready ({WILLOW_HOME})")
 
 
 # ── KB seed ───────────────────────────────────────────────────────────────────

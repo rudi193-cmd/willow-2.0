@@ -14,6 +14,27 @@ from willow.fylgja.willow_home import (
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
 
 
+def test_seed_soil_path_respects_willow_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    monkeypatch.delenv("WILLOW_STORE_ROOT", raising=False)
+    import seed
+
+    assert seed._soil_path("hanuman/cards") == (tmp_path / "store" / "hanuman/cards").resolve()
+
+
+def test_willow_py_fleet_home_respects_env(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "willow_launcher",
+        PACKAGE_ROOT / "willow.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod._fleet_home() == tmp_path.resolve()
+
+
 def test_core_soil_store_respects_willow_home(tmp_path, monkeypatch):
     monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
     monkeypatch.delenv("WILLOW_STORE_ROOT", raising=False)
