@@ -21,6 +21,8 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Optional
 
+from willow.fylgja.willow_home import willow_home
+
 _logger = logging.getLogger("willow.memory.generation_store")
 
 
@@ -196,6 +198,6 @@ def get_default_store(max_bytes: int = 10_000_000) -> GenerationLRUStore:
     """
     global _default_store
     if _default_store is None:
-        persist_path = Path.home() / ".willow" / "generation_store.pkl"
+        persist_path = willow_home() / "generation_store.pkl"
         _default_store = GenerationLRUStore(max_bytes=max_bytes, persist_path=persist_path)
     return _default_store

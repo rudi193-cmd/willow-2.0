@@ -19,6 +19,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 OUT_PATH = REPO_ROOT / "docs" / "CONTRACT.md"
+sys.path.insert(0, str(REPO_ROOT))
+from willow.fylgja.willow_home import willow_home
 
 # Headings copied verbatim from willow.md (public-safe sections only).
 SECTION_HEADINGS = (
@@ -39,7 +41,7 @@ def _resolve_willow_md() -> Path | None:
     env_home = os.environ.get("WILLOW_HOME", "").strip()
     candidates = [
         Path(env_home) / "willow.md" if env_home else None,
-        Path.home() / "github" / ".willow" / "willow.md",
+        willow_home(REPO_ROOT) / "willow.md",
         REPO_ROOT / "willow.md",
     ]
     for path in candidates:

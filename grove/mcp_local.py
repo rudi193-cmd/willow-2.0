@@ -32,6 +32,7 @@ from mcp.server.fastmcp import FastMCP
 
 from core import grove_db as db
 from core import grove_reader as _grove_reader
+from willow.fylgja.willow_home import willow_home
 
 # ── Notification state ────────────────────────────────────────────────────────
 _subscriptions: dict[int, set[asyncio.Queue]] = {}
@@ -111,8 +112,9 @@ if _SERVE_MODE:
     from grove.mcp_auth import GroveOAuthProvider
     from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
 
+    _fleet_home = willow_home()
     _auth_provider = GroveOAuthProvider(
-        token_path=Path.home() / ".willow" / "grove_mcp_token",
+        token_path=_fleet_home / "grove_mcp_token",
         base_url=_BASE_URL,
     )
     mcp = FastMCP(
@@ -241,7 +243,7 @@ def grove_search(query: str, channel_name: str = "") -> list[dict]:
 def grove_get_identity() -> dict:
     """Get this Grove node's u2u address and public key."""
     from u2u.identity import Identity
-    identity_path = Path.home() / ".willow" / "grove_identity.json"
+    identity_path = willow_home() / "grove_identity.json"
     identity = Identity.load_or_generate(identity_path)
     name = os.getenv("GROVE_NAME", os.getenv("USER", "me"))
     port = int(os.getenv("GROVE_PORT", "8550"))

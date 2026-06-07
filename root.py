@@ -25,12 +25,13 @@ WILLOW_ROOT = Path(__file__).parent
 sys.path = [str(WILLOW_ROOT)] + [p for p in sys.path if "willow-1.7" not in p]
 
 from core.version import VERSION, sync_installed_version
+from willow.fylgja.willow_home import willow_home as _resolve_willow_home
 from willow.platform_compat import IS_WSL, IS_POSIX
 
 
 def willow_home() -> Path:
     """USER root — ~/github/.willow or WILLOW_HOME."""
-    return Path(os.environ.get("WILLOW_HOME", Path.home() / "github" / ".willow"))
+    return _resolve_willow_home(WILLOW_ROOT)
 
 
 def step_telemetry_init() -> None:
@@ -49,9 +50,9 @@ def step_telemetry_init() -> None:
 def step_1_dirs() -> None:
     """Create ~/github/.willow/ structure, ~/github/SAFE/Applications/, Agents/."""
     home = Path.home()
-    willow_home = home / "github" / ".willow"
+    willow_dir = willow_home()
     for sub in ("store", "secrets", "logs"):
-        (willow_home / sub).mkdir(parents=True, exist_ok=True)
+        (willow_dir / sub).mkdir(parents=True, exist_ok=True)
     (home / "github" / "SAFE" / "Applications").mkdir(parents=True, exist_ok=True)
     (home / "github" / "SAFE" / "Agents").mkdir(parents=True, exist_ok=True)
 
