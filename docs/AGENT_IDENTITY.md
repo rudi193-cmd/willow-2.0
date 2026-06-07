@@ -17,12 +17,12 @@ If everything runs as `hanuman`, Postgres `dispatch_tasks`, SOIL collections, Gr
 ## Switch agent on this machine
 
 ```bash
-cd ~/willow-2.0
-./willow agents active heimdallr
-./willow agents install heimdallr --ide all
+cd ~/github/willow-2.0
+./willow.sh agents active heimdallr
+./willow.sh agents install heimdallr --ide <cursor|claude|codex>
 ```
 
-Open the **`willow-2.0`** repo in Cursor/Claude — not `~/.willow` (that is private config only).
+Open the **`willow-2.0`** repo in Cursor/Claude — not `~/github/.willow` (that is private fleet config only; `~/.willow` is an alias).
 
 Per-agent IDE permissions and env overrides live at **`$WILLOW_HOME/agents/<agent>/settings.local.json`**. `install_project` symlinks that file into `.cursor/settings.local.json` and `.claude/settings.local.json` — do not commit those symlinks or a repo-local copy.
 
@@ -38,7 +38,9 @@ Per-agent IDE permissions and env overrides live at **`$WILLOW_HOME/agents/<agen
 ## Verify
 
 ```bash
-./willow agents check
+./willow.sh agents check --ide cursor    # or --ide claude / --ide codex for that runtime
+# --ide all = strict: every IDE surface must be installed (fails on Cursor-only machines)
+bash scripts/audit_canonical_home.sh
 echo "$WILLOW_AGENT_NAME"
 psql -d willow_20 -c "SELECT from_agent, to_agent, status FROM dispatch_tasks ORDER BY created_at DESC LIMIT 10;"
 ```

@@ -22,7 +22,7 @@ Use the **Discord app on your phone** as the fleet pocket terminal. Grove stays 
 4. Willow config:
    ```bash
    willow.sh openclaw-discord init-config
-   # edit ~/.willow/openclaw_discord.json — set discord_channel_id
+   # edit $WILLOW_HOME/openclaw_discord.json — set discord_channel_id
    willow.sh openclaw-discord test-discord
    willow.sh openclaw-discord test-grove
    ```

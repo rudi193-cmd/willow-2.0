@@ -24,8 +24,9 @@ pre-commit install --hook-type pre-push
 **IDE wiring:**
 
 ```bash
-./willow agents active <agent-id>
-./willow agents install <agent-id> --ide all
+./willow.sh agents active <agent-id>
+./willow.sh agents install <agent-id> --ide <cursor|claude|codex>
+./willow.sh agents check --ide <surface>   # --ide all only when every IDE is installed
 ```
 
 Per-agent IDE permissions live at `$WILLOW_HOME/agents/<agent>/settings.local.json` (symlinked into `.cursor/` and `.claude/` — not committed).

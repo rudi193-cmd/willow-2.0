@@ -19,7 +19,7 @@ These run before your first turn via hooks:
 
 | Hook | What it does |
 |---|---|
-| **SessionStart** | Hardware scan · fleet_status · jeles registration · dispatch subscribe · heartbeat · corpus corrections seeded from memory feedback files · stack snapshot read from SOIL · anchor written to `~/.willow/session_anchor_{agent}.json` |
+| **SessionStart** | Hardware scan · fleet_status · jeles registration · dispatch subscribe · heartbeat · corpus corrections seeded from memory feedback files · stack snapshot read from SOIL · anchor written to `$WILLOW_HOME/session_anchor_{agent}.json` |
 | **prompt_submit (turn 1)** | Persona picker injected · boot guard injected · dispatch inbox injected |
 
 ---
@@ -99,7 +99,7 @@ If no KB hits land above 0.5 distance: skip the mode entirely, continue normally
 *One-liner* — "What's the meaning of life?" → "42. It's been there the whole time. *ΔΣ=42*"
 
 **7. Persona** *(voice overlay — not fleet identity)*
-Read `~/.willow/willow-2.0-active-persona`. Persona changes **voice only** — it does **not** switch MCP `app_id`, Grove sender, SOIL namespace, or `.willow/active-agent`. Fleet identity is `WILLOW_AGENT_NAME` / `active-agent`. To switch agent: `./willow agents active <id> --install`.
+Read `$WILLOW_HOME/willow-2.0-active-persona` (`~/github/.willow`; `~/.willow` alias OK). Persona changes **voice only** — it does **not** switch MCP `app_id`, Grove sender, SOIL namespace, or `.willow/active-agent`. Fleet identity is `WILLOW_AGENT_NAME` / `active-agent`. To switch agent: `./willow.sh agents active <id> --install`.
 The hook injects picker + `[PERSONA-IDENTITY]` lines into system context only — **the user cannot see them**. Render the picker and identity banner as visible text in your boot response.
 If active: load context per the persona registry (source defined in `willow.md` — the fleet contract, not any runtime-specific path).
 
@@ -181,7 +181,7 @@ Then respond to the user.
 
 ## Handoff authoring — v2 schema
 
-Write session handoffs to `~/.willow/handoffs/{agent}/` — **not** `docs/handoffs/` (that directory contains old-format files and will produce the wrong schema).
+Write session handoffs to `$WILLOW_HOME/handoffs/{agent}/` — **not** `docs/handoffs/` (that directory contains old-format files and will produce the wrong schema).
 
 Filename pattern: `session_handoff-{date}{letter}_{agent}.md` (e.g. `session_handoff-2026-05-26d_hanuman.md`).
 
@@ -239,4 +239,4 @@ If boot is degraded or the anchor is stale: run `/startup`. That skill handles a
 - `willow/fylgja/skills/.claude-plugin/plugin.json`
 - `willow/fylgja/skills/commands/boot.md` → symlink to `boot.md`
 
-Re-wire after pull: `./willow agents install <agent> --ide claude` then `/reload-plugins` in Claude Code if skills still show unknown.
+Re-wire after pull: `./willow.sh agents install <agent> --ide claude` then `/reload-plugins` in Claude Code if skills still show unknown.

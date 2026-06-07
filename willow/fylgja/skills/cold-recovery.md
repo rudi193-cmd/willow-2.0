@@ -124,7 +124,7 @@ One search per active topic. Record thread id/title, where it lives, one-line st
 |---------------|---------------|
 | `handoff_search(app_id, query=<topic>, limit=5)` | Project names from user message or Step 1 |
 | `kb_search(app_id, query=<topic>, limit=5)` | Canonical decisions only |
-| Grep `~/.willow/handoffs/<agent>/` | Filename + summary match |
+| Grep `$WILLOW_HOME/handoffs/<agent>/` | Filename + summary match |
 | Grep `~/.claude/projects/` session JSONL | Session ids tied to topic |
 
 **Output:** pointer table only.

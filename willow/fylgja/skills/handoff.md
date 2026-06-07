@@ -76,7 +76,7 @@ Q17: "What is the next single bite?"
    `willow.fylgja.handoff_write.write_session_handoff(agent, body)`, where `agent` is your
    agent name and `body` is the full handoff text drafted in step 2. This writes the
    canonical v2 YAML frontmatter and body to
-   `~/.willow/handoffs/{agent}/session_handoff-{date}{letter}_{agent}.md`.
+   `$WILLOW_HOME/handoffs/{agent}/session_handoff-{date}{letter}_{agent}.md` (`~/github/.willow`; `~/.willow` alias OK).
    Do NOT write manually to `docs/handoffs/` — that directory is deprecated and not indexed.
    Example script_body:
    ```python

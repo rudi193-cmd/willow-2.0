@@ -55,7 +55,7 @@ When MCP and private config are up, live truth is in the KB and Grove. This file
 
 The IDE model is not the agent.
 
-- Set identity: `./willow agents active <id> && ./willow agents install <id> --ide all`
+- Set identity: `./willow.sh agents active <id> && ./willow.sh agents install <id> --ide <cursor|claude|codex>`
 - Open **willow-2.0** in the IDE, not a private config-only checkout
 - Detail: [`docs/AGENT_IDENTITY.md`](../docs/AGENT_IDENTITY.md)
 

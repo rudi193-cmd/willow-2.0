@@ -74,7 +74,7 @@ Detail: `willow-2.0/docs/RUNTIME_AND_INFERENCE.md`
 
 Each agent is its own namespace in Postgres, Grove, and SOIL. **Do not** run every session as hanuman.
 
-- Set identity: `cd ~/github/willow-2.0 && ./willow agents active <id> && ./willow agents install <id> --ide all`
+- Set identity: `cd ~/github/willow-2.0 && ./willow.sh agents active <id> && ./willow.sh agents install <id> --ide <cursor|claude|codex>`
 - `WILLOW_AGENT_NAME` / MCP `app_id` = **caller**; `agent_dispatch(to=…)` = **recipient**
 - `install_project` updates `.willow/active-agent` — it does **not** set `fleet.default_agent` unless `--set-fleet-default`
 - Open **`willow-2.0`** in the IDE, not `~/github/.willow` (private config only)

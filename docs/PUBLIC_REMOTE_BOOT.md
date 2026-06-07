@@ -12,7 +12,7 @@ or a contributor machine.
 git clone https://github.com/rudi193-cmd/willow-2.0.git
 cd willow-2.0
 bash setup.sh --public
-./willow agents install willow --ide claude --no-claude-global
+./willow.sh agents install willow --ide claude --no-claude-global
 ```
 
 `setup.sh --public`:
@@ -82,7 +82,7 @@ git clone git@github.com:rudi193-cmd/willow-config.git ~/github/.willow
 bash setup.sh   # without --public
 ```
 
-Re-run `./willow agents install <id> --ide all` to refresh IDE paths.
+Re-run `./willow.sh agents install <id> --ide <surface>` to refresh IDE paths.
 
 See also: [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) · [`CONTRACT.md`](CONTRACT.md)
 
