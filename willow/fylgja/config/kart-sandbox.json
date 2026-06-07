@@ -22,7 +22,10 @@
     "HUGGINGFACE_",
     "HF_",
     "OPENAI_",
-    "AWS_"
+    "AWS_",
+    "DISCORD_",
+    "DBUS_",
+    "XDG_"
   ],
   "bind_read_only": [
     "/usr",
@@ -45,6 +48,7 @@
     "{{HOME}}/.ssh",
     "{{HOME}}/.config/gh",
     "{{HOME}}/.config/git",
+    "{{HOME}}/.config/systemd",
     "{{HOME}}/.kaggle",
     "{{HOME}}/Desktop",
     "{{HOME}}/Ashokoa",
