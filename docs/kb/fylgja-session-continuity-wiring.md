@@ -129,7 +129,7 @@ After changing any of these files:
 2. `handoff_latest(app_id=hanuman)` → rich filename, non-empty `open_threads`, `next_bite`
 3. New IDE session → anchor contains `[HANDOFF]` and `[PERSONA]`
 4. First prompt `2` or `hanuman` → `~/.willow/willow-2.0-active-persona` updated
-5. `./willow agents install hanuman --ide all` if hooks stale
+5. `./willow.sh agents install hanuman --ide <surface>` if hooks stale
 
 ---
 

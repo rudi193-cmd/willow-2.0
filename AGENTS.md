@@ -14,7 +14,7 @@ b17: AGNTW · ΔΣ=42
 | Powers router | [`willow/fylgja/powers/registry.json`](willow/fylgja/powers/registry.json) |
 | Open backlog (not blockers) | [`docs/OPEN_WORK.md`](docs/OPEN_WORK.md) |
 
-**IDE:** `./willow agents active <id>` then `./willow agents install <id> --ide all` · check: `./willow agents check`
+**IDE:** `./willow.sh agents active <id>` then `./willow.sh agents install <id> --ide <cursor|claude|codex>` · check: `./willow.sh agents check --ide <surface>` (`--ide all` = strict full-surface verify)
 
 **Claude Code hooks:** `python3 -m willow.fylgja.install`
 

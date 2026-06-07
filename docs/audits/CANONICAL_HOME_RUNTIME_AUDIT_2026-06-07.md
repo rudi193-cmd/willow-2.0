@@ -6,6 +6,8 @@
 **Branch / worktree:** `chore/canonical-home-audit` → `.claude/worktrees/chore-canonical-home-audit`  
 **Mode:** Read-only diagnostic (no live config mutations)
 
+> **Shipped (2026-06-07):** Remediation merged (#235), CI path-guard (#238), released `v2026.06.1`. Operator verify: `bash scripts/audit_canonical_home.sh` (0 failures) + `./willow.sh agents check --ide <surface>`. Findings below are the pre-ship snapshot; live docs now use `./willow.sh` and `$WILLOW_HOME`.
+
 ---
 
 ## Executive Summary
@@ -256,9 +258,9 @@ Split into four PRs after this audit merges:
 - CI comfort gate: warn on new `Path.home() / ".willow"` outside allowlist.
 - Test: `install_project` render includes Grove fields; Codex template parity.
 
-**Status (2026-06-07):** PR 1 partially landed via #232 (`willow_home.py` public fallback).
-Remediation implementation: `feat/canonical-home-remediation` — path resolvers, launcher defaults,
-Codex Grove fields, `agents check --ide`, MCP home export, `audit_canonical_home.sh`, docs.
+**Status (2026-06-07):** Shipped on master — #232 public fallback, #235 canonical-home remediation,
+#238 CI path-guard, #239 `v2026.06.1` release. Resolvers, launcher defaults, Codex Grove fields,
+`agents check --ide`, MCP home export, `audit_canonical_home.sh`, and live doc refresh complete.
 
 ---
 

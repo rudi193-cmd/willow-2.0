@@ -29,7 +29,7 @@
 
 ## Claude Code hooks (native)
 
-Installed via `./willow agents install <id> --ide all` from `willow/fylgja/install_project.py`:
+Installed via `./willow.sh agents install <id> --ide <surface>` from `willow/fylgja/install_project.py`:
 
 | Hook | Role |
 |------|------|
@@ -61,7 +61,7 @@ Installed via `./willow agents install <id> --ide all` from `willow/fylgja/insta
 2. **Cursor rule** (optional): "For PR babysit / CI watch, use Willow babysit skill — no foreground `--watch`."
 3. **Audit** each `skills-cursor` skill: add `## Background mode` section or mark `foreground-only`.
 4. **Sync manifest** `.sync-manifest.json` — track which Cursor skills have Willow twins and last review date.
-5. **Install** — after adding Fylgja skills, `./willow agents install <agent> --ide all`.
+5. **Install** — after adding Fylgja skills, `./willow.sh agents install <agent> --ide <surface>`.
 
 ---
 

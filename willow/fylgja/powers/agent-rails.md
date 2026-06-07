@@ -25,7 +25,7 @@ If degraded after step 3 → **stop** and report
 
 Shell fallback: `./willow.sh fleet_status` · `./willow.sh handoff_latest`
 
-`~/.willow/session_anchor_*.json` is cache, not truth. `/startup` only when boot is broken or stale.
+`$WILLOW_HOME/session_anchor_*.json` is cache, not truth. `/startup` only when boot is broken or stale.
 
 Stack: `willow/fylgja/skills/persistent-memory-stack.md`
 

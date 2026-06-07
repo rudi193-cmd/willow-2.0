@@ -40,7 +40,7 @@ The bridge will forward this to Discord within 15 seconds.
 ```python
 Monitor(
     description="Discord inbound commands",
-    command="tail -n 0 -f ~/.willow/discord_remote.log | grep --line-buffered 'inbound Discord'",
+    command="tail -n 0 -f $WILLOW_HOME/discord_remote.log | grep --line-buffered 'inbound Discord'",
     persistent=True
 )
 ```
@@ -84,9 +84,9 @@ Any free-form message is routed to Claude Code. Examples:
 
 ## Notes
 
-- Bridge daemon: `~/.willow/discord_remote.pid` / `~/.willow/discord_remote.log`
-- Token: `DISCORD_BOT_TOKEN` in `~/.willow/env`
+- Bridge daemon: `$WILLOW_HOME/discord_remote.pid` / `$WILLOW_HOME/discord_remote.log`
+- Token: `DISCORD_BOT_TOKEN` in `$WILLOW_HOME/env`
 - Channel: `1509605940578615487`
 - Loop-prevention: bridge only forwards `hanuman`-sender Grove messages to Discord (not its own `discord-bridge` posts)
-- Claim file: `~/.willow/discord_claims.json` — shared by Claude Code and `willow_discord_responder.py`. First claimer wins; claims expire after 1 hour.
+- Claim file: `$WILLOW_HOME/discord_claims.json` — shared by Claude Code and `willow_discord_responder.py`. First claimer wins; claims expire after 1 hour.
 - Always-on fallback: `scripts/willow_discord_responder.py` (Ollama/llama3.1:8b) handles commands when no Claude Code session is live. Run as systemd service `willow-discord-responder.service`.

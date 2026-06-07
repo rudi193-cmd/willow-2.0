@@ -120,7 +120,7 @@ WILLOW_AGENTS_ROOT=
 
 ```bash
 cd ~/github/willow-2.0 && source ~/github/.willow/env
-./willow.sh agents check
+./willow.sh agents check --ide <surface>   # --ide all only when every IDE installed
 ./willow.sh verify
 systemctl --user is-active drop-server nest-watcher kart-worker grove-mcp willow-grove-listen
 ```

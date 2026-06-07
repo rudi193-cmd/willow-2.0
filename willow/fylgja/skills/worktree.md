@@ -25,7 +25,7 @@ fork_create(app_id="hanuman", title="<title>", created_by="hanuman", topic="<slu
 fork_log(fork_id=<fork_id>, component="git", type="branch", ref="feat/<slug>", app_id="hanuman")
 ```
 
-Check `~/.willow/session_anchor_${WILLOW_AGENT_NAME}.json` for an active `fork_id` before creating a new one.
+Check `$WILLOW_HOME/session_anchor_${WILLOW_AGENT_NAME}.json` for an active `fork_id` before creating a new one.
 Check open forks before starting: `fork_list(status="open", app_id="hanuman")`
 
 ## During work

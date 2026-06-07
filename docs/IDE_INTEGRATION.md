@@ -115,6 +115,8 @@ Path resolver: `willow/fylgja/willow_home.py` (`fleet_home`, `resolve_store_root
 | Codex CLI | `./willow.sh agents install <id> --ide codex` | `./willow.sh agents check --ide codex` |
 | Gemini CLI | Manual MCP fragment (see `GEMINI.md`) | — |
 
+Use `--ide <surface>` for the runtime you actually use. `--ide all` is **strict**: every IDE surface must be installed — it fails on Cursor-only machines missing Claude/Codex globals.
+
 `install_project` re-renders MCP JSON (including `GROVE_SENDER` / `GROVE_NAME`) and exports
 `$WILLOW_HOME/mcp/willow-2.0.mcp.json` on every install.
 
