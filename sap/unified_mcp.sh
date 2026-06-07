@@ -4,9 +4,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# Source local secrets (not tracked). Create ~/.willow/secrets.sh with:
+WILLOW_HOME="${WILLOW_HOME:-${HOME}/github/.willow}"
+
+# Source local secrets (not tracked). Create $WILLOW_HOME/secrets.sh with:
 #   export ANTHROPIC_API_KEY="sk-ant-..."
-if [[ -f "${HOME}/.willow/secrets.sh" ]]; then
+if [[ -f "${WILLOW_HOME}/secrets.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "${WILLOW_HOME}/secrets.sh"
+elif [[ -f "${HOME}/.willow/secrets.sh" ]]; then
     # shellcheck disable=SC1091
     source "${HOME}/.willow/secrets.sh"
 fi
@@ -14,7 +19,14 @@ GROVE_ROOT="${WILLOW_GROVE_ROOT:-${HOME}/github/safe-app-willow-grove}"
 
 export PYTHONPATH="${REPO_ROOT}:${GROVE_ROOT}"
 export WILLOW_ROOT="${REPO_ROOT}"
-export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-agent}"
+export WILLOW_HOME="${WILLOW_HOME}"
+ACTIVE_FILE="${REPO_ROOT}/.willow/active-agent"
+if [[ -z "${WILLOW_AGENT_NAME:-}" && -f "${ACTIVE_FILE}" ]]; then
+    WILLOW_AGENT_NAME="$(tr -d '[:space:]' < "${ACTIVE_FILE}")"
+fi
+export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
+export GROVE_SENDER="${GROVE_SENDER:-${WILLOW_AGENT_NAME}}"
+export GROVE_NAME="${GROVE_NAME:-${WILLOW_AGENT_NAME}}"
 export WILLOW_PG_DB="${WILLOW_PG_DB:-willow_20}"
 export WILLOW_PG_URL="${WILLOW_PG_URL:-postgresql://${USER:-$(id -un)}@localhost/${WILLOW_PG_DB}}"
 export MAI_SECURITY_CONFIG="${MAI_SECURITY_CONFIG:-${HOME}/.markdownai/security.json}"

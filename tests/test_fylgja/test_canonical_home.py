@@ -1,0 +1,112 @@
+import json
+from pathlib import Path
+
+from willow.fylgja.agents_cli import cmd_check
+from willow.fylgja.install_project import export_home_mcp, install_codex, render_mcp_config
+from willow.fylgja.willow_home import (
+    fleet_home,
+    resolve_secrets_path,
+    resolve_store_root,
+    willow_home,
+    willow_home_alias,
+)
+
+PACKAGE_ROOT = Path(__file__).parent.parent.parent
+
+
+def test_willow_home_resolvers(tmp_path, monkeypatch):
+    wh = tmp_path / "fleet"
+    wh.mkdir()
+    monkeypatch.setenv("WILLOW_HOME", str(wh))
+    monkeypatch.delenv("WILLOW_STORE_ROOT", raising=False)
+
+    assert willow_home() == wh.resolve()
+    assert fleet_home() == wh.resolve()
+    assert resolve_store_root() == wh / "store"
+    (wh / "secrets.sh").write_text("# test\n", encoding="utf-8")
+    assert resolve_secrets_path() == wh / "secrets.sh"
+    assert willow_home_alias() == Path.home() / ".willow"
+
+
+def test_render_mcp_includes_grove_fields(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    template = PACKAGE_ROOT / "willow" / "fylgja" / "config" / "mcp.template.json"
+    (repo / "willow" / "fylgja" / "config").mkdir(parents=True)
+    (repo / "willow" / "fylgja" / "config" / "mcp.template.json").write_bytes(
+        template.read_bytes()
+    )
+    env = render_mcp_config("hanuman", repo)["mcpServers"]["willow"]["env"]
+    assert env["GROVE_SENDER"] == "hanuman"
+    assert env["GROVE_NAME"] == "hanuman"
+
+
+def test_export_home_mcp_writes_fleet_copy(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    wh = tmp_path / ".willow"
+    monkeypatch.setenv("WILLOW_HOME", str(wh))
+    template = PACKAGE_ROOT / "willow" / "fylgja" / "config" / "mcp.template.json"
+    (repo / "willow" / "fylgja" / "config").mkdir(parents=True)
+    (repo / "willow" / "fylgja" / "config" / "mcp.template.json").write_bytes(
+        template.read_bytes()
+    )
+    config = render_mcp_config("willow", repo)
+    export_home_mcp("willow", repo, config, dry_run=False)
+    dest = wh / "mcp" / "willow-2.0.mcp.json"
+    assert dest.is_file()
+    data = json.loads(dest.read_text(encoding="utf-8"))
+    assert data["mcpServers"]["willow"]["env"]["GROVE_SENDER"] == "willow"
+
+
+def test_install_codex_sets_grove_fields(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    template = PACKAGE_ROOT / "willow" / "fylgja" / "config" / "codex-mcp.toml.template"
+    (repo / "willow" / "fylgja" / "config").mkdir(parents=True)
+    (repo / "willow" / "fylgja" / "config" / "codex-mcp.toml.template").write_bytes(
+        template.read_bytes()
+    )
+    monkeypatch.setenv("HOME", str(tmp_path))
+    install_codex("loki", repo, dry_run=False)
+    text = (tmp_path / ".codex" / "config.toml").read_text(encoding="utf-8")
+    assert 'GROVE_SENDER = "loki"' in text
+    assert 'GROVE_NAME = "loki"' in text
+
+
+def test_agents_check_cursor_skips_claude_global(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".willow").mkdir()
+    (repo / ".willow" / "active-agent").write_text("hanuman\n")
+    agent_cfg = repo / "agents" / "hanuman" / "config"
+    agent_cfg.mkdir(parents=True)
+    (agent_cfg / "identity.json").write_text('{"WILLOW_AGENT_NAME":"hanuman"}\n')
+    mcp = render_mcp_config("hanuman", PACKAGE_ROOT)
+    (agent_cfg / "mcp.json").write_text(json.dumps(mcp) + "\n")
+
+    for rel in (
+        "willow/fylgja/bin/fylgja-hook",
+        "willow/fylgja/config/kart-sandbox.json",
+        "willow/fylgja/config/cursor-hooks.json",
+    ):
+        src = PACKAGE_ROOT / rel
+        dst = repo / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(src.read_bytes())
+
+    (repo / ".cursor").mkdir()
+    (repo / ".cursor" / "hooks.json").symlink_to("../willow/fylgja/config/cursor-hooks.json")
+
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(
+        "willow.fylgja.agents_cli.collect_identity_matrix",
+        lambda _root: {"coherent": True, "drift": []},
+    )
+    monkeypatch.setattr(
+        "willow.fylgja.agents_cli._global_claude_has_fylgja_pre_tool",
+        lambda: False,
+    )
+    monkeypatch.setattr("core.kart_sandbox.bwrap_available", lambda: True)
+
+    assert cmd_check(repo, ides=["cursor"]) == 0

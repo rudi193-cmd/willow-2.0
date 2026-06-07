@@ -168,6 +168,7 @@
 | `.pre-commit-config.yaml` |
 | `.worktrees` |
 | `CHANGELOG.md` |
+| `CODEX.md` |
 | `CONTRIBUTING.md` |
 | `agents/heimdallr` |
 | `agents/loki` |
