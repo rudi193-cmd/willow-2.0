@@ -24,9 +24,22 @@ These run before your first turn via hooks:
 
 ---
 
-## Steps
+## Config mode
 
-Run in order. Parallelize where marked. If fleet is degraded after step 3, surface it and stop.
+`link_fleet_home` (or `bash setup.sh`) prints the active tier:
+
+| Mode | When | Boot behavior |
+|------|------|---------------|
+| `private-config` | `~/github/.willow/willow.md` present | Full fleet: KB, handoffs, Grove |
+| `public-fallback` | No private willow-config | Contract + skills + MCP template only |
+| `degraded` | MCP or Postgres unreachable after boot starts | Continue with local contract |
+
+In **public-fallback**: KB search, handoffs, and Grove are optional — not hard prerequisites.
+In **private-config**: Postgres down remains a hard stop (step 3).
+
+---
+
+## Steps
 
 **1. Contract**
 `mai_read_file("willow.md")` — load the fleet contract.
@@ -39,7 +52,7 @@ No full patch. No full diffs.
 **3. Fleet health** *(parallel with 4–6)*
 `fleet_status(app_id=<agent>)` — Postgres, SOIL, Ollama, manifests.
 `postgres` is a dict → up. Non-dict or timeout → probe directly.
-**Postgres down = hard stop.** Post to #general, stop.
+**Postgres down = hard stop in private-config mode.** In public-fallback, note degraded and continue.
 
 **4. Continuity** *(parallel with 3, 5–6)*
 `handoff_latest(app_id=<agent>)` — what was in flight, open threads, agreements.
@@ -158,7 +171,7 @@ Then respond to the user.
 ## Rules
 
 - MCP tools at every step. Standard tools only when MCP confirmed unavailable.
-- Postgres down = hard stop. Do not proceed.
+- Postgres down = hard stop in **private-config** only. Public-fallback may continue degraded.
 - Grove unavailable = degraded, not fatal. Continue.
 - Never report "postgres unknown" without probing first (step 3).
 - Compact summaries only — no full diffs, no full handoff content.

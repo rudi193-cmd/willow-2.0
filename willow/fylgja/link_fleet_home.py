@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
-"""Symlink fleet contract/config from ~/github/.willow (willow-config) into willow-2.0."""
+"""Symlink fleet contract/config from fleet home into willow-2.0."""
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 
 from willow.fylgja.project_env import repo_root
+from willow.fylgja.willow_home import (
+    config_mode,
+    fleet_home,
+    materialize_public_pack,
+)
 
 
 def _expand_example(text: str) -> str:
+    import os
+
     home = Path.home()
     return (
         text.replace("{{HOME}}", str(home))
@@ -17,10 +23,10 @@ def _expand_example(text: str) -> str:
     )
 
 
-def bootstrap_canonical(*, package_root: Path | None = None) -> None:
-    """Create ~/.willow contract files from repo templates when missing."""
+def bootstrap_private(*, package_root: Path | None = None) -> None:
+    """Create ~/.willow contract files from repo templates when missing (private mode)."""
     root = (package_root or repo_root()).resolve()
-    home = fleet_home()
+    home = fleet_home(package_root)
     home.mkdir(parents=True, exist_ok=True)
     cfg = root / "willow" / "fylgja" / "config"
 
@@ -40,14 +46,10 @@ def bootstrap_canonical(*, package_root: Path | None = None) -> None:
         print(f"[link_fleet_home] Created {settings_dst} via init_global_settings")
 
 
-def fleet_home() -> Path:
-    return Path(os.environ.get("WILLOW_HOME", Path.home() / "github" / ".willow"))
-
-
 def link_map(package_root: Path | None = None) -> list[tuple[Path, Path]]:
-    """(canonical in ~/github/.willow, consumer path in willow-2.0)"""
+    """(canonical in fleet home, consumer path in willow-2.0)"""
     root = (package_root or repo_root()).resolve()
-    home = fleet_home()
+    home = fleet_home(package_root)
     cfg = root / "willow" / "fylgja" / "config"
     return [
         (home / "willow.md", root / "willow.md"),
@@ -56,17 +58,35 @@ def link_map(package_root: Path | None = None) -> list[tuple[Path, Path]]:
     ]
 
 
-def link_fleet_home(*, package_root: Path | None = None, dry_run: bool = False) -> None:
-    if not dry_run:
-        bootstrap_canonical(package_root=package_root)
-    home = fleet_home()
+def ensure_fleet_home(*, package_root: Path | None = None, dry_run: bool = False) -> str:
+    root = (package_root or repo_root()).resolve()
+    mode = config_mode(root)
+    if mode == "public-fallback":
+        if not dry_run:
+            materialize_public_pack(package_root=root)
+        else:
+            materialize_public_pack(package_root=root, dry_run=True)
+    elif not dry_run:
+        bootstrap_private(package_root=root)
+    return config_mode(root)
+
+
+def link_fleet_home(*, package_root: Path | None = None, dry_run: bool = False) -> str:
+    root = (package_root or repo_root()).resolve()
+    mode = ensure_fleet_home(package_root=root, dry_run=dry_run)
+    home = fleet_home(package_root)
     home.mkdir(parents=True, exist_ok=True)
+
+    print(f"[link_fleet_home] config-mode: {mode} (home={home})")
+
     for src, dst in link_map(package_root):
         if not src.is_file():
-            raise FileNotFoundError(
-                f"canonical missing in willow-config home: {src} "
-                f"(clone/pull rudi193-cmd/willow-config → ~/.willow)"
+            hint = (
+                "public pack missing — check willow/fylgja/config/public/"
+                if mode == "public-fallback"
+                else "clone/pull rudi193-cmd/willow-config → ~/github/.willow"
             )
+            raise FileNotFoundError(f"canonical missing: {src} ({hint})")
         if dry_run:
             print(f"[link_fleet_home] Would symlink {dst} → {src}")
             continue
@@ -82,13 +102,24 @@ def link_fleet_home(*, package_root: Path | None = None, dry_run: bool = False) 
         dst.symlink_to(src)
         print(f"[link_fleet_home] {dst} → {src}")
 
+    return mode
+
 
 def _cli() -> int:
     p = argparse.ArgumentParser(
-        description="Link willow-2.0 contract paths → private ~/.willow (willow-config)"
+        description="Link willow-2.0 contract paths → fleet home (private or public fallback)"
     )
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument(
+        "--public",
+        action="store_true",
+        help="Force public-fallback (skip private willow-config home)",
+    )
     args = p.parse_args()
+    if args.public:
+        import os
+
+        os.environ["WILLOW_CONFIG_MODE"] = "public-fallback"
     link_fleet_home(dry_run=args.dry_run)
     return 0
 

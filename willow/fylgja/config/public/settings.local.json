@@ -1,0 +1,29 @@
+{
+  "env": {
+    "WILLOW_AGENT_NAME": "{{AGENT_NAME}}",
+    "AGENT_NAME": "{{AGENT_NAME}}"
+  },
+  "permissions": {
+    "allow": [
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Skill(*)",
+      "mcp__willow__fleet_status",
+      "mcp__willow__fleet_health",
+      "mcp__willow__fleet_tool_guide",
+      "mcp__willow__mai_read_file",
+      "mcp__willow__mai_write_file",
+      "mcp__willow__code_graph_search",
+      "mcp__willow__code_graph_suggest",
+      "mcp__willow__skill_list",
+      "mcp__willow__skill_load",
+      "mcp__willow__agent_task_submit",
+      "mcp__willow__kart_task_run"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["willow"]
+}
