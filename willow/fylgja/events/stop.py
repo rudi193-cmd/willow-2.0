@@ -581,6 +581,14 @@ def main():
     except Exception:
         pass
 
+    # BKT: record a successful shutdown outcome — one real data point per session.
+    # Wrapped so any import or SOIL failure never blocks the Stop hook.
+    try:
+        from core import skill_mastery as _sm
+        _sm.record("shutdown", correct=True)
+    except Exception:
+        pass
+
     # Fire slow path (affect tagging, 3b KB annotation, stack snapshot,
     # handoff_rebuild, kart drain) as a detached background process.
     _launch_slow_path(session_id)
