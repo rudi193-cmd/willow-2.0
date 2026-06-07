@@ -25,8 +25,8 @@ if [[ -z "${WILLOW_AGENT_NAME:-}" && -f "${ACTIVE_FILE}" ]]; then
     WILLOW_AGENT_NAME="$(tr -d '[:space:]' < "${ACTIVE_FILE}")"
 fi
 export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
-export GROVE_SENDER="${GROVE_SENDER:-${WILLOW_AGENT_NAME}}"
-export GROVE_NAME="${GROVE_NAME:-${WILLOW_AGENT_NAME}}"
+export GROVE_SENDER="${WILLOW_AGENT_NAME}"
+export GROVE_NAME="${WILLOW_AGENT_NAME}"
 export WILLOW_PG_DB="${WILLOW_PG_DB:-willow_20}"
 export WILLOW_PG_URL="${WILLOW_PG_URL:-postgresql://${USER:-$(id -un)}@localhost/${WILLOW_PG_DB}}"
 export MAI_SECURITY_CONFIG="${MAI_SECURITY_CONFIG:-${HOME}/.markdownai/security.json}"

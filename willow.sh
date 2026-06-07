@@ -51,8 +51,9 @@ if [[ -z "${WILLOW_AGENT_NAME:-}" && -f "${ACTIVE_AGENT_FILE}" ]]; then
     WILLOW_AGENT_NAME="$(tr -d '[:space:]' < "${ACTIVE_AGENT_FILE}")"
 fi
 export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
-export GROVE_SENDER="${GROVE_SENDER:-${WILLOW_AGENT_NAME}}"
-export GROVE_NAME="${GROVE_NAME:-${WILLOW_AGENT_NAME}}"
+# Fleet launcher follows active agent — do not inherit stale human Grove handles from profile.
+export GROVE_SENDER="${WILLOW_AGENT_NAME}"
+export GROVE_NAME="${WILLOW_AGENT_NAME}"
 
 # ── LLM provider keys — uncomment whichever is active ────────────────────────
 # export ANTHROPIC_API_KEY=""

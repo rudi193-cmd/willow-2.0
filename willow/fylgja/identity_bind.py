@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 
 from willow.fylgja.project_env import (
+    load_mcp_env,
     read_active_agent,
     repo_root,
     resolve_agent_name,
@@ -88,9 +89,13 @@ def collect_identity_matrix(repo: Path | None = None) -> dict:
     """Snapshot of identity signals for fleet_identity_status / agents check."""
     root = repo or repo_root()
     active = read_active_agent(root)
-    mcp_env = expected_agent_id()
+    process_agent = expected_agent_id()
     cursor_mcp = _cursor_mcp_agent(root)
     persona = _read_persona_overlay()
+    disk_mcp = load_mcp_env(root, active) if active else load_mcp_env(root)
+    disk_agent = disk_mcp.get("WILLOW_AGENT_NAME", "").strip()
+    disk_grove = disk_mcp.get("GROVE_SENDER", "").strip()
+    shell_grove = os.environ.get("GROVE_SENDER", "").strip()
 
     try:
         hook_agent = resolve_agent_name(root)
@@ -99,31 +104,47 @@ def collect_identity_matrix(repo: Path | None = None) -> dict:
 
     signals = {
         "active_agent": active,
-        "mcp_env_WILLOW_AGENT_NAME": mcp_env,
+        "mcp_env_WILLOW_AGENT_NAME": process_agent,
+        "mcp_disk_WILLOW_AGENT_NAME": disk_agent,
+        "mcp_disk_GROVE_SENDER": disk_grove,
         "cursor_mcp_WILLOW_AGENT_NAME": cursor_mcp,
         "hook_resolve_agent_name": hook_agent,
         "persona_overlay": persona,
-        "GROVE_SENDER": os.environ.get("GROVE_SENDER", "").strip(),
+        "GROVE_SENDER": shell_grove,
         "identity_bind_mode": identity_bind_mode(),
     }
 
-    canonical = active or mcp_env or hook_agent
+    canonical = active or disk_agent or cursor_mcp or process_agent or hook_agent
     drift: list[str] = []
-    if active and mcp_env and active != mcp_env:
-        drift.append(f"active-agent ({active}) != MCP env ({mcp_env})")
+    if active and disk_agent and active != disk_agent:
+        drift.append(f"active-agent ({active}) != agents/.../mcp.json ({disk_agent})")
     if active and cursor_mcp and active != cursor_mcp:
         drift.append(f"active-agent ({active}) != .cursor/mcp.json ({cursor_mcp})")
-    if mcp_env and cursor_mcp and mcp_env != cursor_mcp:
-        drift.append(f"MCP process env ({mcp_env}) != .cursor/mcp.json ({cursor_mcp})")
+    if disk_agent and cursor_mcp and disk_agent != cursor_mcp:
+        drift.append(f"agents/.../mcp.json ({disk_agent}) != .cursor/mcp.json ({cursor_mcp})")
     if hook_agent and active and hook_agent != active:
         drift.append(f"hook resolution ({hook_agent}) != active-agent ({active})")
-    grove_sender = signals["GROVE_SENDER"]
-    if mcp_env and grove_sender and grove_sender != mcp_env:
-        drift.append(f"GROVE_SENDER ({grove_sender}) != WILLOW_AGENT_NAME ({mcp_env})")
+    if disk_agent and disk_grove and disk_grove != disk_agent:
+        drift.append(
+            f"MCP config GROVE_SENDER ({disk_grove}) != WILLOW_AGENT_NAME ({disk_agent})"
+        )
+    if (
+        process_agent
+        and disk_agent
+        and process_agent != disk_agent
+        and os.environ.get("WILLOW_AGENT_NAME", "").strip()
+    ):
+        drift.append(f"shell WILLOW_AGENT_NAME ({process_agent}) != MCP on disk ({disk_agent})")
 
     signals["coherent"] = len(drift) == 0
     signals["drift"] = drift
     signals["canonical_agent"] = canonical
+    if shell_grove and disk_grove and shell_grove != disk_grove:
+        signals["shell_grove_stale"] = (
+            f"shell GROVE_SENDER ({shell_grove}) != MCP on disk ({disk_grove}) "
+            f"— run ./willow.sh agents install {disk_grove or active} --ide all "
+            f"or unset GROVE_SENDER in your profile"
+        )
     return signals
 
 
