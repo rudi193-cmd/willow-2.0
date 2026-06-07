@@ -19,6 +19,7 @@ from willow.fylgja.project_env import (
     repo_root,
     write_active_agent,
 )
+from willow.fylgja.willow_home import fleet_home, settings_template_path
 
 _PACKAGE_ROOT = Path(__file__).resolve().parent.parent.parent
 _ALL_IDES = ("cursor", "claude", "codex")
@@ -131,10 +132,6 @@ def write_agent_mcp(agent: str, package_root: Path, dry_run: bool) -> None:
     _write_json(cfg / "mcp.json", render_mcp_config(agent, package_root), dry_run)
 
 
-def fleet_home() -> Path:
-    return Path(os.environ.get("WILLOW_HOME", str(Path.home() / "github" / ".willow")))
-
-
 def canonical_local_settings(agent: str) -> Path:
     """Per-agent IDE local settings live under WILLOW_HOME, not in the repo."""
     return fleet_home() / "agents" / agent.strip().lower() / "settings.local.json"
@@ -143,7 +140,7 @@ def canonical_local_settings(agent: str) -> Path:
 def ensure_canonical_local_settings(agent: str, package_root: Path, dry_run: bool) -> Path:
     """Create or patch WILLOW_HOME/agents/<agent>/settings.local.json from repo template."""
     canon = canonical_local_settings(agent)
-    template = package_root / "willow" / "fylgja" / "config" / "settings.local.json"
+    template = settings_template_path(package_root)
     if dry_run:
         print(f"[install_project] Would ensure canonical {canon}")
         return canon
