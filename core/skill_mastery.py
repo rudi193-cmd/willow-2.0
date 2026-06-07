@@ -147,3 +147,33 @@ def weakest(n: int = 5, *, threshold: float | None = None) -> list[dict]:
     records.sort(key=lambda r: r.get("p_known", 1.0))
     return [{"skill_id": r.get("skill_id"), "mastery": r.get("p_known")}
             for r in records[:n]]
+
+
+# ── mastery-aware behaviour (#3) ──────────────────────────────────────────────
+
+_RISKY = ("medium", "high")
+_MASTERY_THRESHOLD = 0.95  # Corbett & Anderson's mastery bar
+
+
+def needs_scrutiny(skill_id: str, risk: str, *, threshold: float = _MASTERY_THRESHOLD) -> bool:
+    """True when a risky skill is not yet mastered → caller should add a confirm
+    step / extra review before running it.
+
+    risk: the catalog risk level ('low' | 'medium' | 'high'); passed in so this
+    module stays decoupled from the skill catalog. Mastery is read from SOIL; an
+    unseen risky skill (no record) is treated as unmastered → scrutiny.
+    """
+    if risk not in _RISKY:
+        return False
+    rec = mastery(skill_id)
+    p_known = float(rec.get("p_known", 0.0)) if rec else 0.0
+    return p_known < threshold
+
+
+def drills(n: int = 5, *, threshold: float = _MASTERY_THRESHOLD) -> list[dict]:
+    """The practice list: lowest-mastery skills still below the mastery bar.
+
+    BKT mirror of ACT-R decay surfacing stale atoms — thin alias over weakest()
+    with a mastery ceiling.
+    """
+    return weakest(n, threshold=threshold)

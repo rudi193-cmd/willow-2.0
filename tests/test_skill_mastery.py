@@ -139,3 +139,37 @@ class TestWeakest:
 
     def test_empty_store_returns_empty(self, sm):
         assert sm.weakest(5) == []
+
+
+# ── mastery-aware behaviour (#3) ──────────────────────────────────────────────
+
+class TestNeedsScrutiny:
+    def test_risky_unseen_skill_needs_scrutiny(self, sm):
+        # never practised → treated as unmastered
+        assert sm.needs_scrutiny("danger/skill", risk="high") is True
+
+    def test_risky_mastered_skill_clears(self, sm):
+        for _ in range(20):
+            sm.record("danger/skill", correct=True)
+        assert sm.needs_scrutiny("danger/skill", risk="high") is False
+
+    def test_low_risk_never_scrutinised(self, sm):
+        # even unmastered, a low-risk skill is not gated
+        assert sm.needs_scrutiny("safe/skill", risk="low") is False
+
+    def test_medium_risk_unmastered_needs_scrutiny(self, sm):
+        sm.record("mid/skill", correct=False)
+        assert sm.needs_scrutiny("mid/skill", risk="medium") is True
+
+
+class TestDrills:
+    def test_returns_below_threshold_ascending(self, sm):
+        sm.record("weak", correct=False)
+        for _ in range(20):
+            sm.record("strong", correct=True)
+        ids = [r["skill_id"] for r in sm.drills(5)]
+        assert "weak" in ids          # below the 0.95 bar
+        assert "strong" not in ids    # mastered, excluded
+
+    def test_empty_store_returns_empty(self, sm):
+        assert sm.drills() == []
