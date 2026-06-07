@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from willow.fylgja.willow_home import willow_home
+
 try:
     import psycopg2.extras as _pex
     _PG_AVAILABLE = True
@@ -32,7 +34,7 @@ def collect_dpo_pairs(bridge, store, output_dir: Optional[Path] = None,
     Returns count of pairs written. W19VH.
     """
     if output_dir is None:
-        output_dir = Path.home() / ".willow" / "valhalla"
+        output_dir = willow_home() / "valhalla"
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / "dpo_pairs.jsonl"
 

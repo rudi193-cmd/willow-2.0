@@ -23,11 +23,11 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
+from willow.fylgja.willow_home import willow_home
 
-_DB_PATH = Path(os.environ.get(
-    "WILLOW_SQLITE_PATH",
-    str(Path.home() / ".willow" / "willow.db")
-))
+
+def _default_db_path() -> Path:
+    return Path(os.environ.get("WILLOW_SQLITE_PATH", str(willow_home() / "willow.db"))).expanduser()
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS knowledge (
@@ -306,7 +306,7 @@ class SqliteBridge:
     """SQLite implementation of the PgBridge API."""
 
     def __init__(self, path: Optional[Path] = None):
-        self._path = path or _DB_PATH
+        self._path = path or _default_db_path()
         self.conn = _open_db(self._path)
         self._last_ingest_error = None
 

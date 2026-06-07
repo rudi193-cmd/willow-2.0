@@ -16,8 +16,9 @@ import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-STORE_ROOT = Path(os.environ.get("WILLOW_STORE_ROOT",
-                                  str(Path.home() / ".willow" / "store")))
+from willow.fylgja.willow_home import resolve_store_root
+
+STORE_ROOT = resolve_store_root()
 WILLOW_ROOT = Path(__file__).parent.parent
 
 # Ensure willow-2.0 is first on path — strip any willow-1.7 entries

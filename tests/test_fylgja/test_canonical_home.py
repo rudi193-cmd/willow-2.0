@@ -14,6 +14,14 @@ from willow.fylgja.willow_home import (
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
 
 
+def test_core_soil_store_respects_willow_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    monkeypatch.delenv("WILLOW_STORE_ROOT", raising=False)
+    from core.soil import _root
+
+    assert _root() == (tmp_path / "store").resolve()
+
+
 def test_fylgja_handoff_dir_respects_willow_home(tmp_path, monkeypatch):
     monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
     from willow.fylgja.handoff_write import handoff_dir

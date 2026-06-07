@@ -2,14 +2,15 @@
 b17: WDASH  ΔΣ=42
 """
 import json
-import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 
+from willow.fylgja.willow_home import resolve_store_root
+
 
 def _root() -> Path:
-    return Path(os.environ.get("WILLOW_STORE_ROOT", str(Path.home() / ".willow" / "store")))
+    return resolve_store_root()
 
 
 def _db(collection: str) -> Path:

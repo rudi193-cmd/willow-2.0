@@ -19,11 +19,13 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from willow.fylgja.willow_home import willow_home
+
 _ROOT = Path(__file__).parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-TOKEN_PATH = Path.home() / ".willow" / "grove_token"
+TOKEN_PATH = willow_home() / "grove_token"
 
 
 def load_token(path: Path = TOKEN_PATH) -> str:

@@ -12,7 +12,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-_SESSION_FILE = Path.home() / ".willow" / "grove_session.json"
+from willow.fylgja.willow_home import willow_home
+
+_SESSION_FILE = willow_home() / "grove_session.json"
 
 _DEFAULTS: dict[str, Any] = {
     "hard_close":    True,
