@@ -3628,6 +3628,7 @@ async def outcome_run(
     max_iterations: int = 3,
     title:          str = "",
     timeout_s:      int = 600,
+    skill_id:       str = "",
 ) -> dict:
     """Run an Outcomes flow against a registered Managed Agent.
 
@@ -3645,7 +3646,7 @@ async def outcome_run(
         return {"error": f"agent '{agent_name}' not registered — call outcome_agent_register first"}
 
     run_id = await loop.run_in_executor(
-        _executor, pg.outcome_run_create, agent["id"], prompt, rubric, max_iterations, app_id
+        _executor, pg.outcome_run_create, agent["id"], prompt, rubric, max_iterations, app_id, skill_id
     )
 
     try:
