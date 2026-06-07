@@ -21,10 +21,18 @@ from pathlib import Path
 
 from core.agent_identity import require_agent_name
 
-sys.path.insert(0, str(Path(__file__).parent))
+WILLOW_ROOT = Path(__file__).parent
+sys.path.insert(0, str(WILLOW_ROOT))
+
+from willow.fylgja.willow_home import resolve_store_root, willow_home
+
+
+def _fleet_home() -> Path:
+    return willow_home(WILLOW_ROOT)
+
 
 # ── Boot config ───────────────────────────────────────────────────────────────
-BOOT_CONFIG = Path.home() / ".willow" / "willow-boot.json"
+BOOT_CONFIG = _fleet_home() / "willow-boot.json"
 BOOT_LOG    = Path("/tmp/willow-boot-debug.log")
 
 
@@ -205,8 +213,7 @@ def check_environment() -> dict:
     else:
         results["SAFE"] = ("missing", safe_root)
 
-    store_root = Path(os.environ.get("WILLOW_STORE_ROOT",
-                      str(Path.home() / ".willow" / "store")))
+    store_root = resolve_store_root(WILLOW_ROOT)
     if store_root.exists():
         collections = list(store_root.rglob("store.db"))
         results["SOIL"] = ("ok", f"{len(collections)} collections")
@@ -337,8 +344,9 @@ def gpg_agent_has_key(fingerprint: str) -> bool:
 def _vault_init() -> bool:
     try:
         from cryptography.fernet import Fernet
-        key_path   = Path.home() / ".willow" / ".master.key"
-        vault_path = Path.home() / ".willow" / "vault.db"
+        home = _fleet_home()
+        key_path   = home / ".master.key"
+        vault_path = home / "vault.db"
         if not key_path.exists():
             key = Fernet.generate_key()
             key_path.write_bytes(key)
@@ -357,8 +365,9 @@ def _vault_init() -> bool:
 def _vault_write(name: str, env_key: str, value: str) -> bool:
     try:
         from cryptography.fernet import Fernet
-        key_path   = Path.home() / ".willow" / ".master.key"
-        vault_path = Path.home() / ".willow" / "vault.db"
+        home = _fleet_home()
+        key_path   = home / ".master.key"
+        vault_path = home / "vault.db"
         f   = Fernet(key_path.read_bytes().strip())
         enc = f.encrypt(value.encode())
         conn = sqlite3.connect(str(vault_path))
@@ -376,8 +385,9 @@ def _vault_write(name: str, env_key: str, value: str) -> bool:
 def _vault_has_key(name: str) -> bool:
     try:
         from cryptography.fernet import Fernet
-        key_path   = Path.home() / ".willow" / ".master.key"
-        vault_path = Path.home() / ".willow" / "vault.db"
+        home = _fleet_home()
+        key_path   = home / ".master.key"
+        vault_path = home / "vault.db"
         if not vault_path.exists() or not key_path.exists():
             return False
         f    = Fernet(key_path.read_bytes().strip())
@@ -578,7 +588,7 @@ _CORP_SCREENS = [
         "mission": [
             "Willow is a personal AI system that runs on your machine.",
             "Your knowledge lives at ~/SAFE/.",
-            "Your vault lives at ~/.willow/.",
+            "Your vault lives at $WILLOW_HOME.",
             "Delete the repo. Your data survives.",
         ],
     },
@@ -1476,7 +1486,7 @@ _FRANK_STEPS = [
         ],
         "install": [
             ("cryptography",       "Python encryption library (~5MB)"),
-            ("~/.willow/vault.db", "your encrypted credential store"),
+            ("$WILLOW_HOME/vault.db", "your encrypted credential store"),
         ],
         "post_beat": "Andvari curse assessment: NEGATIVE. Certification on file. Counter-signature from Loki: [ignored]. Expected.",
         "vault_action": "init",
