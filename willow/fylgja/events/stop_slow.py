@@ -20,6 +20,7 @@ from willow.fylgja.events.stop import (
     _write_reflection_atom,
     _promote_session_to_kb,
     _write_stack_snapshot,
+    _refresh_projects_atom,
     _drain_kart_queue,
     call,
 )
@@ -59,6 +60,12 @@ except Exception:
 try:
     if call is not None:
         call("handoff_rebuild", {"app_id": _AGENT}, timeout=30)
+except Exception:
+    pass
+
+# Refresh current-projects KB atom — keeps the responder grounded
+try:
+    _refresh_projects_atom(session_id)
 except Exception:
     pass
 

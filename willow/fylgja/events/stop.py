@@ -373,6 +373,53 @@ def _promote_session_to_kb(session_id: str, affect: str, session_traces: list) -
         pass
 
 
+def _refresh_projects_atom(session_id: str) -> None:
+    """Write/refresh the canonical current-projects KB atom at every session end.
+
+    Gives the Discord responder accurate, vocabulary-matched context so it
+    stops routing 'what are the open projects' to 3b with no KB grounding.
+    """
+    if call is None:
+        return
+    try:
+        h = call("handoff_latest", {"app_id": _AGENT}, timeout=8)
+        if not isinstance(h, dict):
+            return
+        threads = h.get("open_threads") or []
+        next_bite = h.get("next_bite", "")
+        agreements = h.get("agreements") or []
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        parts = [f"Willow 2.0 open projects as of {date}:\n"]
+        for t in threads[:8]:
+            parts.append(f"- {t}")
+        if next_bite:
+            parts.append(f"\nNext: {next_bite}")
+        if agreements and agreements[0]:
+            parts.append(f"\nRecent decision: {str(agreements[0])[:200]}")
+
+        content = "\n".join(parts).strip()
+        if not content:
+            return
+
+        call("intake_write", {
+            "app_id": _AGENT,
+            "title": f"Current open projects — Willow 2.0 fleet ({date})",
+            "content": content,
+            "source": f"stop_hook:session:{session_id[:8]}",
+            "tier": "canonical",
+            "confidence": 0.95,
+            "category": "project-state",
+            "keywords": [
+                "open projects", "what are you working on", "current work",
+                "active projects", "willow projects", "what is willow working on",
+            ],
+            "tags": ["projects", "fleet-state", "responder-grounding", "auto-refresh"],
+        }, timeout=10)
+    except Exception:
+        pass
+
+
 def _write_stack_snapshot(session_id: str) -> None:
     """Write authoritative open-state record to SOIL at every session end.
 
