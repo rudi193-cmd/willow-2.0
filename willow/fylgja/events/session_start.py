@@ -17,6 +17,7 @@ from willow.fylgja._grove import call as _grove_call
 from willow.fylgja._state import reset_turn_count
 from willow.fylgja.events._stack_snapshot import normalize_stack_record
 from willow.fylgja.project_env import repo_root
+from willow.fylgja.willow_home import willow_home
 
 try:
     from willow.context.dedup import reset_session as _dedup_reset
@@ -292,7 +293,7 @@ def _run_silent_startup(session_id: str = "") -> dict:
     Silent startup — 5 targeted MCP calls, writes session_anchor.json.
     Removed: fork_create, skill_load, knowledge_search, atoms/store, skills/store.
     """
-    anchor_dir = Path.home() / ".willow"
+    anchor_dir = willow_home()
     anchor_file = anchor_dir / f"session_anchor_{AGENT}.json"
     state_file = anchor_dir / f"anchor_state_{AGENT}.json"
 

@@ -135,8 +135,9 @@ def mcp_config_paths(repo: Path, agent: str = "") -> list[Path]:
         _add(agent_config_dir(repo, agent) / "mcp.json")
     _add(repo / ".mcp.json")
     _add(repo / ".cursor" / "mcp.json")
-    home_mcp = Path.home() / ".willow" / "mcp.json"
-    _add(home_mcp)
+    from willow.fylgja.willow_home import willow_home
+
+    _add(willow_home() / "mcp.json")
     return paths
 
 

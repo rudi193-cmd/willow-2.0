@@ -1,7 +1,7 @@
 """
 cross_runtime.py — Merge session metadata across Claude Code + Cursor runtimes.
 
-Reads ~/.willow/handoffs/cross-runtime.json (written by scripts/bridge_cross_runtime.py)
+Reads $WILLOW_HOME/handoffs/cross-runtime.json (written by scripts/bridge_cross_runtime.py)
 and returns a compact anchor block for session_start.
 """
 from __future__ import annotations
@@ -9,7 +9,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-BRIDGE_PATH = Path.home() / ".willow" / "handoffs" / "cross-runtime.json"
+from willow.fylgja.willow_home import willow_home
+
+BRIDGE_PATH = willow_home() / "handoffs" / "cross-runtime.json"
 
 
 def read_bridge() -> dict:

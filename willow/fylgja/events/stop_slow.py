@@ -78,7 +78,9 @@ except Exception:
 # Timing log
 _dur_ms = int((_time.monotonic() - _t0) * 1000)
 try:
-    _log_dir = Path.home() / ".willow" / "logs"
+    from willow.fylgja.willow_home import willow_home
+
+    _log_dir = willow_home() / "logs"
     _log_dir.mkdir(parents=True, exist_ok=True)
     with open(_log_dir / "hook_timing.jsonl", "a") as _f:
         _f.write(json.dumps({

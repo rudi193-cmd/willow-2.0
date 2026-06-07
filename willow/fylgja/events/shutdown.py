@@ -352,7 +352,9 @@ def run_atom_synthesis() -> None:
         from core.pg_bridge import PgBridge
 
         # Get last session marker
-        state_file = Path.home() / ".willow" / "atom_extraction_state.json"
+        from willow.fylgja.willow_home import willow_home
+
+        state_file = willow_home() / "atom_extraction_state.json"
         last_commit = None
         if state_file.exists():
             try:

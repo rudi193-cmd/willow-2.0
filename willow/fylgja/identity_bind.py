@@ -15,6 +15,7 @@ from willow.fylgja.project_env import (
     repo_root,
     resolve_agent_name,
 )
+from willow.fylgja.willow_home import willow_home
 
 
 def identity_bind_mode() -> str:
@@ -57,7 +58,7 @@ def check_app_id(app_id: str) -> tuple[str, str | None]:
 
 
 def _read_persona_overlay() -> str:
-    path = Path.home() / ".willow" / "willow-2.0-active-persona"
+    path = willow_home() / "willow-2.0-active-persona"
     if path.is_file():
         return path.read_text(encoding="utf-8").strip()
     return ""

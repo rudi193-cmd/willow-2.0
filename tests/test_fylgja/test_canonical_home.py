@@ -14,6 +14,13 @@ from willow.fylgja.willow_home import (
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
 
 
+def test_fylgja_handoff_dir_respects_willow_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
+    from willow.fylgja.handoff_write import handoff_dir
+
+    assert handoff_dir("hanuman") == (tmp_path / "handoffs" / "hanuman").resolve()
+
+
 def test_willow_home_resolvers(tmp_path, monkeypatch):
     wh = tmp_path / "fleet"
     wh.mkdir()

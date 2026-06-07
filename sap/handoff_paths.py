@@ -1,13 +1,9 @@
 """Resolve canonical handoff directories and SQLite index paths."""
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
-
-def willow_home() -> Path:
-    """USER root — WILLOW_HOME, else ~/github/.willow (matches root.willow_home)."""
-    return Path(os.environ.get("WILLOW_HOME", Path.home() / "github" / ".willow")).expanduser()
+from willow.fylgja.willow_home import fleet_home as willow_home
 
 
 def handoffs_root() -> Path:
@@ -31,7 +27,7 @@ def discover_handoff_dirs(agent: str) -> str:
         ]
     if not dirs:
         dirs = [str(root / agent)]
-    nest = Path.home() / ".willow" / "Nest" / agent
+    nest = willow_home() / "Nest" / agent
     if nest.is_dir() and str(nest) not in dirs:
         dirs.append(str(nest))
     return ":".join(dirs)
