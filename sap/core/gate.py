@@ -237,7 +237,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "fork_list", "fork_log", "fork_merge", "fork_status",
     }),
     "skill_manage": frozenset({
-        "skill_list", "skill_load", "skill_put",
+        "skill_list", "skill_load", "skill_put", "skill_mastery",
     }),
     "ledger_read_perm": frozenset({
         "ledger_read",

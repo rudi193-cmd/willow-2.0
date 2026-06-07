@@ -36,6 +36,12 @@ def test_skill_mastery_registered_in_skill_read():
     assert TOOL in gate.PERMISSION_GROUPS["skill_read"]
 
 
+def test_skill_mastery_registered_in_skill_manage():
+    # skill_manage holders (e.g. hanuman) must also reach skill_mastery without
+    # needing a separate skill_read permission in their manifest.
+    assert TOOL in gate.PERMISSION_GROUPS["skill_manage"]
+
+
 # ── permitted(): registered tool allowed, unregistered still denied ──────────
 
 class TestPermitted:
