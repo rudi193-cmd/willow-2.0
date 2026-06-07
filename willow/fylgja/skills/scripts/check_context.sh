@@ -14,9 +14,10 @@
 
 set -euo pipefail
 
+WILLOW_HOME="${WILLOW_HOME:-${HOME}/github/.willow}"
 AGENT="${WILLOW_AGENT_NAME:-hanuman}"
-ANCHOR_STATE="${HOME}/.willow/anchor_state_${AGENT}.json"
-SESSION_ANCHOR="${HOME}/.willow/session_anchor_${AGENT}.json"
+ANCHOR_STATE="${WILLOW_HOME}/anchor_state_${AGENT}.json"
+SESSION_ANCHOR="${WILLOW_HOME}/session_anchor_${AGENT}.json"
 
 # ---------------------------------------------------------------------------
 # Postgres check — takes priority over all context checks

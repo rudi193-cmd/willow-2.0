@@ -7,11 +7,15 @@ import os
 import sys
 from pathlib import Path
 
+REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO))
+from willow.fylgja.willow_home import willow_home
+
 HOME = Path.home()
 GITHUB = HOME / "github"
 CANON = GITHUB / "SAFE"
 LINK = HOME / "SAFE"
-REPO = GITHUB / "willow-2.0"
+_FLEET_HOME = willow_home(REPO)
 
 FAIL = 0
 
@@ -72,11 +76,11 @@ def main() -> int:
         else:
             bad(f"missing {p}")
 
-    env = read_env_file(HOME / "github" / ".willow" / "env")
+    env = read_env_file(_FLEET_HOME / "env")
     for key in ("WILLOW_SAFE_ROOT", "WILLOW_AGENTS_ROOT"):
         val = env.get(key, os.environ.get(key, ""))
         if not val:
-            warn(f"{key} not set in ~/.willow/env")
+            warn(f"{key} not set in $WILLOW_HOME/env")
             continue
         p = Path(val).expanduser()
         if not p.is_dir():
@@ -86,7 +90,7 @@ def main() -> int:
         else:
             ok(f"{key} → {p}")
 
-    settings = HOME / "github" / ".willow" / "settings.global.json"
+    settings = _FLEET_HOME / "settings.global.json"
     if settings.is_file():
         data = json.loads(settings.read_text(encoding="utf-8"))
         paths = data.get("paths", {})

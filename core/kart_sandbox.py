@@ -271,7 +271,9 @@ def kart_env(root: Path | None = None) -> dict[str, str]:
     # Supplement with fleet env file so API keys (ANTHROPIC_API_KEY, GROQ_API_KEY, …)
     # reach bwrap tasks even when the calling process (MCP server, kart worker) didn't
     # inherit them from the user's shell. os.environ values take priority.
-    _fleet_env_path = Path.home() / "github" / ".willow" / "env"
+    from willow.fylgja.willow_home import willow_home
+
+    _fleet_env_path = willow_home(repo) / "env"
     for k, v in _parse_fleet_env_file(_fleet_env_path, prefixes).items():
         if k not in env:
             env[k] = v

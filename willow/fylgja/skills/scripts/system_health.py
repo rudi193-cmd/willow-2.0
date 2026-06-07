@@ -26,9 +26,13 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(_REPO_ROOT))
+from willow.fylgja.willow_home import willow_home
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
-DEFAULT_WILLOW_DIR  = Path("~/.willow").expanduser()
+DEFAULT_WILLOW_DIR  = willow_home(_REPO_ROOT)
 DEFAULT_REPO_PATH   = Path(__import__("os").environ.get("WILLOW_ROOT", str(Path("~/github/willow-2.0").expanduser())))
 OLLAMA_HOST         = "127.0.0.1"
 OLLAMA_PORT         = 11434
