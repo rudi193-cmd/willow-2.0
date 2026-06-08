@@ -8,7 +8,7 @@ Type=simple
 EnvironmentFile=%h/github/.willow/drop.env
 Environment=WILLOW_ROOT=%h/github/willow-2.0
 Environment=PYTHONPATH=%h/github/willow-2.0
-ExecStart=%h/github/willow-2.0/.venv-dev/bin/python3 %h/github/willow-2.0/tools/drop_server.py
+ExecStart=%h/github/willow-2.0/willow.sh exec-python %h/github/willow-2.0/tools/drop_server.py
 StandardOutput=append:/tmp/drop-server.log
 StandardError=append:/tmp/drop-server.log
 Restart=on-failure
