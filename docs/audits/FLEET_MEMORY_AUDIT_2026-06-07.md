@@ -305,7 +305,7 @@ Post-repair verification:
 | C1 | Done | Fleet norn-pass + `intake_schedule_fleet` + metabolic promote |
 | C2 | Done | Binder → `public.edges` sync + backfill 292/292 |
 | C3 | Done | `knowledge_expand_neighbors` + `kb_search(expand_neighbors=True)` |
-| C4 | Done | Semantic default, noise/superseded filters |
+| C4 | Done | Semantic default, hybrid BM25+pgvector hot path, noise/superseded filters |
 | C5 | Done | Rich embedding text in `knowledge_put` |
 | C6 | Done | Canonical quality gate at ingest + norn-pass |
 | C7 | Done | `dream_check` boot step, `dream_schedule`, norn dream queue |
@@ -315,7 +315,7 @@ Post-repair verification:
 
 **Scripts:** `scripts/fleet_data_repair.py`, `scripts/seed_fleet_memory_atoms.py` (canonical Kart + edge-linking atoms for gold-set gaps).
 
-**Optional follow-up:** wire `willow/ranking/hybrid.py` on `kb_search` hot path (RRF exists in `knowledge_search_semantic`); ~106 NULL-tier atoms remain outside D5 scope.
+**Optional follow-up:** ~106 NULL-tier atoms remain outside D5 scope.
 
 ---
 

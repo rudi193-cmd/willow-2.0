@@ -916,7 +916,8 @@ async def kb_search(
     Returns atoms by title and summary. Search first — another agent may have already
     solved or decided this. Use kb_get to fetch the full atom.
     tier: filter to frontier|contested|canonical|superseded (omit for all tiers).
-    expand_neighbors: one-hop graph expansion via public.edges (default on)."""
+    expand_neighbors: one-hop graph expansion via public.edges (default on).
+    semantic=True uses the hybrid pgvector+BM25 RRF hot path when available."""
     logger.info("[w2] kb_search app_id=%s q=%r semantic=%s tier=%r", app_id, query, semantic, tier)
     if not pg:
         return _no_pg()
@@ -932,7 +933,7 @@ async def kb_search(
                 )
                 jeles    = pg.search_jeles_semantic(query, limit=limit // 2)
                 opus     = pg.search_opus_semantic(query, limit=limit // 2)
-                mode = "semantic"
+                mode = "hybrid" if any("_rrf_score" in row for row in knowledge[:3]) else "semantic"
             except Exception:
                 knowledge = pg.knowledge_search(
                     query, limit=limit, include_embedding=include_embedding,

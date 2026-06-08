@@ -1184,6 +1184,36 @@ class PgBridge:
             filters.append("(tier IS NULL OR tier != %s)")
             params.append("superseded")
 
+    def _knowledge_shape_rows(
+        self,
+        rows: list[dict],
+        *,
+        include_embedding: bool = False,
+        fields: Optional[list] = None,
+    ) -> list[dict]:
+        """Apply the same projection rules to in-process ranked rows."""
+        allowed = {
+            "id", "project", "agent", "domain", "valid_at", "invalid_at",
+            "created_at", "updated_at", "title", "summary", "content",
+            "source_type", "category", "tier", "confidence", "visit_count",
+            "weight", "last_visited", "fork_id", "embedding",
+        }
+        meta_prefixes = ("_",)
+        shaped: list[dict] = []
+        for row in rows:
+            if fields is None:
+                keep = {k for k in allowed if include_embedding or k != "embedding"}
+            else:
+                keep = {k for k in fields if k in allowed}
+                keep.add("id")
+                if include_embedding:
+                    keep.add("embedding")
+                else:
+                    keep.discard("embedding")
+            out = {k: v for k, v in row.items() if k in keep or k.startswith(meta_prefixes)}
+            shaped.append(out)
+        return shaped
+
     def knowledge_get(self, atom_id: str, include_invalid: bool = False,
                       include_embedding: bool = False,
                       fields: Optional[list] = None) -> Optional[dict]:
@@ -1299,6 +1329,28 @@ class PgBridge:
                                    tier: Optional[str] = None,
                                    exclude_search_noise: bool = True,
                                    exclude_superseded: bool = True) -> list:
+        try:
+            from willow.ranking.hybrid import hybrid_search
+
+            hybrid = hybrid_search(
+                query,
+                self,
+                project=project,
+                include_invalid=False,
+                limit=limit,
+                tier=tier,
+                exclude_search_noise=exclude_search_noise,
+                exclude_superseded=exclude_superseded,
+            )
+            if hybrid:
+                return self._knowledge_shape_rows(
+                    hybrid,
+                    include_embedding=include_embedding,
+                    fields=fields,
+                )[:limit]
+        except Exception:
+            pass
+
         vec = embed(query)
         if vec is None:
             raise EmbedDegradedError("embedder unavailable — keyword search only")
