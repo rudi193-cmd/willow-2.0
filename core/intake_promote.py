@@ -49,7 +49,7 @@ def fallback_route(rec: dict) -> str:
     return "binder_queue"
 
 
-def llm_route(rec: dict) -> tuple[str, float]:
+def llm_route(rec: dict) -> tuple[str, float, str]:
     from agents.orin.tasks import classify
 
     content = rec.get("content", "")[:800]
@@ -57,9 +57,10 @@ def llm_route(rec: dict) -> tuple[str, float]:
     r = result.get("result", {})
     category = r.get("category", "binder_queue")
     llm_conf = float(r.get("confidence", 0.0))
+    obligation = r.get("obligation", "none")
     if category not in ROUTE_CATEGORIES:
         category = "binder_queue"
-    return category, llm_conf
+    return category, llm_conf, obligation
 
 
 def promote_record(pg: PgBridge, rec: dict, tier: str, agent: str, dry_run: bool) -> bool:
@@ -148,9 +149,11 @@ def promote_agent(
             tier = fallback_route(rec)
         else:
             try:
-                tier, llm_conf = llm_route(rec)
+                tier, llm_conf, obligation = llm_route(rec)
                 if llm_conf < 0.55:
                     tier = "binder_queue"
+                if obligation and obligation != "none":
+                    rec.setdefault("extra", {})["obligation"] = obligation
             except Exception as exc:
                 log.warning("classify failed for %s: %s — fallback", rec_id, exc)
                 tier = fallback_route(rec)

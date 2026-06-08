@@ -103,31 +103,44 @@ def summarize(content: str, context: str = "") -> dict:
             "raw": raw}
 
 
+_OBLIGATION_VALUES = ["task", "decision", "reference", "fyi", "none"]
+
 def classify(content: str, categories: list[str], context: str = "") -> dict:
-    """Assign content to one of the provided categories with a confidence score."""
+    """Assign content to one of the provided categories with a confidence score.
+
+    Also extracts obligation — what the content wants from the reader.
+    result keys: category, confidence, reason, obligation.
+    """
     from sap.clients.professor_client import _ask_ollama
     cats = ", ".join(f'"{c}"' for c in categories)
+    obs = ", ".join(f'"{o}"' for o in _OBLIGATION_VALUES)
     system = (
         "You are a precise classifier. "
         "Respond ONLY with valid JSON, no prose. "
-        f'Format: {{"category": <one of [{cats}]>, "confidence": <0.0-1.0>, "reason": "..."}}'
+        f'Format: {{"category": <one of [{cats}]>, "confidence": <0.0-1.0>, "reason": "...", "obligation": <one of [{obs}]>}}'
     )
-    user = f"Classify the following text.\nCategories: [{cats}]\n\nText:\n{content}"
+    user = (
+        f"Classify the following text.\n"
+        f"Categories: [{cats}]\n"
+        f"Obligation: what does this content want from the reader? [{obs}]\n\n"
+        f"Text:\n{content}"
+    )
     if context:
         user = f"Context:\n{context}\n\n{user}"
     raw = _ask_ollama(MODEL, system, user) or ""
     parsed = _parse_json(raw)
     if isinstance(parsed, dict) and "category" in parsed:
+        parsed.setdefault("obligation", "none")
         return {"task": "classify", "result": parsed, "raw": raw}
     # Fallback: find a mentioned category
     for cat in categories:
         if cat.lower() in raw.lower():
             return {"task": "classify",
-                    "result": {"category": cat, "confidence": 0.5, "reason": raw[:200]},
+                    "result": {"category": cat, "confidence": 0.5, "reason": raw[:200], "obligation": "none"},
                     "raw": raw}
     return {"task": "classify",
             "result": {"category": categories[0] if categories else "unknown",
-                       "confidence": 0.1, "reason": "parse_failed"},
+                       "confidence": 0.1, "reason": "parse_failed", "obligation": "none"},
             "raw": raw, "parse_error": True}
 
 
