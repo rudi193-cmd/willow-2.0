@@ -12,7 +12,7 @@ Environment=GROVE_MCP_PORT=8765
 # Example: Environment=GROVE_MCP_URL=https://your-tunnel.ngrok-free.app
 # Override per-user via a drop-in: systemctl --user edit grove-mcp
 Environment=PYTHONPATH=%h/github/safe-app-willow-grove
-ExecStart=%h/github/willow-2.0/.venv-dev/bin/python3 -m grove.mcp_local --serve
+ExecStart=%h/github/willow-2.0/willow.sh exec-python -m grove.mcp_local --serve
 WorkingDirectory=%h/github/safe-app-willow-grove
 Restart=on-failure
 RestartSec=5

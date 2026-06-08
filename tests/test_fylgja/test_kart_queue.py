@@ -16,7 +16,7 @@ def test_prepare_task_command_script_body(tmp_path, monkeypatch):
     scripts.mkdir()
     monkeypatch.setattr(kart_queue, "kart_scripts_dir", lambda: scripts)
     cmd, path = prepare_task_command(script_body="print(42)\n")
-    assert cmd.startswith("python3 ")
+    assert cmd.startswith('"${WILLOW_PYTHON:-python3}" ')
     assert path is not None
     written = Path(path)
     assert written.parent == scripts
