@@ -4,6 +4,8 @@ Date: 2026-06-08
 Agent: hanuman  
 Mode: read-only audit, followed by facade implementation
 
+Related analysis: `docs/audits/AI_DEVELOPMENT_SOCIOTECHNICAL_ANALYSIS_2026-06-08.md`
+
 ## Executive Summary
 
 Willow's core plane is operational: Postgres KB, hybrid search, SOIL, Grove, Kart, FRANK ledger, Ollama, session indexing, code graph, handoffs, hooks, and the unified MCP all respond. The system is not missing power. It is carrying too much of that power in the default agent-facing surface.
