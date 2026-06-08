@@ -14,7 +14,8 @@ def test_redirect_ls_blocks_to_kart():
 
 def test_format_brief_two_lanes():
     assert "[WILLOW-LANES]" in format_brief()
-    assert "kart_task_run" in format_brief()
+    assert "willow_find" in format_brief()
+    assert "willow_run" in format_brief()
 
 
 def test_cheat_sheet_lists_groups():

@@ -158,6 +158,10 @@ _local_verify() {
   bash "${ROOT}/willow.sh" verify
 }
 
+_retrieval_gold() {
+  "${PYTHON}" scripts/retrieval_gold_check.py
+}
+
 echo "[comfort_check] mode=${MODE} root=${ROOT}"
 
 if [[ "${MODE}" == "ci" ]]; then
@@ -174,6 +178,7 @@ if [[ "${MODE}" == "local" ]]; then
   _run "home-symlinks" _local_symlinks
   _run "systemd-units" _local_systemd || true
   _run "agents-check" _agents_check
+  _run "retrieval-gold" _retrieval_gold
   _run "safe-verify" _local_verify
 else
   _run "agents-rails-ci" _agents_rails_ci

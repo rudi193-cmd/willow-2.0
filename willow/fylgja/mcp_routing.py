@@ -34,9 +34,10 @@ BASH_TO_MCP: list[tuple[str, str, str]] = [
 ]
 
 BRIEF_LINE = (
-    "[WILLOW-LANES] Data (KB/SOIL/fleet/handoff) → Willow MCP. "
-    "Execution (ls, git, pytest, pipelines) → agent_task_submit + kart_task_run — not agent Bash. "
-    "Python or nested quotes → script_body on agent_task_submit. "
+    "[WILLOW-LANES] Start: willow_status · willow_find · willow_remember · willow_run. "
+    "Data detail → kb/soil/handoff MCP. "
+    "Execution (ls, git, pytest, pipelines) → willow_run / Kart — not agent Bash. "
+    "Python or nested quotes → willow_run(script_body=...). "
     "Never psql/sqlite3 Willow stores from shell."
 )
 
@@ -61,16 +62,20 @@ def format_cheat_sheet(*, max_groups: int = 8) -> str:
             continue
         g = str(meta.get("group", "other"))
         by_group.setdefault(g, []).append(name)
-    prof = os.environ.get("WILLOW_MCP_PROFILE", "standard")
+    prof = os.environ.get("WILLOW_MCP_PROFILE", "core")
     lines = [
-        f"[WILLOW-LANES] profile={prof} · Data=MCP · Exec=Kart · catalog=fleet_tool_guide",
+        f"[WILLOW-LANES] profile={prof} · Start=willow_* facade · catalog=fleet_tool_guide",
     ]
-    for g in list(groups.keys())[:max_groups]:
+    group_order = list(groups.keys())
+    if "willow" in group_order:
+        group_order = ["willow"] + [g for g in group_order if g != "willow"]
+    for g in group_order[:max_groups]:
         examples = ", ".join(by_group.get(g, [])[:3])
         if examples:
             lines.append(f"  {g}: {examples}")
-    lines.append(f"  exec: ls/git/pytest → {_KART}")
-    lines.append("  data: listings of atoms → soil_list/app_list · fleet → fleet_status")
+    lines.append("  start: willow_status · willow_find · willow_remember · willow_run")
+    lines.append(f"  exec: ls/git/pytest → willow_run · {_KART}")
+    lines.append("  data: willow_find(scope=…) · fleet → willow_status")
     return "\n".join(lines)
 
 

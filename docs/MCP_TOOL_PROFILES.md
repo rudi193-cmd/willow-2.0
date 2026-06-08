@@ -25,13 +25,13 @@ Backend tools remain available for precise subsystem work; they are not the defa
 
 ## Fix: `WILLOW_MCP_PROFILE`
 
-Set in `sap/unified_mcp.sh` (default **`standard`**) or agent `mcp.json` env:
+Set in `sap/unified_mcp.sh` (default **`core`**) or agent `mcp.json` env:
 
 | Profile | ~Tools | Use when |
 |---------|--------|----------|
 | `minimal` | <25 | Facade + boot primitives — status, find, remember, run |
 | `core` | ~55 | Daily coding — facade + soil, ledger, mai write, Grove basics |
-| `standard` | 73 | Default — most fleet work without soul/workflow/rare mem |
+| `standard` | 73 | Broader fleet work without soul/workflow/rare mem |
 | `full` | 160 | Debugging, Jeles, workflows, routines, all grove watchers |
 
 Restart MCP / IDE after changing the profile.
