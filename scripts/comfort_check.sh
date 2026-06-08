@@ -20,6 +20,14 @@ PYTHON="${WILLOW_PYTHON:-}"
 if [[ -z "${PYTHON}" ]]; then
   if [[ -x "${ROOT}/.venv-dev/bin/python3" ]]; then
     PYTHON="${ROOT}/.venv-dev/bin/python3"
+  elif [[ -x "${HOME}/github/willow-2.0/.venv-dev/bin/python3" ]]; then
+    PYTHON="${HOME}/github/willow-2.0/.venv-dev/bin/python3"
+  elif [[ -x "${WILLOW_HOME:-${HOME}/github/.willow}/venv/bin/python3" ]]; then
+    PYTHON="${WILLOW_HOME:-${HOME}/github/.willow}/venv/bin/python3"
+  elif [[ -x "${HOME}/.willow/venv/bin/python3" ]]; then
+    PYTHON="${HOME}/.willow/venv/bin/python3"
+  elif [[ -x "${HOME}/.willow-venv/bin/python3" ]]; then
+    PYTHON="${HOME}/.willow-venv/bin/python3"
   else
     PYTHON="$(command -v python3)"
   fi
@@ -27,7 +35,7 @@ fi
 
 export WILLOW_ROOT="${WILLOW_ROOT:-${ROOT}}"
 export WILLOW_MCP_PROFILE="${WILLOW_MCP_PROFILE:-full}"
-export PYTHONPATH="${WILLOW_ROOT}:${PYTHONPATH:-}"
+export PYTHONPATH="${WILLOW_ROOT}:${WILLOW_ROOT}/core:${PYTHONPATH:-}"
 
 total_fail=0
 total_warn=0
@@ -110,11 +118,35 @@ _agents_rails_ci() {
   [[ "${issues}" -eq 0 ]]
 }
 
+_local_agent_bootstrap() {
+  mkdir -p .willow .cursor
+  local agent="${COMFORT_ACTIVE_AGENT:-hanuman}"
+  if [[ -f .willow/active-agent ]]; then
+    local current
+    current="$(tr -d '[:space:]' < .willow/active-agent)"
+    if [[ -n "${current}" && -f "agents/${current}/config/identity.json" ]]; then
+      agent="${current}"
+    fi
+  fi
+  if [[ ! -f "agents/${agent}/config/identity.json" ]]; then
+    agent="willow"
+  fi
+  echo "${agent}" > .willow/active-agent
+  if [[ ! -e .cursor/hooks.json && -f willow/fylgja/config/cursor-hooks.json ]]; then
+    ln -sf ../willow/fylgja/config/cursor-hooks.json .cursor/hooks.json
+  fi
+}
+
 _agents_check() {
-  _ci_stubs
-  export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-willow}"
+  _local_agent_bootstrap
+  local agent
+  agent="$(tr -d '[:space:]' < .willow/active-agent)"
+  export WILLOW_AGENT_NAME="${agent}"
+  export GROVE_SENDER="${agent}"
+  export GROVE_NAME="${agent}"
   cd "${ROOT}"
-  "${PYTHON}" -m willow.fylgja.agents_cli check
+  "${PYTHON}" -m willow.fylgja.install_project "${agent}" --ide cursor
+  "${PYTHON}" -m willow.fylgja.agents_cli check --ide cursor
 }
 
 _local_symlinks() {
@@ -150,6 +182,18 @@ _local_verify() {
   bash "${ROOT}/willow.sh" verify
 }
 
+_retrieval_gold() {
+  export PYTHONPATH="${WILLOW_ROOT}:${WILLOW_ROOT}/core:${PYTHONPATH:-}"
+  "${PYTHON}" "${ROOT}/scripts/retrieval_gold_check.py"
+}
+
+_health_report() {
+  export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/github/SAFE/Applications}"
+  export WILLOW_AGENTS_ROOT="${WILLOW_AGENTS_ROOT:-${HOME}/github/SAFE/Agents}"
+  export WILLOW_PGP_FINGERPRINT="${WILLOW_PGP_FINGERPRINT:-9B6F87BEB4AE56E23D3D055724AED1D0216053F5}"
+  "${PYTHON}" scripts/health_report.py
+}
+
 echo "[comfort_check] mode=${MODE} root=${ROOT}"
 
 if [[ "${MODE}" == "ci" ]]; then
@@ -166,6 +210,8 @@ if [[ "${MODE}" == "local" ]]; then
   _run "home-symlinks" _local_symlinks
   _run "systemd-units" _local_systemd || true
   _run "agents-check" _agents_check
+  _run "retrieval-gold" _retrieval_gold
+  _run "health-report" _health_report
   _run "safe-verify" _local_verify
 else
   _run "agents-rails-ci" _agents_rails_ci

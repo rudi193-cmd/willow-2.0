@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "description": "Fleet memory gold queries — regression gate for kb_search hybrid retrieval.",
+  "min_pass_ratio": 0.71,
+  "queries": [
+    {
+      "id": "open_projects_fleet",
+      "query": "open projects Willow fleet",
+      "expect_ids": ["FF2E4E49"],
+      "expect_title_contains": [],
+      "k": 5,
+      "semantic": true
+    },
+    {
+      "id": "bkt_boot_shutdown",
+      "query": "BKT boot shutdown wiring",
+      "expect_ids": ["7F7DD4E9"],
+      "expect_title_contains": [],
+      "k": 5,
+      "semantic": true
+    },
+    {
+      "id": "intake_norn_pass",
+      "query": "intake promotion norn-pass",
+      "expect_ids": ["1BFEE7D2"],
+      "expect_title_contains": [],
+      "k": 5,
+      "semantic": true
+    },
+    {
+      "id": "kart_stale_running",
+      "query": "Kart task queue stale running",
+      "expect_ids": [],
+      "expect_title_contains": ["Kart stale-running"],
+      "k": 5,
+      "semantic": true
+    },
+    {
+      "id": "discord_responder_kb",
+      "query": "Discord Grove responder KB grounding",
+      "expect_ids": ["C4283662"],
+      "expect_title_contains": [],
+      "k": 5,
+      "semantic": true
+    },
+    {
+      "id": "binder_public_edges",
+      "query": "edge linking pg_edge binder",
+      "expect_ids": [],
+      "expect_title_contains": ["Binder edges sync to public.edges"],
+      "k": 5,
+      "semantic": true
+    },
+    {
+      "id": "hns_design",
+      "query": "HNS Human Notification System",
+      "expect_ids": ["FF2E4E49"],
+      "expect_title_contains": [],
+      "k": 5,
+      "semantic": true
+    }
+  ]
+}

@@ -1,9 +1,8 @@
-@markdownai v1.0
-
 ---
 name: shutdown
 description: Graceful Willow 2.0 session close — audit KB, write handoff, run full pipeline
 ---
+@markdownai
 
 # /shutdown — Willow 2.0 Graceful Close
 
@@ -43,7 +42,7 @@ Stack position: this skill completes the **end-of-session persistence** layer. S
 
 5. **Run the close pipeline** — the Stop hook is now cleanup-only. Run the full pipeline explicitly:
    ```
-   Bash: PYTHONPATH="${WILLOW_ROOT:-$(pwd)}" "${WILLOW_ROOT:-$(pwd)}/.venv-dev/bin/python3" -m willow.fylgja.events.shutdown
+   Bash: "${WILLOW_ROOT:-$(pwd)}/willow.sh" exec-python -m willow.fylgja.events.shutdown
    ```
    **Pipeline stages:**
    - `mark_session_clean` — track successful session close

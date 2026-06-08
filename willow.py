@@ -18,21 +18,6 @@ if str(WILLOW_ROOT) not in sys.path:
 IS_WINDOWS: bool = sys.platform == "win32"
 IS_POSIX: bool = not IS_WINDOWS
 
-# ── Python interpreter (mirrors willow.sh resolution order) ──────────────────
-def _find_python() -> str:
-    if "WILLOW_PYTHON" in os.environ:
-        return os.environ["WILLOW_PYTHON"]
-    candidates = [
-        WILLOW_ROOT / ".venv-dev" / ("Scripts" if IS_WINDOWS else "bin") / ("python.exe" if IS_WINDOWS else "python3"),
-        Path.home() / ".willow-venv" / ("Scripts" if IS_WINDOWS else "bin") / ("python.exe" if IS_WINDOWS else "python3"),
-    ]
-    for c in candidates:
-        if c.is_file():
-            return str(c)
-    return sys.executable
-
-WILLOW_PYTHON = _find_python()
-
 
 def _willow_home_module():
     """Load willow_home without importing the willow package (this file shadows it)."""
@@ -45,6 +30,30 @@ def _willow_home_module():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+# ── Python interpreter (mirrors willow.sh resolution order) ──────────────────
+def _find_python() -> str:
+    if "WILLOW_PYTHON" in os.environ:
+        return os.environ["WILLOW_PYTHON"]
+    wh = _willow_home_module()
+    fleet = wh.willow_home(WILLOW_ROOT)
+    alias = wh.willow_home_alias()
+    bin_name = "Scripts" if IS_WINDOWS else "bin"
+    py_name = "python.exe" if IS_WINDOWS else "python3"
+    candidates = [
+        WILLOW_ROOT / ".venv-dev" / bin_name / py_name,
+        Path.home() / "github" / "willow-2.0" / ".venv-dev" / bin_name / py_name,
+        fleet / "venv" / bin_name / py_name,
+        alias / "venv" / bin_name / py_name,
+        Path.home() / ".willow-venv" / bin_name / py_name,
+    ]
+    for c in candidates:
+        if c.is_file():
+            return str(c)
+    return sys.executable
+
+WILLOW_PYTHON = _find_python()
 
 
 def _fleet_home() -> Path:

@@ -6,7 +6,7 @@ After=network.target postgresql.service willow-metabolic.socket
 Type=simple
 Environment=WILLOW_AGENT_NAME=orin
 EnvironmentFile=-%h/github/.willow/env
-ExecStart=%h/github/willow-2.0/.venv-dev/bin/python3 -m agents.orin.worker
+ExecStart=%h/github/willow-2.0/willow.sh exec-python -m agents.orin.worker
 WorkingDirectory=%h/github/willow-2.0
 Restart=on-failure
 RestartSec=10

@@ -13,7 +13,7 @@ Environment=WILLOW_ROOT=%h/github/willow-2.0
 Environment=PYTHONPATH=%h/github/willow-2.0
 Environment=WILLOW_AGENT_NAME=Auto
 Environment=GROVE_VERBOSE_CHANNELS=architecture
-ExecStart=%h/github/willow-2.0/.venv-dev/bin/python3 %h/github/willow-2.0/willow/grove_listen.py
+ExecStart=%h/github/willow-2.0/willow.sh exec-python %h/github/willow-2.0/willow/grove_listen.py
 StandardOutput=append:/tmp/grove-monitor.log
 StandardError=append:/tmp/grove-monitor.log
 Restart=on-failure
