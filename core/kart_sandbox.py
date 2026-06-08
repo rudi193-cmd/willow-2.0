@@ -138,13 +138,20 @@ def collect_bind_mounts(root: Path | None = None) -> list[tuple[Path, Path, bool
     for wt in _discover_worktree_targets(scan_roots):
         _add(wt, False)
 
-    # Python runtime paths for venv / psycopg2 inside bwrap
-    repo_venv = (repo / ".venv-dev") if repo else None
-    if repo_venv and repo_venv.is_dir():
-        _add(repo_venv, True)
-    home_venv = Path.home() / ".willow-venv"
-    if home_venv.is_dir() and (not repo_venv or home_venv.resolve() != repo_venv.resolve()):
-        _add(home_venv, True)
+    # Python runtime paths for Willow venvs / psycopg2 inside bwrap.
+    # Worktrees usually do not have .venv-dev, so bind every known venv candidate.
+    try:
+        from willow.fylgja.python_env import venv_candidates
+        for venv in venv_candidates(repo):
+            if venv.is_dir():
+                _add(venv, True)
+    except Exception:
+        repo_venv = (repo / ".venv-dev") if repo else None
+        if repo_venv and repo_venv.is_dir():
+            _add(repo_venv, True)
+        home_venv = Path.home() / ".willow-venv"
+        if home_venv.is_dir() and (not repo_venv or home_venv.resolve() != repo_venv.resolve()):
+            _add(home_venv, True)
     try:
         import psycopg2 as _pg2
 
@@ -283,13 +290,21 @@ def kart_env(root: Path | None = None) -> dict[str, str]:
         env["WILLOW_ROOT"] = str(repo.resolve())
         env["PYTHONPATH"] = str(repo.resolve())
 
-    venv_bin = None
-    if repo and (repo / ".venv-dev" / "bin").is_dir():
-        venv_bin = str(repo / ".venv-dev" / "bin")
-    elif (Path.home() / ".willow-venv" / "bin").is_dir():
-        venv_bin = str(Path.home() / ".willow-venv" / "bin")
-    if venv_bin and venv_bin not in env["PATH"]:
-        env["PATH"] = venv_bin + ":" + env["PATH"]
+    try:
+        from willow.fylgja.python_env import venv_bin_dirs, willow_python
+        env["WILLOW_PYTHON"] = willow_python(repo)
+        for bin_dir in reversed(venv_bin_dirs(repo)):
+            venv_bin = str(bin_dir)
+            if venv_bin not in env["PATH"].split(":"):
+                env["PATH"] = venv_bin + ":" + env["PATH"]
+    except Exception:
+        venv_bin = None
+        if repo and (repo / ".venv-dev" / "bin").is_dir():
+            venv_bin = str(repo / ".venv-dev" / "bin")
+        elif (Path.home() / ".willow-venv" / "bin").is_dir():
+            venv_bin = str(Path.home() / ".willow-venv" / "bin")
+        if venv_bin and venv_bin not in env["PATH"]:
+            env["PATH"] = venv_bin + ":" + env["PATH"]
 
     if "GIT_AUTHOR_NAME" not in env:
         try:

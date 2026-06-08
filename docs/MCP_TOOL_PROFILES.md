@@ -4,15 +4,34 @@ b17: MCPPRF · ΔΣ=42
 
 The unified `willow` MCP registers **~160 tools**. IDEs show all of them in the picker — too many for humans and models.
 
+## Start Here: Facade Tools
+
+Agents should reach for the `willow_*` facade first. These tools route to the older backend lanes while keeping the visible choice small.
+
+| Facade | Use when |
+|--------|----------|
+| `willow_status` | You need health, identity, app, or diagnostic status. |
+| `willow_find` | You need to find knowledge, state, messages, sessions, code, handoffs, or sources. |
+| `willow_remember` | You need to save an observation, note, task, context, journal entry, or decision. |
+| `willow_run` | You need to submit, run, list, or inspect Kart work. |
+| `willow_delegate` | You need to route or dispatch work to another agent. |
+| `willow_work` | You need to create, inspect, list, or log a bounded work unit. |
+| `willow_message` | You need to read, search, or send Grove messages. |
+| `willow_app` | You need SAFE app status or registration visibility. |
+| `willow_external` | You need cited external lookup or source-trail verification. |
+| `willow_code` | You need code graph search or file suggestions. |
+
+Backend tools remain available for precise subsystem work; they are not the default starting point.
+
 ## Fix: `WILLOW_MCP_PROFILE`
 
-Set in `sap/unified_mcp.sh` (default **`standard`**) or agent `mcp.json` env:
+Set in `sap/unified_mcp.sh` (default **`core`**) or agent `mcp.json` env:
 
 | Profile | ~Tools | Use when |
 |---------|--------|----------|
-| `minimal` | 10 | Boot only — status, handoff, kb search, grove inbox, kart |
-| `core` | 38 | Daily coding — soil, ledger, mai write, grove post |
-| `standard` | 73 | Default — most fleet work without soul/workflow/rare mem |
+| `minimal` | <25 | Facade + boot primitives — status, find, remember, run |
+| `core` | ~55 | Daily coding — facade + soil, ledger, mai write, Grove basics |
+| `standard` | 73 | Broader fleet work without soul/workflow/rare mem |
 | `full` | 160 | Debugging, Jeles, workflows, routines, all grove watchers |
 
 Restart MCP / IDE after changing the profile.
@@ -50,6 +69,7 @@ Disable `willow-full` in the IDE when not needed.
 
 | Prefix | Lane |
 |--------|------|
+| `willow_` | Canonical facade — start here |
 | `fleet_` `kb_` `soil_` `handoff_` `ledger_` | Data |
 | `agent_task_submit` `kart_task_run` | Execution (Kart) |
 | `grove_` | Messaging |

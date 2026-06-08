@@ -112,6 +112,9 @@ def render_mcp_config(agent: str, package_root: Path | None = None) -> dict:
                 merged_env[k] = v
     if isinstance(willow_env, dict):
         willow_env.update(merged_env)
+        willow_env["WILLOW_AGENT_NAME"] = agent
+        willow_env["GROVE_SENDER"] = agent
+        willow_env["GROVE_NAME"] = agent
 
     # Merge non-willow servers from an existing root .mcp.json file
     root_mcp = root / ".mcp.json"
