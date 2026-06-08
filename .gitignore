@@ -49,6 +49,10 @@ sap/log/*.md
 # RLM chunk state — ephemeral, never commit
 .claude/rlm_state/
 
+# Local app experiments (keep checkout, not version control)
+apps/star/
+willow/fylgja/skills/drafts/
+
 # Smart home — device credentials and runtime logs (never commit)
 apps/smart-home/keys.json
 apps/smart-home/devices.json
