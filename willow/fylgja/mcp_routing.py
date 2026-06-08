@@ -34,7 +34,7 @@ BASH_TO_MCP: list[tuple[str, str, str]] = [
 ]
 
 BRIEF_LINE = (
-    "[WILLOW-LANES] Start: willow_status · willow_find · willow_remember · willow_run. "
+    "[WILLOW-LANES] Start: willow_status · willow_attention · willow_find · willow_remember · willow_run. "
     "Data detail → kb/soil/handoff MCP. "
     "Execution (ls, git, pytest, pipelines) → willow_run / Kart — not agent Bash. "
     "Python or nested quotes → willow_run(script_body=...). "

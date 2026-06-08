@@ -40,6 +40,7 @@
 
   "tools": {
     "willow_status":       {"group": "willow", "tier": "minimal", "description": "Facade: answer 'is Willow healthy?' via fleet/app/identity/diagnostic status routes."},
+    "willow_attention":    {"group": "willow", "tier": "minimal", "description": "Facade: desk cockpit — inbox, open flags, nest backlog, kart queue, dream overdue."},
     "willow_find":         {"group": "willow", "tier": "minimal", "description": "Facade: find the thing across KB, SOIL state, handoffs, sessions, code, messages, external sources, or all."},
     "willow_remember":     {"group": "willow", "tier": "minimal", "description": "Facade: store an observation, note, task, decision, context, or journal entry in the right backend lane."},
     "willow_run":          {"group": "willow", "tier": "minimal", "description": "Facade: submit, run, list, or inspect local work through Kart."},

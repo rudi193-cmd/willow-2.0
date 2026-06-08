@@ -5162,6 +5162,22 @@ async def willow_status(app_id: str, level: str = "quick", target_app_id: str = 
 
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
+async def willow_attention(app_id: str, limit: int = 10) -> dict:
+    """Facade: what needs attention — inbox, flags, nest, kart, dream (desk cockpit)."""
+    from willow.fylgja.desk_attention import attention_as_dict, fetch_attention_summary
+
+    loop = asyncio.get_running_loop()
+    inbox = await loop.run_in_executor(_executor, _grove_inbox_simple, app_id, 0, limit)
+    summary = fetch_attention_summary(inbox=inbox)
+    return {
+        "facade": "willow_attention",
+        "summary": attention_as_dict(summary),
+        "headline": " · ".join(summary.lines),
+    }
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
 async def willow_find(
     app_id: str,
     query: str,

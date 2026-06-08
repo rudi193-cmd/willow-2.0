@@ -23,6 +23,7 @@ VALID_PROFILES = frozenset({"minimal", "core", "standard", "full"})
 # Always visible (every profile except nothing)
 _FACADE_MINIMAL = frozenset({
     "willow_status",
+    "willow_attention",
     "willow_find",
     "willow_remember",
     "willow_run",
