@@ -114,6 +114,7 @@
     "tension_scan":       {"group": "soul",   "description": "Scan KB atoms for semantic tensions or redundancies via nomic-embed + mistral:7b. write_kb=true saves findings as a tension atom."},
     "dream_check":        {"group": "soul",   "description": "Check whether AutoDream synthesis conditions are met."},
     "dream_run":          {"group": "soul",   "description": "Run AutoDream — tension scan → pattern synthesis via mistral:7b → dream KB atom. Call dream_check first unless force=true."},
+    "dream_schedule":     {"group": "soul",   "description": "Queue auto_dream.py as a Kart task. check_first skips unless dream_check says should_dream; call kart_task_run after."},
 
     "nest_scan":          {"group": "nest",   "description": "Scan the Nest intake queue for pending items."},
     "nest_queue":         {"group": "nest",   "description": "Add an item to the Nest intake queue."},
@@ -192,6 +193,7 @@
     "intake_list":        {"group": "intake", "tier": "standard", "description": "List pending (not yet promoted) intake records for an agent."},
     "intake_promote":     {"group": "intake", "tier": "standard", "description": "Run promote pass on pending intake — routes records to Jeles/schema."},
     "intake_schedule":    {"group": "intake", "tier": "standard", "description": "Queue promote_intake as a Kart task. Returns task_id; call kart_task_run after."},
+    "intake_schedule_fleet": {"group": "intake", "tier": "standard", "description": "Queue fleet-wide promote_intake (--fleet --all-files) as a Kart task. Returns task_id; call kart_task_run after."},
     "intake_write":       {"group": "intake", "tier": "standard", "description": "Write one annotated record to the unified intake layer."},
 
     "journal_read":       {"group": "journal","tier": "standard", "description": "Read journal entries. Filter by agent and/or session_id."},
