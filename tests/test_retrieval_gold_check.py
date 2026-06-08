@@ -1,22 +1,14 @@
 """tests/test_retrieval_gold_check.py — launcher shadow must not block willow.bench."""
 from __future__ import annotations
 
-import importlib.util
 import sys
-from pathlib import Path
+import types
 
 from core.launcher_shadow import clear_willow_launcher_shadow
 
-ROOT = Path(__file__).resolve().parents[1]
-
 
 def _inject_launcher_shadow() -> None:
-    launcher = ROOT / "willow.py"
-    spec = importlib.util.spec_from_file_location("willow", launcher)
-    assert spec is not None and spec.loader is not None
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules["willow"] = mod
-    spec.loader.exec_module(mod)
+    sys.modules["willow"] = types.ModuleType("willow")
 
 
 def _restore_willow_modules(saved: dict[str, object]) -> None:
