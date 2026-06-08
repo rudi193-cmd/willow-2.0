@@ -44,7 +44,7 @@ try:
 except Exception:
     pass
 
-# Promote session to KB (3b inference + kb_ingest)
+# Promote session summary (friction → intake; clean + rubric pass → KB)
 try:
     _promote_session_to_kb(session_id, affect, session_traces)
 except Exception:

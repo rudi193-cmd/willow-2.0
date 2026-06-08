@@ -136,6 +136,18 @@ jeles_atoms                     knowledge (main KB)
 
 **Jeles verification** (`agents/hanuman/bin/extract_jeles_corpus.py`): queries 14+ trusted academic sources per KB atom, runs infer_7b classify (corroborates / unrelated / contradicts), writes `jeles_relevance_score` + `jeles_citations` back into the atom's JSONB content field.
 
+**Fleet intake directories:** Every registered fleet agent has a staging dir at `~/github/.willow/intake/<agent>/`. Created idempotently on SessionStart and via `scripts/scaffold_fleet_intake_dirs.py`. Norn-pass (`promote_intake.py --fleet`) promotes all agents with pending JSONL records.
+
+**Promotion parity:**
+
+| Path | Behavior |
+|------|----------|
+| `intake_write` / `core/intake.py` | Annotated JSONL staging — default write path |
+| `promote_intake.py --fleet` | Fleet-wide norn-pass (also runs at end of metabolic/norn pass) |
+| `kb_ingest` | Direct KB write — use for rubric-passing summaries only |
+| Stop hook (`stop_slow`) | Friction sessions → intake; clean sessions → KB only if session quality gate passes |
+| `tier=canonical` | Requires provenance + minimum summary quality; failures route to Binder |
+
 ---
 
 ## Persistent memory

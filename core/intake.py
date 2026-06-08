@@ -108,6 +108,25 @@ def list_agents() -> list[str]:
     return sorted(d.name for d in root.iterdir() if d.is_dir())
 
 
+def ensure_fleet_intake_dirs(agents: Optional[list[str]] = None) -> list[str]:
+    """Create intake directories for fleet agents (idempotent).
+
+    Defaults to every name in core.safe_agents.FLEET_AGENTS.
+    Returns the agent names whose directories were ensured.
+    """
+    if agents is None:
+        from core.safe_agents import FLEET_AGENTS
+        agents = sorted(FLEET_AGENTS.keys())
+    ensured: list[str] = []
+    for agent in agents:
+        try:
+            _agent_dir(agent)
+            ensured.append(agent)
+        except Exception:
+            continue
+    return ensured
+
+
 def read_all_pending(agent: str) -> list[dict]:
     """All unprocessed records for an agent (every *.jsonl file)."""
     records: list[dict] = []

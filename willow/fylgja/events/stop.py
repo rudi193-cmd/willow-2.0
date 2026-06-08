@@ -329,8 +329,8 @@ def _infer_3b_summarize(content: str, timeout: int = 10) -> dict:
 
 
 def _promote_session_to_kb(session_id: str, affect: str, session_traces: list) -> None:
-    """Annotate session with llama3.2:3b and write one atom to the knowledge table."""
-    if call is None or not session_traces:
+    """Summarize session traces; friction → intake, rubric-passing clean → KB."""
+    if not session_traces:
         return
 
     trace_text = " | ".join(
@@ -353,22 +353,69 @@ def _promote_session_to_kb(session_id: str, affect: str, session_traces: list) -
     if not one_line:
         one_line = trace_text[:120]
 
+    title = f"session {session_id[:8]} · {affect}"
     tags = [affect, "session", _AGENT, f"session:{session_id[:8]}"]
-    confidence = 0.9 if affect == "clean" else 0.7
+    confidence = 0.9 if affect == "clean" else 0.65
+
+    from core.kb_quality import route_stop_session_memory
+
+    destination = route_stop_session_memory(
+        affect,
+        title=title,
+        summary=one_line,
+        source_id=session_id,
+        confidence=confidence,
+    )
+
+    payload = {
+        "title": title,
+        "summary": one_line,
+        "source_type": "hook_stop",
+        "source_id": session_id,
+        "category": "session",
+        "keywords": keywords,
+        "tags": tags,
+        "tier": "frontier",
+        "confidence": confidence,
+    }
 
     try:
-        call("kb_ingest", {
-            "app_id":      _AGENT,
-            "title":       f"session {session_id[:8]} · {affect}",
-            "summary":     one_line,
-            "source_type": "hook_stop",
-            "source_id":   session_id,
-            "category":    "session",
-            "keywords":    keywords,
-            "tags":        tags,
-            "tier":        "observed",
-            "confidence":  confidence,
-        }, timeout=12)
+        if destination == "kb" and call is not None:
+            call("kb_ingest", {"app_id": _AGENT, **payload}, timeout=12)
+            return
+    except Exception:
+        pass
+
+    try:
+        if call is not None:
+            call("intake_write", {
+                "app_id": _AGENT,
+                "title": title,
+                "content": one_line,
+                "source": f"hook_stop:{affect}:{session_id}",
+                "tier": "frontier",
+                "confidence": confidence,
+                "keywords": keywords,
+                "tags": tags,
+            }, timeout=10)
+            return
+    except Exception:
+        pass
+
+    try:
+        from core.intake import write as intake_write
+
+        intake_write(
+            content=one_line,
+            source=f"hook_stop:{affect}:{session_id}",
+            agent=_AGENT,
+            tier="frontier",
+            confidence=confidence,
+            keywords=keywords,
+            tags=tags,
+            title=title,
+            extra={"session_id": session_id, "affect": affect},
+        )
     except Exception:
         pass
 

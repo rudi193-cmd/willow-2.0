@@ -1,4 +1,8 @@
-from core.kb_quality import canonical_quality_check
+from core.kb_quality import (
+    canonical_quality_check,
+    route_stop_session_memory,
+    session_summary_quality_check,
+)
 from core.pg_bridge import PgBridge
 
 
@@ -58,6 +62,46 @@ def test_rich_embedding_text_includes_metadata_fields():
     assert "public.edges" in text
     assert "fleet-memory" in text
     assert "FLEET_MEMORY_AUDIT" in text
+
+
+def test_session_summary_quality_requires_provenance():
+    bad = session_summary_quality_check(
+        title="session abc123 · clean",
+        summary="short",
+        source_id="",
+        confidence=0.9,
+    )
+    assert bad["satisfied"] is False
+
+    good = session_summary_quality_check(
+        title="session abc123 · clean",
+        summary=(
+            "Closed BKT wiring PRs and tagged v2026.06.2 after CI passed on master."
+        ),
+        source_id="sess-abc123",
+        confidence=0.9,
+    )
+    assert good["satisfied"] is True
+
+
+def test_route_stop_session_memory_friction_to_intake():
+    assert route_stop_session_memory(
+        "friction",
+        title="session abc · friction",
+        summary="Repeated blocked bash attempts on shell work during the session.",
+        source_id="sess-1",
+        confidence=0.65,
+    ) == "intake"
+
+
+def test_route_stop_session_memory_clean_thin_to_intake():
+    assert route_stop_session_memory(
+        "clean",
+        title="session abc · clean",
+        summary="ok",
+        source_id="sess-1",
+        confidence=0.9,
+    ) == "intake"
 
 
 def test_ingest_atom_blocks_bad_canonical_before_write():

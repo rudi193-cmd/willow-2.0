@@ -77,3 +77,50 @@ def canonical_quality_check(
         "explanation": "canonical quality satisfied" if satisfied else ", ".join(flags),
     }
 
+
+def session_summary_quality_check(
+    *,
+    title: str,
+    summary: str,
+    source_id: str = "",
+    confidence: float | None = None,
+) -> dict[str, Any]:
+    """Lighter gate for hook_stop session summaries before direct kb_ingest."""
+    flags: list[str] = []
+    clean_summary = (summary or "").strip()
+    clean_title = (title or "").strip()
+
+    if len(clean_title) < 8:
+        flags.append("title_too_short")
+    if len(clean_summary) < 30 or len(clean_summary.split()) < 6:
+        flags.append("summary_too_thin")
+    if _PLACEHOLDER_RE.search(f"{clean_title}\n{clean_summary}"):
+        flags.append("placeholder_text")
+    if not source_id:
+        flags.append("missing_provenance")
+    try:
+        if confidence is not None and float(confidence) < 0.75:
+            flags.append("low_confidence")
+    except (TypeError, ValueError):
+        flags.append("invalid_confidence")
+
+    satisfied = not flags
+    return {
+        "satisfied": satisfied,
+        "flags": flags,
+        "explanation": "session summary quality satisfied" if satisfied else ", ".join(flags),
+    }
+
+
+def route_stop_session_memory(affect: str, *, title: str, summary: str, source_id: str, confidence: float) -> str:
+    """Return ``intake`` or ``kb`` for stop-hook session promotion."""
+    if affect == "friction":
+        return "intake"
+    quality = session_summary_quality_check(
+        title=title,
+        summary=summary,
+        source_id=source_id,
+        confidence=confidence,
+    )
+    return "kb" if quality["satisfied"] else "intake"
+
