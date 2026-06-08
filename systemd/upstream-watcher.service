@@ -1,0 +1,20 @@
+[Unit]
+Description=Hanuman upstream GitHub steward watcher
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+After=network-online.target postgresql.service grove-mcp.service grove-serve.service
+Wants=network-online.target grove-mcp.service grove-serve.service
+
+[Service]
+Type=simple
+Environment=WILLOW_PG_DB=willow_20
+Environment=WILLOW_PG_USER=%u
+Environment=WILLOW_ROOT=%h/github/willow-2.0
+Environment=WILLOW_AGENT_NAME=hanuman
+Environment=PYTHONPATH=%h/github/willow-2.0
+ExecStart=%h/github/willow-2.0/willow.sh exec-python %h/github/willow-2.0/agents/hanuman/bin/upstream_watcher.py watch
+WorkingDirectory=%h/github/willow-2.0
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target
