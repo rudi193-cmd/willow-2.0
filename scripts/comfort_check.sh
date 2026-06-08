@@ -162,6 +162,13 @@ _retrieval_gold() {
   "${PYTHON}" scripts/retrieval_gold_check.py
 }
 
+_health_report() {
+  export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/github/SAFE/Applications}"
+  export WILLOW_AGENTS_ROOT="${WILLOW_AGENTS_ROOT:-${HOME}/github/SAFE/Agents}"
+  export WILLOW_PGP_FINGERPRINT="${WILLOW_PGP_FINGERPRINT:-9B6F87BEB4AE56E23D3D055724AED1D0216053F5}"
+  "${PYTHON}" scripts/health_report.py
+}
+
 echo "[comfort_check] mode=${MODE} root=${ROOT}"
 
 if [[ "${MODE}" == "ci" ]]; then
@@ -179,6 +186,7 @@ if [[ "${MODE}" == "local" ]]; then
   _run "systemd-units" _local_systemd || true
   _run "agents-check" _agents_check
   _run "retrieval-gold" _retrieval_gold
+  _run "health-report" _health_report
   _run "safe-verify" _local_verify
 else
   _run "agents-rails-ci" _agents_rails_ci

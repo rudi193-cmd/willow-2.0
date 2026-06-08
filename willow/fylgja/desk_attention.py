@@ -82,7 +82,14 @@ def _kart_counts() -> tuple[int, int, int]:
 
 def _dream_due(agent: str = "") -> bool:
     try:
-        from sap import store
+        from willow_store import WillowStore
+        from willow.fylgja.willow_home import resolve_store_root
+
+        root = os.environ.get(
+            "WILLOW_STORE_ROOT",
+            str(resolve_store_root(Path(__file__).resolve().parents[2])),
+        )
+        store = WillowStore(root)
         who = (agent or os.environ.get("WILLOW_AGENT") or "willow").strip()
         dream_state = store.get(f"{who}/dream", "state") or {}
         if dream_state.get("locked"):
