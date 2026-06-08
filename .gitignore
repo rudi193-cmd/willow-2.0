@@ -27,6 +27,13 @@ willow/fylgja/config/settings.global.json
 .willow/store/
 .willow/*.db
 .willow/vault.db
+.willow/*.log
+.willow/*-watch-state.json
+.willow/.boot-complete
+.willow/active-agent
+.willow/provenance-scan.json
+.willow/fleet_gold_benchmark.json
+.mcp.json.bak
 
 # Runtime logs — generated at runtime, not for version control
 sap/log/*.jsonl

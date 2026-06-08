@@ -446,7 +446,7 @@ print('  The Einherjar grow stronger.')
 
     start-all)
         echo "Willow 2.0 — starting all services"
-        _services=(grove-mcp grove-serve journal-watcher journal-responder willow-dashboard willow-metabolic corpus-watcher)
+        _services=(grove-mcp grove-serve upstream-watcher journal-watcher journal-responder willow-dashboard willow-metabolic corpus-watcher)
         for svc in "${_services[@]}"; do
             if systemctl --user is-active --quiet "${svc}.service" 2>/dev/null; then
                 echo "  [✓] ${svc} already running"
@@ -462,7 +462,7 @@ print('  The Einherjar grow stronger.')
 
     stop-all)
         echo "Willow 2.0 — stopping all services"
-        _services=(willow-dashboard grove-mcp grove-serve journal-watcher journal-responder willow-metabolic corpus-watcher)
+        _services=(willow-dashboard upstream-watcher grove-mcp grove-serve journal-watcher journal-responder willow-metabolic corpus-watcher)
         for svc in "${_services[@]}"; do
             systemctl --user stop "${svc}.service" 2>/dev/null \
                 && echo "  [↓] ${svc} stopped" \
@@ -497,7 +497,7 @@ else:
             || echo "  [✗] ollama            unreachable"
 
         # Systemd user services
-        _services=(grove-mcp grove-serve journal-watcher journal-responder willow-dashboard willow-metabolic corpus-watcher)
+        _services=(grove-mcp grove-serve upstream-watcher journal-watcher journal-responder willow-dashboard willow-metabolic corpus-watcher)
         for svc in "${_services[@]}"; do
             if systemctl --user is-active --quiet "${svc}.service" 2>/dev/null; then
                 printf "  [\033[32m✓\033[0m] %-18s running\n" "${svc}"
