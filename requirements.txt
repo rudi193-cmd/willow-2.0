@@ -1,4 +1,4 @@
-setuptools>=68
+setuptools>=82.0.1
 psycopg2-binary>=2.9.12
 pgvector>=0.4.2
 cryptography>=48.0.0
