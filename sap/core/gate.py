@@ -118,10 +118,17 @@ def gate_hostname_detail() -> str:
     """
     return _DEV_HOSTNAME_CHECK
 
-_EXPECTED_FP = os.environ.get(
-    "WILLOW_PGP_FINGERPRINT",
-    "96B92D78875F60BE229A0A348F414B8C1B402BB0",
-).upper().replace(" ", "")
+_CANONICAL_PGP_FP = "9B6F87BEB4AE56E23D3D055724AED1D0216053F5"
+
+
+def _expected_pgp_fingerprint() -> str:
+    raw = (os.environ.get("WILLOW_PGP_FINGERPRINT") or "").strip()
+    if not raw:
+        raw = _CANONICAL_PGP_FP
+    return raw.upper().replace(" ", "")
+
+
+_EXPECTED_FP = _expected_pgp_fingerprint()
 
 _APP_ID_RE = _re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_\-]*$')
 
@@ -145,9 +152,11 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
     "postgres_read": frozenset({
         "kb_search", "kb_query", "kb_at", "kb_get",
         "fleet_agents", "fleet_status", "fleet_system_status",
-        "fleet_governance", "mem_check",
+        "fleet_identity_status", "fleet_governance", "mem_check",
         "handoff_latest", "handoff_search",
         "session_review", "session_query", "diagnostic_summary", "env_check",
+        "willow_status", "willow_attention", "willow_find",
+        "fleet_tool_guide",
     }),
     "skill_read": frozenset({
         "skill_list", "skill_load", "skill_mastery",
@@ -284,7 +293,9 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "intake_list",
         "kart_task_run",
         "kb_extract_from_session", "kb_intelligence_run", "kb_backup",
-        "fleet_system_status",
+        "fleet_system_status", "fleet_identity_status",
+        "willow_remember", "willow_run", "willow_delegate", "willow_work",
+        "willow_message", "willow_app", "willow_external", "willow_code",
     }),
     # Write tools added since knowledge_write was first cut.
     "knowledge_write_ext": frozenset({
