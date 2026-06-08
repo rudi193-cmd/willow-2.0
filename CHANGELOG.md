@@ -20,6 +20,20 @@ Patch release: fleet memory audit remediation (#247) and hybrid retrieval gold-q
 - **`app_status` MCP wiring** — inspect full command line so `bash -lc …unified_mcp.sh` apps (e.g. ask-jeles) no longer report `stale: -lc` (#248).
 - **CI** — close `PgBridge` in bitemporal test fixture to prevent pytest 3.11 coverage hang (#248).
 
+## [2026.06.2] - 2026-06-07
+
+Patch release: live docs alignment and Bayesian Knowledge Tracing (BKT) wiring across hooks, skill loading, and Outcomes API records (#240, #242–#246).
+
+### Added
+
+- **BKT priors and mastery gate** — seed priors script and `skill_mastery` integration in the skill management gate (#242).
+- **BKT hook wiring** — shutdown outcomes recorded from the Stop hook, boot outcomes recorded from the PostToolUse sentinel path, and Outcomes API terminal states recorded by `skill_id` (#243, #244, #246).
+- **Skill scrutiny gate** — `skill_load` annotates risky or low-mastery skills with `needs_scrutiny` (#245).
+
+### Changed
+
+- Live docs aligned with the `v2026.06.1` launcher and canonical fleet-home contract (#240).
+
 ## [2026.06.1] - 2026-06-07
 
 Patch release: canonical fleet-home remediation (#235), CI path-guard (#238), and fleet features landed since `v2026.06.0`.
