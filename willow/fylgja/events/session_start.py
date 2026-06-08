@@ -628,6 +628,13 @@ def main():
     except Exception:
         pass
 
+    # Ensure hook_registry has built-in hooks (edge_linking, stop_slow, shutdown, …)
+    try:
+        from willow.hooks.registry import seed_builtin_hooks
+        seed_builtin_hooks()
+    except Exception:
+        pass
+
     with _cf.ThreadPoolExecutor(max_workers=5) as ex:
         hw_future = ex.submit(_scan_hardware)
         startup_future = ex.submit(_run_silent_startup, session_id)

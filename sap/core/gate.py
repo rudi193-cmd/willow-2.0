@@ -204,7 +204,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "source_trail_verify",
     }),
     "intake": frozenset({
-        "intake_write", "intake_list", "intake_promote", "intake_schedule",
+        "intake_write", "intake_list", "intake_promote", "intake_schedule", "intake_schedule_fleet",
     }),
     "nest": frozenset({
         "nest_scan", "nest_queue", "nest_file",
@@ -257,7 +257,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "app_install", "app_uninstall", "app_list", "app_status",
     }),
     "soul": frozenset({
-        "tension_scan", "dream_check", "dream_run",
+        "tension_scan", "dream_check", "dream_run", "dream_schedule",
     }),
     "code_graph": frozenset({
         "code_graph_index", "code_graph_search", "code_graph_explain",
@@ -290,7 +290,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
     "knowledge_write_ext": frozenset({
         "pg_edge_add",
         "mem_binder_edge", "mem_binder_edge_update", "mem_binder_file",
-        "intake_promote", "intake_schedule",
+        "intake_promote", "intake_schedule", "intake_schedule_fleet",
         "kb_promote",
     }),
     "outcome_manage": frozenset({

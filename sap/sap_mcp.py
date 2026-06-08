@@ -906,15 +906,17 @@ async def kb_search(
     app_id:            str,
     query:             str,
     limit:             int  = 20,
-    semantic:          bool = False,
+    semantic:          bool = True,
     include_embedding: bool = False,
     fields:            list = None,
     tier:              str  = "",
+    expand_neighbors:  bool = True,
 ) -> dict:
     """Search Willow's Postgres knowledge graph before building anything.
     Returns atoms by title and summary. Search first — another agent may have already
     solved or decided this. Use kb_get to fetch the full atom.
-    tier: filter to frontier|contested|canonical|superseded (omit for all tiers)."""
+    tier: filter to frontier|contested|canonical|superseded (omit for all tiers).
+    expand_neighbors: one-hop graph expansion via public.edges (default on)."""
     logger.info("[w2] kb_search app_id=%s q=%r semantic=%s tier=%r", app_id, query, semantic, tier)
     if not pg:
         return _no_pg()
@@ -925,7 +927,8 @@ async def kb_search(
         if semantic:
             try:
                 knowledge = pg.knowledge_search_semantic(
-                    query, limit=limit, include_embedding=include_embedding, fields=fields
+                    query, limit=limit, include_embedding=include_embedding,
+                    fields=fields, tier=tier_filter,
                 )
                 jeles    = pg.search_jeles_semantic(query, limit=limit // 2)
                 opus     = pg.search_opus_semantic(query, limit=limit // 2)
@@ -946,6 +949,19 @@ async def kb_search(
             jeles = pg.jeles_keyword_search(query, limit=limit // 2)
             opus  = pg.search_opus(query, limit=limit // 2)
             mode = "keyword"
+
+        neighbors: list = []
+        if expand_neighbors and knowledge:
+            seed_ids = [a["id"] for a in knowledge[:10] if a.get("id")]
+            try:
+                neighbors = pg.knowledge_expand_neighbors(
+                    seed_ids, limit=max(5, limit // 3),
+                )
+            except Exception:
+                neighbors = []
+            seen = {a["id"] for a in knowledge if a.get("id")}
+            knowledge = knowledge + [n for n in neighbors if n.get("id") not in seen]
+
         for atom in knowledge[:3]:
             try:
                 pg.promote(atom["id"])
@@ -959,6 +975,7 @@ async def kb_search(
             "knowledge": knowledge,
             "jeles_atoms": jeles,
             "opus_atoms": opus,
+            "neighbors": neighbors,
             "total": len(knowledge) + len(jeles) + len(opus),
             "mode": mode,
         }
@@ -1553,15 +1570,17 @@ async def kart_task_run(
 @mcp.tool()
 @sap_gate(write=True)
 async def intake_schedule(
-    app_id:  str,
-    agent:   str = "",
-    days:    int = 7,
-    limit:   int = 0,
-    no_llm:  bool = True,
+    app_id:     str,
+    agent:      str = "",
+    days:       int = 7,
+    limit:      int = 0,
+    no_llm:     bool = True,
+    all_files:  bool = False,
 ) -> dict:
     """Queue a promote_intake run as a Kart task. Returns task_id.
     Call kart_task_run() afterwards to execute it, or let Kart poll automatically.
-    no_llm=True (default) uses fallback routing; False routes via orin (requires Ollama)."""
+    no_llm=True (default) uses fallback routing; False routes via orin (requires Ollama).
+    all_files=True scans every intake JSONL (not just the days window)."""
     logger.info("[w2] intake_schedule app_id=%s agent=%s days=%d", app_id, agent or app_id, days)
     if not pg:
         return _no_pg()
@@ -1574,6 +1593,42 @@ async def intake_schedule(
         cmd_parts = [sys.executable, script, f"--days={days}", f"--agent={target}"]
         if no_llm:
             cmd_parts.append("--no-llm")
+        if all_files:
+            cmd_parts.append("--all-files")
+        if limit:
+            cmd_parts.append(f"--limit={limit}")
+        cmd = " ".join(cmd_parts)
+        task_id = pg.submit_task(cmd, submitted_by=app_id, agent="kart")
+        if not task_id:
+            return {"error": "failed to submit task"}
+        return {"task_id": task_id, "status": "queued", "cmd": cmd}
+
+    return await loop.run_in_executor(_executor, _schedule)
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def intake_schedule_fleet(
+    app_id:     str,
+    days:       int = 7,
+    limit:      int = 0,
+    no_llm:     bool = True,
+    all_files:  bool = True,
+) -> dict:
+    """Queue a fleet-wide promote_intake run as a Kart task (--fleet --all-files)."""
+    logger.info("[w2] intake_schedule_fleet app_id=%s days=%d all_files=%s", app_id, days, all_files)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+
+    def _schedule():
+        import sys
+        script = str(_SAP_ROOT.parent / "scripts" / "promote_intake.py")
+        cmd_parts = [sys.executable, script, "--fleet", f"--days={days}"]
+        if no_llm:
+            cmd_parts.append("--no-llm")
+        if all_files:
+            cmd_parts.append("--all-files")
         if limit:
             cmd_parts.append(f"--limit={limit}")
         cmd = " ".join(cmd_parts)
@@ -2394,106 +2449,28 @@ async def intake_list(
 @mcp.tool()
 @sap_gate(write=True)
 async def intake_promote(
-    app_id:  str,
-    agent:   str = "",
-    days:    int = 7,
-    limit:   int = 0,
-    no_llm:  bool = True,
+    app_id:     str,
+    agent:      str = "",
+    days:       int = 7,
+    limit:      int = 0,
+    no_llm:     bool = True,
+    all_files:  bool = False,
 ) -> dict:
     """Run the fallback-routing promote pass on pending intake records.
     Routes each record to jeles_atoms / knowledge / opus / binder_queue based on
     tier + confidence. no_llm=True (default) uses deterministic routing only.
-    For LLM-assisted routing run promote_intake.py directly."""
+    all_files=True scans every intake JSONL (not just the days window)."""
     logger.info("[w2] intake_promote app_id=%s agent=%s days=%d limit=%d", app_id, agent or app_id, days, limit)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
 
     def _promote():
-        from core.intake import read_pending, mark_promoted
-
-        _VERIFIED_MIN = 0.95
-        _FETCHED_MIN  = 0.85
-        _OBSERVED_MIN = 0.85
-
-        def _fallback_route(rec: dict) -> str:
-            tier       = rec.get("tier", "observed")
-            confidence = float(rec.get("confidence", 0.0))
-            source     = rec.get("source", "")
-            if tier in ("verified", "ratified", "canonical"):
-                return "knowledge" if confidence >= _VERIFIED_MIN else "binder_queue"
-            if tier in ("fetched",):
-                return "jeles_atoms" if confidence >= _FETCHED_MIN else "binder_queue"
-            if tier in ("observed", "frontier"):
-                if any(k in source for k in ("opus", "feedback", "reasoning")):
-                    return "opus" if confidence >= _OBSERVED_MIN else "binder_queue"
-                return "knowledge" if confidence >= _OBSERVED_MIN else "binder_queue"
-            return "binder_queue"
-
-        target  = agent or app_id
-        records = read_pending(target, days=days)
-        if limit:
-            records = records[:limit]
-
-        routed   = {"jeles_atoms": 0, "knowledge": 0, "opus": 0, "binder_queue": 0}
-        promoted = 0
-        failed   = 0
-
-        for rec in records:
-            rec_id  = rec.get("id", "")
-            content = rec.get("content", "")
-            title   = rec.get("title", "") or content[:80]
-            rec_agent = rec.get("agent", target)
-            tier    = _fallback_route(rec)
-
-            try:
-                ok = False
-                if tier == "jeles_atoms":
-                    jid = rec.get("extra", {}).get("jeles_session_id", rec_id) if isinstance(rec.get("extra"), dict) else rec_id
-                    result = pg.jeles_extract_atom(
-                        agent=rec_agent, jsonl_id=jid, content=content,
-                        domain=(rec.get("extra") or {}).get("domain", "meta"),
-                        certainty=float(rec.get("confidence", 0.90)), title=title or None,
-                    )
-                    ok = "id" in result
-                elif tier == "knowledge":
-                    atom_id = pg.ingest_atom(
-                        title=title, summary=content, source_type="intake",
-                        source_id=rec_id,
-                        category=(rec.get("extra") or {}).get("category", "general"),
-                        domain=(rec.get("extra") or {}).get("domain", ""),
-                    )
-                    ok = bool(atom_id)
-                elif tier == "opus":
-                    atom_id = pg.ingest_opus_atom(
-                        content=content,
-                        domain=(rec.get("extra") or {}).get("domain", "meta"),
-                    )
-                    ok = bool(atom_id)
-                elif tier == "binder_queue":
-                    result = pg.jeles_register_jsonl(
-                        agent=rec_agent,
-                        jsonl_path=str(_fleet_home() / "intake" / rec_agent),
-                        session_id=f"binder-{rec_id}",
-                        cwd="",
-                        file_size=len(content),
-                    )
-                    ok = "id" in result
-
-                routed[tier] += 1
-                if ok:
-                    mark_promoted(target, rec_id, tier)
-                    promoted += 1
-                else:
-                    failed += 1
-            except Exception as e:
-                failed += 1
-                logger.warning("[w2] intake_promote failed for %s: %s", rec_id, e)
-
-        return {
-            "promoted": promoted, "failed": failed,
-            "routed": routed, "agent": target,
-        }
+        from core.intake_promote import promote_agent
+        return promote_agent(
+            pg, agent or app_id,
+            days=days, all_files=all_files, no_llm=no_llm, limit=limit,
+        )
 
     return await loop.run_in_executor(_executor, _promote)
 
@@ -3114,55 +3091,8 @@ async def dream_check(app_id: str) -> dict:
     loop = asyncio.get_running_loop()
 
     def _check():
-        from datetime import datetime, timezone
-
-        dream_state = store.get(f"{app_id}/dream", "state") or {}
-        if dream_state.get("locked"):
-            return {"should_dream": False, "locked": True, "reason": "dream already running"}
-
-        now = datetime.now(timezone.utc)
-        last_str = dream_state.get("last_dream_at", "")
-        hours_elapsed = 999.0
-        if last_str:
-            try:
-                last = datetime.fromisoformat(last_str)
-                if last.tzinfo is None:
-                    last = last.replace(tzinfo=timezone.utc)
-                hours_elapsed = (now - last).total_seconds() / 3600
-            except Exception:
-                pass
-
-        sessions_since = 0
-        if pg is not None:
-            try:
-                pg._ensure_conn()
-                with pg.conn.cursor() as cur:
-                    if last_str:
-                        cur.execute(
-                            "SELECT COUNT(*) FROM willow.runs WHERE initiator=%s AND started_at > %s",
-                            (app_id, last_str),
-                        )
-                    else:
-                        cur.execute(
-                            "SELECT COUNT(*) FROM willow.runs WHERE initiator=%s", (app_id,),
-                        )
-                    row = cur.fetchone()
-                    sessions_since = row[0] if row else 0
-            except Exception:
-                sessions_since = dream_state.get("sessions_since_dream", 0)
-
-        should_dream = hours_elapsed >= 24 and sessions_since >= 5
-        return {
-            "should_dream":         should_dream,
-            "hours_since_dream":    round(hours_elapsed, 1),
-            "sessions_since_dream": sessions_since,
-            "last_dream_at":        last_str or None,
-            "reason": (
-                f"{hours_elapsed:.1f}h elapsed, {sessions_since} sessions since last dream"
-                if should_dream
-                else f"conditions not met: {hours_elapsed:.1f}h / 24h, {sessions_since} / 5 sessions"
-            ),
-        }
+        from core.dream_state import dream_conditions
+        return dream_conditions(app_id, store, pg=pg)
 
     return await loop.run_in_executor(_executor, _check)
 
@@ -3312,6 +3242,36 @@ async def dream_run(app_id: str, force: bool = False) -> dict:
             return {"error": str(e)}
 
     return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def dream_schedule(
+    app_id: str,
+    force: bool = False,
+    check_first: bool = True,
+) -> dict:
+    """Queue AutoDream (auto_dream.py) as a Kart task. Returns task_id.
+    check_first=True (default) skips queue unless dream_check says should_dream.
+    Call kart_task_run() afterwards or let Kart poll. Requires Ollama (# allow_net)."""
+    logger.info("[w2] dream_schedule app_id=%s force=%s check_first=%s", app_id, force, check_first)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+
+    def _schedule():
+        from core.dream_state import dream_conditions, queue_dream_task
+
+        if check_first and not force:
+            check = dream_conditions(app_id, store, pg=pg)
+            if not check.get("should_dream"):
+                return {"status": "skipped", "dream_check": check}
+        task_id = queue_dream_task(pg, app_id, submitted_by=app_id, force=force)
+        if not task_id:
+            return {"error": "failed to submit task"}
+        return {"task_id": task_id, "status": "queued", "app_id": app_id, "force": force}
+
+    return await loop.run_in_executor(_executor, _schedule)
 
 
 # ── Tools — intelligence passes (P4.1/P4.2/P4.3) ─────────────────────────────
