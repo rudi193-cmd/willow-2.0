@@ -68,7 +68,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [ngrok/ngrok-python](https://github.com/ngrok/ngrok-python) | ngrok | fix: update type hints to reflect awaitable return types for module methods | [PR #160](https://github.com/ngrok/ngrok-python/pull/160) open |
 | [ngrok/ngrok-python](https://github.com/ngrok/ngrok-python) | ngrok | feat: add `--log-level` parameter to `ngrok.__main__` | [PR #159](https://github.com/ngrok/ngrok-python/pull/159) open |
 | [modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk) | modelcontextprotocol | fix(client): propagate transport exceptions in default message handler | [PR #2640](https://github.com/modelcontextprotocol/python-sdk/pull/2640) open |
-| [liatrio-labs/claude-deep-review](https://github.com/liatrio-labs/claude-deep-review) | liatrio-labs | feat: standalone finding deduplication module + cross-session persistence | [PR #5](https://github.com/liatrio-labs/claude-deep-review/pull/5) open |
+| [liatrio-labs/claude-deep-review](https://github.com/liatrio-labs/claude-deep-review) | liatrio-labs | refactor: extract dedup_by_id from merge_findings into standalone module | [PR #5](https://github.com/liatrio-labs/claude-deep-review/pull/5) open |
 | [voidcraft-labs/commcare-nova](https://github.com/voidcraft-labs/commcare-nova) | voidcraft-labs | fix(mcp): sanitize Long-like values before Firestore writes | [PR #57](https://github.com/voidcraft-labs/commcare-nova/pull/57) closed |
 | [openclaw/openclaw](https://github.com/openclaw/openclaw) | openclaw | fix(memory): do not filter FTS keyword search by embedding model (#48300) | [PR #90165](https://github.com/openclaw/openclaw/pull/90165) closed |
 | [ogham-mcp/ogham-mcp](https://github.com/ogham-mcp/ogham-mcp) | ogham-mcp | feat: Memory Tool 6-op conformance CI (#52) | [PR #53](https://github.com/ogham-mcp/ogham-mcp/pull/53) closed |
@@ -107,7 +107,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) | punkpeye | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #4991](https://github.com/punkpeye/awesome-mcp-servers/pull/4991) closed |
 | [RyjoxTechnologies/Octopoda-OS](https://github.com/RyjoxTechnologies/Octopoda-OS) | RyjoxTechnologies | feat(brain): add DarkRadar fifth signal to BrainHub | [PR #1](https://github.com/RyjoxTechnologies/Octopoda-OS/pull/1) closed |
 | [openclaw/openclaw](https://github.com/openclaw/openclaw) | openclaw | feat(skill): add willow-memory-health ClawHub skill | [PR #67789](https://github.com/openclaw/openclaw/pull/67789) closed |
-| [unslothai/unsloth](https://github.com/unslothai/unsloth) | Daniel Han | Yggdrasil SFT+DPO recipe | [Discussion #5139](https://github.com/unslothai/unsloth/discussions/5139) |
 
 
 ## Contributors to Willow
