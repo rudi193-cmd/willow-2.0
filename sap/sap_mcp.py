@@ -281,7 +281,7 @@ def _startup_backfill_check() -> None:
             existing = cur.fetchone()
         if not existing:
             script = _SAP_ROOT / "scripts" / "willow_embed_backfill.py"
-            pb.submit_task(f"python3 {script}", submitted_by="sap_startup", agent="kart")
+            pb.submit_task(f'"${{WILLOW_PYTHON:-python3}}" {script}', submitted_by="sap_startup", agent="kart")
             logger.info("[w2] %d rows with NULL embedding — backfill queued", total_null)
         else:
             logger.info("[w2] %d rows with NULL embedding — backfill already queued", total_null)
@@ -5047,6 +5047,379 @@ async def session_query(
             release_connection(conn)
 
     return await loop.run_in_executor(_executor, _run)
+
+
+# ── Tools — willow_ facade domain ─────────────────────────────────────────────
+
+def _as_list(value) -> list:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def _looks_like_code_query(query: str) -> bool:
+    q = query.lower()
+    markers = (".py", ".ts", ".tsx", ".js", "/", "::", "def ", "class ", "function ", "symbol")
+    return any(m in q for m in markers)
+
+
+def _grove_search_simple(query: str, channel_name: str = "", limit: int = 10) -> list[dict]:
+    try:
+        from sap import grove_tools as _gt
+        if not getattr(_gt, "_GROVE_AVAILABLE", False):
+            return [{"error": "Grove package not available"}]
+        conn = _gt.db.get_connection()
+        try:
+            channel_id = None
+            if channel_name:
+                channels = _gt.db.list_channels(conn)
+                ch = next((c for c in channels if c["name"] == channel_name), None)
+                channel_id = ch["id"] if ch else None
+            msgs = _gt.db.search_messages(conn, query, channel_id=channel_id)
+            return [
+                {
+                    "id": m.get("id"),
+                    "sender": m.get("sender"),
+                    "content": m.get("content"),
+                    "created_at": m["created_at"].isoformat() if m.get("created_at") else None,
+                }
+                for m in msgs[:limit]
+            ]
+        finally:
+            _gt.db.release_connection(conn)
+    except Exception as e:
+        return [{"error": str(e)}]
+
+
+def _grove_inbox_simple(agent: str, since_id: int = 0, limit: int = 10) -> list[dict]:
+    try:
+        from sap import grove_tools as _gt
+        if not getattr(_gt, "_GROVE_AVAILABLE", False):
+            return [{"error": "Grove package not available"}]
+        conn = _gt.db.get_connection()
+        try:
+            target = agent or os.getenv("GROVE_SENDER") or os.getenv("GROVE_NAME") or _MCP_AGENT
+            msgs = _gt.db.inbox(conn, target, since_id=since_id, limit=limit)
+            return [
+                {
+                    "id": m.get("id"),
+                    "channel": m.get("channel"),
+                    "sender": m.get("sender"),
+                    "content": m.get("content"),
+                    "created_at": m["created_at"].isoformat() if m.get("created_at") else None,
+                }
+                for m in msgs[:limit]
+            ]
+        finally:
+            _gt.db.release_connection(conn)
+    except Exception as e:
+        return [{"error": str(e)}]
+
+
+def _grove_send_simple(channel_name: str, content: str, sender: str) -> dict:
+    try:
+        from sap import grove_tools as _gt
+        if not getattr(_gt, "_GROVE_AVAILABLE", False):
+            return {"error": "Grove package not available"}
+        conn = _gt.db.get_connection()
+        try:
+            channels = _gt.db.list_channels(conn)
+            ch = next((c for c in channels if c["name"] == channel_name), None)
+            if not ch:
+                ch = _gt.db.create_channel(conn, name=channel_name, channel_type="group")
+            msg = _gt.db.send_message(conn, channel_id=ch["id"], sender=sender, content=content)
+            return {"id": msg["id"], "channel": channel_name, "sent": True}
+        finally:
+            _gt.db.release_connection(conn)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def willow_status(app_id: str, level: str = "quick", target_app_id: str = "") -> dict:
+    """Facade: answer "is Willow healthy?" with one status entry point.
+
+    level: quick|health|system|identity|app|diagnostic.
+    """
+    level = (level or "quick").strip().lower()
+    if level == "health":
+        result = await fleet_health(app_id=app_id)
+    elif level == "system":
+        result = await fleet_system_status(app_id=app_id)
+    elif level == "identity":
+        result = await fleet_identity_status(app_id=app_id)
+    elif level == "app":
+        result = await app_status(app_id=app_id, target_app_id=target_app_id)
+    elif level == "diagnostic":
+        result = await diagnostic_summary(app_id=app_id)
+    else:
+        result = await fleet_status(app_id=app_id)
+    return {"facade": "willow_status", "level": level, "backend": level if level != "quick" else "fleet_status", "result": result}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def willow_find(
+    app_id: str,
+    query: str,
+    scope: str = "auto",
+    limit: int = 5,
+) -> dict:
+    """Facade: find knowledge, state, handoffs, sessions, code, messages, or sources.
+
+    scope: auto|kb|state|handoff|sessions|code|messages|external|all.
+    """
+    scope = (scope or "auto").strip().lower()
+    routes: list[str]
+    if scope == "all":
+        routes = ["kb", "state", "handoff", "sessions", "code", "messages", "external"]
+    elif scope == "auto":
+        routes = ["kb", "state", "handoff"]
+        if _looks_like_code_query(query):
+            routes.append("code")
+    else:
+        routes = [scope]
+
+    results: dict[str, object] = {}
+    for route in routes:
+        if route in {"kb", "memory"}:
+            results["kb"] = await kb_search(app_id=app_id, query=query, limit=limit)
+        elif route in {"state", "soil"}:
+            results["state"] = await soil_search_all(app_id=app_id, query=query)
+        elif route == "handoff":
+            results["handoff"] = await handoff_search(app_id=app_id, query=query, limit=limit)
+        elif route in {"sessions", "session"}:
+            results["sessions"] = await session_query(app_id=app_id, query=f"search:{query}", limit=limit)
+        elif route == "code":
+            results["code"] = await code_graph_search(app_id=app_id, query=query, max_results=limit)
+        elif route in {"messages", "grove"}:
+            loop = asyncio.get_running_loop()
+            results["messages"] = await loop.run_in_executor(_executor, _grove_search_simple, query, "", limit)
+        elif route in {"external", "sources", "jeles"}:
+            results["external"] = await mem_jeles_web_search(app_id=app_id, query=query, limit=limit)
+        elif route == "opus":
+            results["opus"] = await index_search(app_id=app_id, query=query, limit=limit)
+        else:
+            results[route] = {"error": f"unknown scope {route!r}"}
+    return {"facade": "willow_find", "scope": scope, "routes": routes, "results": results}
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def willow_remember(
+    app_id: str,
+    content: str,
+    kind: str = "observation",
+    title: str = "",
+    source: str = "willow_remember",
+    confidence: float = 0.80,
+    tags: list = None,
+) -> dict:
+    """Facade: store a note, decision, context, or observation in the right lane.
+
+    kind: observation|note|task|decision|context|journal.
+    """
+    kind = (kind or "observation").strip().lower()
+    tags = _as_list(tags)
+    if kind == "decision":
+        result = await ledger_write(
+            app_id=app_id,
+            project=app_id,
+            event_type="decision",
+            content={"title": title, "content": content, "source": source, "tags": tags},
+        )
+        backend = "ledger_write"
+    elif kind == "context":
+        result = await context_save(app_id=app_id, content=content, category=title or "context")
+        backend = "context_save"
+    elif kind == "journal":
+        result = await kb_journal(app_id=app_id, entry=content, domain=app_id)
+        backend = "kb_journal"
+    else:
+        result = await intake_write(
+            app_id=app_id,
+            content=content,
+            source=source,
+            tier="frontier" if kind in {"observation", "note", "task"} else "contested",
+            confidence=confidence,
+            tags=tags,
+            title=title,
+            namespace=app_id,
+            category=kind,
+        )
+        backend = "intake_write"
+    return {"facade": "willow_remember", "kind": kind, "backend": backend, "result": result}
+
+
+@mcp.tool()
+@sap_gate()
+async def willow_run(
+    app_id: str,
+    task: str = "",
+    script_body: str = "",
+    script_name: str = "",
+    task_id: str = "",
+    run_now: bool = False,
+    allow_net: bool = False,
+    agent: str = "kart",
+) -> dict:
+    """Facade: run or inspect local work through Kart."""
+    if task_id:
+        result = await agent_task_status(app_id=app_id, task_id=task_id)
+        return {"facade": "willow_run", "backend": "agent_task_status", "result": result}
+    if not task and not script_body:
+        result = await agent_task_list(app_id=app_id, agent=agent)
+        return {"facade": "willow_run", "backend": "agent_task_list", "result": result}
+
+    submitted = await agent_task_submit(
+        app_id=app_id,
+        task=task,
+        script_body=script_body,
+        script_name=script_name,
+        agent=agent,
+        submitted_by=app_id,
+        allow_net=allow_net,
+    )
+    out = {"facade": "willow_run", "backend": "agent_task_submit", "submitted": submitted}
+    if run_now and not submitted.get("error"):
+        out["run"] = await kart_task_run(app_id=app_id, agent=agent)
+    return out
+
+
+@mcp.tool()
+@sap_gate()
+async def willow_delegate(
+    app_id: str,
+    prompt: str,
+    to: str = "",
+    mode: str = "route",
+    priority: str = "normal",
+) -> dict:
+    """Facade: route or dispatch work to another reasoning agent."""
+    mode = (mode or "route").strip().lower()
+    if mode == "dispatch" or to:
+        result = await agent_dispatch(app_id=app_id, to=to, prompt=prompt, priority=priority, reply_to=app_id)
+        backend = "agent_dispatch"
+    else:
+        result = await agent_route(app_id=app_id, message=prompt)
+        backend = "agent_route"
+    return {"facade": "willow_delegate", "backend": backend, "result": result}
+
+
+@mcp.tool()
+@sap_gate()
+async def willow_work(
+    app_id: str,
+    action: str = "status",
+    fork_id: str = "",
+    title: str = "",
+    note: str = "",
+) -> dict:
+    """Facade: manage a bounded unit of work.
+
+    action: create|status|log|list.
+    """
+    action = (action or "status").strip().lower()
+    if action == "create":
+        result = await fork_create(app_id=app_id, title=title or note or "Willow work", created_by=app_id, topic=note)
+        backend = "fork_create"
+    elif action == "log":
+        result = await fork_log(app_id=app_id, fork_id=fork_id, component=app_id, type="note", ref=title or "note", description=note)
+        backend = "fork_log"
+    elif action == "list":
+        result = await fork_list(app_id=app_id)
+        backend = "fork_list"
+    else:
+        result = await fork_status(app_id=app_id, fork_id=fork_id) if fork_id else await handoff_latest(app_id=app_id, agent=app_id)
+        backend = "fork_status" if fork_id else "handoff_latest"
+    return {"facade": "willow_work", "backend": backend, "result": result}
+
+
+@mcp.tool()
+@sap_gate()
+async def willow_message(
+    app_id: str,
+    action: str = "inbox",
+    content: str = "",
+    channel_name: str = "hanuman",
+    query: str = "",
+    since_id: int = 0,
+    limit: int = 10,
+) -> dict:
+    """Facade: read, search, or send Grove messages."""
+    action = (action or "inbox").strip().lower()
+    loop = asyncio.get_running_loop()
+    if action == "send":
+        result = await loop.run_in_executor(_executor, _grove_send_simple, channel_name, content, app_id)
+        backend = "grove_send_message"
+    elif action == "search":
+        result = await loop.run_in_executor(_executor, _grove_search_simple, query or content, channel_name, limit)
+        backend = "grove_search"
+    else:
+        result = await loop.run_in_executor(_executor, _grove_inbox_simple, app_id, since_id, limit)
+        backend = "grove_inbox"
+    return {"facade": "willow_message", "backend": backend, "result": result}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def willow_app(app_id: str, action: str = "status", target_app_id: str = "") -> dict:
+    """Facade: inspect SAFE app registration and manifest state."""
+    action = (action or "status").strip().lower()
+    if action == "list":
+        result = await app_list(app_id=app_id)
+        backend = "app_list"
+    else:
+        result = await app_status(app_id=app_id, target_app_id=target_app_id)
+        backend = "app_status"
+    return {"facade": "willow_app", "backend": backend, "result": result}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def willow_external(
+    app_id: str,
+    query: str = "",
+    text: str = "",
+    mode: str = "ask",
+    sources: list = None,
+    limit: int = 2,
+) -> dict:
+    """Facade: use cited external sources through Jeles/source-trail."""
+    mode = (mode or "ask").strip().lower()
+    sources = _as_list(sources)
+    if mode == "verify":
+        result = await source_trail_verify(app_id=app_id, text=text or query, sources=sources)
+        backend = "source_trail_verify"
+    elif mode == "search":
+        result = await mem_jeles_web_search(app_id=app_id, query=query or text, sources=sources, limit=limit)
+        backend = "mem_jeles_web_search"
+    else:
+        result = await mem_jeles_ask(app_id=app_id, question=query or text, sources=sources, limit=limit)
+        backend = "mem_jeles_ask"
+    return {"facade": "willow_external", "backend": backend, "result": result}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def willow_code(
+    app_id: str,
+    query: str,
+    mode: str = "search",
+    max_results: int = 10,
+) -> dict:
+    """Facade: search or suggest code context."""
+    mode = (mode or "search").strip().lower()
+    if mode == "suggest":
+        result = await code_graph_suggest(app_id=app_id, task=query, max_results=max_results)
+        backend = "code_graph_suggest"
+    else:
+        result = await code_graph_search(app_id=app_id, query=query, max_results=max_results)
+        backend = "code_graph_search"
+    return {"facade": "willow_code", "backend": backend, "result": result}
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

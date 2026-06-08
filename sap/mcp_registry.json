@@ -3,6 +3,7 @@
   "_source": "sap/sap_mcp.py + sap/unified_mcp.py",
 
   "groups": {
+    "willow":     "Canonical facade — intent-shaped front doors for agents",
     "kb":         "Knowledge Base — long-term atoms in Postgres",
     "soil":       "SOIL Store — structured local records on disk",
     "fleet":      "Fleet — health, status, registry, reload",
@@ -38,6 +39,17 @@
   },
 
   "tools": {
+    "willow_status":       {"group": "willow", "tier": "minimal", "description": "Facade: answer 'is Willow healthy?' via fleet/app/identity/diagnostic status routes."},
+    "willow_find":         {"group": "willow", "tier": "minimal", "description": "Facade: find the thing across KB, SOIL state, handoffs, sessions, code, messages, external sources, or all."},
+    "willow_remember":     {"group": "willow", "tier": "minimal", "description": "Facade: store an observation, note, task, decision, context, or journal entry in the right backend lane."},
+    "willow_run":          {"group": "willow", "tier": "minimal", "description": "Facade: submit, run, list, or inspect local work through Kart."},
+    "willow_delegate":     {"group": "willow", "tier": "core", "description": "Facade: route or dispatch work to another reasoning agent."},
+    "willow_work":         {"group": "willow", "tier": "core", "description": "Facade: create, inspect, list, or log a bounded unit of work."},
+    "willow_message":      {"group": "willow", "tier": "core", "description": "Facade: read, search, or send Grove messages."},
+    "willow_app":          {"group": "willow", "tier": "core", "description": "Facade: inspect SAFE app registration and manifest state."},
+    "willow_external":     {"group": "willow", "tier": "core", "description": "Facade: ask, search, or verify cited external sources through Jeles/source-trail."},
+    "willow_code":         {"group": "willow", "tier": "core", "description": "Facade: search or suggest code context through the code graph."},
+
     "kb_search":          {"group": "kb",     "description": "Search KB atoms by title/content. Use semantic=true for embedding-based retrieval (nomic-embed). Depth limit 3 before asking user."},
     "kb_get":             {"group": "kb",     "description": "Fetch a single KB atom by ID."},
     "kb_ingest":          {"group": "kb",     "description": "Write a new atom to the KB. Requires title, summary, category, project."},

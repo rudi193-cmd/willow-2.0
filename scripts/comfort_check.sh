@@ -20,6 +20,14 @@ PYTHON="${WILLOW_PYTHON:-}"
 if [[ -z "${PYTHON}" ]]; then
   if [[ -x "${ROOT}/.venv-dev/bin/python3" ]]; then
     PYTHON="${ROOT}/.venv-dev/bin/python3"
+  elif [[ -x "${HOME}/github/willow-2.0/.venv-dev/bin/python3" ]]; then
+    PYTHON="${HOME}/github/willow-2.0/.venv-dev/bin/python3"
+  elif [[ -x "${WILLOW_HOME:-${HOME}/github/.willow}/venv/bin/python3" ]]; then
+    PYTHON="${WILLOW_HOME:-${HOME}/github/.willow}/venv/bin/python3"
+  elif [[ -x "${HOME}/.willow/venv/bin/python3" ]]; then
+    PYTHON="${HOME}/.willow/venv/bin/python3"
+  elif [[ -x "${HOME}/.willow-venv/bin/python3" ]]; then
+    PYTHON="${HOME}/.willow-venv/bin/python3"
   else
     PYTHON="$(command -v python3)"
   fi

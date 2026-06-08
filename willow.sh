@@ -22,18 +22,6 @@ WILLOW_ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 export WILLOW_ROOT
 SAP_MCP="${WILLOW_ROOT}/sap/sap_mcp.py"
 
-# Python
-if [[ -z "${WILLOW_PYTHON:-}" ]]; then
-    if [[ -x "${WILLOW_ROOT}/.venv-dev/bin/python3" ]]; then
-        WILLOW_PYTHON="${WILLOW_ROOT}/.venv-dev/bin/python3"
-    elif [[ -x "${HOME}/.willow-venv/bin/python3" ]]; then
-        WILLOW_PYTHON="${HOME}/.willow-venv/bin/python3"
-    else
-        WILLOW_PYTHON="$(command -v python3)"
-    fi
-fi
-export WILLOW_PYTHON
-
 # ── Canonical fleet home ($WILLOW_HOME) — ~/.willow is a supported alias ───────
 export WILLOW_HOME="${WILLOW_HOME:-${HOME}/github/.willow}"
 export WILLOW_STORE_ROOT="${WILLOW_STORE_ROOT:-${WILLOW_HOME}/store}"
@@ -41,6 +29,24 @@ export WILLOW_VAULT="${WILLOW_VAULT:-${WILLOW_HOME}/vault.db}"
 export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/github/SAFE/Applications}"
 export WILLOW_AGENTS_ROOT="${WILLOW_AGENTS_ROOT:-${HOME}/github/SAFE/Agents}"
 export WILLOW_PGP_FINGERPRINT="${WILLOW_PGP_FINGERPRINT:-}"
+
+# Python
+if [[ -z "${WILLOW_PYTHON:-}" ]]; then
+    if [[ -x "${WILLOW_ROOT}/.venv-dev/bin/python3" ]]; then
+        WILLOW_PYTHON="${WILLOW_ROOT}/.venv-dev/bin/python3"
+    elif [[ -x "${HOME}/github/willow-2.0/.venv-dev/bin/python3" ]]; then
+        WILLOW_PYTHON="${HOME}/github/willow-2.0/.venv-dev/bin/python3"
+    elif [[ -x "${WILLOW_HOME}/venv/bin/python3" ]]; then
+        WILLOW_PYTHON="${WILLOW_HOME}/venv/bin/python3"
+    elif [[ -x "${HOME}/.willow/venv/bin/python3" ]]; then
+        WILLOW_PYTHON="${HOME}/.willow/venv/bin/python3"
+    elif [[ -x "${HOME}/.willow-venv/bin/python3" ]]; then
+        WILLOW_PYTHON="${HOME}/.willow-venv/bin/python3"
+    else
+        WILLOW_PYTHON="$(command -v python3)"
+    fi
+fi
+export WILLOW_PYTHON
 
 # Postgres — Unix socket, willow_20 DB (clean break from 1.7)
 unset WILLOW_PG_HOST WILLOW_PG_PORT WILLOW_PG_PASS
@@ -214,6 +220,17 @@ print(json.dumps({
     metabolic)
         echo "Willow 2.0 — running Norn pass"
         WILLOW_PG_DB="${WILLOW_PG_DB}" exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/core/metabolic.py"
+        ;;
+
+    kart-worker)
+        echo "Willow 2.0 — starting Kart worker"
+        exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/scripts/run_kart.py"
+        ;;
+
+    exec-python)
+        shift
+        [[ $# -gt 0 ]] || { echo "Usage: willow.sh exec-python <script-or--module> [args...]" >&2; exit 1; }
+        exec "${WILLOW_PYTHON}" "$@"
         ;;
 
     update)

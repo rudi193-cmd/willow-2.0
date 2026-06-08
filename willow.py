@@ -22,8 +22,12 @@ IS_POSIX: bool = not IS_WINDOWS
 def _find_python() -> str:
     if "WILLOW_PYTHON" in os.environ:
         return os.environ["WILLOW_PYTHON"]
+    fleet = Path(os.environ.get("WILLOW_HOME", str(Path.home() / "github" / ".willow")))
     candidates = [
         WILLOW_ROOT / ".venv-dev" / ("Scripts" if IS_WINDOWS else "bin") / ("python.exe" if IS_WINDOWS else "python3"),
+        Path.home() / "github" / "willow-2.0" / ".venv-dev" / ("Scripts" if IS_WINDOWS else "bin") / ("python.exe" if IS_WINDOWS else "python3"),
+        fleet / "venv" / ("Scripts" if IS_WINDOWS else "bin") / ("python.exe" if IS_WINDOWS else "python3"),
+        Path.home() / ".willow" / "venv" / ("Scripts" if IS_WINDOWS else "bin") / ("python.exe" if IS_WINDOWS else "python3"),
         Path.home() / ".willow-venv" / ("Scripts" if IS_WINDOWS else "bin") / ("python.exe" if IS_WINDOWS else "python3"),
     ]
     for c in candidates:

@@ -5,6 +5,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 WILLOW_HOME="${WILLOW_HOME:-${HOME}/github/.willow}"
+if [[ -z "${WILLOW_PYTHON:-}" ]]; then
+    if [[ -x "${REPO_ROOT}/.venv-dev/bin/python3" ]]; then
+        WILLOW_PYTHON="${REPO_ROOT}/.venv-dev/bin/python3"
+    elif [[ -x "${HOME}/github/willow-2.0/.venv-dev/bin/python3" ]]; then
+        WILLOW_PYTHON="${HOME}/github/willow-2.0/.venv-dev/bin/python3"
+    elif [[ -x "${WILLOW_HOME}/venv/bin/python3" ]]; then
+        WILLOW_PYTHON="${WILLOW_HOME}/venv/bin/python3"
+    elif [[ -x "${HOME}/.willow/venv/bin/python3" ]]; then
+        WILLOW_PYTHON="${HOME}/.willow/venv/bin/python3"
+    elif [[ -x "${HOME}/.willow-venv/bin/python3" ]]; then
+        WILLOW_PYTHON="${HOME}/.willow-venv/bin/python3"
+    else
+        WILLOW_PYTHON="$(command -v python3)"
+    fi
+fi
 
 # Source local secrets (not tracked). Create $WILLOW_HOME/secrets.sh with:
 #   export ANTHROPIC_API_KEY="sk-ant-..."
@@ -20,6 +35,7 @@ GROVE_ROOT="${WILLOW_GROVE_ROOT:-${HOME}/github/safe-app-willow-grove}"
 export PYTHONPATH="${REPO_ROOT}:${GROVE_ROOT}"
 export WILLOW_ROOT="${REPO_ROOT}"
 export WILLOW_HOME="${WILLOW_HOME}"
+export WILLOW_PYTHON
 ACTIVE_FILE="${REPO_ROOT}/.willow/active-agent"
 if [[ -z "${WILLOW_AGENT_NAME:-}" && -f "${ACTIVE_FILE}" ]]; then
     WILLOW_AGENT_NAME="$(tr -d '[:space:]' < "${ACTIVE_FILE}")"
@@ -34,4 +50,4 @@ export MAI_SECURITY_CONFIG="${MAI_SECURITY_CONFIG:-${HOME}/.markdownai/security.
 export WILLOW_MCP_PROFILE="${WILLOW_MCP_PROFILE:-standard}"
 
 cd "${REPO_ROOT}"
-exec "${REPO_ROOT}/.venv-dev/bin/python3" -m sap.unified_mcp "$@"
+exec "${WILLOW_PYTHON}" -m sap.unified_mcp "$@"
