@@ -128,6 +128,9 @@ def _pgvector_search_raw(
     fork_id: Optional[str],
     include_invalid: bool,
     wide_k: int,
+    tier: Optional[str] = None,
+    exclude_search_noise: bool = True,
+    exclude_superseded: bool = True,
 ) -> list[dict]:
     """Clean wrapper around the ANN search to avoid param duplication."""
     vec_str = str(query_vec)
@@ -142,6 +145,13 @@ def _pgvector_search_raw(
     if fork_id:
         filters.append("fork_id = %s")
         where_params.append(fork_id)
+    pg._knowledge_retrieval_filters(
+        filters,
+        where_params,
+        tier=tier,
+        exclude_search_noise=exclude_search_noise,
+        exclude_superseded=exclude_superseded,
+    )
 
     where = " AND ".join(filters)
 
@@ -167,6 +177,9 @@ def _bm25_search(
     fork_id: Optional[str],
     include_invalid: bool,
     wide_k: int,
+    tier: Optional[str] = None,
+    exclude_search_noise: bool = True,
+    exclude_superseded: bool = True,
 ) -> list[dict]:
     """
     BM25 search over knowledge table.
@@ -191,6 +204,13 @@ def _bm25_search(
     if fork_id:
         filters.append("fork_id = %s")
         params.append(fork_id)
+    pg._knowledge_retrieval_filters(
+        filters,
+        params,
+        tier=tier,
+        exclude_search_noise=exclude_search_noise,
+        exclude_superseded=exclude_superseded,
+    )
 
     where = ("WHERE " + " AND ".join(filters)) if filters else ""
     params.append(candidate_limit)
@@ -373,6 +393,9 @@ def hybrid_search(
     temporal: bool = False,
     temporal_decay_days: float = 30.0,
     temporal_weight: float = 0.15,
+    tier: Optional[str] = None,
+    exclude_search_noise: bool = True,
+    exclude_superseded: bool = True,
 ) -> list[dict]:
     """
     Hybrid pgvector cosine + BM25 keyword search with RRF fusion.
@@ -439,7 +462,10 @@ def hybrid_search(
         query_vec = embed(query)
         if query_vec is not None:
             vec_rows = _pgvector_search_raw(
-                pg, query_vec, project, fork_id, include_invalid, wide_k
+                pg, query_vec, project, fork_id, include_invalid, wide_k,
+                tier=tier,
+                exclude_search_noise=exclude_search_noise,
+                exclude_superseded=exclude_superseded,
             )
             if vec_rows:
                 ranked_lists.append(vec_rows)
@@ -451,7 +477,10 @@ def hybrid_search(
     if query_tokens:
         try:
             bm25_rows = _bm25_search(
-                pg, query_tokens, project, fork_id, include_invalid, wide_k
+                pg, query_tokens, project, fork_id, include_invalid, wide_k,
+                tier=tier,
+                exclude_search_noise=exclude_search_noise,
+                exclude_superseded=exclude_superseded,
             )
             if bm25_rows:
                 ranked_lists.append(bm25_rows)
@@ -463,7 +492,10 @@ def hybrid_search(
     # --- Fallback: ILIKE ---
     if not ranked_lists:
         return pg.knowledge_search(query, project=project,
-                                   include_invalid=include_invalid, limit=limit)
+                                   include_invalid=include_invalid, limit=limit,
+                                   tier=tier,
+                                   exclude_search_noise=exclude_search_noise,
+                                   exclude_superseded=exclude_superseded)
 
     # --- RRF fusion ---
     fused = _rrf_fuse(ranked_lists, k=rrf_k, weight_col=True)

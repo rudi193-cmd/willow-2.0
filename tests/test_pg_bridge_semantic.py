@@ -173,11 +173,23 @@ def test_rrf_merge_shared_result_scores_higher():
     assert ids[0] == "SHARED", "Shared result should rank first"
 
 
-def test_knowledge_search_semantic_raises_when_embed_none():
+def test_knowledge_search_semantic_uses_hybrid_hot_path():
+    from core.pg_bridge import PgBridge
+    pg = PgBridge.__new__(PgBridge)
+    hybrid_rows = [{"id": "H1", "title": "hybrid", "embedding": [0.1], "_rrf_score": 1.0}]
+    with patch("willow.ranking.hybrid.hybrid_search", return_value=hybrid_rows) as hybrid:
+        results = pg.knowledge_search_semantic("test hybrid query")
+
+    hybrid.assert_called_once()
+    assert results == [{"id": "H1", "title": "hybrid", "_rrf_score": 1.0}]
+
+
+def test_knowledge_search_semantic_raises_when_embed_none_after_hybrid_empty():
     import pytest
     from core.pg_bridge import PgBridge, EmbedDegradedError
     pg = PgBridge()
-    with patch("core.pg_bridge.embed", return_value=None):
+    with patch("willow.ranking.hybrid.hybrid_search", return_value=[]), \
+         patch("core.pg_bridge.embed", return_value=None):
         with pytest.raises(EmbedDegradedError):
             pg.knowledge_search_semantic("test fallback query")
 

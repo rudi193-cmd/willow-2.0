@@ -68,6 +68,9 @@ Extract the key topic or entity from the user's first message — strip filler p
 
 `kb_search(semantic=true, query=<extracted topic>)` — do not use the raw sentence as the query; embedding models match phrase structure, not topic.
 
+**6b. Dream gate** *(parallel with 3–6; optional line in boot report)*
+`dream_check(app_id=<agent>)` — if `should_dream` is true, surface one line: `Dream: due ({hours_since_dream}h, {sessions_since_dream} sessions) — queue via dream_schedule or /dream`. Do not run `dream_run` inline during boot unless the user asked.
+
 After the search, classify the tone of the first message and pick one output mode for surfacing results in the boot report:
 
 | Mode | When | Output shape |
