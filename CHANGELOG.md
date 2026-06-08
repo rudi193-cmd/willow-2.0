@@ -6,6 +6,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2026.06.3] - 2026-06-08
+
+Patch release: fleet memory audit remediation (#247) and hybrid retrieval gold-query ranking (#248).
+
+### Added
+
+- **Fleet memory audit (C1–C10)** — hybrid-first `kb_search`, fleet-wide intake promote, binder→`public.edges` sync, canonical quality gate, dream queue, audit close-out doc (#247).
+
+### Fixed
+
+- **Hybrid retrieval** — metadata-aware row text, token-filtered BM25 candidates, lexical coverage bias; audit gold queries Hit@1 (#248).
+- **`app_status` MCP wiring** — inspect full command line so `bash -lc …unified_mcp.sh` apps (e.g. ask-jeles) no longer report `stale: -lc` (#248).
+- **CI** — close `PgBridge` in bitemporal test fixture to prevent pytest 3.11 coverage hang (#248).
+
 ## [2026.06.1] - 2026-06-07
 
 Patch release: canonical fleet-home remediation (#235), CI path-guard (#238), and fleet features landed since `v2026.06.0`.
