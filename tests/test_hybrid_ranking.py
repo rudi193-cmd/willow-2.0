@@ -17,7 +17,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from willow.ranking.hybrid import (
     _tokenize,
     _row_text,
+    _build_bm25,
+    _bm25_search,
     _rrf_fuse,
+    _apply_lexical_coverage_bias,
     temporal_rerank,
     hybrid_search,
     bm25_search,
@@ -126,6 +129,25 @@ class TestRowText:
         row = {}
         assert _row_text(row) == ""
 
+    def test_content_keywords_are_searchable(self):
+        row = {"title": "BKT wiring", "summary": "", "content": {"keywords": ["boot", "shutdown"]}}
+        text = _row_text(row)
+        assert "BKT wiring" in text
+        assert "boot" in text
+        assert "shutdown" in text
+
+
+class TestBuildBm25:
+    def test_falls_back_to_builtin_lexical_ranker(self):
+        rows = [
+            {"title": "BKT wiring", "summary": "boot shutdown hooks"},
+            {"title": "unrelated", "summary": "other words"},
+        ]
+        with patch.dict(sys.modules, {"rank_bm25": None}):
+            ranker = _build_bm25(rows)
+        scores = ranker.get_scores(["bkt", "boot", "shutdown"])
+        assert scores[0] > scores[1]
+
 
 # ── RRF fusion ────────────────────────────────────────────────────────────────
 
@@ -187,6 +209,28 @@ class TestRrfFuse:
         fused = _rrf_fuse([[a]])
         expected = 1.0 / (60 + 0 + 1)  # rank=0, k=60
         assert abs(fused[0]["_rrf_score"] - expected) < 1e-9
+
+
+class TestLexicalCoverageBias:
+    def test_exact_query_coverage_beats_partial_generic_match(self):
+        exact = _atom("BKT", title="BKT wiring sequence",
+                      summary="boot shutdown hook insertion points")
+        generic = _atom("BOOT", title="boot shutdown",
+                        summary="generic session handoff")
+        exact["_rrf_score"] = 0.06
+        generic["_rrf_score"] = 0.10
+
+        ranked = _apply_lexical_coverage_bias(
+            [generic, exact], ["bkt", "boot", "shutdown", "wiring"]
+        )
+
+        assert ranked[0]["id"] == "BKT"
+        assert ranked[0]["_lexical_coverage"] == 1.0
+        assert ranked[0]["_hybrid_score"] > ranked[1]["_hybrid_score"]
+
+    def test_empty_query_tokens_leave_results_unchanged(self):
+        row = _atom("A")
+        assert _apply_lexical_coverage_bias([row], []) == [row]
 
 
 # ── Temporal re-ranking ───────────────────────────────────────────────────────
@@ -367,6 +411,27 @@ class TestHybridSearch:
             results = hybrid_search("keyword", pg)
 
         assert isinstance(results, list)
+
+    def test_bm25_fetches_token_matched_candidates(self):
+        rows = [
+            _atom("BKT", title="BKT wiring sequence",
+                  summary="boot shutdown hook insertion points"),
+            _atom("BOOT", title="shutdown"),
+        ]
+        pg = _mock_pg(rows)
+        fake_bm25 = MagicMock()
+        fake_bm25.get_scores.return_value = [3.0, 1.0]
+
+        with patch("willow.ranking.hybrid._build_bm25", return_value=fake_bm25):
+            results = _bm25_search(
+                pg, ["bkt", "boot", "shutdown", "wiring"],
+                project=None, fork_id=None, include_invalid=False, wide_k=10,
+            )
+
+        sql, params = pg.conn.cursor.return_value.execute.call_args.args
+        assert "ILIKE" in sql
+        assert "%bkt%" in params
+        assert results[0]["id"] == "BKT"
 
 
 # ── bm25_search standalone ───────────────────────────────────────────────────

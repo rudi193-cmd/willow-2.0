@@ -4561,6 +4561,20 @@ def _app_source(app_id: str) -> str:
     return "unknown"
 
 
+def _mcp_points_at_willow(cfg: dict) -> tuple[bool, str]:
+    """Return whether an app's Willow MCP server points at this Willow 2.0 tree."""
+    server = cfg.get("mcpServers", {}).get("willow", {})
+    command = str(server.get("command", ""))
+    args = [str(arg) for arg in server.get("args", [])]
+    command_line = " ".join([command] + args).strip()
+    if not command_line:
+        return False, "empty"
+    ok = "willow-2.0" in command_line or "unified_mcp" in command_line
+    if ok:
+        return True, "willow-2.0"
+    return False, f"stale: {command_line}"
+
+
 @mcp.tool()
 @sap_gate(write=True)
 async def app_install(
@@ -4761,9 +4775,7 @@ async def app_status(app_id: str, target_app_id: str = "") -> dict:
             if mcp_file.exists():
                 try:
                     cfg   = json.loads(mcp_file.read_text())
-                    cmd   = cfg.get("mcpServers", {}).get("willow", {}).get("args", [""])[0]
-                    mcp_ok   = "willow-2.0" in cmd or "unified_mcp" in cmd
-                    mcp_note = "willow-2.0" if mcp_ok else f"stale: {cmd}"
+                    mcp_ok, mcp_note = _mcp_points_at_willow(cfg)
                 except Exception as e:
                     mcp_note = f"parse error: {e}"
 
