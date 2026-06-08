@@ -18,6 +18,20 @@ if str(WILLOW_ROOT) not in sys.path:
 IS_WINDOWS: bool = sys.platform == "win32"
 IS_POSIX: bool = not IS_WINDOWS
 
+
+def _willow_home_module():
+    """Load willow_home without importing the willow package (this file shadows it)."""
+    import importlib.util
+
+    path = WILLOW_ROOT / "willow" / "fylgja" / "willow_home.py"
+    spec = importlib.util.spec_from_file_location("_willow_home_resolver", path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load willow_home from {path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 # ── Python interpreter (mirrors willow.sh resolution order) ──────────────────
 def _find_python() -> str:
     if "WILLOW_PYTHON" in os.environ:
@@ -40,19 +54,6 @@ def _find_python() -> str:
     return sys.executable
 
 WILLOW_PYTHON = _find_python()
-
-
-def _willow_home_module():
-    """Load willow_home without importing the willow package (this file shadows it)."""
-    import importlib.util
-
-    path = WILLOW_ROOT / "willow" / "fylgja" / "willow_home.py"
-    spec = importlib.util.spec_from_file_location("_willow_home_resolver", path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"cannot load willow_home from {path}")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
 
 
 def _fleet_home() -> Path:
