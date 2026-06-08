@@ -1,6 +1,8 @@
 """Live Postgres gold-query gate for hybrid retrieval."""
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from core.pg_bridge import PgBridge, try_connect
@@ -32,6 +34,8 @@ def test_hit_rank_matches_id_or_title_fragment():
 
 @pytest.mark.slow
 def test_retrieval_gold_set_meets_gate():
+    if os.environ.get("WILLOW_PG_DB", "").endswith("_test"):
+        pytest.skip("retrieval gold gate runs against fleet KB via comfort_check --local")
     if try_connect() is None:
         pytest.skip("Postgres unavailable")
     pg = PgBridge()

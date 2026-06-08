@@ -1,6 +1,5 @@
 """tests/test_desk_attention.py"""
 import json
-from pathlib import Path
 
 from willow.fylgja.desk_attention import fetch_attention_summary
 
