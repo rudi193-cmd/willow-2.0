@@ -58,4 +58,5 @@ jobs:
             --body "Automated update from the Upstream Contribution Tracker workflow (run ${{ github.run_id }})." \
             --base master \
             --head "$branch"
-          gh pr merge --squash --delete-branch "$branch"
+          gh pr update-branch "$branch" --repo "${{ github.repository }}" || true
+          gh pr merge --auto --squash --delete-branch "$branch" --repo "${{ github.repository }}"
