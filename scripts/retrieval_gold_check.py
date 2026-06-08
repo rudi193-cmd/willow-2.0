@@ -13,14 +13,9 @@ for _p in (_ROOT, _ROOT / "core"):
         sys.path.insert(0, _ps)
 
 
-def _clear_willow_launcher_shadow() -> None:
-    """willow.py at repo root is a launcher, not the willow/ package."""
-    mod = sys.modules.get("willow")
-    if mod is not None and not hasattr(mod, "__path__"):
-        del sys.modules["willow"]
+from core.launcher_shadow import clear_willow_launcher_shadow  # noqa: E402
 
-
-_clear_willow_launcher_shadow()
+clear_willow_launcher_shadow()
 
 from core.pg_bridge import PgBridge, try_connect  # noqa: E402
 from willow.bench.retrieval_gold import run_gold_set  # noqa: E402

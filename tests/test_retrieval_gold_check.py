@@ -1,33 +1,63 @@
-"""tests/test_retrieval_gold_check.py — CLI import resilience."""
+"""tests/test_retrieval_gold_check.py — launcher shadow must not block willow.bench."""
 from __future__ import annotations
 
 import importlib.util
 import sys
 from pathlib import Path
 
+from core.launcher_shadow import clear_willow_launcher_shadow
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_retrieval_gold_check_imports_when_willow_py_shadowed():
-    """willow.py launcher must not block willow.bench.retrieval_gold."""
-    saved = sys.modules.get("willow")
+def _inject_launcher_shadow() -> None:
+    launcher = ROOT / "willow.py"
+    spec = importlib.util.spec_from_file_location("willow", launcher)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["willow"] = mod
+    spec.loader.exec_module(mod)
+
+
+def _restore_willow_modules(saved: dict[str, object]) -> None:
+    for key in list(sys.modules):
+        if key == "willow" or key.startswith("willow."):
+            del sys.modules[key]
+    sys.modules.update(saved)
+
+
+def test_clear_willow_launcher_shadow_removes_launcher():
+    saved = {k: sys.modules[k] for k in list(sys.modules) if k == "willow" or k.startswith("willow.")}
     try:
-        launcher = ROOT / "willow.py"
-        spec = importlib.util.spec_from_file_location("willow", launcher)
-        mod = importlib.util.module_from_spec(spec)
-        sys.modules["willow"] = mod
-        spec.loader.exec_module(mod)
-
-        check_path = ROOT / "scripts" / "retrieval_gold_check.py"
-        spec2 = importlib.util.spec_from_file_location("retrieval_gold_check", check_path)
-        loaded = importlib.util.module_from_spec(spec2)
-        spec2.loader.exec_module(loaded)
-
-        # run_gold_set may resolve via cached willow.bench.* without re-inserting
-        # sys.modules["willow"] when test_retrieval_gold ran first in the session.
-        assert callable(loaded.run_gold_set)
+        _inject_launcher_shadow()
+        clear_willow_launcher_shadow()
+        assert "willow" not in sys.modules
     finally:
-        if saved is None:
-            sys.modules.pop("willow", None)
-        else:
-            sys.modules["willow"] = saved
+        _restore_willow_modules(saved)
+
+
+def test_clear_willow_launcher_shadow_preserves_real_package():
+    import willow.bench.retrieval_gold  # noqa: F401
+
+    saved = {k: sys.modules[k] for k in list(sys.modules) if k == "willow" or k.startswith("willow.")}
+    try:
+        clear_willow_launcher_shadow()
+        assert "willow" in sys.modules
+        assert hasattr(sys.modules["willow"], "__path__")
+    finally:
+        _restore_willow_modules(saved)
+
+
+def test_import_retrieval_gold_after_launcher_shadow():
+    saved = {k: sys.modules[k] for k in list(sys.modules) if k == "willow" or k.startswith("willow.")}
+    try:
+        for key in list(sys.modules):
+            if key == "willow" or key.startswith("willow."):
+                del sys.modules[key]
+        _inject_launcher_shadow()
+        clear_willow_launcher_shadow()
+        from willow.bench.retrieval_gold import run_gold_set
+
+        assert callable(run_gold_set)
+    finally:
+        _restore_willow_modules(saved)
