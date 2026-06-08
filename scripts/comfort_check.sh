@@ -118,11 +118,35 @@ _agents_rails_ci() {
   [[ "${issues}" -eq 0 ]]
 }
 
+_local_agent_bootstrap() {
+  mkdir -p .willow .cursor
+  local agent="${COMFORT_ACTIVE_AGENT:-hanuman}"
+  if [[ -f .willow/active-agent ]]; then
+    local current
+    current="$(tr -d '[:space:]' < .willow/active-agent)"
+    if [[ -n "${current}" && -f "agents/${current}/config/identity.json" ]]; then
+      agent="${current}"
+    fi
+  fi
+  if [[ ! -f "agents/${agent}/config/identity.json" ]]; then
+    agent="willow"
+  fi
+  echo "${agent}" > .willow/active-agent
+  if [[ ! -e .cursor/hooks.json && -f willow/fylgja/config/cursor-hooks.json ]]; then
+    ln -sf ../willow/fylgja/config/cursor-hooks.json .cursor/hooks.json
+  fi
+}
+
 _agents_check() {
-  _ci_stubs
-  export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-willow}"
+  _local_agent_bootstrap
+  local agent
+  agent="$(tr -d '[:space:]' < .willow/active-agent)"
+  export WILLOW_AGENT_NAME="${agent}"
+  export GROVE_SENDER="${agent}"
+  export GROVE_NAME="${agent}"
   cd "${ROOT}"
-  "${PYTHON}" -m willow.fylgja.agents_cli check
+  "${PYTHON}" -m willow.fylgja.install_project "${agent}" --ide cursor
+  "${PYTHON}" -m willow.fylgja.agents_cli check --ide cursor
 }
 
 _local_symlinks() {
