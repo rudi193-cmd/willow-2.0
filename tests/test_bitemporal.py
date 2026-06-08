@@ -14,7 +14,10 @@ def pg():
     with bridge.conn.cursor() as cur:
         cur.execute("DELETE FROM knowledge WHERE id LIKE 'bt_test_%'")
     bridge.conn.commit()
-    return bridge
+    try:
+        yield bridge
+    finally:
+        bridge.close()
 
 
 def test_contradiction_closes_old_edge(pg):
