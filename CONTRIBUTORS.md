@@ -107,6 +107,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) | punkpeye | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #4991](https://github.com/punkpeye/awesome-mcp-servers/pull/4991) closed |
 | [RyjoxTechnologies/Octopoda-OS](https://github.com/RyjoxTechnologies/Octopoda-OS) | RyjoxTechnologies | feat(brain): add DarkRadar fifth signal to BrainHub | [PR #1](https://github.com/RyjoxTechnologies/Octopoda-OS/pull/1) closed |
 | [openclaw/openclaw](https://github.com/openclaw/openclaw) | openclaw | feat(skill): add willow-memory-health ClawHub skill | [PR #67789](https://github.com/openclaw/openclaw/pull/67789) closed |
+| [unslothai/unsloth](https://github.com/unslothai/unsloth) | Daniel Han | Yggdrasil SFT+DPO recipe | [Discussion #5139](https://github.com/unslothai/unsloth/discussions/5139) |
 
 
 ## Contributors to Willow
