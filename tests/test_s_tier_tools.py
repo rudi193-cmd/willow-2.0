@@ -81,6 +81,52 @@ class TestSplitIdentifier:
         assert split_identifier("") == []
 
 
+class TestMcpStatusDetection:
+    def _mcp_points_at_willow(self):
+        os.environ.setdefault("WILLOW_AGENT_NAME", "test-agent")
+        from sap.sap_mcp import _mcp_points_at_willow
+        return _mcp_points_at_willow
+
+    def test_detects_direct_unified_mcp_arg(self):
+        check = self._mcp_points_at_willow()
+        ok, note = check({
+            "mcpServers": {
+                "willow": {
+                    "command": "python3",
+                    "args": ["/home/me/github/willow-2.0/sap/unified_mcp.py"],
+                }
+            }
+        })
+        assert ok is True
+        assert note == "willow-2.0"
+
+    def test_detects_bash_lc_command_string(self):
+        check = self._mcp_points_at_willow()
+        ok, note = check({
+            "mcpServers": {
+                "willow": {
+                    "command": "bash",
+                    "args": ["-lc", "cd /home/me/github/willow-2.0 && sap/unified_mcp.sh"],
+                }
+            }
+        })
+        assert ok is True
+        assert note == "willow-2.0"
+
+    def test_reports_stale_full_command(self):
+        check = self._mcp_points_at_willow()
+        ok, note = check({
+            "mcpServers": {
+                "willow": {
+                    "command": "bash",
+                    "args": ["-lc", "python old_mcp.py"],
+                }
+            }
+        })
+        assert ok is False
+        assert note == "stale: bash -lc python old_mcp.py"
+
+
 # ── _policy_check_fn (S8) ─────────────────────────────────────────────────────
 
 @pytest.fixture(scope="module")

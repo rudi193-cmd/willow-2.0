@@ -205,3 +205,4 @@
 | `willow/hns_scheduler.py` |
 | `willow/platform_compat.py` |
 | `willow/skill-catalog.jsonl` |
+| `wt_project.db` |
