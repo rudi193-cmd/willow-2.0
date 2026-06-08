@@ -7,6 +7,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from willow.fylgja.willow_home import willow_home
+
 
 @dataclass
 class AttentionSummary:
@@ -20,20 +22,8 @@ class AttentionSummary:
     lines: list[str] = field(default_factory=list)
 
 
-def _willow_home() -> Path:
-    if h := os.environ.get("WILLOW_HOME"):
-        return Path(h).expanduser().resolve()
-    for candidate in (
-        Path.home() / "github" / ".willow",
-        Path.home() / ".willow",
-    ):
-        if candidate.is_dir():
-            return candidate
-    return Path.home() / ".willow"
-
-
 def _nest_pending() -> int:
-    queue = _willow_home() / "nest-queue.json"
+    queue = willow_home() / "nest-queue.json"
     if not queue.is_file():
         return 0
     try:
@@ -44,7 +34,7 @@ def _nest_pending() -> int:
 
 
 def _open_flags() -> int:
-    anchor = _willow_home() / "session_anchor.json"
+    anchor = willow_home() / "session_anchor.json"
     if not anchor.is_file():
         return 0
     try:

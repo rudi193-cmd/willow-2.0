@@ -5,7 +5,7 @@ import os
 import sys
 from pathlib import Path
 
-from willow.fylgja.willow_home import willow_home
+from willow.fylgja.willow_home import willow_home, willow_home_alias
 
 
 def _bin_dir(venv: Path) -> Path:
@@ -22,14 +22,12 @@ def venv_candidates(root: Path | None = None) -> list[Path]:
     if root is not None:
         candidates.append(root / ".venv-dev")
     candidates.append(Path.home() / "github" / "willow-2.0" / ".venv-dev")
-    if root is not None:
-        try:
-            candidates.append(willow_home(root) / "venv")
-        except Exception:
-            pass
+    try:
+        candidates.append(willow_home(root) / "venv")
+    except Exception:
+        pass
     candidates.extend([
-        Path.home() / "github" / ".willow" / "venv",
-        Path.home() / ".willow" / "venv",
+        willow_home_alias() / "venv",
         Path.home() / ".willow-venv",
     ])
 

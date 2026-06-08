@@ -19,14 +19,7 @@ for p in (ROOT, ROOT / "core"):
     if ps not in sys.path:
         sys.path.insert(0, ps)
 
-
-def _willow_home() -> Path:
-    if h := os.environ.get("WILLOW_HOME"):
-        return Path(h).expanduser()
-    for candidate in (Path.home() / "github" / ".willow", Path.home() / ".willow"):
-        if candidate.is_dir():
-            return candidate
-    return Path.home() / ".willow"
+from willow.fylgja.willow_home import resolve_store_root, willow_home  # noqa: E402
 
 
 def _manifest_report() -> dict:
@@ -43,7 +36,7 @@ def _manifest_report() -> dict:
 
 
 def _nest_triage() -> dict:
-    queue_file = _willow_home() / "nest-queue.json"
+    queue_file = willow_home(ROOT) / "nest-queue.json"
     if not queue_file.is_file():
         return {"pending": 0, "by_track": {}, "no_dest": 0, "oldest": None}
     items = json.loads(queue_file.read_text())
@@ -60,9 +53,7 @@ def _nest_triage() -> dict:
 
 
 def _metabolic_report() -> dict:
-    briefings_db = _willow_home() / "store" / "briefings" / "daily.db"
-    if not briefings_db.is_file():
-        briefings_db = ROOT / ".willow" / "store" / "briefings" / "daily.db"
+    briefings_db = resolve_store_root(ROOT) / "briefings" / "daily.db"
     last = None
     if briefings_db.is_file():
         import sqlite3
@@ -75,9 +66,7 @@ def _metabolic_report() -> dict:
                 last = row[1]
         finally:
             conn.close()
-    sock = _willow_home() / "metabolic.sock"
-    if not sock.is_file():
-        sock = Path.home() / "github" / ".willow" / "metabolic.sock"
+    sock = willow_home(ROOT) / "metabolic.sock"
     return {"last_briefing": last, "socket": "active" if sock.exists() else "missing"}
 
 

@@ -13,8 +13,6 @@ if [[ -z "${WILLOW_PYTHON:-}" ]]; then
         WILLOW_PYTHON="${HOME}/github/willow-2.0/.venv-dev/bin/python3"
     elif [[ -x "${WILLOW_HOME}/venv/bin/python3" ]]; then
         WILLOW_PYTHON="${WILLOW_HOME}/venv/bin/python3"
-    elif [[ -x "${HOME}/.willow/venv/bin/python3" ]]; then
-        WILLOW_PYTHON="${HOME}/.willow/venv/bin/python3"
     elif [[ -x "${HOME}/.willow-venv/bin/python3" ]]; then
         WILLOW_PYTHON="${HOME}/.willow-venv/bin/python3"
     else

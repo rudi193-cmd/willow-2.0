@@ -22,13 +22,17 @@ IS_POSIX: bool = not IS_WINDOWS
 def _find_python() -> str:
     if "WILLOW_PYTHON" in os.environ:
         return os.environ["WILLOW_PYTHON"]
-    fleet = Path(os.environ.get("WILLOW_HOME", str(Path.home() / "github" / ".willow")))
+    wh = _willow_home_module()
+    fleet = wh.willow_home(WILLOW_ROOT)
+    alias = wh.willow_home_alias()
+    bin_name = "Scripts" if IS_WINDOWS else "bin"
+    py_name = "python.exe" if IS_WINDOWS else "python3"
     candidates = [
-        WILLOW_ROOT / ".venv-dev" / ("Scripts" if IS_WINDOWS else "bin") / ("python.exe" if IS_WINDOWS else "python3"),
-        Path.home() / "github" / "willow-2.0" / ".venv-dev" / ("Scripts" if IS_WINDOWS else "bin") / ("python.exe" if IS_WINDOWS else "python3"),
-        fleet / "venv" / ("Scripts" if IS_WINDOWS else "bin") / ("python.exe" if IS_WINDOWS else "python3"),
-        Path.home() / ".willow" / "venv" / ("Scripts" if IS_WINDOWS else "bin") / ("python.exe" if IS_WINDOWS else "python3"),
-        Path.home() / ".willow-venv" / ("Scripts" if IS_WINDOWS else "bin") / ("python.exe" if IS_WINDOWS else "python3"),
+        WILLOW_ROOT / ".venv-dev" / bin_name / py_name,
+        Path.home() / "github" / "willow-2.0" / ".venv-dev" / bin_name / py_name,
+        fleet / "venv" / bin_name / py_name,
+        alias / "venv" / bin_name / py_name,
+        Path.home() / ".willow-venv" / bin_name / py_name,
     ]
     for c in candidates:
         if c.is_file():
