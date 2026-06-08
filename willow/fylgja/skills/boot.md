@@ -2,6 +2,7 @@
 name: boot
 description: Willow 2.0 primary boot gate — reads contract, establishes context, checks fleet, loads continuity, persona, corrections, and stack before first response.
 ---
+@markdownai
 
 # /boot
 
@@ -19,7 +20,7 @@ These run before your first turn via hooks:
 
 | Hook | What it does |
 |---|---|
-| **SessionStart** | Hardware scan · fleet_status · jeles registration · dispatch subscribe · heartbeat · corpus corrections seeded from memory feedback files · stack snapshot read from SOIL · anchor written to `$WILLOW_HOME/session_anchor_{agent}.json` |
+| **SessionStart** | Hardware scan · willow_status · jeles registration · dispatch subscribe · heartbeat · corpus corrections seeded from memory feedback files · stack snapshot read from SOIL · anchor written to `$WILLOW_HOME/session_anchor_{agent}.json` |
 | **prompt_submit (turn 1)** | Persona picker injected · boot guard injected · dispatch inbox injected |
 
 ---
@@ -50,7 +51,7 @@ Agent name · repo root · current branch · staged/unstaged/untracked counts ·
 No full patch. No full diffs.
 
 **3. Fleet health** *(parallel with 4–6)*
-`fleet_status(app_id=<agent>)` — Postgres, SOIL, Ollama, manifests.
+`willow_status(app_id=<agent>)` — Postgres, SOIL, Ollama, manifests (`level=quick` by default).
 `postgres` is a dict → up. Non-dict or timeout → probe directly.
 **Postgres down = hard stop in private-config mode.** In public-fallback, note degraded and continue.
 
@@ -66,7 +67,7 @@ Grove unavailable = degraded, not fatal. Continue.
 **6. KB topic** *(parallel with 3–5)*
 Extract the key topic or entity from the user's first message — strip filler phrases ("is an interesting subject", "I've been thinking about", "tell me about", etc.) and search on the core noun or concept. Examples: "NASA is an interesting subject" → `NASA`; "I've been thinking about cathedrals" → `cathedrals`; "fix the kart symlink" → use as-is.
 
-`kb_search(semantic=true, query=<extracted topic>)` — do not use the raw sentence as the query; embedding models match phrase structure, not topic.
+`willow_find(scope=kb, query=<extracted topic>)` — routes to hybrid KB search; do not use the raw sentence as the query; embedding models match phrase structure, not topic.
 
 **6b. Dream gate** *(parallel with 3–6; optional line in boot report)*
 `dream_check(app_id=<agent>)` — if `should_dream` is true, surface one line: `Dream: due ({hours_since_dream}h, {sessions_since_dream} sessions) — queue via dream_schedule or /dream`. Do not run `dream_run` inline during boot unless the user asked.
