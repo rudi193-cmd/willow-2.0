@@ -38,6 +38,8 @@ from willow.fylgja.willow_home import willow_home
 _subscriptions: dict[int, set[asyncio.Queue]] = {}
 _subscriptions_lock = threading.Lock()
 _main_loop: asyncio.AbstractEventLoop | None = None
+_notify_thread: threading.Thread | None = None
+_notify_thread_lock = threading.Lock()
 
 
 def _pg_notify_thread() -> None:
@@ -79,12 +81,21 @@ def _pg_notify_thread() -> None:
             time.sleep(3)
 
 
+def _ensure_pg_notify_thread() -> None:
+    """Start the process-wide Postgres LISTEN thread once."""
+    global _notify_thread
+    with _notify_thread_lock:
+        if _notify_thread is not None and _notify_thread.is_alive():
+            return
+        _notify_thread = threading.Thread(target=_pg_notify_thread, daemon=True)
+        _notify_thread.start()
+
+
 @asynccontextmanager
 async def _lifespan(server: FastMCP) -> AsyncIterator[None]:
     global _main_loop
     _main_loop = asyncio.get_running_loop()
-    t = threading.Thread(target=_pg_notify_thread, daemon=True)
-    t.start()
+    _ensure_pg_notify_thread()
     yield
 
 
