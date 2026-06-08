@@ -6,7 +6,7 @@ Wants=postgresql.service
 [Service]
 Type=simple
 EnvironmentFile=-%h/github/.willow/env
-ExecStart=%h/github/willow-2.0/.venv-dev/bin/python3 %h/github/willow-2.0/scripts/willow_discord_responder.py run
+ExecStart=%h/github/willow-2.0/willow.sh exec-python %h/github/willow-2.0/scripts/willow_discord_responder.py run
 WorkingDirectory=%h/github/willow-2.0
 Restart=on-failure
 RestartSec=15

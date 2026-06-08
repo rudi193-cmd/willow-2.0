@@ -35,7 +35,7 @@ def prepare_task_command(
     Return (command, script_path).
 
     If script_body is set, write {WILLOW_ROOT}/.kart-scripts/kart-<id>.py
-    and return python3 <absolute path>.
+    and return a command that uses $WILLOW_PYTHON inside Kart.
     Otherwise return task unchanged.
     """
     body = (script_body or "").strip()
@@ -46,7 +46,7 @@ def prepare_task_command(
         path = kart_scripts_dir() / name
         path.write_text(body if body.endswith("\n") else body + "\n", encoding="utf-8")
         path.chmod(0o755)
-        return f"python3 {path}", str(path)
+        return f'"${{WILLOW_PYTHON:-python3}}" {path}', str(path)
     cmd = (task or "").strip()
     if not cmd:
         raise ValueError("task or script_body required")
