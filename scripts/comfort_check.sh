@@ -35,7 +35,7 @@ fi
 
 export WILLOW_ROOT="${WILLOW_ROOT:-${ROOT}}"
 export WILLOW_MCP_PROFILE="${WILLOW_MCP_PROFILE:-full}"
-export PYTHONPATH="${WILLOW_ROOT}:${PYTHONPATH:-}"
+export PYTHONPATH="${WILLOW_ROOT}:${WILLOW_ROOT}/core:${PYTHONPATH:-}"
 
 total_fail=0
 total_warn=0
@@ -159,7 +159,8 @@ _local_verify() {
 }
 
 _retrieval_gold() {
-  "${PYTHON}" scripts/retrieval_gold_check.py
+  export PYTHONPATH="${WILLOW_ROOT}:${WILLOW_ROOT}/core:${PYTHONPATH:-}"
+  "${PYTHON}" "${ROOT}/scripts/retrieval_gold_check.py"
 }
 
 _health_report() {

@@ -7,8 +7,20 @@ import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
+for _p in (_ROOT, _ROOT / "core"):
+    _ps = str(_p)
+    if _ps not in sys.path:
+        sys.path.insert(0, _ps)
+
+
+def _clear_willow_launcher_shadow() -> None:
+    """willow.py at repo root is a launcher, not the willow/ package."""
+    mod = sys.modules.get("willow")
+    if mod is not None and not hasattr(mod, "__path__"):
+        del sys.modules["willow"]
+
+
+_clear_willow_launcher_shadow()
 
 from core.pg_bridge import PgBridge, try_connect  # noqa: E402
 from willow.bench.retrieval_gold import run_gold_set  # noqa: E402
