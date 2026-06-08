@@ -984,9 +984,7 @@ class PgBridge:
 
     def knowledge_put(self, record: dict) -> str:
         self._ensure_conn()
-        title = record.get("title") or ""
-        summary = record.get("summary") or ""
-        vec = embed(f"{title} {summary}")
+        vec = embed(self._knowledge_embedding_text(record))
         vec_str = str(vec) if vec is not None else None
         with self.conn.cursor() as cur:
             cur.execute("""
@@ -1025,6 +1023,39 @@ class PgBridge:
         self.conn.commit()
         return record["id"]
 
+    def _knowledge_embedding_text(self, record: dict) -> str:
+        """Build embedding input from searchable atom fields, not summary alone."""
+        content = record.get("content") or {}
+        if not isinstance(content, dict):
+            content = {"content": content}
+
+        def _flatten(value) -> str:
+            if value is None:
+                return ""
+            if isinstance(value, str):
+                return value.strip()
+            if isinstance(value, (int, float, bool)):
+                return str(value)
+            if isinstance(value, dict):
+                return " ".join(_flatten(v) for v in value.values())
+            if isinstance(value, (list, tuple, set)):
+                return " ".join(_flatten(v) for v in value)
+            return str(value).strip()
+
+        keywords = record.get("keywords") or content.get("keywords")
+        tags = record.get("tags") or content.get("tags")
+        evidence = content.get("evidence") or content.get("source_id") or content.get("source_file")
+        parts = [
+            f"Title: {record.get('title') or ''}",
+            f"Summary: {record.get('summary') or ''}",
+            f"Category: {record.get('category') or ''}",
+            f"Source type: {record.get('source_type') or ''}",
+            f"Keywords: {_flatten(keywords)}",
+            f"Tags: {_flatten(tags)}",
+            f"Evidence: {_flatten(evidence)}",
+        ]
+        return "\n".join(p for p in parts if p.split(":", 1)[-1].strip())
+
     def ingest_atom(self, title: str, summary: str, source_type: str = "mcp",
                     source_id: str = "", category: str = "general",
                     domain: Optional[str] = None, keywords: Optional[list] = None,
@@ -1039,6 +1070,21 @@ class PgBridge:
                 content["keywords"] = keywords
             if tags:
                 content["tags"] = tags
+            normalized_tier = normalize_tier(tier)
+            if normalized_tier == "canonical":
+                from core.kb_quality import canonical_quality_check
+
+                quality = canonical_quality_check(
+                    title=title,
+                    summary=summary,
+                    content=content,
+                    source_type=source_type,
+                    source_id=source_id,
+                    confidence=confidence,
+                )
+                if not quality["satisfied"]:
+                    self._last_ingest_error = f"canonical_quality_gate: {quality['explanation']}"
+                    return None
             self.knowledge_put({
                 "id":          atom_id,
                 "project":     domain or "global",
@@ -1047,7 +1093,7 @@ class PgBridge:
                 "source_type": source_type,
                 "content":     content,
                 "category":    category,
-                "tier":        tier,
+                "tier":        normalized_tier,
                 "confidence":  confidence,
             })
             return atom_id

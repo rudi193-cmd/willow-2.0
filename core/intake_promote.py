@@ -8,6 +8,7 @@ import logging
 from typing import Optional
 
 from core.intake import list_agents, mark_promoted, read_all_pending, read_pending
+from core.kb_quality import canonical_quality_check
 from core.pg_bridge import PgBridge, normalize_tier
 from core.ratification import classify_ratification_class
 from willow.fylgja.willow_home import willow_home
@@ -165,6 +166,30 @@ def promote_agent(
                         "confidence": rec.get("confidence"),
                         "routed_to": tier,
                         "evidence_source": rec.get("source"),
+                    })
+
+        if tier == "knowledge" and normalize_tier(rec.get("tier", "frontier")) == "canonical":
+            quality = canonical_quality_check(
+                title=rec.get("title", "") or (rec.get("content", "")[:80]),
+                summary=rec.get("content", ""),
+                content={
+                    "source_id": rec_id,
+                    "evidence": rec.get("extra", {}).get("evidence"),
+                    "source_file": rec.get("extra", {}).get("source_file"),
+                    "keywords": rec.get("keywords") or [],
+                    "tags": rec.get("tags") or [],
+                },
+                source_type=rec.get("source", ""),
+                source_id=rec_id,
+                confidence=float(rec.get("confidence", 0.0)),
+            )
+            if not quality["satisfied"]:
+                tier = "binder_queue"
+                if not dry_run:
+                    pg.ledger_append("willow-ratification", "canonical_quality_blocked", {
+                        "record_id": rec_id,
+                        "flags": quality["flags"],
+                        "routed_to": tier,
                     })
 
         routed[tier] = routed.get(tier, 0) + 1

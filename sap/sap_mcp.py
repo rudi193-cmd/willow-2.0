@@ -1114,6 +1114,38 @@ async def kb_ingest(
             logger.warning("[w2] kb_ingest quality_gate failed: %s", qe)
             quality_result = {"error": str(qe)}
 
+    from core.pg_bridge import normalize_tier
+
+    normalized_tier = normalize_tier(tier)
+    content_for_quality = {"source_id": clean_source_id}
+    if keywords:
+        content_for_quality["keywords"] = keywords
+    if tags:
+        content_for_quality["tags"] = tags
+    if normalized_tier == "canonical":
+        try:
+            from core.kb_quality import canonical_quality_check
+
+            canonical_quality = canonical_quality_check(
+                title=title,
+                summary=clean_summary,
+                content=content_for_quality,
+                source_type=source_type,
+                source_id=clean_source_id,
+                confidence=confidence,
+            )
+            quality_result["canonical"] = canonical_quality
+            if not canonical_quality["satisfied"]:
+                return {
+                    "blocked": True,
+                    "reason": "canonical_quality_gate",
+                    "quality": quality_result,
+                    "hint": "Canonical atoms require specific summary, provenance, and sufficient confidence.",
+                }
+        except Exception as qe:
+            logger.warning("[w2] canonical quality gate failed: %s", qe)
+            quality_result["canonical"] = {"error": str(qe)}
+
     def _ingest():
         retired: list[str] = []
         if not force:
@@ -1156,7 +1188,7 @@ async def kb_ingest(
             category=category, domain=effective_domain or None,
             keywords=keywords or [],
             tags=tags or [],
-            tier=tier,
+            tier=normalized_tier,
             confidence=confidence,
         )
         out: dict = {"id": atom_id, "status": "ingested" if atom_id else "failed"}
