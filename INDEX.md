@@ -113,7 +113,9 @@
 
 | Path | Description |
 |------|-------------|
+| `.agents/` | OpenAI Agents IDE surface — vendored skills and commands |
 | `.claude/` | Claude Code project config — hooks, commands, skills |
+| `.codex/` | Codex CLI surface — vendored skills, commands, MCP config |
 | `.cursor/` | Cursor IDE config — commands, rules |
 | `.github/` | GitHub Actions workflows and issue templates |
 | `.willow/` | Runtime state — session anchors, handoffs, MCP config |
@@ -133,6 +135,7 @@
 | `docs/FIRST_5_MINUTES.md` | Install and first-run quickstart |
 | `docs/FOR_AHS.md` | Beta reader decoder ring (Warhammer lexicon overlay) |
 | `docs/IDE_INTEGRATION.md` | IDE setup guide — Cursor and Claude Code MCP wiring |
+| `docs/INDEX.md` | Human/agent doc router — start here for docs |
 | `docs/KNOWN_GAPS.md` | Broken-in-master engineering gaps |
 | `docs/OPEN_WORK.md` | Curated open backlog (not install blockers) |
 | `docs/QUICKSTART.md` | Quickstart guide |
@@ -146,6 +149,7 @@
 | `docs/nomenclature/` | Term definitions and glossary |
 | `docs/runbooks/` | Operational runbooks |
 | `docs/superpowers/` | Redirect stub → archive/docs/superpowers |
+| `docs/templates/` | Agent artifact templates — handoff, audit, ADR, PR, atom |
 | `docs/testing/` | Testing guides |
 | `docs/willow-handoff.md` | Handoff protocol documentation |
 | `sandbox/` | Experimental and scratch area |
@@ -163,8 +167,6 @@
 | Path |
 |------|
 | `${HOME}` |
-| `.agents` |
-| `.codex` |
 | `.kart-scripts` |
 | `.mcp.json.bak` |
 | `.pre-commit-config.yaml` |
@@ -194,7 +196,6 @@
 | `docs/kb` |
 | `docs/provenance` |
 | `docs/static` |
-| `docs/templates` |
 | `install-windows.ps1` |
 | `sap/MCP_SPEC.lock.json` |
 | `sap/adapters` |
@@ -207,6 +208,8 @@
 | `seed-windows.py` |
 | `setup.sh` |
 | `stubs` |
+| `uv.lock` |
+| `willow.egg-info` |
 | `willow.py` |
 | `willow/bench` |
 | `willow/hns_enforcer.py` |

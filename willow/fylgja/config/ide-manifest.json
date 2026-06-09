@@ -1,4 +1,5 @@
 {
+  "_comment": "Runtime/config templates rendered by install_project. Agent prose templates live in docs/templates/README.md.",
   "ides": {
     "cursor": {
       "hooks_file": "willow/fylgja/config/cursor-hooks.json",

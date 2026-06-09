@@ -2058,6 +2058,83 @@ class PgBridge:
         except Exception:
             return None
 
+    def opus_put(self, record: dict) -> Optional[str]:
+        """Upsert an Opus atom by stable id (used by file index writes)."""
+        self._ensure_conn()
+        try:
+            atom_id = record["id"]
+            title = record.get("title")
+            content = record.get("content", "")
+            vec = embed(f"{title or ''} {content}")
+            vec_str = str(vec) if vec is not None else None
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO opus_atoms
+                        (id, agent, title, summary, content, domain, depth, confidence, source_session, embedding)
+                    VALUES (%(id)s, %(agent)s, %(title)s, %(summary)s, %(content)s,
+                            %(domain)s, %(depth)s, %(confidence)s, %(source_session)s, %(embedding)s::vector)
+                    ON CONFLICT (id) DO UPDATE SET
+                        agent          = EXCLUDED.agent,
+                        title          = EXCLUDED.title,
+                        summary        = EXCLUDED.summary,
+                        content        = EXCLUDED.content,
+                        domain         = EXCLUDED.domain,
+                        depth          = EXCLUDED.depth,
+                        confidence     = EXCLUDED.confidence,
+                        source_session = EXCLUDED.source_session,
+                        embedding      = EXCLUDED.embedding
+                """, {
+                    "id": record["id"],
+                    "agent": record.get("agent"),
+                    "title": title,
+                    "summary": record.get("summary"),
+                    "content": content,
+                    "domain": record.get("domain", "file_index"),
+                    "depth": record.get("depth", 1),
+                    "confidence": record.get("confidence", 1.0),
+                    "source_session": record.get("source_session"),
+                    "embedding": vec_str,
+                })
+            self.conn.commit()
+            return atom_id
+        except Exception:
+            return None
+
+    def knowledge_rows_for_file_audit(
+        self, ids: list[str], rel_paths: list[str]
+    ) -> list[dict]:
+        """Fetch knowledge rows relevant to repo-local file index audit."""
+        if not ids and not rel_paths:
+            return []
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, project, title, summary, content
+                FROM knowledge
+                WHERE id = ANY(%s)
+                   OR content->>'rel_path' = ANY(%s)
+                   OR project IN ('docs', 'codebase', 'file_index')
+            """, (ids, rel_paths))
+            return [dict(r) for r in cur.fetchall()]
+
+    def opus_rows_for_file_audit(self, rel_paths: list[str]) -> list[dict]:
+        """Fetch opus_atoms rows that may represent indexed repo files."""
+        if not rel_paths:
+            return []
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, agent, title, summary, content, domain
+                FROM opus_atoms
+                WHERE domain = 'file_index'
+                   OR title = ANY(%s)
+                   OR content ILIKE ANY(%s)
+            """, (
+                rel_paths,
+                [f'%"rel_path": "{rp}"%' for rp in rel_paths],
+            ))
+            return [dict(r) for r in cur.fetchall()]
+
     def opus_feedback(self, domain: Optional[str] = None) -> list:
         self._ensure_conn()
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:

@@ -134,12 +134,14 @@ Also orient against these registries if not already loaded this session:
 
 | File | What it contains |
 |---|---|
+| `docs/INDEX.md` | Doc router — workflows, runbooks, and template index |
+| `docs/templates/README.md` | Canonical agent artifact templates (handoff, audit, ADR, PR, atom, …) |
 | `sap/mcp_registry.json` | All MCP tools grouped by domain prefix — the authoritative tool reference |
 | `willow/fylgja/powers/registry.json` | 10 named powers (execute, plan, worktree, etc.) with cold-pull .md paths |
 | `willow/fylgja/skills/plugin.json` | Fylgja skills manifest — LLM-agnostic behavioral skills |
 | `scripts/index_annotations.json` | Repo directory map — what lives where |
 
-Paths are relative to repo root. All four are dark by default — they do not self-announce.
+Paths are relative to repo root. All six are dark by default — they do not self-announce. For session artifacts, copy from `docs/templates/` — do not improvise structure.
 
 **13. Flag triage**
 `soil_list({agent}/flags)` — close duplicates, surface open ones (max 5, one-line fix_path ≤150 chars).

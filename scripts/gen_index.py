@@ -19,12 +19,13 @@ def load_annotations():
 
 def collect_paths(config):
     exclude = set(config.get("exclude", []))
+    root_only_exclude = set(config.get("root_only_exclude", []))
     expand = set(config.get("expand", []))
     paths = {}
 
     for entry in sorted(REPO_ROOT.iterdir()):
         name = entry.name
-        if name in exclude:
+        if name in exclude or name in root_only_exclude:
             continue
         rel = name
         paths[rel] = entry.is_dir()

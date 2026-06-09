@@ -41,13 +41,20 @@ root `../willow.md` as an agent.
 
 ## Templates (agents — copy, don't edit in place)
 
+Start at [`templates/README.md`](templates/README.md) — canonical router for all agent artifacts and runtime config pointers.
+
 | Template | Use |
 |----------|-----|
-| [`templates/README.md`](templates/README.md) | Which artifact when |
+| [`templates/README.md`](templates/README.md) | Which artifact when + runtime template registry |
+| [`templates/HANDOFF.template.md`](templates/HANDOFF.template.md) | Session continuity |
 | [`templates/DEV_LOG.template.md`](templates/DEV_LOG.template.md) | Multi-hour session extract |
 | [`templates/ADR.template.md`](templates/ADR.template.md) | Architecture decision |
+| [`templates/AUDIT.template.md`](templates/AUDIT.template.md) | Fleet/subsystem audit report |
+| [`templates/INVESTIGATION.template.md`](templates/INVESTIGATION.template.md) | Debug / root-cause investigation |
+| [`templates/GROVE_DECISION.template.md`](templates/GROVE_DECISION.template.md) | Grove quorum / decision post |
+| [`templates/ATOM.template.md`](templates/ATOM.template.md) | KB / SOIL atom candidate |
+| [`templates/PR_WORKTREE.template.md`](templates/PR_WORKTREE.template.md) | Branch / worktree / PR summary |
 | [`templates/TASK.template.md`](templates/TASK.template.md) | Operator backlog → willow-config `tasks/` |
-| [`templates/HANDOFF.template.md`](templates/HANDOFF.template.md) | Session continuity |
 | [`templates/RELEASE.template.md`](templates/RELEASE.template.md) | Version / changelog |
 
 ---
