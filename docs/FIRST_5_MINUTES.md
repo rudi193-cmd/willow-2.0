@@ -18,12 +18,10 @@ Copy this block (Linux / macOS):
 ```bash
 git clone https://github.com/rudi193-cmd/willow-2.0
 cd willow-2.0
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
-python3 seed.py
+bash setup.sh --public
 ```
 
-**Agents without willow-config:** read [`docs/CONTRACT.md`](CONTRACT.md) for the public fleet contract snapshot. Full operator contract lives in private **willow-config** — see [`docs/WILLOW_CONFIG.md`](WILLOW_CONFIG.md).
+**Agents without willow-config:** read root [`../willow.md`](../willow.md) or [`docs/CONTRACT.md`](CONTRACT.md) for the public contract. Private operator context lives in **willow-config** — see [`docs/WILLOW_CONFIG.md`](WILLOW_CONFIG.md).
 
 **Fleet operators:** clone `willow-config` to `~/github/.willow`, then run `bash setup.sh` so runtime config points at the private home while root `willow.md` stays public-safe.
 
@@ -34,6 +32,8 @@ pip install -e ".[dev]"
 pre-commit install
 pre-commit install --hook-type pre-push
 ```
+
+Use `bash setup.sh` without `--public` when private `willow-config` is present at `~/github/.willow`. Manual lower-level path: create a venv, `pip install -e .`, then run `python3 seed.py`.
 
 **What you should see:** setup steps scrolling, then your shell prompt back. No panic unless it stops with an error.
 
@@ -100,17 +100,15 @@ bash ~/willow-2.0/willow.sh grove send 192.168.x.x:7777 status-all
 
 ## Optional — IDE (Cursor / Claude Code)
 
-Copy [`.mcp.json.example`](../.mcp.json.example) to `.mcp.json`. Set:
+Prefer the installer:
 
-- `WILLOW_AGENT_NAME` — your agent id (e.g. `heimdallr`)
-- `WILLOW_PG_DB` — `willow_20`
+```bash
+./willow.sh agents active <agent>
+./willow.sh agents install <agent> --ide <cursor|claude|codex>
+./willow.sh agents check --ide <cursor|claude|codex>
+```
 
-Launchers:
-
-- `sap/willow_mcp.sh` — Willow tools
-- `sap/markdownai_mcp.sh` — reads `willow.md` and skills
-
-Details: [`IDE_INTEGRATION.md`](IDE_INTEGRATION.md)
+This writes MCP config for `sap/unified_mcp.sh` and links runtime settings for the chosen IDE. Manual `.mcp.json` setup is covered in [`IDE_INTEGRATION.md`](IDE_INTEGRATION.md).
 
 ---
 

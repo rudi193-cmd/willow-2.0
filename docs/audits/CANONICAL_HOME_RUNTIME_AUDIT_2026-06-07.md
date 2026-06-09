@@ -182,7 +182,7 @@ flowchart TB
 | ID | Finding | Notes |
 |----|---------|-------|
 | P3-1 | Claude-only session paths | `~/.claude/projects/`, memory health scripts — OK if labeled Claude-only |
-| P3-2 | Discord remote-control skill | Explicitly Claude Code oriented |
+| P3-2 | Discord `willow-remote` skill (formerly `remote-control`) | Explicitly Claude Code oriented |
 | P3-3 | `routine_*` MCP tools | Claude Code Routine API |
 | P3-4 | `$WILLOW_HOME/mcp/willow-2.0.mcp.json` | Parallel MCP copy; not wired by `install_project` symlink map |
 
@@ -213,7 +213,7 @@ flowchart TB
 
 ---
 
-## What Works Today (Sean’s machine)
+## What Works Today (USER machine)
 
 1. **`~/github/.willow` is the real canonical home** — env, contract, global settings, per-agent IDE permissions.
 2. **Cursor + hanuman** — MCP symlink, hooks, settings.local from canonical home, identity coherent.

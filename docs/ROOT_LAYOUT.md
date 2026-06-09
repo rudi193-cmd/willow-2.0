@@ -9,7 +9,7 @@ The repo root is intentionally thin. Headers and seals: [`BRANDING.md`](BRANDING
 | File | Purpose |
 |------|---------|
 | `willow.sh` | MCP launcher, `fleet_status`, `handoff_latest`, Grove serve |
-| `willow.md` | Symlink → `~/github/.willow/willow.md` (canonical in private **willow-config**) |
+| `willow.md` | Public boot contract tracked in this repo; private `~/.willow/willow.md` is an optional overlay |
 | `root.py` | Idempotent install (Sleipnir) |
 | `seed.py` | First-run / environment seed |
 | `shoot.py` | Onboarding TUI |
@@ -35,7 +35,8 @@ python3 scripts/session_close.py
 
 ## `sap/` — MCP server
 
-`sap/sap_mcp.py` via `sap/willow_mcp.sh`.
+`sap/sap_mcp.py` via `sap/unified_mcp.sh` for daily IDE use. `sap/willow_mcp.sh`
+remains the Willow-only launcher.
 
 ## `willow/` — hooks, Fylgja, routing, memory
 

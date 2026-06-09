@@ -13,7 +13,7 @@ Override: **`WILLOW_FYLGJA_ROOT`** must contain `powers/` and `skills/`.
 | Registry | `willow/fylgja/powers/registry.json` |
 | Power bodies | `willow/fylgja/powers/*.md` |
 | Entry skill | `willow/fylgja/skills/power.md` |
-| Fleet boot | [`willow.md`](../../willow.md) (repo root) |
+| Fleet boot | [`willow.md`](../../../willow.md) (repo root) |
 | Personas | `willow/fylgja/personas/` |
 | `AGENTS.md` / `GEMINI.md` | Repo root pointers |
 | Cursor rule | `.cursor/rules/fylgja-powers.mdc` (not rewritten this pass) |

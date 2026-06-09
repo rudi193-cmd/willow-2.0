@@ -88,4 +88,4 @@ What does the next agent need to resume?
 
 ---
 
-*See also: [`willow.md` — Persistent memory section](../../willow.md)*
+*See also: [`willow.md` — Persistent memory section](../../../willow.md)*

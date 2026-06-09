@@ -7,7 +7,7 @@ b17: FYLP7 · ΔΣ=42
 
 1. `git worktree add <repo>/worktrees/<task> -b <task-branch>` at **start** of scope.
 2. Work only in that tree until merge.
-3. Merge to default branch on **Sean’s** explicit OK.
+3. Merge to default branch on **USER’s** explicit OK.
 4. After merge: `git worktree remove worktrees/<task>` + remove branch.
 
 **Path convention:** Worktrees live **inside** their repo at `<repo>/worktrees/<task>`, not as siblings. `worktrees/` is in `.gitignore`.

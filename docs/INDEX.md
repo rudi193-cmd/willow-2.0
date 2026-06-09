@@ -2,7 +2,8 @@
 
 b17: DOCIDX · ΔΣ=42
 
-Pick a door:
+Pick a door. If you are unsure, start with `FIRST_5_MINUTES.md` as a human or
+root `../willow.md` as an agent.
 
 | You are… | Start here |
 |----------|------------|
@@ -23,6 +24,18 @@ Pick a door:
 | Branding (b17, b20, voice) | [`BRANDING.md`](BRANDING.md) |
 | Beta gate / ops | [`BETA_AUDIT_REPORT.md`](BETA_AUDIT_REPORT.md) |
 | MCP tool profiles (reduce picker noise) | [`MCP_TOOL_PROFILES.md`](MCP_TOOL_PROFILES.md) |
+
+---
+
+## Common Workflows
+
+| Goal | Path |
+|------|------|
+| Public clone, no private config | `bash setup.sh --public` → [`PUBLIC_REMOTE_BOOT.md`](PUBLIC_REMOTE_BOOT.md) |
+| Fleet operator setup | `bash setup.sh` → [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) |
+| IDE agent setup | `./willow.sh agents install <id> --ide <surface>` → [`IDE_INTEGRATION.md`](IDE_INTEGRATION.md) |
+| Agent boot order | [`../willow.md`](../willow.md) → [`../willow/fylgja/skills/boot.md`](../willow/fylgja/skills/boot.md) |
+| Fix stale or confusing docs | update the source doc, then regenerate root [`../INDEX.md`](../INDEX.md) with `python3 scripts/gen_index.py` when annotations change |
 
 ---
 

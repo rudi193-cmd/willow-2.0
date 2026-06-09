@@ -47,7 +47,7 @@ Stack: `willow/fylgja/skills/persistent-memory-stack.md`
 
 ## 4. Execution shape
 
-- **One** power body per turn unless this file or Sean says escalate
+- **One** power body per turn unless this file or USER says escalate
 - Heavy shell: **`agent_task_submit`** to Kart
 - After MCP code edits: **`fleet_reload`** (narrowest target); see `skills/restart-server.md`
 

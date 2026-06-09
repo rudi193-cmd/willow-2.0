@@ -24,7 +24,7 @@ autoInvoke:
    If not — create one with `fork_create` before writing any code.
 
 3. **Is there a PR destination for this work?**
-   The branch must be pushable to GitHub and mergeable via PR with CI + Sean approval.
+   The branch must be pushable to GitHub and mergeable via PR with CI + USER approval.
 
 ## If any answer is NO — do this first
 
@@ -59,6 +59,6 @@ git push -u origin fix/<slug>
 gh pr create --title "..." --body "..."
 ```
 
-Wait for CI. Get Sean's approval. Merge. Delete the branch.
+Wait for CI. Get USER's approval. Merge. Delete the branch.
 
 See `/worktree` for the full flow including teardown.

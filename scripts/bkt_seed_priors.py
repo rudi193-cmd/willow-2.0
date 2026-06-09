@@ -60,7 +60,7 @@ _SEEDS: list[dict] = [
         "note": "Used when anchor is stale; more decision-heavy than boot",
     },
     {
-        "skill_id": "remote-control",
+        "skill_id": "willow-remote",
         "prior": 0.60, "learn": 0.12, "guess": 0.18, "slip": 0.10,
         "note": "Newer skill; used regularly but daemon/bwrap friction recurs",
     },

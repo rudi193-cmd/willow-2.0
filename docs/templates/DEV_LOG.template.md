@@ -5,7 +5,7 @@ AGENT INSTRUCTIONS
 - Use for: multi-hour sessions, infra moves, audits, cross-repo work, CI fights.
 - Do NOT use for: routine feature work (use HANDOFF template + handoff skill).
 - Save as: willow-2.0/docs/dev-log-YYYY-MM-DD-<slug>.md
-- Commit via worktree + PR unless Sean explicitly asks otherwise.
+- Commit via worktree + PR unless USER explicitly asks otherwise.
 - Extract data: transcript id, user turns, tool counts, git log, gh run list, ./willow.sh verify.
 - Link ADRs for decisions; do not duplicate ADR prose here.
 - MarkdownAI: keep @markdownai v1.0 line 1. Read with mai_read_file; write with mai_write_file; do not use IDE Read/Write on filled file.

@@ -3,7 +3,7 @@
 # Run once on a new machine, or re-run to sync config + deps.
 #
 # What it does:
-#   1. Pull private willow-config → ~/github/.willow; link contract into willow-2.0 (symlinks in, not out)
+#   1. Pull private willow-config → ~/github/.willow; link runtime config into willow-2.0
 #   2. Create .venv-dev if missing
 #   3. Install/upgrade requirements.txt
 #   4. Verify Postgres connection

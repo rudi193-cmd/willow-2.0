@@ -2,10 +2,10 @@
 
 b17: AXW20 · ΔΣ=42
 
-**Codename:** **A×W-20** (AllHail × Willow 2.0)  
-**Also called:** Oakengrove Protocol (inside joke — Oakenscroll × Grove; do not explain to Administratum)  
-**Dynasty overlay (AHS):** [**AXW-20-NECRONS.md**](AXW-20-NECRONS.md) — Necron court voice on top of this lexicon  
-**Authority:** Sean + AHS; fleet agents may use in Grove when speaking *to* or *about* the beta read  
+**Codename:** **A×W-20** (AllHail × Willow 2.0)
+**Also called:** Oakengrove Protocol (inside joke — Oakenscroll × Grove; do not explain to Administratum)
+**Dynasty overlay (AHS):** [**AXW-20-NECRONS.md**](AXW-20-NECRONS.md) — Necron court voice on top of this lexicon
+**Authority:** USER + AHS; fleet agents may use in Grove when speaking *to* or *about* the beta read
 **Does not replace:** repo paths, MCP tool names, Postgres schema, agent namespaces
 
 ---
@@ -14,8 +14,8 @@ b17: AXW20 · ΔΣ=42
 
 A **parallel lexicon** so the stack reads like one coherent absurd universe to someone who knows:
 
-- **Warhammer 40k** — institutions, watch, forge worlds, vox, inquisition  
-- **r/LLMPhysics** — state, measurement, contradiction, context thermodynamics  
+- **Warhammer 40k** — institutions, watch, forge worlds, vox, inquisition
+- **r/LLMPhysics** — state, measurement, contradiction, context thermodynamics
 - **UTETY** — faculty humor as optional garnish (Oakenscroll, Consus, Gerald’s ΔΣ=42)
 
 Canonical Willow names stay in code. **A×W-20** is how you *talk* about the same things in docs, DMs, and Grove posts when the audience is AHS (or anyone holding this sheet).
@@ -24,10 +24,10 @@ Canonical Willow names stay in code. **A×W-20** is how you *talk* about the sam
 
 ## Usage rules
 
-1. **First mention in a crossover doc:** `Canonical (A×W-20)` — e.g. `kb_search` (*Archive query / Vox-index*).  
-2. **Grove (crossover mode):** last line still `b17: CODE — summary`; body may use A×W-20 terms.  
-3. **Never rename** `hanuman/`, `kb_ingest`, or `willow_20` in production config.  
-4. **Roast tier:** If an analogy fights the physics column, physics wins. If both fight the code, code wins.  
+1. **First mention in a crossover doc:** `Canonical (A×W-20)` — e.g. `kb_search` (*Archive query / Vox-index*).
+2. **Grove (crossover mode):** last line still `b17: CODE — summary`; body may use A×W-20 terms.
+3. **Never rename** `hanuman/`, `kb_ingest`, or `willow_20` in production config.
+4. **Roast tier:** If an analogy fights the physics column, physics wins. If both fight the code, code wins.
 5. **Shine tier:** FRANK, install theater, myth names — keep them; add A×W-20 subtitle in parentheses once.
 
 ---
@@ -188,8 +188,8 @@ The Constant = ΔΣ=42       Heraldry = b17
 
 ## Canon for outsiders
 
-- **Felix / generic beta:** [`../FIRST_5_MINUTES.md`](../FIRST_5_MINUTES.md) — plain English.  
-- **AHS / 40k / LLMPhysics:** this doc + [`../FOR_AHS.md`](../FOR_AHS.md).  
+- **Felix / generic beta:** [`../FIRST_5_MINUTES.md`](../FIRST_5_MINUTES.md) — plain English.
+- **AHS / 40k / LLMPhysics:** this doc + [`../FOR_AHS.md`](../FOR_AHS.md).
 - **Agents in production:** [`../../willow.md`](../../willow.md) — canonical only.
 
 ---

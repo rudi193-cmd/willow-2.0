@@ -23,7 +23,7 @@ NEST_DIRS = [
 QUEUE_FILE = _FLEET_HOME / "nest-queue.json"
 
 TRACK_TO_DEST = {
-    # Sean's files — ~/personal/
+    # USER's files — ~/personal/
     "journal":         Path.home() / "personal" / "journal",
     "legal":           Path.home() / "personal" / "legal",
     "knowledge":       Path.home() / "personal" / "knowledge",

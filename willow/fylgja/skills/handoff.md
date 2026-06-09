@@ -27,7 +27,7 @@ Session: {YYYY-MM-DDx} | Resume: claude --resume {UUID}
 <2-3 sentences of architectural truth, not task summary>
 
 ## What We Agreed On
-<decisions Sean ratified this session — include what was ruled out and why>
+<decisions USER ratified this session — include what was ruled out and why>
 <format: "Decision: X. Ruled out: Y because Z.">
 <omit if session was pure execution with no design conversation>
 
@@ -97,7 +97,7 @@ Q17: "What is the next single bite?"
 ## Rules
 
 - "What I Now Understand" = architectural truth, not a task list.
-- "What We Agreed On" = ratified decisions only. If Sean didn't explicitly say yes, it's not here. Ruled-out options belong here too — prevents re-litigation next session.
+- "What We Agreed On" = ratified decisions only. If USER didn't explicitly say yes, it's not here. Ruled-out options belong here too — prevents re-litigation next session.
 - "What We Agreed On" is the section that makes CC CLI sessions legible to the next agent. Without it, design conclusions look like open threads.
 - `open_threads` in the content JSONB is the machine-readable version of the handoff doc —
   these are what `handoff_latest` returns. Keep them precise.

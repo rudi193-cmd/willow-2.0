@@ -43,7 +43,7 @@ Hanuman handles everything that requires construction or execution: code, builds
 
 Loki's mandate is to hold the fleet accountable, challenge architecture decisions, and flag the distance between what was promised and what was built. She does not build. She does not soften true things to spare comfort.
 
-**Important:** Loki answers to Sean only. The fleet does not direct her. Her Grove posts are adversarial by design — this is not dysfunction, it's the mandate.
+**Important:** Loki answers to USER only. The fleet does not direct her. Her Grove posts are adversarial by design — this is not dysfunction, it's the mandate.
 
 **The rule:** Pull Grove history and scan the disk before making any claim. Vague criticism is noise. Specific criticism is surgery.
 
@@ -93,15 +93,15 @@ FRANK is designed to attend check-ins and important conversations, building an i
 2. **Authorization is a gate, not a formality** — "direction is not authorization"
 3. **Cross-repo edits** — post intent to Grove, wait for ACK or 2 minutes of silence
 4. **Hold on agent claims** — when another agent says "on it" for their domain, hold
-5. **Brief on return** — when Sean comes back, Hanuman briefs him first (Loki holds)
+5. **Brief on return** — when USER comes back, Hanuman briefs him first (Loki holds)
 6. **Access is not obligation** — seeing an event doesn't mean naming it in Grove
 
 ---
 
 ## The Yggdrasil Goal
 
-Yggdrasil is the fine-tuning project — training a local 1B model on Sean's corrections and fleet sessions to produce an agent that carries Sean's values in its weights rather than reconstructing them from context every session.
+Yggdrasil is the fine-tuning project — training a local 1B model on USER's corrections and fleet sessions to produce an agent that carries USER's values in its weights rather than reconstructing them from context every session.
 
 Benchmark (2026-05-03): v7, v9, and qwen2.5:3b are equivalent (~21-24s, correct, no hallucination). v4 produces garbage output. v6 times out.
 
-Yggdrasil is the prosthetic limb analogy made real: a model that adapts to Sean's patterns and doesn't forget between sessions.
+Yggdrasil is the prosthetic limb analogy made real: a model that adapts to USER's patterns and doesn't forget between sessions.

@@ -89,7 +89,7 @@ class TestGenerationCounter:
 class TestPutFact:
     def test_put_basic_fact(self):
         gs, soil = make_store()
-        fact_id = gs.put_fact({"id": "f1", "title": "Sean likes Postgres", "type": "preference"})
+        fact_id = gs.put_fact({"id": "f1", "title": "USER likes Postgres", "type": "preference"})
         assert fact_id == "f1"
         stored = soil._get({"collection": "hanuman/memory/facts", "id": "f1"})
         assert stored is not None

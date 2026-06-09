@@ -41,7 +41,7 @@ git push -u origin feat/<slug>
 gh pr create --title "..." --body "..."
 ```
 
-CI must pass. Sean approves. Then merge.
+CI must pass. USER approves. Then merge.
 
 ## Teardown after merge
 
@@ -63,8 +63,8 @@ fork_merge(fork_id=<fork_id>, outcome_note="merged to master", app_id="hanuman")
 | Log branch/atom/task | `fork_log(fork_id, component, type, ref, app_id)` — type: branch/atom/task/thread |
 | Check status | `fork_status(fork_id, app_id)` |
 | List open | `fork_list(status="open", app_id)` |
-| Merge (Sean only) | `fork_merge(fork_id, outcome_note, app_id)` |
-| Delete (Sean only) | `fork_delete(fork_id, reason, app_id)` |
+| Merge (USER only) | `fork_merge(fork_id, outcome_note, app_id)` |
+| Delete (USER only) | `fork_delete(fork_id, reason, app_id)` |
 
 ## Tips
 

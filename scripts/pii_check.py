@@ -12,12 +12,22 @@ Usage:
 """
 
 import re
+import os
 import sys
 
-# 28 rules — kept in sync with agents/hanuman/bin/export_slm_training_data.py
+def _configured_name_rules() -> list[tuple[re.Pattern, str]]:
+    """Optional personal-name rules without hardcoding operator names in repo."""
+    names = [
+        name.strip()
+        for name in os.environ.get("WILLOW_PII_NAMES", "").split(":")
+        if name.strip()
+    ]
+    return [(re.compile(re.escape(name), re.IGNORECASE), "full-name") for name in names]
+
+
+# Kept in sync with agents/hanuman/bin/export_slm_training_data.py where applicable.
 _PII_RULES = [
-    (re.compile(r'Sean Patrick Campbell', re.IGNORECASE),           'full-name'),
-    (re.compile(r'Sean Campbell', re.IGNORECASE),                   'full-name'),
+    *_configured_name_rules(),
     (re.compile(r'WCA\s+No\.?\s*25-01325', re.IGNORECASE),         'case-ref'),
     (re.compile(r'\bWCA\b'),                                         'case-ref'),
     (re.compile(r'25-01325'),                                        'case-id'),

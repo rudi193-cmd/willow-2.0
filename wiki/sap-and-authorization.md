@@ -16,13 +16,13 @@ Prevents an agent from writing another agent's namespace or an unregistered app 
 
 Each caller has:
 
-- `app_id` on every tool invocation  
-- Scope in the SAFE manifest  
+- `app_id` on every tool invocation
+- Scope in the SAFE manifest
 - Optional PGP key (production)
 
 **Dev path:** manifests under `WILLOW_SAFE_ROOT` (typically `~/SAFE/Applications`). PGP skipped when manifests verify in dev.
 
-**2.0 launcher:** `sap/willow_mcp.sh` sets `WILLOW_ROOT`, `WILLOW_PG_DB=willow_20`, venv python.
+**2.0 launcher:** `sap/unified_mcp.sh` sets `WILLOW_ROOT`, `WILLOW_PG_DB=willow_20`, venv python, and exposes Willow/Grove/MarkdownAI together.
 
 ---
 
@@ -32,8 +32,8 @@ Historically every session used dev manifests — production PGP never engaged. 
 
 Until ratified:
 
-- Treat dev mode as **intentional** for local fleet  
-- Not a hole in a hostile network — there is no network surface on stdio MCP  
+- Treat dev mode as **intentional** for local fleet
+- Not a hole in a hostile network — there is no network surface on stdio MCP
 
 HTTP mode (`sap_mcp.py --http`) changes the threat model. Do not expose without auth.
 
@@ -41,10 +41,10 @@ HTTP mode (`sap_mcp.py --http`) changes the threat model. Do not expose without 
 
 ## New agent bootstrap
 
-1. Identity file — who you are (`CLAUDE.md` / `willow.md` boot)  
-2. `.mcp.json` — `bash sap/willow_mcp.sh`, `WILLOW_AGENT_NAME`, `WILLOW_PG_DB`  
-3. Manifest in `WILLOW_SAFE_ROOT/<agent>/`  
-4. `~/.willow/<agent>/` local config  
+1. Identity file — who you are (`CLAUDE.md` / `willow.md` boot)
+2. `.mcp.json` — `bash sap/unified_mcp.sh`, `WILLOW_AGENT_NAME`, `WILLOW_PG_DB`
+3. Manifest in `WILLOW_SAFE_ROOT/<agent>/`
+4. `~/.willow/<agent>/` local config
 
 Put MCP env in **`.mcp.json` only** — duplicate `mcpServers` in IDE settings is silently ignored in some clients.
 
@@ -68,8 +68,8 @@ Cross-namespace needs explicit authorization. `public/` is not a dumping ground.
 
 Canonical prefix style on SAP server:
 
-- `kb_search`, `kb_ingest` — not legacy `willow_knowledge_*`  
-- `agent_task_submit` — Kart  
-- `fleet_status` — health  
+- `kb_search`, `kb_ingest` — not legacy `willow_knowledge_*`
+- `agent_task_submit` — Kart
+- `fleet_status` — health
 
 *ΔΣ=42*

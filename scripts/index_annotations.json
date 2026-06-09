@@ -94,7 +94,7 @@
     "sap/sap_mcp.py":           {"description": "SAP MCP server (FastMCP) — primary Willow tool surface", "group": "sap"},
     "sap/unified_mcp.py":       {"description": "Unified MCP server — willow + grove + mai in one FastMCP process", "group": "sap"},
     "sap/unified_mcp.sh":       {"description": "Unified MCP server launcher (shell)", "group": "sap"},
-    "sap/willow_mcp.sh":        {"description": "Willow-only MCP server launcher (shell)", "group": "sap"},
+    "sap/willow_mcp.sh":        {"description": "Legacy Willow-only MCP server launcher (shell)", "group": "sap"},
     "sap/ONBOARDING.md":        {"description": "SAP onboarding guide for agents", "group": "sap"},
     "sap/README.md":            {"description": "SAP module readme", "group": "sap"},
 
@@ -118,7 +118,7 @@
     "docs/IDE_INTEGRATION.md":      {"description": "IDE setup guide — Cursor and Claude Code MCP wiring", "group": "dev"},
     "docs/INDEX.md":                {"description": "Human/agent doc router — start here for docs", "group": "dev"},
     "docs/KNOWN_GAPS.md":           {"description": "Broken-in-master engineering gaps", "group": "dev"},
-    "docs/CONTRACT.md":             {"description": "Public fleet contract snapshot (from willow-config)", "group": "dev"},
+    "docs/CONTRACT.md":             {"description": "Public fleet contract snapshot (from root willow.md)", "group": "dev"},
     "docs/OPEN_WORK.md":           {"description": "Curated open backlog (not install blockers)", "group": "dev"},
     "docs/QUICKSTART.md":           {"description": "Quickstart guide", "group": "dev"},
     "docs/BRANDING.md":             {"description": "Branding guidelines", "group": "dev"},

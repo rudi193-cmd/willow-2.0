@@ -16,7 +16,7 @@ format: v2
 AGENT INSTRUCTIONS
 - Use for: end of every substantive session (default).
 - Save as: ~/github/.willow/handoffs/<agent>/session_handoff-YYYY-MM-DD_<agent>.md
-- Repo: willow-config (commit handoff if Sean asks; many stay local until promoted).
+- Repo: willow-config (commit handoff if USER asks; many stay local until promoted).
 - Also run willow/fylgja/skills/handoff.md sequence: handoff_latest → kb_ingest → ledger_write → handoff_rebuild.
 - AGENT = $WILLOW_AGENT_NAME only — not the IDE model name.
 - MarkdownAI: YAML frontmatter first, then @markdownai v1.0 (line 1 of body). Read with mai_read_file; write with mai_write_file.

@@ -2,7 +2,7 @@
 
 Hi Felix.
 
-Sean built this for people he trusts, not for engineers. You do not need to understand databases, MCP, or any of that. You need a computer that can hold memory for you, and a front room where you can see what the system knows and talk to it.
+USER built this for people he trusts, not for engineers. You do not need to understand databases, MCP, or any of that. You need a computer that can hold memory for you, and a front room where you can see what the system knows and talk to it.
 
 That front room is **Grove**. This page is the story of how you get there once.
 
@@ -22,7 +22,7 @@ You are not “deploying a stack.” You are moving in.
 
 ## Before you start (one-time on Windows)
 
-You need **Windows 10 or 11** and **WSL** so Linux can run quietly in the background. Sean can sit with you for this part if you want; it is the only Windows-shaped hurdle.
+You need **Windows 10 or 11** and **WSL** so Linux can run quietly in the background. USER can sit with you for this part if you want; it is the only Windows-shaped hurdle.
 
 1. Open **PowerShell as Administrator** (right-click → Run as administrator).
 2. Paste this and press Enter:
@@ -55,7 +55,7 @@ python3 seed.py
 
 You are not supposed to run health checks afterward. **Seed is the check.** While it runs you will see lines scrolling — directories, vault, database, a little theater from FRANK. Answer the prompts when it asks (your name, email for the vault, whether you want Grove network features, and so on). If you are unsure, say yes to **Grove** when it offers — that is how you end up in the right place.
 
-When seed finishes without a red error wall, **you are installed.** Sean can help if it stops hard; send him a photo of the screen or the last few lines of text.
+When seed finishes without a red error wall, **you are installed.** USER can help if it stops hard; send him a photo of the screen or the last few lines of text.
 
 ---
 
@@ -75,7 +75,7 @@ From there:
 
 That is the habit: **open Grove, read the room, say what you need.** The system keeps the thread on your machine, not in someone else’s cloud.
 
-If the desktop shortcut is missing, tell Sean — seed usually creates it; he can fix the path once.
+If the desktop shortcut is missing, tell USER — seed usually creates it; he can fix the path once.
 
 ---
 
@@ -84,13 +84,13 @@ If the desktop shortcut is missing, tell Sean — seed usually creates it; he ca
 You do not need to run `fleet_status` or decode JSON. Try in order:
 
 1. Close the Grove window and double-click **Launch Willow.bat** again.
-2. If it still fails, text Sean. He will ask you to open Ubuntu and paste one thing — he will send it. That is his job, not yours.
+2. If it still fails, text USER. He will ask you to open Ubuntu and paste one thing — he will send it. That is his job, not yours.
 
 ---
 
 ## Updates (rare)
 
-Sean or the repo will tell you when to pull an update. Until then, ignore git. If he says “update Willow,” he will give you a short paste block — same as install, but shorter.
+USER or the repo will tell you when to pull an update. Until then, ignore git. If he says “update Willow,” he will give you a short paste block — same as install, but shorter.
 
 ---
 
@@ -100,4 +100,4 @@ You are in the **found family** line on the main README for a reason. This tree 
 
 Welcome in.
 
-*Built by Sean Campbell. You are among the first outside the house to run it.*
+*Built by USER. You are among the first outside the house to run it.*
