@@ -81,3 +81,22 @@ def test_render_picker_shows_fleet_identity(monkeypatch):
     monkeypatch.setattr(p, "fleet_agent_id", lambda: "hanuman")
     text = p.render_picker("skirnir")
     assert "Fleet identity: **hanuman**" in text
+
+
+def test_persona_boot_overlay_path_oakenscroll():
+    path = p.persona_boot_overlay_path("oakenscroll")
+    assert path is not None
+    assert path.name == "oakenscroll-boot.md"
+    assert "Oakenscroll Boot Overlay" in path.read_text(encoding="utf-8")
+
+
+def test_persona_boot_overlay_path_missing_persona():
+    assert p.persona_boot_overlay_path("not-a-real-persona") is None
+    assert p.persona_boot_overlay_path("none") is None
+
+
+def test_boot_step7_documents_persona_overlay_convention():
+    boot = (p._repo_root() / "willow/fylgja/skills/boot.md").read_text(encoding="utf-8")
+    assert "{persona}-boot.md" in boot
+    assert "skip silently" in boot
+    assert "oakenscroll" not in boot.split("**7. Persona**")[1].split("**8.")[0]

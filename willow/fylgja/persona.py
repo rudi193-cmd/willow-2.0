@@ -39,6 +39,15 @@ def _persona_path(name: str) -> str:
     return str(_repo_root() / "willow" / "fylgja" / "personas" / f"{name}.md")
 
 
+def persona_boot_overlay_path(name: str) -> Path | None:
+    """Resolve optional boot-time persona overlay: willow/fylgja/skills/{persona}-boot.md."""
+    key = (name or "").strip().lower()
+    if not key or key == "none":
+        return None
+    path = _repo_root() / "willow" / "fylgja" / "skills" / f"{key}-boot.md"
+    return path if path.is_file() else None
+
+
 # Built-in personas — always available regardless of user config.
 _BUILTIN_PERSONAS: dict[str, dict] = {
     "oakenscroll": {
