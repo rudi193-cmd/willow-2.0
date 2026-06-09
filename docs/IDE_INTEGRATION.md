@@ -43,17 +43,13 @@ generated files. Copy [`.mcp.json.example`](../.mcp.json.example) → `.mcp.json
 }
 ```
 
-**Cursor:** symlink MCP via install — canonical templates live under `willow/fylgja/config/`:
-
-```bash
-python3 -m willow.fylgja.install_project <agent> --ide cursor
-# or, through the wrapper:
-./willow.sh agents install <agent> --ide cursor
-```
+**Cursor:** install via `./willow.sh agents install <agent> --ide cursor`. Committed
+`.cursor/hooks.json`, `.cursor/mcp.json`, commands, and skills are real files for
+remote agents; local install only symlinks ignored `settings.local.json`.
+**Claude Code:** committed `.claude/settings.json` plus global hooks via
+`python3 -m willow.fylgja.install` when `--ide claude` includes global wiring.
 
 Use an **absolute** path in unified MCP `args` when the IDE does not launch from repo root (template uses `{{REPO_ROOT}}`).
-
-**Claude Code:** `install_project` symlinks `.claude/settings.json` and wires global hooks via `python3 -m willow.fylgja.install`.
 
 Restart the IDE after changing MCP config, hooks, or `sap/unified_mcp.sh`.
 
@@ -69,7 +65,13 @@ Restart the IDE after changing MCP config, hooks, or `sap/unified_mcp.sh`.
 | `beforeMCPExecution` | `pre_tool` | MCP write-path guards |
 | `stop` | `stop` | Session composite, affect tagging |
 
-Install: `python3 -m willow.fylgja.install_project <agent> --ide cursor` (symlinks `.cursor/hooks.json` → `willow/fylgja/config/cursor-hooks.json`).  
+`PostToolUse` (`post_tool`) is wired for **Claude Code** global hooks only. Cursor's
+hook schema in this repo does not expose an equivalent post-tool event, so output
+scanning runs on Claude sessions via `install_project --ide claude`.
+
+Install: `./willow.sh agents install <agent> --ide cursor` — syncs committed
+`.cursor/hooks.json` from canonical templates and symlinks only ignored
+`.cursor/settings.local.json` into `$WILLOW_HOME/agents/<agent>/`.  
 Runner: `willow/fylgja/bin/fylgja-hook` → `willow.fylgja.hook_runner` (legacy shims: `tools/run_cursor_hook.py`).
 
 Debug: Cursor **Output → Hooks** channel.

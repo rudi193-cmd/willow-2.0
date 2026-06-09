@@ -1,14 +1,16 @@
 # Codex CLI — Willow MCP fragment (merged by install_project)
 [mcp_servers.willow]
 command = "bash"
-args = ["{{REPO_ROOT}}/sap/unified_mcp.sh"]
+args = ["./sap/unified_mcp.sh"]
 
 [mcp_servers.willow.env]
-WILLOW_AGENT_NAME = "{{AGENT_NAME}}"
-GROVE_SENDER = "{{AGENT_NAME}}"
-GROVE_NAME = "{{AGENT_NAME}}"
-WILLOW_GROVE_ROOT = "{{GROVE_ROOT}}"
+WILLOW_AGENT_NAME = "willow"
+GROVE_SENDER = "willow"
+GROVE_NAME = "willow"
+WILLOW_GROVE_ROOT = "/home/sean-campbell/github/safe-app-willow-grove"
 WILLOW_PG_DB = "willow_20"
-WILLOW_SAFE_ROOT = "{{SAFE_ROOT}}"
-WILLOW_AGENTS_ROOT = "{{AGENTS_ROOT}}"
-WILLOW_ROOT = "{{REPO_ROOT}}"
+WILLOW_SAFE_ROOT = "/home/sean-campbell/github/SAFE/Applications"
+WILLOW_AGENTS_ROOT = "/home/sean-campbell/github/SAFE/Agents"
+WILLOW_ROOT = "."
+WILLOW_HOME = ".willow/generated"
+WILLOW_CONFIG_MODE = "public-fallback"

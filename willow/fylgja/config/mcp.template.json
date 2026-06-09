@@ -12,7 +12,9 @@
         "WILLOW_PG_DB": "willow_20",
         "WILLOW_SAFE_ROOT": "{{SAFE_ROOT}}",
         "WILLOW_AGENTS_ROOT": "{{AGENTS_ROOT}}",
-        "WILLOW_ROOT": "{{REPO_ROOT}}"
+        "WILLOW_ROOT": "{{REPO_ROOT}}",
+        "WILLOW_HOME": "{{WILLOW_HOME}}",
+        "WILLOW_CONFIG_MODE": "{{WILLOW_CONFIG_MODE}}"
       }
     }
   }

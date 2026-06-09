@@ -163,6 +163,7 @@
 | Path |
 |------|
 | `.agents` |
+| `.ci-safe` |
 | `.ci-willow` |
 | `.codex` |
 | `.kart-scripts` |

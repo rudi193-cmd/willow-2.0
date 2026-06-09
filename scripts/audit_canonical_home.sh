@@ -63,9 +63,18 @@ else
 fi
 
 echo ""
-echo "=== repo contract symlinks ==="
+echo "=== repo contract ==="
+if [[ -f "willow.md" && ! -L "willow.md" ]]; then
+  _ok "willow.md is a tracked public file (not symlinked)"
+elif [[ -L "willow.md" ]]; then
+  _warn "willow.md should be a real public file in git, not a symlink"
+else
+  _fail "willow.md missing — public contract required at repo root"
+fi
+
+echo ""
+echo "=== fleet-home symlinks ==="
 for pair in \
-  "willow.md:${WILLOW_HOME}/willow.md" \
   "willow/fylgja/config/fleet.env:${WILLOW_HOME}/env" \
   "willow/fylgja/config/settings.global.json:${WILLOW_HOME}/settings.global.json"; do
   link="${pair%%:*}"

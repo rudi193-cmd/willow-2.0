@@ -102,9 +102,12 @@ ok "Requirements installed"
 # Fleet contract: private willow-config when present, else repo public pack
 LINK_ARGS=()
 if [[ "${PUBLIC_MODE}" -eq 1 ]]; then
+    export WILLOW_CONFIG_MODE=public-fallback
+    export WILLOW_HOME="${REPO_ROOT}/.willow/generated"
     LINK_ARGS+=(--public)
 fi
-PYTHONPATH="${REPO_ROOT}" "${VENV}/bin/python3" -m willow.fylgja.link_fleet_home "${LINK_ARGS[@]}"
+PYTHONPATH="${REPO_ROOT}" WILLOW_CONFIG_MODE="${WILLOW_CONFIG_MODE:-}" WILLOW_HOME="${WILLOW_HOME:-}" \
+    "${VENV}/bin/python3" -m willow.fylgja.link_fleet_home "${LINK_ARGS[@]}"
 if [[ "${PUBLIC_MODE}" -eq 1 ]]; then
     ok "Linked willow-2.0 → public fallback pack (.willow/generated)"
 else
@@ -126,7 +129,8 @@ else
     fail "No active agent. Run: cd ${REPO_ROOT} && ./willow agents active <id> && ./willow agents install <id> --ide all"
 fi
 export WILLOW_AGENT_NAME="${AGENT}"
-PYTHONPATH="${REPO_ROOT}" "${VENV}/bin/python3" -m willow.fylgja.install_project "${AGENT}" --ide all
+PYTHONPATH="${REPO_ROOT}" WILLOW_CONFIG_MODE="${WILLOW_CONFIG_MODE:-}" WILLOW_HOME="${WILLOW_HOME:-}" \
+    "${VENV}/bin/python3" -m willow.fylgja.install_project "${AGENT}" --ide all
 ok "install_project ${AGENT} (active-agent=${ACTIVE_FILE})"
 
 hdr "Systemd fleet units"

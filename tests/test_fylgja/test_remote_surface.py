@@ -74,6 +74,28 @@ def test_codex_surface_is_materialized():
         assert not path.is_symlink(), rel
 
 
+def test_codex_config_has_no_template_placeholders():
+    text = (ROOT / ".codex" / "config.toml").read_text(encoding="utf-8")
+    assert "{{" not in text
+    assert "}}" not in text
+    assert "mcp_servers.willow" in text
+    assert "unified_mcp.sh" in text
+
+
+def test_remote_surface_check_script_passes():
+    import subprocess
+    import sys
+
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "sync_remote_cursor_surface.py"), "--check"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
 def test_all_remote_skill_surfaces_have_core_skills():
     for surface in (".cursor", ".claude", ".agents", ".codex"):
         for name in ("boot", "startup", "handoff", "shutdown", "power", "willow-remote"):

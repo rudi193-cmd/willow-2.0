@@ -59,12 +59,33 @@ def _project_claude_stale_hooks(root: Path) -> list[str]:
     return stale
 
 
-def _codex_has_willow_mcp() -> bool:
-    target = Path.home() / ".codex" / "config.toml"
-    if not target.is_file():
+def _surface_matches_canonical(link: Path, canonical: Path) -> bool:
+    if link.is_symlink():
+        return link.resolve() == canonical.resolve()
+    if not link.is_file() or not canonical.is_file():
         return False
-    text = target.read_text(encoding="utf-8")
-    return "mcp_servers.willow" in text and "unified_mcp.sh" in text
+    try:
+        return link.read_text(encoding="utf-8") == canonical.read_text(encoding="utf-8")
+    except Exception:
+        return False
+
+
+def _codex_has_willow_mcp(root: Path | None = None) -> bool:
+    targets: list[Path] = []
+    if root is not None:
+        targets.append(root / ".codex" / "config.toml")
+    targets.append(Path.home() / ".codex" / "config.toml")
+    for target in targets:
+        if not target.is_file():
+            continue
+        text = target.read_text(encoding="utf-8")
+        if (
+            "mcp_servers.willow" in text
+            and "unified_mcp.sh" in text
+            and "{{" not in text
+        ):
+            return True
+    return False
 
 
 def cmd_list(root: Path) -> int:
@@ -189,9 +210,18 @@ def cmd_check(root: Path, ides: list[str] | None = None) -> int:
                 issues.append(f"Could not parse Grove fields in {mcp.relative_to(root)}")
 
     if "cursor" in selected:
-        cursor_hooks = root / ".cursor" / "hooks.json"
-        if not cursor_hooks.is_symlink():
-            issues.append(".cursor/hooks.json not symlinked — run install --ide cursor")
+        hooks = root / ".cursor" / "hooks.json"
+        cli = root / ".cursor" / "cli.json"
+        if not _surface_matches_canonical(hooks, root / "willow" / "fylgja" / "config" / "cursor-hooks.json"):
+            issues.append(
+                ".cursor/hooks.json missing or stale — run: python3 scripts/sync_remote_cursor_surface.py"
+            )
+        if not _surface_matches_canonical(cli, root / "willow" / "fylgja" / "config" / "cursor-cli.json"):
+            issues.append(
+                ".cursor/cli.json missing or stale — run: python3 scripts/sync_remote_cursor_surface.py"
+            )
+        if not (root / ".cursor" / "skills").is_dir():
+            issues.append(".cursor/skills missing — run: python3 scripts/sync_remote_cursor_surface.py")
 
     if "claude" in selected:
         stale = _project_claude_stale_hooks(root)
@@ -207,10 +237,10 @@ def cmd_check(root: Path, ides: list[str] | None = None) -> int:
 
         issues.extend(check_claude_plugin_layout(root))
 
-    if "codex" in selected and not _codex_has_willow_mcp():
+    if "codex" in selected and not _codex_has_willow_mcp(root):
         issues.append(
-            "~/.codex/config.toml missing Willow MCP — "
-            "run: ./willow.sh agents install <agent> --ide codex"
+            "Codex MCP missing Willow fragment — run: ./willow.sh agents install <agent> --ide codex "
+            "or: python3 scripts/sync_remote_cursor_surface.py"
         )
 
     hook = root / "willow" / "fylgja" / "bin" / "fylgja-hook"
