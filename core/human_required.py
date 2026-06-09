@@ -196,7 +196,7 @@ def enqueue(
         row = cur.fetchone()
     conn.commit()
     if row:
-        return {
+        result = {
             "status": "added",
             "id": row[0],
             "kind": row[1],
@@ -205,6 +205,12 @@ def enqueue(
             "priority": row[4],
             "created_at": row[5].isoformat() if row[5] else None,
         }
+        try:
+            from core.operator_notify import dispatch as _notify
+            _notify(conn, result)
+        except Exception:
+            pass
+        return result
     return {"status": "duplicate", "kind": kind, "source_ref": source_ref or None}
 
 
