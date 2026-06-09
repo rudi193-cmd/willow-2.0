@@ -162,6 +162,7 @@
 
 | Path |
 |------|
+| `${HOME}` |
 | `.agents` |
 | `.ci-safe` |
 | `.ci-willow` |
