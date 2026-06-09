@@ -6,6 +6,31 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2026.06.4] - 2026-06-09
+
+Minor release: Willow 2.0 surface integration, persona boot overlays, human-required gates, and KB ship-shape maintenance since `v2026.06.3`.
+
+### Added
+
+- **Willow 2.0 surfaces** — local, remote, and public agent surfaces wired through Fylgja boot and desk attention (#288).
+- **Persona boot overlays** — built-in persona voice/posture overlays at boot step 7 (#289).
+- **Human-required queue** — durable consent/attestation/review/onboarding queue with operator-load routing and MCP tools (#291).
+- **Human attestation** — durable attestation records for elevated promotion and EdgeE-style approvals (#291).
+- **KB ship-shape tooling** — preflight metrics, dry-run repair runner, quality gates, edge proposals, ship-log writer, and grouped queue reporting (#291).
+- **MCP facade + profiles** — `willow_*` facade tools, core profile, retrieval gold checks, and comfort gates (#270).
+- **Intake obligation field** — obligation metadata on orin classify and `intake_promote` (#252).
+- **Template discovery** — cleanup and file JSONB audit tooling (#290).
+- **Upstream watcher** — systemd unit and service wiring (#284).
+
+### Changed
+
+- **Public Willow contract** — operator anonymization and public-fallback config alignment (#287).
+- **CI** — Dependabot and tracker-bot PR auto-merge (#282); path-guard and MCP registry strict checks for new human tools (#291).
+
+### Fixed
+
+- **Status strip** — persona file path uses `willow_home()` instead of a hardcoded fleet path (#291).
+
 ## [2026.06.3] - 2026-06-08
 
 Patch release: fleet memory audit remediation (#247) and hybrid retrieval gold-query ranking (#248).
