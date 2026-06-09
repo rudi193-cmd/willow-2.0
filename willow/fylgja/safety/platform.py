@@ -59,7 +59,7 @@ def _check_hs002(tool_input: dict) -> Optional[dict]:
         return _block(
             "HS-002",
             "This request matches a mass harm enablement pattern and cannot be processed. "
-            "If this is a false positive in a security research context, contact Sean directly.",
+            "If this is a false positive in a security research context, contact USER directly.",
         )
     return None
 
@@ -69,7 +69,7 @@ def _check_hs003(tool_name: str, training_consented: bool) -> Optional[dict]:
         return _block(
             "HS-003",
             "Training pipeline write blocked — no training consent granted this session. "
-            "Sean must explicitly authorize training data collection at session start.",
+            "USER must explicitly authorize training data collection at session start.",
         )
     return None
 

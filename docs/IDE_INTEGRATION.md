@@ -7,9 +7,23 @@ willow, grove, and markdownai tools — no separate servers to configure.
 
 ---
 
-## Canonical config (Cursor / Claude Code)
+## Fast Path
 
-Copy [`.mcp.json.example`](../.mcp.json.example) → `.mcp.json`:
+Install exactly the surface you use:
+
+```bash
+./willow.sh agents active <agent>
+./willow.sh agents install <agent> --ide <cursor|claude|codex>
+./willow.sh agents check --ide <cursor|claude|codex>
+```
+
+Restart the IDE after install. Agents should read [`willow.md`](../willow.md)
+first, then check fleet health and handoff.
+
+## Manual Config (Cursor / Claude Code)
+
+Prefer the fast path above. Use manual config only when an IDE cannot consume the
+generated files. Copy [`.mcp.json.example`](../.mcp.json.example) → `.mcp.json`:
 
 ```json
 {
@@ -32,16 +46,14 @@ Copy [`.mcp.json.example`](../.mcp.json.example) → `.mcp.json`:
 **Cursor:** symlink MCP via install — canonical templates live under `willow/fylgja/config/`:
 
 ```bash
-python3 -m willow.fylgja.install_project hanuman --ide all
-# or cursor-only:
-python3 -m willow.fylgja.install_project hanuman --ide cursor
+python3 -m willow.fylgja.install_project <agent> --ide cursor
+# or, through the wrapper:
+./willow.sh agents install <agent> --ide cursor
 ```
 
 Use an **absolute** path in unified MCP `args` when the IDE does not launch from repo root (template uses `{{REPO_ROOT}}`).
 
 **Claude Code:** `install_project` symlinks `.claude/settings.json` and wires global hooks via `python3 -m willow.fylgja.install`.
-
-Agents read [`willow.md`](../willow.md) via `mai_read_file` first.
 
 Restart the IDE after changing MCP config, hooks, or `sap/unified_mcp.sh`.
 
@@ -92,7 +104,7 @@ Call **`fleet_tool_guide`** when unsure which tool to use (grouped catalog).
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `WILLOW_HOME` | `~/github/.willow` | Canonical fleet config (`~/.willow` alias OK) |
+| `WILLOW_HOME` | private `~/github/.willow` or public `.willow/generated` | Fleet home selected by `link_fleet_home`; `~/.willow` alias OK on operator machines |
 | `WILLOW_AGENT_NAME` | `active-agent` or `hanuman` | Identity for handoff, Grove, MCP `app_id` |
 | `GROVE_SENDER` / `GROVE_NAME` | same as agent | Set by `install_project` / `unified_mcp.sh` |
 | `WILLOW_GROVE_ROOT` | `~/github/safe-app-willow-grove` | Grove repo (tools bundled in unified MCP) |

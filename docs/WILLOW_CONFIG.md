@@ -7,23 +7,33 @@ Two repos, one machine:
 | **willow-config** | `rudi193-cmd/willow-config` (private) | `~/github/.willow` (`~/.willow` → symlink) |
 | **willow-2.0** | `rudi193-cmd/willow-2.0` (public) | `~/github/willow-2.0` (`~/willow-2.0` → symlink) |
 
-## Canonical (USER root: `~/github/.willow`)
+## Public contract + private overlay
 
-- `willow.md` — fleet contract (canonical)
-- Public snapshot — `willow-2.0/docs/CONTRACT.md` via `python3 scripts/sync_contract_snapshot.py`
+The portable boot contract is the tracked root file in the public repo:
+
+- `willow-2.0/willow.md` — public-safe fleet contract and `/boot` entrypoint
+- `willow-2.0/willow/fylgja/config/public/willow.md` — copy materialized into public-fallback homes
+
+The private config home may provide an overlay:
+
+- `~/github/.willow/willow.md` — private live fleet context, handoffs, and operator policy
 - `env` — `WILLOW_ROOT`, `WILLOW_PG_DB`, paths
 - `settings.global.json` — consent, fleet paths, default agent
 - `handoffs/` — session continuity
 
-Edit and commit these in **willow-config**, not in public willow-2.0.
+Edit public boot rules in **willow-2.0**. Edit private live context in
+**willow-config**. Do not make the public root `willow.md` a symlink to private
+config.
 
-## Symlinks in (public repo)
+## Runtime links in the public repo
 
 `bash setup.sh` or `python3 -m willow.fylgja.link_fleet_home`:
 
-- `willow-2.0/willow.md` → `~/github/.willow/willow.md`
 - `willow-2.0/willow/fylgja/config/fleet.env` → `~/github/.willow/env`
 - `willow-2.0/willow/fylgja/config/settings.global.json` → `~/github/.willow/settings.global.json`
+
+Root `willow-2.0/willow.md` remains a tracked public file so GitHub-only clones
+have a valid entrypoint.
 
 Deployed manifests and apps: `~/github/SAFE/Agents`, `~/github/SAFE/Applications` (`~/SAFE` → symlink).
 

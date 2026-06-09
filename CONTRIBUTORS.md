@@ -4,7 +4,7 @@ Willow 2.0 — local-first AI stack. PolyForm Noncommercial 1.0.0.
 
 ## Built by
 
-- **Sean Campbell** — architecture, knowledge graph, agent identity, fleet design
+- **USER** — architecture, knowledge graph, agent identity, fleet design
 
 ## Open Source — Used Directly
 

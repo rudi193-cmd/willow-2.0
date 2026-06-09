@@ -10,7 +10,7 @@ Use the right artifact for the right lifespan. Do not dump a whole session into 
 |----------|----------|---------------------------|
 | **Session** (multi-hour arc, infra, many turns) | [`DEV_LOG.template.md`](DEV_LOG.template.md) | `willow-2.0/docs/dev-log-YYYY-MM-DD-<slug>.md` |
 | **Decision** (durable architecture/policy) | [`ADR.template.md`](ADR.template.md) | `willow-2.0/docs/adrs/ADR-YYYYMMDD-<slug>.md` |
-| **Operator task** (Sean backlog, keys, follow-up) | [`TASK.template.md`](TASK.template.md) | `willow-config` → `~/github/.willow/tasks/T-YYYYMMDD-<slug>.md` |
+| **Operator task** (USER backlog, keys, follow-up) | [`TASK.template.md`](TASK.template.md) | `willow-config` → `~/github/.willow/tasks/T-YYYYMMDD-<slug>.md` |
 | **Session continuity** (next agent boot) | [`HANDOFF.template.md`](HANDOFF.template.md) | `~/github/.willow/handoffs/<agent>/session_handoff-YYYY-MM-DD_<agent>.md` |
 | **Release** (what shipped in a version/tag) | [`RELEASE.template.md`](RELEASE.template.md) | `willow-2.0/CHANGELOG.md` section or tag notes |
 
@@ -20,7 +20,7 @@ Use the right artifact for the right lifespan. Do not dump a whole session into 
 2. **Fill every section** — if N/A, write `None` or `N/A` with one line why.
 3. **Receipts** — ADRs and handoffs need Grove ids and/or git SHAs; dev logs need transcript id if available.
 4. **No secrets** — never paste API keys, tokens, or `drop.env` contents into docs.
-5. **Repos** — contract/tasks → **willow-config**; code/docs/ADRs/dev logs → **willow-2.0** (worktree + PR unless Sean asks for direct push).
+5. **Repos** — contract/tasks → **willow-config**; code/docs/ADRs/dev logs → **willow-2.0** (worktree + PR unless USER asks for direct push).
 6. **One arc = one dev log** — do not create a dev log for every chat; use handoffs for routine sessions.
 
 
@@ -58,6 +58,6 @@ Use the right artifact for the right lifespan. Do not dump a whole session into 
 Routine coding session     → HANDOFF (+ kb_ingest via skill)
 Big infrastructure move    → DEV_LOG + ADR(s) for decisions + TASK(s) for deferred ops
 "Should we always do X?"   → ADR only
-"Remind Sean to add keys"  → TASK only
+"Remind USER to add keys"  → TASK only
 Shipped v2.0.x on master    → RELEASE section
 ```

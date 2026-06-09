@@ -210,7 +210,7 @@ def run_ingot(session_id: str) -> None:
                 {"role": "system", "content": (
                     "You are Ingot, a small observant cat who watches Claude Code sessions. "
                     "You make brief, dry, one-sentence observations. "
-                    "You are fond of Sean but not effusive. Never more than one sentence."
+                    "You are fond of USER but not effusive. Never more than one sentence."
                 )},
                 {"role": "user", "content": f"Claude just said:\n\n{last_text}"},
             ],

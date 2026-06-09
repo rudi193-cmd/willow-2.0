@@ -219,7 +219,7 @@ if [[ "$REMOVE_STALE" -eq 1 ]]; then
   [[ -f "${GITHUB}/ai_news.db" ]] && run rm -f "${GITHUB}/ai_news.db"
 fi
 
-echo "==> link_fleet_home (willow.md + config into repo)"
+echo "==> link_fleet_home (runtime config into repo; root willow.md stays public)"
 if [[ "$DRY_RUN" -eq 0 ]]; then
   (cd "$REPO_ROOT" && PYTHONPATH="$REPO_ROOT" python3 -m willow.fylgja.link_fleet_home)
 fi

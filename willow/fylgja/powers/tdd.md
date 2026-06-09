@@ -10,4 +10,4 @@ b17: FYLP5 · ΔΣ=42
 3. Refactor only inside touched paths.
 4. Run focused test; expand only if contract requires.
 
-**Don’t:** Write production before red test (unless Sean exempted).
+**Don’t:** Write production before red test (unless USER exempted).

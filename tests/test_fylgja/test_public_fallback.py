@@ -27,6 +27,7 @@ def public_repo(tmp_path, monkeypatch):
     import shutil
 
     shutil.copytree(pack_src, repo / "willow" / "fylgja" / "config" / "public")
+    (repo / "willow.md").write_text("# public root contract\n", encoding="utf-8")
     template = PACKAGE_ROOT / "willow" / "fylgja" / "config" / "mcp.template.json"
     (repo / "willow" / "fylgja" / "config" / "mcp.template.json").write_bytes(
         template.read_bytes()
@@ -64,9 +65,13 @@ def test_materialize_public_pack(public_repo):
 def test_link_fleet_home_public_fallback(public_repo):
     mode = link_fleet_home(package_root=public_repo)
     assert mode == "public-fallback"
-    assert (public_repo / "willow.md").is_symlink()
-    assert (public_repo / "willow.md").resolve() == (
-        public_repo / ".willow" / "generated" / "willow.md"
+    assert (public_repo / "willow.md").is_file()
+    assert not (public_repo / "willow.md").is_symlink()
+    assert (public_repo / "willow" / "fylgja" / "config" / "fleet.env").resolve() == (
+        public_repo / ".willow" / "generated" / "env"
+    )
+    assert (public_repo / "willow" / "fylgja" / "config" / "settings.global.json").resolve() == (
+        public_repo / ".willow" / "generated" / "settings.global.json"
     )
 
 

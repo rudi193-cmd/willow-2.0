@@ -14,7 +14,7 @@ Fixes #<!-- issue --> · KB atom <!-- id --> · Grove thread <!-- channel/msg --
 
 ## Notes for reviewers
 
-Risky areas, env vars, or anything that needs Sean's eyes.
+Risky areas, env vars, or anything that needs USER's eyes.
 
 ---
 

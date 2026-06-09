@@ -5,7 +5,7 @@ b17: FYLOV · ΔΣ=42
 
 **Branch discipline:** This power file and its **`registry.json`** entry ship from a worktree until [user] ratifies merge to default branch — **dogfood the rule**.
 
-**When:** A **bounded initiative** (spike, Phase 1, spec + stub) must stay **off default branch** until Sean ratifies merge — you are the **overseer**: gates, evidence, and closeout — not “helpful sprawl.”
+**When:** A **bounded initiative** (spike, Phase 1, spec + stub) must stay **off default branch** until USER ratifies merge — you are the **overseer**: gates, evidence, and closeout — not “helpful sprawl.”
 
 **Escalation (same session, still this power):** You may **re-read** `powers/worktree.md` / `powers/plan.md` / `powers/verify.md` **only** if the user explicitly names them **or** this file says “open X.md” — otherwise keep the checklist below self-contained.
 
@@ -15,8 +15,8 @@ b17: FYLOV · ΔΣ=42
 
 1. **Outcome** in one sentence (what “done” proves).
 2. **Default branch** name (usually `master`) — **do not** land initiative work there unless [user] says merge now.
-3. **Startup:** if Sean said “no startup,” skip boot hooks; else follow repo startup / `agent-rails` when MCP/Grove/KB is touched.
-4. **Prior art (when claiming novelty):** Before the **plan slice (§2)** hardens, run Jeles / KB / local disk (umbrella **Phase 0** in `archive/docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` §0). **Same session:** post a **skimmable report to [user] in chat** — searches run, pass/fail, what already exists **on disk** (paths), 2–5 external analog bullets, one fork question if needed. **Do not** file results only in spec/KB before Sean has seen that chat report (unless [user] explicitly waives).
+3. **Startup:** if USER said “no startup,” skip boot hooks; else follow repo startup / `agent-rails` when MCP/Grove/KB is touched.
+4. **Prior art (when claiming novelty):** Before the **plan slice (§2)** hardens, run Jeles / KB / local disk (umbrella **Phase 0** in `archive/docs/superpowers/specs/2026-05-12-sovereign-edges-phases-1-3.md` §0). **Same session:** post a **skimmable report to [user] in chat** — searches run, pass/fail, what already exists **on disk** (paths), 2–5 external analog bullets, one fork question if needed. **Do not** file results only in spec/KB before USER has seen that chat report (unless [user] explicitly waives).
 
 ---
 
@@ -45,7 +45,7 @@ b17: FYLOV · ΔΣ=42
 ## 2) Plan slice (embedded `plan` discipline)
 
 1. Ordered **steps** — each one verifiable (command, file, decision).
-2. **Dependencies** — env, services, Sean gate, other repo.
+2. **Dependencies** — env, services, USER gate, other repo.
 3. **Non-goals** — one line minimum.
 4. **First step** after this list — exactly one action.
 
@@ -79,7 +79,7 @@ b17: FYLOV · ΔΣ=42
 
 - Worktree path + branch + short `HEAD`
 - What is **intentionally not** on default branch
-- KB id (or “KB skipped by Sean”)
+- KB id (or “KB skipped by USER”)
 - **Next single bite**
 
 ---

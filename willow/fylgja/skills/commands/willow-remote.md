@@ -1,17 +1,17 @@
 ---
-name: remote-control
-description: Start Discord remote control — phone ↔ Claude Code CLI via Discord REST bridge
+name: willow-remote
+description: Start Willow Discord remote control — phone ↔ Claude Code CLI via Discord REST bridge
 skill_args: $ARGUMENTS
 ---
 
-# /remote-control
+# /willow-remote
 
-Connects this Claude Code session to Discord so Sean can send commands from his phone and see responses.
+Connects this Claude Code session to Discord so USER can send commands from their phone and see responses.
 
 ## What this does
 
 1. Starts `scripts/discord_remote.py run` as a background daemon (if not already running)
-2. Posts a "remote control online" message to Discord
+2. Posts a "Willow remote online" message to Discord
 3. Sets a persistent Monitor on the bridge log — fires immediately when an inbound Discord message arrives, no polling delay
 4. On each notification: reads Grove `hanuman` for the command, processes it, posts the response back so the bridge forwards it to Discord
 
@@ -30,7 +30,7 @@ Or check if it is already running: `python3 scripts/discord_remote.py status`.
 
 Post to Grove `hanuman` as `hanuman`:
 ```
-grove_send_message(channel_name="hanuman", content="remote-control online — listening for Discord commands", sender="hanuman")
+grove_send_message(channel_name="hanuman", content="willow-remote online — listening for Discord commands", sender="hanuman")
 ```
 
 The bridge will forward this to Discord within 15 seconds.
@@ -41,7 +41,7 @@ The bridge will forward this to Discord within 15 seconds.
 Monitor(
     description="Discord inbound commands",
     command="tail -n 0 -f $WILLOW_HOME/discord_remote.log | grep --line-buffered 'inbound Discord'",
-    persistent=True
+    persistent=True,
 )
 ```
 
@@ -72,9 +72,9 @@ Store `last_cursor` as the highest Grove message id seen so far (start from the 
 
 ### 5. Stopping
 
-Sean types `stop remote-control` in Discord → bridge routes to Grove → Claude Code sees it in the Monitor notification, stops monitoring, posts "remote-control offline" to Grove.
+USER types `stop willow-remote` in Discord → bridge routes to Grove → Claude Code sees it in the Monitor notification, stops monitoring, posts "willow-remote offline" to Grove.
 
-## Commands Sean can send from Discord
+## Commands USER can send from Discord
 
 Any free-form message is routed to Claude Code. Examples:
 - `fleet status` → run fleet_status, reply with summary

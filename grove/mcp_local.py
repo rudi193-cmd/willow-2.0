@@ -671,7 +671,7 @@ if _SERVE_MODE and _auth_provider is not None:
 
     @mcp.custom_route("/grove-approve", methods=["GET", "POST"])
     async def grove_approve(request: Request) -> HTMLResponse | RedirectResponse:
-        """Single-user OAuth approval page. Sean opens this to authorize claude.ai."""
+        """Single-user OAuth approval page. USER opens this to authorize claude.ai."""
         pending_key = request.query_params.get("pending", "")
         entry = _auth_provider.pop_pending(pending_key)
 

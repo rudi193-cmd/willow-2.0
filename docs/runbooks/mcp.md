@@ -6,9 +6,9 @@ b17: RBMCP · ΔΣ=42
 
 ## Willow SAP MCP (this repo)
 
-**Launcher:** `bash sap/willow_mcp.sh`  
-**Server:** `sap/sap_mcp.py`  
-**DB:** `willow_20`  
+**Launcher:** `bash sap/unified_mcp.sh`
+**Server:** `sap/sap_mcp.py`
+**DB:** `willow_20`
 **Identity:** `WILLOW_AGENT_NAME` required for Fylgja imports in tests; set in `.mcp.json`
 
 ### "Tools don't see KB"

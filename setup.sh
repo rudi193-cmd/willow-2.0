@@ -3,7 +3,7 @@
 # Run once on a new machine, or re-run to sync config + deps.
 #
 # What it does:
-#   1. Pull private willow-config → ~/github/.willow; link contract into willow-2.0 (symlinks in, not out)
+#   1. Pull private willow-config → ~/github/.willow; link runtime config into willow-2.0
 #   2. Create .venv-dev if missing
 #   3. Install/upgrade requirements.txt
 #   4. Verify Postgres connection
@@ -108,7 +108,7 @@ PYTHONPATH="${REPO_ROOT}" "${VENV}/bin/python3" -m willow.fylgja.link_fleet_home
 if [[ "${PUBLIC_MODE}" -eq 1 ]]; then
     ok "Linked willow-2.0 → public fallback pack (.willow/generated)"
 else
-    ok "Linked willow-2.0/willow.md + config → ~/.willow (willow-config)"
+    ok "Linked willow-2.0 runtime config → ~/.willow (willow-config); root willow.md remains public"
 fi
 
 hdr "IDE + agent install"
