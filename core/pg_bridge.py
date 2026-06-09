@@ -357,6 +357,36 @@ CREATE TABLE IF NOT EXISTS hook_executions (
     error        TEXT
 );
 
+CREATE TABLE IF NOT EXISTS human_required_queue (
+    id              TEXT PRIMARY KEY,
+    kind            TEXT NOT NULL,
+    title           TEXT NOT NULL,
+    summary         TEXT,
+    status          TEXT NOT NULL DEFAULT 'open',
+    priority        TEXT NOT NULL DEFAULT 'normal',
+    source_agent    TEXT,
+    source_ref      TEXT,
+    assignee        TEXT,
+    context         JSONB NOT NULL DEFAULT '{}',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    resolved_at     TIMESTAMPTZ,
+    resolved_by     TEXT
+);
+
+CREATE TABLE IF NOT EXISTS human_attestations (
+    id              TEXT PRIMARY KEY,
+    subject_id      TEXT NOT NULL,
+    subject_type    TEXT NOT NULL DEFAULT 'knowledge_atom',
+    status          TEXT NOT NULL DEFAULT 'attested',
+    attested_by     TEXT NOT NULL DEFAULT 'operator',
+    agent           TEXT,
+    statement       TEXT,
+    evidence_ref    TEXT,
+    context         JSONB NOT NULL DEFAULT '{}',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS policy_rules (
     id          TEXT PRIMARY KEY,
     name        TEXT NOT NULL UNIQUE,
@@ -446,6 +476,41 @@ _MIGRATIONS = [
         status TEXT NOT NULL DEFAULT 'pending', input JSONB, output JSONB,
         error TEXT, task_id TEXT, started_at TIMESTAMPTZ, ended_at TIMESTAMPTZ
     )""",
+    """CREATE TABLE IF NOT EXISTS human_required_queue (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT,
+        status TEXT NOT NULL DEFAULT 'open',
+        priority TEXT NOT NULL DEFAULT 'normal',
+        source_agent TEXT,
+        source_ref TEXT,
+        assignee TEXT,
+        context JSONB NOT NULL DEFAULT '{}',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        resolved_at TIMESTAMPTZ,
+        resolved_by TEXT
+    )""",
+    """CREATE UNIQUE INDEX IF NOT EXISTS human_required_queue_open_ref
+        ON human_required_queue (kind, source_ref)
+        WHERE status IN ('open', 'acknowledged')
+          AND source_ref IS NOT NULL
+          AND source_ref <> ''""",
+    """CREATE TABLE IF NOT EXISTS human_attestations (
+        id TEXT PRIMARY KEY,
+        subject_id TEXT NOT NULL,
+        subject_type TEXT NOT NULL DEFAULT 'knowledge_atom',
+        status TEXT NOT NULL DEFAULT 'attested',
+        attested_by TEXT NOT NULL DEFAULT 'operator',
+        agent TEXT,
+        statement TEXT,
+        evidence_ref TEXT,
+        context JSONB NOT NULL DEFAULT '{}',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )""",
+    """CREATE INDEX IF NOT EXISTS idx_human_attestations_subject
+        ON human_attestations (subject_type, subject_id, created_at DESC)""",
     # GAP 3 — migrate legacy tier values to canonical vocabulary.
     # observed/fetched/hypothesis/NULL → frontier
     # validated/ratified             → canonical
@@ -1264,7 +1329,8 @@ class PgBridge:
             return [dict(r) for r in cur.fetchall()]
 
     def promote_knowledge_tier(self, atom_id: str, new_tier: str,
-                                agent: str = "", reason: str = "") -> dict:
+                                agent: str = "", reason: str = "",
+                                human_attestation: bool = False) -> dict:
         """Move a knowledge atom to a new lifecycle tier.
         Accepts canonical values (frontier/contested/canonical/superseded)
         and legacy values (hypothesis/observed/validated etc)."""
@@ -1273,6 +1339,44 @@ class PgBridge:
         if tier not in KNOWLEDGE_TIERS:
             return {"error": f"invalid tier {new_tier!r} — valid: {KNOWLEDGE_TIERS}"}
         try:
+            from core.human_required import ELEVATED_TIERS, check_write_gate
+
+            if tier in ELEVATED_TIERS:
+                from core.human_required import _truthy_env, attestation_stamp
+
+                gate = check_write_gate(
+                    self.conn,
+                    "tier_promote_elevated",
+                    attestation=human_attestation,
+                )
+                if not gate.get("allowed"):
+                    return gate
+                if human_attestation or _truthy_env("WILLOW_HUMAN_ATTESTATION"):
+                    stamp = attestation_stamp(agent)
+                    reason = f"{reason}; {stamp}" if reason else stamp
+                    try:
+                        from core.human_attestation import create as create_attestation
+
+                        create_attestation(
+                            self.conn,
+                            subject_id=atom_id,
+                            subject_type="knowledge_atom",
+                            attested_by=agent or "operator",
+                            agent=agent or "",
+                            statement=(
+                                reason
+                                or f"Human attested promotion of {atom_id} to {tier}"
+                            ),
+                            evidence_ref=f"tier:{tier}",
+                            context={
+                                "action": "tier_promote_elevated",
+                                "tier": tier,
+                            },
+                        )
+                    except Exception:
+                        # Attestation stamps still preserve the gate decision in reason;
+                        # promotion should not fail if the auxiliary record cannot write.
+                        pass
             with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute(
                     "UPDATE knowledge SET tier=%s, updated_at=now()"
@@ -1286,6 +1390,38 @@ class PgBridge:
             return {"promoted": True, "id": atom_id, "tier": tier, "reason": reason}
         except Exception as e:
             return {"error": str(e)}
+
+    # ── Human attestations ─────────────────────────────────────────────────────
+
+    def human_attestation_create(self, **kwargs) -> dict:
+        from core.human_attestation import create
+
+        self._ensure_conn()
+        try:
+            return create(self.conn, **kwargs)
+        except Exception as e:
+            return {"error": str(e)}
+
+    def human_attestation_list(
+        self,
+        subject_id: str = "",
+        subject_type: str = "",
+        status: str = "",
+        limit: int = 50,
+    ) -> list:
+        from core.human_attestation import list_records
+
+        self._ensure_conn()
+        try:
+            return list_records(
+                self.conn,
+                subject_id=subject_id,
+                subject_type=subject_type,
+                status=status,
+                limit=limit,
+            )
+        except Exception as e:
+            return [{"error": str(e)}]
 
     def _knowledge_ann(self, vec: list, limit: int,
                        project: Optional[str] = None,
@@ -2558,9 +2694,18 @@ class PgBridge:
     # ── Postgres Edges ───────────────────────────────────────────────────────────
 
     def edge_add(self, from_id: str, to_id: str, relation: str,
-                 agent: Optional[str] = None, context: Optional[str] = None) -> dict:
+                 agent: Optional[str] = None, context: Optional[str] = None,
+                 human_consent: bool = False) -> dict:
         self._ensure_conn()
         try:
+            from core.human_required import _truthy_env, check_write_gate, consent_stamp
+
+            gate = check_write_gate(self.conn, "edge_write", consent=human_consent)
+            if not gate.get("allowed"):
+                return gate
+            if human_consent or _truthy_env("WILLOW_HUMAN_CONSENT"):
+                stamp = consent_stamp(agent)
+                context = f"{context}; {stamp}" if context else stamp
             eid = self.gen_id(8)
             with self.conn.cursor() as cur:
                 cur.execute("""
@@ -2719,6 +2864,53 @@ class PgBridge:
                 f"SELECT * FROM ratifications {where} ORDER BY created_at DESC LIMIT %s", params
             )
             return [dict(r) for r in cur.fetchall()]
+
+    # ── Human-required queue ─────────────────────────────────────────────────────
+
+    def human_required_enqueue(self, **kwargs) -> dict:
+        from core.human_required import enqueue
+
+        self._ensure_conn()
+        try:
+            return enqueue(self.conn, **kwargs)
+        except Exception as e:
+            return {"error": str(e)}
+
+    def human_required_list(self, status: str = "open", kind: Optional[str] = None, limit: int = 50) -> list:
+        from core.human_required import list_items
+
+        self._ensure_conn()
+        try:
+            return list_items(self.conn, status=status, kind=kind, limit=limit)
+        except Exception as e:
+            return [{"error": str(e)}]
+
+    def human_required_resolve(self, item_id: str, resolved_by: str, status: str = "resolved", note: str = "") -> dict:
+        from core.human_required import resolve
+
+        self._ensure_conn()
+        try:
+            return resolve(self.conn, item_id, resolved_by=resolved_by, status=status, note=note)
+        except Exception as e:
+            return {"error": str(e)}
+
+    def human_required_stats(self) -> dict:
+        from core.human_required import stats
+
+        self._ensure_conn()
+        try:
+            return stats(self.conn)
+        except Exception as e:
+            return {"error": str(e)}
+
+    def human_required_seed_defaults(self) -> dict:
+        from core.human_required import seed_defaults
+
+        self._ensure_conn()
+        try:
+            return seed_defaults(self.conn)
+        except Exception as e:
+            return {"error": str(e)}
 
     # ── Hook registry ────────────────────────────────────────────────────────────
 

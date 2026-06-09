@@ -180,7 +180,21 @@ def main() -> int:
             "/ NULLIF(count(*), 0), '(' || count(*)::text || ' rows)' FROM public.ratifications",
         ),
     ]
+    def table_exists(table: str) -> bool:
+        c.execute(
+            """
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = %s
+            LIMIT 1
+            """,
+            (table,),
+        )
+        return c.fetchone() is not None
+
     for table, metric_name, sql in relational:
+        if not table_exists(table):
+            print(f"  {metric_name:28} (missing table — skip)")
+            continue
         c.execute(f"SELECT count(*) FROM public.{table}")
         nrows = c.fetchone()[0]
         if nrows == 0:

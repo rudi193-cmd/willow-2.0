@@ -32,6 +32,7 @@
     "cmb":        "CMB — compact message bus atoms",
     "context":    "Context — compact context summaries in DB",
     "hook":       "Hooks — hook registry and execution log",
+    "human":      "Human — consent queue, attestation, and operator gates",
     "routing":    "Routing — routing decision log",
     "session":    "Session — session index and messages",
     "pg":         "Postgres graph — durable KB edges (distinct from SOIL)",
@@ -202,6 +203,12 @@
 
     "hook_list":          {"group": "hook",   "tier": "extended", "description": "List registered hooks from hook_registry. active_only=True filters to enabled hooks."},
     "hook_log_read":      {"group": "hook",   "tier": "extended", "description": "Read hook execution log, optionally filtered by hook_name."},
+
+    "human_attestation_create":      {"group": "human", "tier": "standard", "description": "Create a durable human attestation, rejection, or change-request record."},
+    "human_attestation_list":        {"group": "human", "tier": "minimal", "description": "List durable human attestation records, optionally filtered by subject."},
+    "human_required_queue_enqueue":  {"group": "human", "tier": "standard", "description": "Enqueue work that must pause automation until a human acts."},
+    "human_required_queue_list":     {"group": "human", "tier": "minimal", "description": "List human-required queue items: consent, attestation, review, overload, onboarding."},
+    "human_required_queue_resolve":  {"group": "human", "tier": "standard", "description": "Resolve, dismiss, or acknowledge a human-required queue item."},
 
     "intake_list":        {"group": "intake", "tier": "standard", "description": "List pending (not yet promoted) intake records for an agent."},
     "intake_promote":     {"group": "intake", "tier": "standard", "description": "Run promote pass on pending intake — routes records to Jeles/schema."},

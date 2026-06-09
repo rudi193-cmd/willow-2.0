@@ -8,6 +8,7 @@ REPO_ROOT = str(Path(__file__).parent.parent)
 sys.path = [REPO_ROOT] + [p for p in sys.path if "willow-1.7" not in p]
 
 os.environ["WILLOW_PG_DB"] = "willow_20_test"
+os.environ.setdefault("WILLOW_HUMAN_GATE", "off")
 
 # PGUSER is the standard psycopg2/libpq env var — use it as a fallback so CI
 # workflows that set PGUSER=postgres but not WILLOW_PG_USER still connect correctly.
