@@ -1,1 +1,18 @@
-../agents/hanuman/config/mcp.json
+{
+  "mcpServers": {
+    "willow": {
+      "type": "stdio",
+      "command": "bash",
+      "args": [
+        "sap/unified_mcp.sh"
+      ],
+      "env": {
+        "WILLOW_AGENT_NAME": "willow",
+        "GROVE_SENDER": "willow",
+        "GROVE_NAME": "willow",
+        "WILLOW_ROOT": ".",
+        "WILLOW_CONFIG_MODE": "public-fallback"
+      }
+    }
+  }
+}

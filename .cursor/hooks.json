@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "./willow/fylgja/bin/fylgja-hook cursor session_start",
+        "timeout": 15
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "./willow/fylgja/bin/fylgja-hook cursor prompt_submit",
+        "timeout": 10
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "./willow/fylgja/bin/fylgja-hook cursor pre_tool",
+        "timeout": 5
+      }
+    ],
+    "beforeMCPExecution": [
+      {
+        "command": "./willow/fylgja/bin/fylgja-hook cursor pre_tool",
+        "timeout": 5
+      }
+    ],
+    "stop": [
+      {
+        "command": "./willow/fylgja/bin/fylgja-hook cursor stop",
+        "timeout": 30
+      }
+    ]
+  }
+}

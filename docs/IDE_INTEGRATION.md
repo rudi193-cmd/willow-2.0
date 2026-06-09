@@ -76,6 +76,36 @@ Debug: Cursor **Output → Hooks** channel.
 
 ---
 
+## Remote Agents
+
+Remote agents start from a clean git checkout. They do not have the operator's
+private `~/github/.willow`, and symlinked discovery paths are not reliable. Any
+surface a remote agent should discover must be committed as real files.
+
+Tracked remote-safe surface:
+
+| Surface | Path |
+|---------|------|
+| Cursor hooks | `.cursor/hooks.json` |
+| Cursor permissions | `.cursor/permissions.json` |
+| Cursor commands / skills / subagents | `.cursor/commands/`, `.cursor/skills/<skill>/SKILL.md`, `.cursor/agents/` |
+| Claude commands / skills / agents | `.claude/commands/`, `.claude/skills/<skill>/SKILL.md`, `.claude/agents/` |
+| Generic agent commands / skills / agents | `.agents/commands/`, `.agents/skills/<skill>/SKILL.md`, `.agents/agents/` |
+| Codex commands / skills / agents | `.codex/commands/`, `.codex/skills/<skill>/SKILL.md`, `.codex/agents/` |
+
+After editing canonical Fylgja skills, commands, or hook templates, refresh the
+vendored remote surface:
+
+```bash
+python3 scripts/sync_remote_cursor_surface.py
+pytest tests/test_fylgja/test_remote_surface.py
+```
+
+Local private config still belongs in `~/github/.willow`; it is runtime state,
+not remote discovery state.
+
+---
+
 ## Tool namespaces
 
 ~160 tools are registered; the IDE should not show all of them.

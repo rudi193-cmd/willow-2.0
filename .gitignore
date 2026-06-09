@@ -39,8 +39,8 @@ willow/fylgja/config/settings.global.json
 sap/log/*.jsonl
 sap/log/*.md
 
-# Cursor Fylgja hooks — per-machine absolute paths; run install_cursor
-.cursor/hooks.json
+# Cursor Fylgja local settings are per-machine. Remote-safe hooks are tracked
+# as real files under .cursor/ so Cursor cloud agents can discover them.
 .cursor/settings.local.json
 
 # Claude Code worktrees

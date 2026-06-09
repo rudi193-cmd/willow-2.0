@@ -1,0 +1,14 @@
+# Codex CLI — Willow MCP fragment (merged by install_project)
+[mcp_servers.willow]
+command = "bash"
+args = ["{{REPO_ROOT}}/sap/unified_mcp.sh"]
+
+[mcp_servers.willow.env]
+WILLOW_AGENT_NAME = "{{AGENT_NAME}}"
+GROVE_SENDER = "{{AGENT_NAME}}"
+GROVE_NAME = "{{AGENT_NAME}}"
+WILLOW_GROVE_ROOT = "{{GROVE_ROOT}}"
+WILLOW_PG_DB = "willow_20"
+WILLOW_SAFE_ROOT = "{{SAFE_ROOT}}"
+WILLOW_AGENTS_ROOT = "{{AGENTS_ROOT}}"
+WILLOW_ROOT = "{{REPO_ROOT}}"

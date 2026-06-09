@@ -16,6 +16,11 @@ b17: AGNTW · ΔΣ=42
 
 **IDE:** `./willow.sh agents active <id>` then `./willow.sh agents install <id> --ide <cursor|claude|codex>` · check: `./willow.sh agents check --ide <surface>` (`--ide all` = strict full-surface verify)
 
+**Remote agents:** use committed real files in `.cursor/`, `.claude/`,
+`.agents/`, and `.codex/`. Do not rely on private `~/github/.willow` or
+symlinked discovery paths. Refresh the vendored remote surface after Fylgja changes with:
+`python3 scripts/sync_remote_cursor_surface.py`.
+
 **Claude Code hooks:** `python3 -m willow.fylgja.install`
 
 Do not duplicate boot steps or tool tables here — they drift. Change `willow.md` or `boot.md` instead.
