@@ -270,6 +270,8 @@ def kart_env(root: Path | None = None) -> dict[str, str]:
         "HOME": str(Path.home()),
         "LANG": os.environ.get("LANG", "en_US.UTF-8"),
         "PYTHONUNBUFFERED": "1",
+        # Marker so code inside bwrap tasks can detect the Kart sandbox context.
+        "WILLOW_IN_KART": "1",
     }
     for key, val in os.environ.items():
         if key.startswith(prefixes):

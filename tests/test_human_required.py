@@ -54,6 +54,24 @@ def test_enqueue_list_resolve(pg):
     assert "open_total" in summary
 
 
+def test_operator_notify_dispatch_noop_on_non_added(pg):
+    from core.operator_notify import dispatch
+    # dispatch on a duplicate result must not raise
+    dispatch(pg.conn, {"status": "duplicate", "kind": "needs_review", "title": "x"})
+
+
+def test_operator_notify_dispatch_fires_on_added(pg):
+    from core.operator_notify import dispatch
+    item = {
+        "status": "added",
+        "id": "TEST0001",
+        "kind": "needs_consent",
+        "title": "notify test",
+        "priority": "normal",
+    }
+    dispatch(None, item)  # conn=None → skips pg_notify, desktop best-effort
+
+
 def test_seed_defaults_idempotent(pg):
     first = seed_defaults(pg.conn)
     second = seed_defaults(pg.conn)

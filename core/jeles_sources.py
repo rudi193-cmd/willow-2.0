@@ -2536,16 +2536,23 @@ def search(
     query: str,
     sources: list[str] | None = None,
     limit_per_source: int = 3,
+    wall_clock_limit: float = 20.0,
 ) -> dict:
     """Search across trusted sources. DB-registry dispatch via fn_name strings.
-    sources=None → all non-opt-in sources. Pass a list to target specific ones."""
+    sources=None → all non-opt-in sources. Pass a list to target specific ones.
+
+    Concurrent: up to 12 sources run in parallel via ThreadPoolExecutor.
+    wall_clock_limit caps total wait time; per-source urllib timeout (_TIMEOUT)
+    handles individual hangs. Sources not done within wall_clock_limit are dropped."""
+    import concurrent.futures as _cf
     registry = _load_registry()
     if sources:
         active = sources
     else:
         active = [sid for sid, cfg in registry.items()
                   if not cfg.get("opt_in") and cfg.get("enabled", True)]
-    out: dict[str, list] = {}
+
+    resolved: list[tuple[str, object]] = []
     for sid in active:
         cfg = registry.get(sid)
         if not cfg:
@@ -2555,12 +2562,33 @@ def search(
         if not fn:
             log.warning("No function found for source %s (fn_name=%s)", sid, cfg["fn_name"])
             continue
+        resolved.append((sid, fn))
+
+    out: dict[str, list] = {}
+
+    def _call(sid: str, fn) -> tuple[str, list]:
         try:
-            hits = fn(query, limit_per_source)
-            if hits:
-                out[sid] = hits
+            return sid, fn(query, limit_per_source)
         except Exception as e:
             log.warning("Source %s failed: %s", sid, e)
+            return sid, []
+
+    with _cf.ThreadPoolExecutor(max_workers=12) as pool:
+        futures = {pool.submit(_call, sid, fn): sid for sid, fn in resolved}
+        try:
+            for fut in _cf.as_completed(futures, timeout=wall_clock_limit):
+                try:
+                    sid, hits = fut.result()
+                    if hits:
+                        out[sid] = hits
+                except Exception as e:
+                    log.warning("Source %s result error: %s", futures[fut], e)
+        except _cf.TimeoutError:
+            pending = sum(1 for f in futures if not f.done())
+            log.warning(
+                "jeles.search wall-clock limit %.1fs reached — %d source(s) still pending",
+                wall_clock_limit, pending,
+            )
 
     total = sum(len(v) for v in out.values())
     if out:

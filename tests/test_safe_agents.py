@@ -10,6 +10,7 @@ from core.safe_agents import (  # noqa: E402
     TRUST_TIERS,
     build_manifest,
     permissions_for_agent,
+    sign_manifest,
 )
 
 
@@ -62,6 +63,20 @@ class TestSafeAgents(unittest.TestCase):
         intake = PERMISSION_GROUPS["intake"]
         self.assertIn("intake_list", intake)
         self.assertIn("intake_promote", intake)
+
+    def test_sign_manifest_blocked_inside_kart(self):
+        import os
+        orig = os.environ.get("WILLOW_IN_KART")
+        try:
+            os.environ["WILLOW_IN_KART"] = "1"
+            ok, msg = sign_manifest("willow")
+            self.assertFalse(ok)
+            self.assertIn("Kart bwrap sandbox", msg)
+        finally:
+            if orig is None:
+                os.environ.pop("WILLOW_IN_KART", None)
+            else:
+                os.environ["WILLOW_IN_KART"] = orig
 
 
 if __name__ == "__main__":

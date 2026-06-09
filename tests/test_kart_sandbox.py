@@ -80,3 +80,8 @@ def test_kart_env_repo_root_wins_over_stale_env(repo_root, monkeypatch):
     env = kart_env(repo_root)
     assert env["WILLOW_ROOT"] == str(repo_root.resolve())
     assert env["PYTHONPATH"] == str(repo_root.resolve())
+
+
+def test_kart_env_sets_willow_in_kart(repo_root):
+    env = kart_env(repo_root)
+    assert env.get("WILLOW_IN_KART") == "1"

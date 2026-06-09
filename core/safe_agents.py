@@ -201,6 +201,11 @@ def manifest_path(agent_id: str) -> Path:
 
 def sign_manifest(agent_id: str) -> tuple[bool, str]:
     """Detached-sign safe-app-manifest.json → safe-app-manifest.json.sig."""
+    if os.environ.get("WILLOW_IN_KART", "").strip():
+        return False, (
+            "sign_manifest: GPG signing is not available inside the Kart bwrap sandbox "
+            "(gpg-agent socket unreachable). Run sync_safe_agent_manifests.py from host shell."
+        )
     mp = manifest_path(agent_id)
     if not mp.is_file():
         return False, f"no manifest at {mp}"
