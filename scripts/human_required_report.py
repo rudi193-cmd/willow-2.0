@@ -14,7 +14,7 @@ for p in (ROOT, ROOT / "core"):
     if ps not in sys.path:
         sys.path.insert(0, ps)
 
-from core.human_required import KINDS, list_items, stats  # noqa: E402
+from core.human_required import list_items, stats  # noqa: E402
 from core.pg_bridge import PgBridge, run_migrations  # noqa: E402
 
 CLOSE_CRITERIA: dict[str, str] = {

@@ -6,10 +6,11 @@ Fails silently if any dependency is missing.
 """
 import os
 import sys
-import json
 import subprocess
 
-PERSONA_FILE = os.path.expanduser("~/github/.willow/willow-2.0-active-persona")
+from willow.fylgja.willow_home import willow_home
+
+PERSONA_FILE = willow_home() / "willow-2.0-active-persona"
 
 PERSONAS = {
     "skirnir": {

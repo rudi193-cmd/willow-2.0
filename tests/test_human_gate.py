@@ -1,5 +1,4 @@
 """tests/test_human_gate.py"""
-import os
 import sys
 from pathlib import Path
 

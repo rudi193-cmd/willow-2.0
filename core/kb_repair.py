@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 
 def _now() -> datetime:
@@ -265,7 +265,7 @@ def repair_dedup_title(conn, *, apply: bool = False) -> dict[str, Any]:
 def find_low_degree_atoms(conn, max_degree: int = 1, limit: int = 50) -> list[dict[str, Any]]:
     cur = conn.cursor()
     cur.execute(
-        f"""
+        """
         WITH edge_deg AS (
           SELECT id, count(*) AS d FROM (
             SELECT from_id AS id FROM edges
