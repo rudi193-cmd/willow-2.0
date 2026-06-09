@@ -7,6 +7,7 @@ b17: AGNTW · ΔΣ=42
 | Need | Doc |
 |------|-----|
 | Doc map (humans + agents) | [`docs/INDEX.md`](docs/INDEX.md) |
+| Agent artifact templates | [`docs/templates/README.md`](docs/templates/README.md) |
 | Public contract snapshot | [`docs/CONTRACT.md`](docs/CONTRACT.md) |
 | MCP tools (annotated registry) | [`sap/mcp_registry.json`](sap/mcp_registry.json) |
 | MCP onboarding (thin) | [`sap/ONBOARDING.md`](sap/ONBOARDING.md) |

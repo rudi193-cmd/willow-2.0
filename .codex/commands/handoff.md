@@ -16,7 +16,9 @@ Stack position: this skill is the first third of the **end-of-session persistenc
    These are long-running processes — their state must appear in the handoff. Do not rely
    on memory; read SOIL.
 
-2. **Draft handoff** using this format:
+2. **Draft handoff** — copy [`docs/templates/HANDOFF.template.md`](../../docs/templates/HANDOFF.template.md) as the canonical v2 structure. The inline format below matches that template; prefer the template file for frontmatter and machine block.
+
+   Draft using this format:
 
 ```
 # HANDOFF: <title>
