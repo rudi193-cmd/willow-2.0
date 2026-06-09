@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Symlink fleet contract/config from fleet home into willow-2.0."""
+"""Link runtime config from fleet home into willow-2.0."""
 from __future__ import annotations
 
 import argparse
@@ -47,12 +47,11 @@ def bootstrap_private(*, package_root: Path | None = None) -> None:
 
 
 def link_map(package_root: Path | None = None) -> list[tuple[Path, Path]]:
-    """(canonical in fleet home, consumer path in willow-2.0)"""
+    """(canonical in fleet home, consumer path in willow-2.0)."""
     root = (package_root or repo_root()).resolve()
     home = fleet_home(package_root)
     cfg = root / "willow" / "fylgja" / "config"
     return [
-        (home / "willow.md", root / "willow.md"),
         (home / "env", cfg / "fleet.env"),
         (home / "settings.global.json", cfg / "settings.global.json"),
     ]
@@ -107,7 +106,7 @@ def link_fleet_home(*, package_root: Path | None = None, dry_run: bool = False) 
 
 def _cli() -> int:
     p = argparse.ArgumentParser(
-        description="Link willow-2.0 contract paths → fleet home (private or public fallback)"
+        description="Link willow-2.0 runtime config paths → fleet home (private or public fallback)"
     )
     p.add_argument("--dry-run", action="store_true")
     p.add_argument(

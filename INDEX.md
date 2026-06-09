@@ -62,7 +62,7 @@
 | `sap/tools/` | MCP tool implementations |
 | `sap/unified_mcp.py` | Unified MCP server — willow + grove + mai in one FastMCP process |
 | `sap/unified_mcp.sh` | Unified MCP server launcher (shell) |
-| `sap/willow_mcp.sh` | Willow-only MCP server launcher (shell) |
+| `sap/willow_mcp.sh` | Legacy Willow-only MCP server launcher (shell) |
 
 ## Applications
 
@@ -129,7 +129,7 @@
 | `docs/BRANDING.md` | Branding guidelines |
 | `docs/CODE_DIFF_1.9_to_2.0.md` | Migration notes from Willow 1.9 to 2.0 |
 | `docs/CONCEPT.md` | Local-first AI stack concept doc — the why behind Willow |
-| `docs/CONTRACT.md` | Public fleet contract snapshot (from willow-config) |
+| `docs/CONTRACT.md` | Public fleet contract snapshot (from root willow.md) |
 | `docs/FIRST_5_MINUTES.md` | Install and first-run quickstart |
 | `docs/FOR_AHS.md` | Beta reader decoder ring (Warhammer lexicon overlay) |
 | `docs/IDE_INTEGRATION.md` | IDE setup guide — Cursor and Claude Code MCP wiring |
@@ -166,7 +166,6 @@
 | `.kart-scripts` |
 | `.mcp.json.bak` |
 | `.pre-commit-config.yaml` |
-| `.worktrees` |
 | `CHANGELOG.md` |
 | `CODEX.md` |
 | `CONTRIBUTING.md` |

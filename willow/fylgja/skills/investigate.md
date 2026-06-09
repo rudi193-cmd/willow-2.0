@@ -25,7 +25,7 @@ Two modes: design new solutions (brainstorm) or fix existing problems (debug).
    - Session state → use `_state.py` functions, not direct file writes
    - Hook events → each behavior needs its own `try/except`
    - `settings.json` → use `install.py`, not manual edits
-7. **Stop** — do not implement until Sean confirms the approach.
+7. **Stop** — do not implement until USER confirms the approach.
 
 ### Rules
 

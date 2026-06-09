@@ -56,6 +56,9 @@ def main() -> int:
     for name in required:
         if not (pack / name).is_file():
             errors.append(f"missing public pack file: {name}")
+    root_contract = ROOT / "willow.md"
+    if not root_contract.is_file() or root_contract.is_symlink():
+        errors.append("root willow.md must be a tracked public file, not a symlink")
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
@@ -66,6 +69,7 @@ def main() -> int:
 
         # Copy minimal repo tree for install/link
         for rel in (
+            "willow.md",
             "willow/fylgja/config/mcp.template.json",
             "willow/fylgja/config/public",
             "willow/fylgja/link_fleet_home.py",
@@ -97,8 +101,8 @@ def main() -> int:
         mode = link_fleet_home(package_root=fake_repo, dry_run=False)
         if mode != "public-fallback":
             errors.append(f"link_fleet_home mode={mode}, expected public-fallback")
-        if not (fake_repo / "willow.md").is_symlink():
-            errors.append("willow.md not symlinked")
+        if not (fake_repo / "willow.md").is_file() or (fake_repo / "willow.md").is_symlink():
+            errors.append("root willow.md must remain a regular public file")
 
         install_project(
             agent_name="willow",

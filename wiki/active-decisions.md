@@ -40,7 +40,7 @@ Resolved in fleet practice: `nomic-embed-text` via Ollama. Backfill scripts in `
 
 See desktop `WILLOW_DECISIONS.md` for insulin-dosing parameters (autonomy thresholds, decay, replication). Wiki does not duplicate stale numbers — read the file or ask the human.
 
-When Sean ratifies: update this page and ingest a KB atom with the decision.
+When USER ratifies: update this page and ingest a KB atom with the decision.
 
 ---
 

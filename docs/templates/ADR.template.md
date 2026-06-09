@@ -17,7 +17,7 @@ AGENT INSTRUCTIONS
 
 **Status:** proposed  
 **Date:** YYYY-MM-DD  
-**Deciders:** Sean Campbell (+ agents: <agent_id>)
+**Deciders:** USER (+ agents: <agent_id>)
 
 ## Context
 

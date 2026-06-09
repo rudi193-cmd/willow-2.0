@@ -7,7 +7,7 @@ Authorization chain (all four must pass):
 1. SAFE/Agents/<agent_id>/ folder exists (agents) or SAFE/Applications/<app_id>/ (user apps)
 2. safe-app-manifest.json present and readable
 3. safe-app-manifest.json.sig present
-4. gpg --verify confirms signature against Sean's key
+4. gpg --verify confirms signature against USER's key
 
 Any failure → deny + log to sap/log/gaps.jsonl.
 Revocation = delete folder or signature.

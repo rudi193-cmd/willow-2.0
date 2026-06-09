@@ -1,3 +1,3 @@
 # Agent instructions (Claude, Cursor, Codex, compatible CLIs)
 
-**Fleet boot:** READ [`willow.md`](willow.md) first (symlink → private [`~/.willow/willow.md`](~/.willow/willow.md), repo `willow-config`).
+**Fleet boot:** READ [`willow.md`](willow.md) first. If private `~/.willow/willow.md` exists, treat it as an overlay after the public root contract loads.

@@ -91,7 +91,7 @@ Global: `--data PATH` (default `sandbox/data/changes.json`).
 | `draft` | `willow_fork_create` + worktree metadata on record |
 | `open` | Grove post id + KB seed atom id written on record |
 | `checks` | Kart task id(s), CI run URL, `memory_check` result hash |
-| `review` | Sean / owner ack timestamp |
+| `review` | USER / owner ack timestamp |
 | `merged` | `willow_fork_merge` + merge commit sha |
 | `release` | `willow_frank_ledger_write` id |
 | `archived` | KB `domain=archived` + SOIL soft-delete |

@@ -33,7 +33,8 @@ Compared: `github.com/rudi193-cmd/willow-1.9` (master) against `willow-2.0` (wor
 |------|------|
 | `willow.md` | Runtime-agnostic fleet boot contract (agents read before MCP) |
 | `pyproject.toml` | Packaging + dev deps (`pytest`, `ruff`, `mypy`) |
-| `sap/willow_mcp.sh` | Stdio MCP launcher (sets `WILLOW_ROOT`, `WILLOW_PG_DB`, venv python) |
+| `sap/unified_mcp.sh` | Stdio MCP launcher for daily IDE use (sets `WILLOW_ROOT`, `WILLOW_PG_DB`, venv python) |
+| `sap/willow_mcp.sh` | Legacy Willow-only MCP launcher |
 | `sap/markdownai_mcp.sh` + `markdownai_server.mjs` | MarkdownAI MCP server |
 | `.mcp.json` | Checked-in MCP config (willow + markdownai) |
 | `sap/handoff_index.py` | Semantic sort for `handoff_latest` (date suffix in filename) |
@@ -92,8 +93,9 @@ Compared: `github.com/rudi193-cmd/willow-1.9` (master) against `willow-2.0` (wor
 
 **2.0:**
 
-- `sap/willow_mcp.sh` — canonical launcher (venv, env, `sap/sap_mcp.py`)
-- `.mcp.json` — `willow` + `markdownai` servers; `WILLOW_AGENT_NAME` often `heimdallr` in Cursor config
+- `sap/unified_mcp.sh` — canonical daily launcher (venv, env, Willow/Grove/MarkdownAI surface)
+- `sap/willow_mcp.sh` — legacy Willow-only launcher when a narrow server is required
+- `.mcp.json` — generated per agent by `install_project`; `WILLOW_AGENT_NAME` is the caller identity
 - `willow.md` — boot sequence: `fleet_status` → `handoff_latest` → `grove_get_history` → `kb_search`
 - Tool names unchanged at the Python layer (grep of `@mcp.tool` handlers: no additions/removals between trees)
 

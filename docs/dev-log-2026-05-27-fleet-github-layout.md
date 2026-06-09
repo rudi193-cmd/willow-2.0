@@ -1,8 +1,8 @@
 # Dev log — Fleet session: apps, infra, layout, GitHub (2026-05-27)
 
-**Session span:** Full multi-hour arc — Grove/systemd/app troubleshooting → two-repo correction → identity → path audit → `~/github/` move → CI green  
-**Operator:** Sean Campbell  
-**Machine:** ThinkPad (`sean-campbell-ThinkPad-P15s-Gen-2i`)  
+**Session span:** Full multi-hour arc — Grove/systemd/app troubleshooting → two-repo correction → identity → path audit → `~/github/` move → CI green
+**Operator:** USER
+**Machine:** ThinkPad (`sean-campbell-ThinkPad-P15s-Gen-2i`)
 **Outcome:** Live fleet on `willow-2.0` / `willow_20`; paths under `~/github/`; remotes pushed; GitHub Actions green on `master`.
 
 ---
@@ -97,7 +97,7 @@ The session goal was **audit first**, then **one coherent layout**, then **verif
 
 Legacy symlinks at `~/.willow`, `~/willow-2.0`, `~/SAFE`, `~/safe-app-store` remain so old habits and scripts keep working.
 
-Reference card: `~/github/README-fleet-layout.md`  
+Reference card: `~/github/README-fleet-layout.md`
 Task record (willow-config): `tasks/T-20260528-github-fleet-layout.md`
 
 ---
@@ -268,11 +268,11 @@ gh run list -R rudi193-cmd/willow-2.0 -w Tests -b master -L 1
 
 ## 9. Related docs
 
-- [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) — two-repo + symlink map  
-- [`ROOT_LAYOUT.md`](ROOT_LAYOUT.md) — repo root layout  
-- [`AGENT_IDENTITY.md`](AGENT_IDENTITY.md) — per-agent namespace rules  
-- [`RUNTIME_AND_INFERENCE.md`](RUNTIME_AND_INFERENCE.md) — inference router  
-- [`IDE_INTEGRATION.md`](IDE_INTEGRATION.md) — MCP env vars  
+- [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) — two-repo + symlink map
+- [`ROOT_LAYOUT.md`](ROOT_LAYOUT.md) — repo root layout
+- [`AGENT_IDENTITY.md`](AGENT_IDENTITY.md) — per-agent namespace rules
+- [`RUNTIME_AND_INFERENCE.md`](RUNTIME_AND_INFERENCE.md) — inference router
+- [`IDE_INTEGRATION.md`](IDE_INTEGRATION.md) — MCP env vars
 
 ---
 

@@ -17,7 +17,7 @@ The Sovereign Application Protocol gate and MCP surface. Exposes KB, SOIL, fleet
   "mcpServers": {
     "willow": {
       "command": "bash",
-      "args": ["sap/willow_mcp.sh"],
+      "args": ["sap/unified_mcp.sh"],
       "env": {
         "WILLOW_AGENT_NAME": "your_agent",
         "WILLOW_PG_DB": "willow_20"
@@ -60,7 +60,7 @@ Local beta uses **stdio only**. HTTP needs an auth layer — do not expose witho
 ## Run
 
 ```bash
-bash sap/willow_mcp.sh
+bash sap/unified_mcp.sh
 # or
 python3 sap/sap_mcp.py
 ```

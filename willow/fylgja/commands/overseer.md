@@ -1,6 +1,6 @@
 # /overseer — Project overseer (scoped initiative)
 
-Same behavioral router as `/power`, but **pinned** to the **overseer** checklist — bounded work: **worktree first**, **plan inside the cage**, **verify**, **KB + memory trail**, **no default-branch drift** until Sean ratifies merge.
+Same behavioral router as `/power`, but **pinned** to the **overseer** checklist — bounded work: **worktree first**, **plan inside the cage**, **verify**, **KB + memory trail**, **no default-branch drift** until USER ratifies merge.
 
 ## ROOT
 

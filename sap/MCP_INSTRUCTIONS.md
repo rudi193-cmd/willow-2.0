@@ -7,7 +7,7 @@ app_id = caller identity, not dispatch target. If fleet_status is degraded or do
 
 Then: grove_get_history · kb_search on your task.
 
-Full contract: willow.md (symlink → willow-config; see docs/WILLOW_CONFIG.md).
+Full contract: willow.md (public root; private ~/.willow/willow.md may overlay it; see docs/WILLOW_CONFIG.md).
 Public snapshot: docs/CONTRACT.md · Boot steps: willow/fylgja/skills/boot.md · Doc map: docs/INDEX.md.
 Tool registry: sap/mcp_registry.json · Human onboarding: sap/ONBOARDING.md
 

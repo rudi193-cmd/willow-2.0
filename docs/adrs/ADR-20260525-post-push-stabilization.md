@@ -12,7 +12,7 @@
 
 ## Context
 
-After every major push string in Willow (across v1.x and v2.0), there is a consistent pattern: the agent fleet becomes unreliable for 1–3 days. Agents make wrong assumptions, repeat resolved mistakes, and act on stale KB claims. Sean has observed this across every version.
+After every major push string in Willow (across v1.x and v2.0), there is a consistent pattern: the agent fleet becomes unreliable for 1–3 days. Agents make wrong assumptions, repeat resolved mistakes, and act on stale KB claims. USER has observed this across every version.
 
 The root cause is not model failure. It is **context lag**: the fleet's self-model is eventually consistent, but code changes are immediate. No mechanism exists to say "a major merge just happened — reconcile before acting."
 

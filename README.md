@@ -15,7 +15,7 @@ Willow keeps a knowledge graph on hardware you control, exposes it through an MC
 | Piece | What it does |
 |-------|----------------|
 | **Knowledge base** | Atoms that survive across sessions, models, and IDEs |
-| **SAP MCP** | 80+ tools — search memory, fleet health, tasks, handoffs, inference |
+| **SAP MCP** | Unified MCP with profile-filtered tools for memory, fleet health, tasks, handoffs, and inference |
 | **SAFE gate** | Every tool call checked against manifests before it runs |
 | **SOIL** | Fast structured state on disk (per agent / collection) |
 | **Grove** | Terminal dashboard + LAN remote control (`./willow.sh serve`) |
@@ -26,16 +26,22 @@ IDEs connect via MCP (`sap/sap_mcp.py`). Humans use `./willow.sh` and the docs b
 
 ---
 
-## Quick start
+## Choose Your Path
+
+| You are | Start with | What happens |
+|---------|------------|--------------|
+| New human or contributor | `bash setup.sh --public` | Uses only files in this public repo; no private config required |
+| Fleet operator | `bash setup.sh` | Uses private `~/github/.willow` as an overlay for credentials, handoffs, and settings |
+| Agent in an IDE | [`willow.md`](willow.md), then [`docs/IDE_INTEGRATION.md`](docs/IDE_INTEGRATION.md) | Boots from the public contract, then loads MCP/handoff context when available |
+
+## Quick Start
 
 **New here:** [`docs/FIRST_5_MINUTES.md`](docs/FIRST_5_MINUTES.md) — copy, paste, verify health.
 
 ```bash
 git clone https://github.com/rudi193-cmd/willow-2.0
 cd willow-2.0
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"   # omit .[dev] if you skip tests
-python3 seed.py
+bash setup.sh --public
 ```
 
 Then:
@@ -56,7 +62,14 @@ Default database name is **`willow_20`**. Upgrading from 1.9? See [`docs/CODE_DI
 
 ## Connect Cursor / Claude Code
 
-Point MCP at `sap/willow_mcp.sh` (or follow [`docs/IDE_INTEGRATION.md`](docs/IDE_INTEGRATION.md)). Agents boot from [`willow.md`](willow.md) — health check, handoff, then act.
+Install an agent profile for the IDE you actually use:
+
+```bash
+./willow.sh agents active <agent>
+./willow.sh agents install <agent> --ide <cursor|claude|codex>
+```
+
+The installer writes MCP config for `sap/unified_mcp.sh`. Agents boot from [`willow.md`](willow.md), check fleet health and handoff, then act. Details: [`docs/IDE_INTEGRATION.md`](docs/IDE_INTEGRATION.md).
 
 ---
 

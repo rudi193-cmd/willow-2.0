@@ -9,7 +9,7 @@ b20: SAPMCP2 · ΔΣ=42
 | MCP server `instructions` | [`MCP_INSTRUCTIONS.md`](MCP_INSTRUCTIONS.md) | IDE injects this at connect (keep minimal) |
 | Human/agent doc | this file | Repo readers — links to full contract |
 
-Full fleet contract: [`willow.md`](../willow.md) (private **willow-config**; public snapshot: [`../docs/CONTRACT.md`](../docs/CONTRACT.md)).  
+Full fleet contract: [`willow.md`](../willow.md) (public root; private `~/.willow/willow.md` may overlay it; snapshot: [`../docs/CONTRACT.md`](../docs/CONTRACT.md)).
 Boot sequence: [`willow/fylgja/skills/boot.md`](../willow/fylgja/skills/boot.md).
 
 ## Orient (parallel)
@@ -27,7 +27,7 @@ Shell fallback: `./willow.sh fleet_status` · `./willow.sh handoff_latest`
 
 ## Tools
 
-**Registry (source of truth):** [`mcp_registry.json`](mcp_registry.json) — grouped prefixes, 80+ tools.
+**Registry (source of truth):** [`mcp_registry.json`](mcp_registry.json) — grouped prefixes, filtered by MCP profiles for daily use.
 
 **Profiles (reduce IDE noise):** [`../docs/MCP_TOOL_PROFILES.md`](../docs/MCP_TOOL_PROFILES.md)
 

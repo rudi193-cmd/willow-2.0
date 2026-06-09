@@ -5,13 +5,13 @@ description: Cut a tagged GitHub Release for willow-2.0. Enforces the full seque
 
 # /release
 
-> **Authorization gate.** Do not push the tag without Sean's explicit approval. The tag triggers the public GitHub Release workflow — this is a one-way action.
+> **Authorization gate.** Do not push the tag without USER's explicit approval. The tag triggers the public GitHub Release workflow — this is a one-way action.
 
 ---
 
 ## When to use this skill
 
-- Sean says "cut the release", "tag it", or "ship v…"
+- USER says "cut the release", "tag it", or "ship v…"
 - The CHANGELOG `[Unreleased]` section has content ready to ship
 - CI is green on master
 
@@ -47,11 +47,11 @@ Update `CHANGELOG.md`:
 
 Commit, push, open PR. Title: `chore(release): CHANGELOG for vX.Y.Z`.
 
-**3. Wait for CI + Sean approval**
+**3. Wait for CI + USER approval**
 
 Do not proceed until:
 - All CI jobs on the CHANGELOG PR are green
-- Sean approves or merges the PR
+- USER approves or merges the PR
 
 **4. Pull master after merge**
 
@@ -68,10 +68,10 @@ VERSION=$(cat $WILLOW_ROOT/VERSION)
 git -C $WILLOW_ROOT tag "v${VERSION}" -m "Release v${VERSION}"
 ```
 
-Show Sean the tag before pushing:
+Show USER the tag before pushing:
 > About to push tag `vX.Y.Z` to origin — this triggers the GitHub Release workflow. Confirm?
 
-**6. Push tag (requires Sean's go-ahead)**
+**6. Push tag (requires USER's go-ahead)**
 
 ```
 git -C $WILLOW_ROOT push origin "v${VERSION}"
@@ -93,7 +93,7 @@ Report the release URL.
 
 | Rule | Reason |
 |---|---|
-| Never push a tag without explicit Sean approval | Tag push is public and triggers release workflow |
+| Never push a tag without explicit USER approval | Tag push is public and triggers release workflow |
 | Always pull master after the CHANGELOG PR merges | Tag must point to the correct HEAD |
 | CHANGELOG `[Unreleased]` must be non-empty | Empty release is a no-op and creates confusion |
 | CI must be green on master before tagging | Tag on a broken master creates a broken release |

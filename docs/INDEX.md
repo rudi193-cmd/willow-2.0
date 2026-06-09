@@ -2,7 +2,8 @@
 
 b17: DOCIDX · ΔΣ=42
 
-Pick a door:
+Pick a door. If you are unsure, start with `FIRST_5_MINUTES.md` as a human or
+root `../willow.md` as an agent.
 
 | You are… | Start here |
 |----------|------------|
@@ -11,7 +12,7 @@ Pick a door:
 | Friend beta (AHS) | [`FOR_AHS.md`](FOR_AHS.md) · full crossover: [`nomenclature/AXW-20.md`](nomenclature/AXW-20.md) |
 | Developer, want the stack fast | [`QUICKSTART.md`](QUICKSTART.md) |
 | Curious why this exists | [`CONCEPT.md`](CONCEPT.md) |
-| Agent joining the fleet | [`CONTRACT.md`](CONTRACT.md) (public) · full contract: [`../willow.md`](../willow.md) if symlinked · [`../sap/ONBOARDING.md`](../sap/ONBOARDING.md) |
+| Agent joining the fleet | root contract: [`../willow.md`](../willow.md) · public snapshot: [`CONTRACT.md`](CONTRACT.md) · [`../sap/ONBOARDING.md`](../sap/ONBOARDING.md) |
 | Upgrading from 1.9 | [`CODE_DIFF_1.9_to_2.0.md`](CODE_DIFF_1.9_to_2.0.md) |
 | What lives at repo root | [`ROOT_LAYOUT.md`](ROOT_LAYOUT.md) |
 | Private config vs public code | [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) · [`PUBLIC_REMOTE_BOOT.md`](PUBLIC_REMOTE_BOOT.md) |
@@ -23,6 +24,18 @@ Pick a door:
 | Branding (b17, b20, voice) | [`BRANDING.md`](BRANDING.md) |
 | Beta gate / ops | [`BETA_AUDIT_REPORT.md`](BETA_AUDIT_REPORT.md) |
 | MCP tool profiles (reduce picker noise) | [`MCP_TOOL_PROFILES.md`](MCP_TOOL_PROFILES.md) |
+
+---
+
+## Common Workflows
+
+| Goal | Path |
+|------|------|
+| Public clone, no private config | `bash setup.sh --public` → [`PUBLIC_REMOTE_BOOT.md`](PUBLIC_REMOTE_BOOT.md) |
+| Fleet operator setup | `bash setup.sh` → [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) |
+| IDE agent setup | `./willow.sh agents install <id> --ide <surface>` → [`IDE_INTEGRATION.md`](IDE_INTEGRATION.md) |
+| Agent boot order | [`../willow.md`](../willow.md) → [`../willow/fylgja/skills/boot.md`](../willow/fylgja/skills/boot.md) |
+| Fix stale or confusing docs | update the source doc, then regenerate root [`../INDEX.md`](../INDEX.md) with `python3 scripts/gen_index.py` when annotations change |
 
 ---
 
