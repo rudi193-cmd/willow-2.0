@@ -150,14 +150,22 @@ def test_agents_check_cursor_skips_claude_global(tmp_path, monkeypatch):
         "willow/fylgja/bin/fylgja-hook",
         "willow/fylgja/config/kart-sandbox.json",
         "willow/fylgja/config/cursor-hooks.json",
+        "willow/fylgja/config/cursor-cli.json",
     ):
         src = PACKAGE_ROOT / rel
         dst = repo / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         dst.write_bytes(src.read_bytes())
 
-    (repo / ".cursor").mkdir()
-    (repo / ".cursor" / "hooks.json").symlink_to("../willow/fylgja/config/cursor-hooks.json")
+    cursor = repo / ".cursor"
+    cursor.mkdir()
+    (cursor / "hooks.json").write_bytes(
+        (repo / "willow/fylgja/config/cursor-hooks.json").read_bytes()
+    )
+    (cursor / "cli.json").write_bytes(
+        (repo / "willow/fylgja/config/cursor-cli.json").read_bytes()
+    )
+    (cursor / "skills").mkdir()
 
     monkeypatch.chdir(repo)
     monkeypatch.setattr(

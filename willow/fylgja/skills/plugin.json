@@ -1,7 +1,7 @@
 {
   "name": "fylgja",
   "version": "2.0.0",
-  "description": "Willow 2.0 behavioral skills — LLM-agnostic, script-backed. Load using-fylgja-powers first for low-token routing (powers/registry.json).",
+  "description": "Willow 2.0 behavioral skills — LLM-agnostic, script-backed. Load power.md first for low-token routing (powers/registry.json).",
   "claude_code_manifest": ".claude-plugin/plugin.json",
   "claude_code_commands": "commands/"
 }

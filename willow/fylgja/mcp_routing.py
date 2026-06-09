@@ -62,7 +62,7 @@ def format_cheat_sheet(*, max_groups: int = 8) -> str:
             continue
         g = str(meta.get("group", "other"))
         by_group.setdefault(g, []).append(name)
-    prof = os.environ.get("WILLOW_MCP_PROFILE", "core")
+    prof = os.environ.get("WILLOW_MCP_PROFILE", "standard")
     lines = [
         f"[WILLOW-LANES] profile={prof} · Start=willow_* facade · catalog=fleet_tool_guide",
     ]

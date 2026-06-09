@@ -99,9 +99,8 @@ _ci_stubs() {
       sed -e "s|{{REPO_ROOT}}|${ROOT}|g" -e "s|{{HOME}}|${HOME}|g" \
         agents/willow/config/mcp.json.example > agents/willow/config/mcp.json
     fi
-    if [[ ! -e .cursor/hooks.json && -f willow/fylgja/config/cursor-hooks.json ]]; then
-      mkdir -p .cursor
-      ln -sf ../willow/fylgja/config/cursor-hooks.json .cursor/hooks.json
+    if [[ ! -f .cursor/hooks.json && -x scripts/sync_remote_cursor_surface.py ]]; then
+      "${PYTHON}" scripts/sync_remote_cursor_surface.py
     fi
   fi
 }
@@ -132,8 +131,8 @@ _local_agent_bootstrap() {
     agent="willow"
   fi
   echo "${agent}" > .willow/active-agent
-  if [[ ! -e .cursor/hooks.json && -f willow/fylgja/config/cursor-hooks.json ]]; then
-    ln -sf ../willow/fylgja/config/cursor-hooks.json .cursor/hooks.json
+  if [[ ! -f .cursor/hooks.json && -x scripts/sync_remote_cursor_surface.py ]]; then
+    "${PYTHON}" scripts/sync_remote_cursor_surface.py
   fi
 }
 
@@ -194,6 +193,14 @@ _health_report() {
   "${PYTHON}" scripts/health_report.py
 }
 
+_remote_surface_check() {
+  "${PYTHON}" scripts/sync_remote_cursor_surface.py --check
+}
+
+_public_fallback_verify() {
+  "${PYTHON}" scripts/verify_public_fallback.py
+}
+
 echo "[comfort_check] mode=${MODE} root=${ROOT}"
 
 if [[ "${MODE}" == "ci" ]]; then
@@ -203,6 +210,8 @@ fi
 _run "path-guard" _path_guard
 _run "mcp-registry-strict" _mcp_registry
 _run "verify-layout" _layout
+_run "remote-surface-check" _remote_surface_check
+_run "public-fallback-verify" _public_fallback_verify
 _run "fast-mcp-tests" _fast_tests
 _run "bifrost-db-scan" _bifrost_db_warn
 

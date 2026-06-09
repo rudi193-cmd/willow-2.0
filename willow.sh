@@ -22,13 +22,8 @@ WILLOW_ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 export WILLOW_ROOT
 SAP_MCP="${WILLOW_ROOT}/sap/sap_mcp.py"
 
-# ── Canonical fleet home ($WILLOW_HOME) — ~/.willow is a supported alias ───────
-export WILLOW_HOME="${WILLOW_HOME:-${HOME}/github/.willow}"
-export WILLOW_STORE_ROOT="${WILLOW_STORE_ROOT:-${WILLOW_HOME}/store}"
-export WILLOW_VAULT="${WILLOW_VAULT:-${WILLOW_HOME}/vault.db}"
-export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/github/SAFE/Applications}"
-export WILLOW_AGENTS_ROOT="${WILLOW_AGENTS_ROOT:-${HOME}/github/SAFE/Agents}"
-export WILLOW_PGP_FINGERPRINT="${WILLOW_PGP_FINGERPRINT:-9B6F87BEB4AE56E23D3D055724AED1D0216053F5}"
+# ── Canonical fleet home ($WILLOW_HOME) — resolved after Python is located ───────
+WILLOW_HOME_FALLBACK="${HOME}/github/.willow"
 
 # Python
 if [[ -z "${WILLOW_PYTHON:-}" ]]; then
@@ -36,8 +31,10 @@ if [[ -z "${WILLOW_PYTHON:-}" ]]; then
         WILLOW_PYTHON="${WILLOW_ROOT}/.venv-dev/bin/python3"
     elif [[ -x "${HOME}/github/willow-2.0/.venv-dev/bin/python3" ]]; then
         WILLOW_PYTHON="${HOME}/github/willow-2.0/.venv-dev/bin/python3"
-    elif [[ -x "${WILLOW_HOME}/venv/bin/python3" ]]; then
+    elif [[ -n "${WILLOW_HOME:-}" && -x "${WILLOW_HOME}/venv/bin/python3" ]]; then
         WILLOW_PYTHON="${WILLOW_HOME}/venv/bin/python3"
+    elif [[ -x "${WILLOW_HOME_FALLBACK}/venv/bin/python3" ]]; then
+        WILLOW_PYTHON="${WILLOW_HOME_FALLBACK}/venv/bin/python3"
     elif [[ -x "${HOME}/.willow/venv/bin/python3" ]]; then
         WILLOW_PYTHON="${HOME}/.willow/venv/bin/python3"
     elif [[ -x "${HOME}/.willow-venv/bin/python3" ]]; then
@@ -47,6 +44,22 @@ if [[ -z "${WILLOW_PYTHON:-}" ]]; then
     fi
 fi
 export WILLOW_PYTHON
+
+if [[ -z "${WILLOW_HOME:-}" ]]; then
+    WILLOW_HOME="$("${WILLOW_PYTHON}" -c "
+import sys
+from pathlib import Path
+sys.path.insert(0, '${WILLOW_ROOT}')
+from willow.fylgja.willow_home import fleet_home
+print(fleet_home(Path('${WILLOW_ROOT}')))
+" 2>/dev/null)" || WILLOW_HOME="${WILLOW_HOME_FALLBACK}"
+fi
+export WILLOW_HOME
+export WILLOW_STORE_ROOT="${WILLOW_STORE_ROOT:-${WILLOW_HOME}/store}"
+export WILLOW_VAULT="${WILLOW_VAULT:-${WILLOW_HOME}/vault.db}"
+export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/github/SAFE/Applications}"
+export WILLOW_AGENTS_ROOT="${WILLOW_AGENTS_ROOT:-${HOME}/github/SAFE/Agents}"
+export WILLOW_PGP_FINGERPRINT="${WILLOW_PGP_FINGERPRINT:-9B6F87BEB4AE56E23D3D055724AED1D0216053F5}"
 
 # Postgres — Unix socket, willow_20 DB (clean break from 1.7)
 unset WILLOW_PG_HOST WILLOW_PG_PORT WILLOW_PG_PASS

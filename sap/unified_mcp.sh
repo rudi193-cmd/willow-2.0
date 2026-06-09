@@ -3,15 +3,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+WILLOW_HOME_FALLBACK="${HOME}/github/.willow"
 
-WILLOW_HOME="${WILLOW_HOME:-${HOME}/github/.willow}"
 if [[ -z "${WILLOW_PYTHON:-}" ]]; then
     if [[ -x "${REPO_ROOT}/.venv-dev/bin/python3" ]]; then
         WILLOW_PYTHON="${REPO_ROOT}/.venv-dev/bin/python3"
     elif [[ -x "${HOME}/github/willow-2.0/.venv-dev/bin/python3" ]]; then
         WILLOW_PYTHON="${HOME}/github/willow-2.0/.venv-dev/bin/python3"
-    elif [[ -x "${WILLOW_HOME}/venv/bin/python3" ]]; then
+    elif [[ -n "${WILLOW_HOME:-}" && -x "${WILLOW_HOME}/venv/bin/python3" ]]; then
         WILLOW_PYTHON="${WILLOW_HOME}/venv/bin/python3"
+    elif [[ -x "${WILLOW_HOME_FALLBACK}/venv/bin/python3" ]]; then
+        WILLOW_PYTHON="${WILLOW_HOME_FALLBACK}/venv/bin/python3"
     elif [[ -x "${HOME}/.willow/venv/bin/python3" ]]; then
         WILLOW_PYTHON="${HOME}/.willow/venv/bin/python3"
     elif [[ -x "${HOME}/.willow-venv/bin/python3" ]]; then
@@ -19,6 +21,16 @@ if [[ -z "${WILLOW_PYTHON:-}" ]]; then
     else
         WILLOW_PYTHON="$(command -v python3)"
     fi
+fi
+
+if [[ -z "${WILLOW_HOME:-}" ]]; then
+    WILLOW_HOME="$("${WILLOW_PYTHON}" -c "
+import sys
+from pathlib import Path
+sys.path.insert(0, '${REPO_ROOT}')
+from willow.fylgja.willow_home import fleet_home
+print(fleet_home(Path('${REPO_ROOT}')))
+" 2>/dev/null)" || WILLOW_HOME="${WILLOW_HOME_FALLBACK}"
 fi
 
 # Source local secrets (not tracked). Create $WILLOW_HOME/secrets.sh with:
@@ -49,8 +61,8 @@ export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/github/SAFE/Applications}"
 export WILLOW_AGENTS_ROOT="${WILLOW_AGENTS_ROOT:-${HOME}/github/SAFE/Agents}"
 export WILLOW_PGP_FINGERPRINT="${WILLOW_PGP_FINGERPRINT:-9B6F87BEB4AE56E23D3D055724AED1D0216053F5}"
 export MAI_SECURITY_CONFIG="${MAI_SECURITY_CONFIG:-${HOME}/.markdownai/security.json}"
-# Tool picker size: minimal | core (default) | standard | full
-export WILLOW_MCP_PROFILE="${WILLOW_MCP_PROFILE:-core}"
+# Tool picker size: minimal | core | standard (default) | full
+export WILLOW_MCP_PROFILE="${WILLOW_MCP_PROFILE:-standard}"
 
 cd "${REPO_ROOT}"
 exec "${WILLOW_PYTHON}" -m sap.unified_mcp "$@"

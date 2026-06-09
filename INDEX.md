@@ -162,7 +162,10 @@
 
 | Path |
 |------|
+| `.agents` |
+| `.ci-safe` |
 | `.ci-willow` |
+| `.codex` |
 | `.kart-scripts` |
 | `.mcp.json.bak` |
 | `.pre-commit-config.yaml` |
