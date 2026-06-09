@@ -166,7 +166,6 @@
 | `.kart-scripts` |
 | `.mcp.json.bak` |
 | `.pre-commit-config.yaml` |
-| `.worktrees` |
 | `CHANGELOG.md` |
 | `CODEX.md` |
 | `CONTRIBUTING.md` |

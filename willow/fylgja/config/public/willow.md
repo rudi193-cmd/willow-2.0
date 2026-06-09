@@ -1,128 +1,126 @@
-# Willow fleet contract (public fallback)
+# Willow 2.0 fleet contract
 
-b17: PUBFBK · ΔΣ=42
+b17: PUBROOT | DeltaSigma=42
 
-> **Mode:** `public-fallback` — private willow-config (`~/github/.willow`) was not found.
-> This pack is tracked in the repo at `willow/fylgja/config/public/`.
-> KB, Grove credentials, handoffs, and operator personas are **not** available until you
-> clone [willow-config](https://github.com/rudi193-cmd/willow-config).
->
-> Setup: `bash setup.sh --public` · Detail: [`docs/PUBLIC_REMOTE_BOOT.md`](../docs/PUBLIC_REMOTE_BOOT.md)
+This file is the public, repo-owned boot contract for Willow 2.0. It must work
+from a fresh GitHub clone with no private operator config.
 
-**Boot modes:** `private-config` · `public-fallback` · `degraded` (MCP/Postgres down)
+Private state lives outside this repository in `willow-config` (`~/.willow` or
+`~/github/.willow`). When that private home exists, boot may read its
+`willow.md` as an overlay for live fleet context, credentials, handoffs, and
+operator-specific conventions. The root `willow.md` stays public-safe.
 
----
+## Boot Modes
 
-## Glossary
+| Mode | Meaning |
+|------|---------|
+| `public-fallback` | Public repo only; no private config or KB required |
+| `private-config` | `willow-config` is present and can provide live fleet context |
+| `degraded` | MCP/Postgres/Grove are unavailable; continue from repo context when possible |
 
-**agent:** — A named participant with a namespace and SAFE manifest.  
-**fleet:** — The coordinated agents plus humans on Grove.  
-**handoff:** — A sealed session document the next run reads first.  
-**KB:** — Long-term knowledge atoms in Postgres (requires private config + Postgres).  
-**SOIL:** — Local structured store (collections on disk).  
-**Grove:** — Messaging bus (sibling repo `safe-app-willow-grove`).  
-**SAP:** — Safe Application Protocol — gate, manifest system, MCP server.  
-**Kart:** — Execution daemon (Postgres task queue + bwrap sandbox).
+Run `/boot` first. The boot skill is `willow/fylgja/skills/boot.md`.
 
-## Constraints
+## Public-Fallback Boot
 
-| ID | Severity | Rule |
-|----|----------|------|
-| boot-order | CRITICAL | `/boot` is a gate. Do not produce any response until it completes. |
-| mcp-first | HIGH | Use MCP tools when available. Registry: `sap/mcp_registry.json`. |
-| namespace | HIGH | Write only in your agent namespace. |
-| worktree-pr | CRITICAL | Code changes via worktree + PR — no direct master commits. |
-| kb-first | HIGH | `kb_search` before build — **skipped in public-fallback when KB unavailable**. |
-| finish-to-completion | CRITICAL | Fix end-to-end or report concrete blockers. |
+Use this path for GitHub-only clones, remote agents, CI, or contributor
+machines without private `willow-config`.
 
----
+1. Read this file.
+2. Inspect repo root, branch, and a compact diff/status summary.
+3. Load `willow/fylgja/skills/boot.md`.
+4. Use the public config pack in `willow/fylgja/config/public/`.
+5. If MCP/Postgres/Grove are unavailable, mark the session degraded and continue
+   with repo-local tools.
 
-# Willow 2.0 — Fleet context
+Setup:
 
-Runtime-agnostic entry for any agent: Claude Code, Cursor, Codex, Gemini CLI, raw API.
+```bash
+bash setup.sh --public
+python3 -m willow.fylgja.link_fleet_home --public
+```
 
-When MCP and private config are up, live truth is in the KB and Grove. This file is how you boot.
+Details: `docs/PUBLIC_REMOTE_BOOT.md`.
 
----
+## Private-Config Overlay
+
+If `~/.willow/willow.md` or `~/github/.willow/willow.md` exists, treat it as a
+private overlay, not as the public source of truth. It may contain live handoff
+policy, agent identity, Grove/KB assumptions, and machine-specific paths.
+
+Private config is allowed to change runtime behavior after this public contract
+loads. It must not be required for a public clone to understand how to start.
 
 ## Identity
 
-| Layer | What it is |
-|-------|------------|
-| **Runtime** | Cursor, Claude Code, Codex, Gemini CLI — transport only |
-| **Agent** | `$WILLOW_AGENT_NAME` — namespace when Postgres/MCP available |
-| **Inference** | Ollama / Groq / Gemini — `core/inference_router.py` |
-
 The IDE model is not the agent.
 
-- Set identity: `./willow.sh agents active <id> && ./willow.sh agents install <id> --ide <cursor|claude|codex>`
-- Open **willow-2.0** in the IDE, not a private config-only checkout
-- Detail: [`docs/AGENT_IDENTITY.md`](../docs/AGENT_IDENTITY.md)
+| Layer | What it is |
+|-------|------------|
+| Runtime | Cursor, Claude Code, Codex, Gemini CLI, API process |
+| Agent | `$WILLOW_AGENT_NAME`, the namespace used for writes |
+| Fleet | Coordinated agents, humans, services, and handoffs |
+| Inference | Local or remote model provider behind Willow routing |
 
----
+Set identity with:
 
-## Boot sequence
-
-Run `/boot`. Steps in [`willow/fylgja/skills/boot.md`](../willow/fylgja/skills/boot.md).
-
-In **public-fallback**: read this contract, load repo skills/MCP template, continue **degraded**
-if Postgres/KB/Grove are unreachable — do not hard-stop solely for missing private home.
-
----
-
-## Tool groups (SAP MCP)
-
-Full registry: [`sap/mcp_registry.json`](../sap/mcp_registry.json)
-
-Core groups: `fleet_` · `mai_` · `code_graph_` · `skill_` · `agent_` (Kart) · `kb_` · `soil_` · `grove_`
-
----
-
-## Agent model
-
-One orchestrating agent per session. Shell work → `agent_task_submit` (Kart) when available.
-Inference → `infer_7b` / `infer_chat` — check `fleet_status` before dispatching.
-
----
-
-## Config tiers
-
-```mermaid
-flowchart LR
-  publicPack["Repo public pack"] --> generated[".willow/generated"]
-  privateConfig["~/github/.willow"] --> generated
-  generated --> runtime["IDE + MCP"]
+```bash
+./willow.sh agents active <agent>
+./willow.sh agents install <agent> --ide <cursor|claude|codex>
 ```
 
-| Tier | Path | When |
-|------|------|------|
-| Public pack | `willow/fylgja/config/public/` | Always in repo |
-| Generated home | `{repo}/.willow/generated/` | No private config |
-| Private config | `~/github/.willow` | willow-config clone |
+Open the `willow-2.0` repo in the IDE. Do not open only the private config
+checkout and expect repo skills, tests, or MCP templates to be present.
 
-`link_fleet_home` prints `config-mode: private-config` or `config-mode: public-fallback`.
+## Operating Rules
 
----
+| ID | Severity | Rule |
+|----|----------|------|
+| `boot-order` | Critical | Complete `/boot` before substantive work. |
+| `mcp-first` | High | Prefer Willow MCP/facade tools when available; fall back when degraded. |
+| `namespace` | High | Write only in the active agent namespace. |
+| `worktree-pr` | Critical | Use branches/worktrees/PRs for code changes; avoid direct `master` edits. |
+| `kb-first` | High | Search KB before building when KB is available; skip only in public-fallback. |
+| `finish-to-completion` | Critical | Finish end-to-end or report concrete blockers. |
 
-## Git workflow
+## Tooling Surface
 
-Every change: worktree + branch + PR. No direct master edits.
-Detail: [`willow/fylgja/skills/worktree.md`](../willow/fylgja/skills/worktree.md)
+Primary MCP/facade tools, when available:
 
----
+- `willow_status`
+- `willow_find`
+- `willow_remember`
+- `willow_run`
 
-## Fallback — no MCP / no private config
+Underlying groups include `fleet_`, `mai_`, `code_graph_`, `skill_`,
+`agent_`, `kb_`, `soil_`, and `grove_`.
 
-1. Read `willow.md` (this file) via `mai_read_file` or Read
-2. Repo root, branch, compact diff
-3. Load `willow/fylgja/skills/boot.md` degraded path
-4. If Postgres reachable: optional `kb_search`
-5. Session notes → `$WILLOW_HOME/handoffs/<agent>/` when home exists
+Full registry: `sap/mcp_registry.json`.
 
----
+## Config Layout
 
-## Canonical principle
+| Tier | Path | Contents |
+|------|------|----------|
+| Public root contract | `willow.md` | Public boot contract, tracked in this repo |
+| Public config pack | `willow/fylgja/config/public/` | Safe templates for public clones |
+| Generated home | `.willow/generated/` | Materialized public-fallback home, gitignored |
+| Private config | `~/.willow` or `~/github/.willow` | Private credentials, handoffs, settings |
 
-`willow.md` is the contract. Runtime files (`CLAUDE.md`, `AGENTS.md`) point here — they do not extend it.
+`link_fleet_home` may link runtime config files such as `fleet.env` and
+`settings.global.json`, but it must not replace this root contract with a
+machine-local symlink.
 
-*Public fallback pack · upgrade via willow-config · ΔΣ=42*
+## What Does Not Travel Publicly
+
+- KB atoms, Jeles corpus, and session handoffs
+- Grove credentials, Discord tokens, API keys, and operator secrets
+- Operator personas and machine-specific session anchors
+- Absolute paths from one developer machine
+
+## Canonical Principle
+
+`willow.md` is the portable contract. Runtime-specific files such as
+`CLAUDE.md`, `AGENTS.md`, and IDE settings point here or install from it; they do
+not become separate contracts.
+
+Private config can enrich the contract during boot, but public clones must never
+depend on private files that GitHub cannot provide.

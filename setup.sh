@@ -108,7 +108,7 @@ PYTHONPATH="${REPO_ROOT}" "${VENV}/bin/python3" -m willow.fylgja.link_fleet_home
 if [[ "${PUBLIC_MODE}" -eq 1 ]]; then
     ok "Linked willow-2.0 → public fallback pack (.willow/generated)"
 else
-    ok "Linked willow-2.0/willow.md + config → ~/.willow (willow-config)"
+    ok "Linked willow-2.0 runtime config → ~/.willow (willow-config); root willow.md remains public"
 fi
 
 hdr "IDE + agent install"

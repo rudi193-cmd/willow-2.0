@@ -19,9 +19,10 @@ bash setup.sh --public
 
 1. Skips private willow-config clone (non-fatal if clone would fail)
 2. Materializes the tracked public pack → `.willow/generated/`
-3. Symlinks `willow.md`, `fleet.env`, `settings.global.json` into the repo
-4. Defaults active agent to `willow` if none set
-5. Runs `install_project` for IDE wiring
+3. Keeps root `willow.md` as the tracked public contract
+4. Symlinks runtime config (`fleet.env`, `settings.global.json`) into the repo
+5. Defaults active agent to `willow` if none set
+6. Runs `install_project` for IDE wiring
 
 Manual link only:
 
@@ -35,12 +36,14 @@ Expect: `config-mode: public-fallback (home=…/willow-2.0/.willow/generated)`.
 
 | Tier | Location | Contents |
 |------|----------|----------|
+| **Root contract** | `willow.md` | Public-safe boot contract, tracked in the repo |
 | **Public pack** | `willow/fylgja/config/public/` | Contract, env template, safe settings |
 | **Generated home** | `{repo}/.willow/generated/` | Materialized per clone (gitignored) |
 | **Private config** | `~/github/.willow` | Full operator home when available |
 
-Private config **upgrades** the experience automatically on next `setup.sh` when
-`~/github/.willow/willow.md` exists.
+Private config **upgrades** the experience automatically on next `setup.sh`
+when `~/github/.willow/willow.md` exists. Treat that private file as a boot
+overlay; the root `willow.md` remains public-safe and tracked in `willow-2.0`.
 
 ## What works in public-fallback
 
@@ -56,6 +59,9 @@ Private config **upgrades** the experience automatically on next `setup.sh` when
 - Grove credentials, Discord tokens, API keys
 - Operator personas, session anchors
 - Machine-specific absolute paths
+
+Root `willow.md` must not be replaced by a machine-local symlink. Public clones
+need that file to exist directly in Git.
 
 ## Boot modes
 
