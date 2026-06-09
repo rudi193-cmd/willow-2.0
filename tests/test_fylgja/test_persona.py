@@ -7,6 +7,7 @@ def test_render_picker_lists_all_personas():
     assert "PERSONA" in text
     assert "Hanuman" in text
     assert "Oakenscroll" in text
+    assert "Jeles" in text
 
 
 def test_parse_selection_by_number():
@@ -100,3 +101,18 @@ def test_boot_step7_documents_persona_overlay_convention():
     assert "{persona}-boot.md" in boot
     assert "skip silently" in boot
     assert "oakenscroll" not in boot.split("**7. Persona**")[1].split("**8.")[0]
+
+
+def test_repo_persona_files_are_registered_and_have_boot_overlays():
+    root = p._repo_root()
+    persona_files = {
+        path.stem
+        for path in (root / "willow/fylgja/personas").glob("*.md")
+        if path.name != "README.md"
+    }
+    personas, _persona_list = p.get_personas()
+    assert persona_files <= set(personas)
+    for name in sorted(persona_files):
+        overlay = p.persona_boot_overlay_path(name)
+        assert overlay is not None, name
+        assert overlay.name == f"{name}-boot.md"

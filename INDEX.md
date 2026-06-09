@@ -164,8 +164,6 @@
 |------|
 | `${HOME}` |
 | `.agents` |
-| `.ci-safe` |
-| `.ci-willow` |
 | `.codex` |
 | `.kart-scripts` |
 | `.mcp.json.bak` |
