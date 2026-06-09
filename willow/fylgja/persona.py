@@ -39,6 +39,15 @@ def _persona_path(name: str) -> str:
     return str(_repo_root() / "willow" / "fylgja" / "personas" / f"{name}.md")
 
 
+def persona_boot_overlay_path(name: str) -> Path | None:
+    """Resolve optional boot-time persona overlay: willow/fylgja/skills/{persona}-boot.md."""
+    key = (name or "").strip().lower()
+    if not key or key == "none":
+        return None
+    path = _repo_root() / "willow" / "fylgja" / "skills" / f"{key}-boot.md"
+    return path if path.is_file() else None
+
+
 # Built-in personas — always available regardless of user config.
 _BUILTIN_PERSONAS: dict[str, dict] = {
     "oakenscroll": {
@@ -71,6 +80,12 @@ _BUILTIN_PERSONAS: dict[str, dict] = {
         "source": "file",
         "path": _persona_path("vishwakarma"),
     },
+    "jeles": {
+        "label": "Jeles",
+        "desc": "Head Librarian at UTETY. Retrieval, citation, and sourced synthesis.",
+        "source": "file",
+        "path": _persona_path("jeles"),
+    },
     "none": {
         "label": "None",
         "desc": "Blank slate — no persona injected.",
@@ -78,7 +93,7 @@ _BUILTIN_PERSONAS: dict[str, dict] = {
     },
 }
 
-_BUILTIN_LIST = ["oakenscroll", "hanuman", "loki", "skirnir", "vishwakarma", "none"]
+_BUILTIN_LIST = ["oakenscroll", "hanuman", "loki", "skirnir", "vishwakarma", "jeles", "none"]
 
 # Built-in persona keys that double as fleet agent ids — easy to confuse with active-agent.
 _FLEET_NAMED_PERSONAS = frozenset(k for k in _BUILTIN_PERSONAS if k != "none")

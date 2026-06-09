@@ -104,8 +104,13 @@ If no KB hits land above 0.5 distance: skip the mode entirely, continue normally
 
 **7. Persona** *(voice overlay — not fleet identity)*
 Read `$WILLOW_HOME/willow-2.0-active-persona` (`~/github/.willow`; `~/.willow` alias OK). Persona changes **voice only** — it does **not** switch MCP `app_id`, Grove sender, SOIL namespace, or `.willow/active-agent`. Fleet identity is `WILLOW_AGENT_NAME` / `active-agent`. To switch agent: `./willow.sh agents active <id> --install`.
+
+If the active persona file exists and contains a non-empty name, normalize it by trimming whitespace and using the value as `{persona}`. Then attempt to load `willow/fylgja/skills/{persona}-boot.md`.
+
+Persona boot overlay convention: add `willow/fylgja/skills/{persona}-boot.md` for any persona that needs boot-time voice, posture, or continuity instructions. Do not hardcode persona names in this file. If the overlay file exists, read it at this step and apply it as a voice/posture layer only. If it does not exist, skip silently and continue boot normally.
+
 The hook injects picker + `[PERSONA-IDENTITY]` lines into system context only — **the user cannot see them**. Render the picker and identity banner as visible text in your boot response.
-If active: load context per the persona registry (source defined in `willow.md` — the fleet contract, not any runtime-specific path).
+If active: load context per the persona registry (source defined in `willow.md` — the fleet contract, not any runtime-specific path). The optional `{persona}-boot.md` overlay supplements that registry context; it never changes fleet identity.
 
 **8. Corrections + Preferences**
 Read `corpus/corrections` and `corpus/preferences` — already seeded from memory feedback files by SessionStart hook.
