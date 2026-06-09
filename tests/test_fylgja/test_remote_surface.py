@@ -96,6 +96,18 @@ def test_remote_surface_check_script_passes():
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
+def test_workspace_skill_surfaces_are_materialized(tmp_path):
+    from scripts.sync_remote_cursor_surface import sync_workspace_skills
+
+    sync_workspace_skills(tmp_path)
+
+    cursor = {p.parent.name for p in (tmp_path / ".cursor" / "skills").glob("*/SKILL.md")}
+    claude = {p.parent.name for p in (tmp_path / ".claude" / "skills").glob("*/SKILL.md")}
+
+    assert cursor == claude
+    assert {"boot", "handoff", "power", "willow-remote"}.issubset(cursor)
+
+
 def test_all_remote_skill_surfaces_have_core_skills():
     for surface in (".cursor", ".claude", ".agents", ".codex"):
         for name in ("boot", "startup", "handoff", "shutdown", "power", "willow-remote"):

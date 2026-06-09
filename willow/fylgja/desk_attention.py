@@ -19,6 +19,8 @@ class AttentionSummary:
     pending_tasks: int = 0
     done_today: int = 0
     dream_due: bool = False
+    human_required_open: int = 0
+    human_required: list[dict] = field(default_factory=list)
     lines: list[str] = field(default_factory=list)
 
 
@@ -70,6 +72,23 @@ def _kart_counts() -> tuple[int, int, int]:
         return 0, 0, 0
 
 
+def _human_required(limit: int = 5) -> tuple[int, list[dict]]:
+    try:
+        from core.human_required import list_items, stats
+        from core.pg_bridge import get_connection, release_connection
+
+        conn = get_connection()
+        try:
+            summary = stats(conn)
+            open_total = int(summary.get("open_total") or 0)
+            items = list_items(conn, status="open", limit=limit)
+            return open_total, items
+        finally:
+            release_connection(conn)
+    except Exception:
+        return 0, []
+
+
 def _dream_due(agent: str = "") -> bool:
     try:
         from willow_store import WillowStore
@@ -106,6 +125,7 @@ def fetch_attention_summary(
     summary.open_flags = _open_flags()
     summary.running_tasks, summary.pending_tasks, summary.done_today = _kart_counts()
     summary.dream_due = _dream_due(agent)
+    summary.human_required_open, summary.human_required = _human_required()
 
     if inbox:
         summary.mentions = [
@@ -126,6 +146,8 @@ def fetch_attention_summary(
         )
     if summary.dream_due:
         lines.append("dream overdue")
+    if summary.human_required_open:
+        lines.append(f"{summary.human_required_open} human-required")
     if not lines:
         lines.append("all clear")
     summary.lines = lines

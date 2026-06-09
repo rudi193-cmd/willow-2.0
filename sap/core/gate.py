@@ -156,6 +156,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "handoff_latest", "handoff_search",
         "session_review", "session_query", "diagnostic_summary", "env_check",
         "willow_status", "willow_attention", "willow_find",
+        "human_required_queue_list",
         "fleet_tool_guide",
     }),
     "skill_read": frozenset({
@@ -214,6 +215,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
     }),
     "intake": frozenset({
         "intake_write", "intake_list", "intake_promote", "intake_schedule", "intake_schedule_fleet",
+        "human_required_queue_enqueue", "human_required_queue_resolve",
     }),
     "nest": frozenset({
         "nest_scan", "nest_queue", "nest_file",

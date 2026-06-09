@@ -101,6 +101,22 @@ def _postgres_report() -> dict:
         return {"error": str(exc)}
 
 
+def _human_required_report() -> dict:
+    try:
+        from core.human_required import list_items, stats
+        from core.pg_bridge import get_connection, release_connection
+
+        conn = get_connection()
+        try:
+            summary = stats(conn)
+            items = list_items(conn, status="open", limit=10)
+            return {"stats": summary, "open": items}
+        finally:
+            release_connection(conn)
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
 def _dream_report() -> dict:
     try:
         from core.dream_state import dream_conditions
@@ -125,6 +141,7 @@ def main() -> int:
         "nest": _nest_triage(),
         "metabolic": _metabolic_report(),
         "dream": _dream_report(),
+        "human_required": _human_required_report(),
     }
     print(json.dumps(report, indent=2))
 
@@ -154,6 +171,23 @@ def main() -> int:
             f"({nest.get('no_dest', 0)} without destination)",
             file=sys.stderr,
         )
+    human = report.get("human_required") or {}
+    if not human.get("error"):
+        stats = human.get("stats") or {}
+        open_total = int(stats.get("open_total") or 0)
+        by_priority = stats.get("by_priority") or {}
+        if open_total:
+            print(
+                f"\nWARN: human-required queue has {open_total} open item(s) "
+                f"(critical={by_priority.get('critical', 0)}, "
+                f"high={by_priority.get('high', 0)})",
+                file=sys.stderr,
+            )
+        for item in (human.get("open") or [])[:5]:
+            print(
+                f"  - [{item.get('kind')}] {item.get('title')} ({item.get('priority')})",
+                file=sys.stderr,
+            )
     meta = report["metabolic"]
     if meta.get("last_briefing"):
         try:

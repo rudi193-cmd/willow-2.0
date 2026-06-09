@@ -84,6 +84,18 @@ def sync_skills(dst_root: Path) -> None:
         copy_file(rlm, dst_root / "rlm" / "SKILL.md")
 
 
+def sync_workspace_skills(workspace_root: Path) -> None:
+    """Materialize Willow skills at a parent workspace root.
+
+    Cursor often runs from ~/github while Claude runs from a repo checkout.
+    This keeps the skill discovery surface identical without copying hooks,
+    MCP config, commands, or settings into the parent workspace.
+    """
+    workspace_root = workspace_root.expanduser().resolve()
+    sync_skills(workspace_root / ".cursor" / "skills")
+    sync_skills(workspace_root / ".claude" / "skills")
+
+
 def sync_commands(dst_root: Path) -> None:
     if dst_root.exists() or dst_root.is_symlink():
         rm_path(dst_root)
@@ -273,7 +285,16 @@ def main() -> int:
         action="store_true",
         help="Verify committed surfaces match canonical Fylgja sources",
     )
+    parser.add_argument(
+        "--workspace-skills-root",
+        type=Path,
+        help="Also materialize skills-only .cursor/.claude surfaces at this parent workspace root",
+    )
     args = parser.parse_args()
+    if args.workspace_skills_root:
+        sync_workspace_skills(args.workspace_skills_root)
+        print(f"Synced workspace skill surfaces under {args.workspace_skills_root}.")
+        return 0
     if args.check:
         errors = check_surfaces()
         if errors:

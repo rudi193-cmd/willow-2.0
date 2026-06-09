@@ -501,6 +501,13 @@ async def fleet_status(app_id: str) -> dict:
         except Exception as e:
             kart_stats = {"error": str(e)}
 
+    human_required: dict = {}
+    if pg and hasattr(pg, "human_required_stats"):
+        try:
+            human_required = await loop.run_in_executor(_executor, pg.human_required_stats)
+        except Exception as e:
+            human_required = {"error": str(e)}
+
     frank_ledger: dict = {}
     if pg and hasattr(pg, "ledger_verify"):
         try:
@@ -523,6 +530,7 @@ async def fleet_status(app_id: str) -> dict:
         "manifests":   manifests,
         "metabolic":   metabolic,
         "kart":        kart_stats,
+        "human_required": human_required,
         "frank_ledger": frank_ledger,
         "gate_mode":   _gm,
         "gate_hostname_check": _ghd,
@@ -854,6 +862,7 @@ async def pg_edge_add(
     to_id:    str,
     relation: str,
     context:  str = "",
+    human_consent: bool = False,
 ) -> dict:
     """Add a directed edge to the Postgres edges table (durable KB graph).
     Distinct from SOIL graph — use soil_add_edge for in-session working graph."""
@@ -862,7 +871,10 @@ async def pg_edge_add(
         return _no_pg()
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(
-        _executor, pg.edge_add, from_id, to_id, relation, app_id, context or None,
+        _executor,
+        lambda: pg.edge_add(
+            from_id, to_id, relation, app_id, context or None, human_consent=human_consent
+        ),
     )
 
 
@@ -991,6 +1003,7 @@ async def kb_promote(
     atom_id: str,
     tier:    str,
     reason:  str = "",
+    human_attestation: bool = False,
 ) -> dict:
     """Promote or demote a knowledge atom to a new lifecycle tier.
     tier: frontier → contested → canonical → superseded
@@ -1003,7 +1016,12 @@ async def kb_promote(
     if canonical not in KNOWLEDGE_TIERS:
         return {"error": f"invalid tier {tier!r} — valid: {KNOWLEDGE_TIERS}"}
     loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(_executor, pg.promote_knowledge_tier, atom_id, tier, app_id, reason)
+    result = await loop.run_in_executor(
+        _executor,
+        lambda: pg.promote_knowledge_tier(
+            atom_id, tier, app_id, reason, human_attestation=human_attestation
+        ),
+    )
     if result.get("promoted"):
         try:
             pg.ledger_append("willow", "kb_tier_promotion", {
@@ -5174,6 +5192,81 @@ async def willow_attention(app_id: str, limit: int = 10) -> dict:
         "summary": attention_as_dict(summary),
         "headline": " · ".join(summary.lines),
     }
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def human_required_queue_list(
+    app_id: str,
+    status: str = "open",
+    kind: str = "",
+    limit: int = 20,
+) -> dict:
+    """List human-required queue items: consent, attestation, review, overload, onboarding."""
+    if pg is None:
+        return {"error": "postgres not connected"}
+    loop = asyncio.get_running_loop()
+    rows = await loop.run_in_executor(
+        _executor,
+        pg.human_required_list,
+        status,
+        kind or None,
+        limit,
+    )
+    stats = await loop.run_in_executor(_executor, pg.human_required_stats)
+    return {"items": rows, "count": len(rows), "stats": stats}
+
+
+@mcp.tool()
+@sap_gate()
+async def human_required_queue_enqueue(
+    app_id: str,
+    kind: str,
+    title: str,
+    summary: str = "",
+    priority: str = "normal",
+    source_ref: str = "",
+    assignee: str = "",
+) -> dict:
+    """Enqueue work that must pause automation until a human acts."""
+    if pg is None:
+        return {"error": "postgres not connected"}
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor,
+        lambda: pg.human_required_enqueue(
+            kind=kind,
+            title=title,
+            summary=summary,
+            priority=priority,
+            source_agent=app_id,
+            source_ref=source_ref,
+            assignee=assignee,
+        ),
+    )
+
+
+@mcp.tool()
+@sap_gate()
+async def human_required_queue_resolve(
+    app_id: str,
+    item_id: str,
+    status: str = "resolved",
+    note: str = "",
+) -> dict:
+    """Resolve, dismiss, or acknowledge a human-required queue item."""
+    if pg is None:
+        return {"error": "postgres not connected"}
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor,
+        lambda: pg.human_required_resolve(
+            item_id,
+            resolved_by=app_id,
+            status=status,
+            note=note,
+        ),
+    )
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
