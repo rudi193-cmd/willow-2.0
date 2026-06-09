@@ -1,6 +1,8 @@
 from core.kb_quality import (
     canonical_quality_check,
+    graph_readiness_check,
     route_stop_session_memory,
+    search_readiness_check,
     session_summary_quality_check,
 )
 from core.pg_bridge import PgBridge
@@ -42,6 +44,53 @@ def test_canonical_quality_blocks_thin_unprovenanced_atoms():
         "missing_provenance",
     }
     assert expected <= set(result["flags"])
+
+
+def test_search_readiness_blocks_search_noise():
+    result = search_readiness_check(
+        title="Benchmark community node shard",
+        summary="Synthetic benchmark placeholder used for community detection evaluation corpus.",
+        content={"search_noise": True},
+        source_type="benchmark",
+        source_id="conv-49",
+        confidence=0.95,
+    )
+    assert result["satisfied"] is False
+    assert "search_noise" in result["flags"]
+
+
+def test_search_readiness_blocks_title_collision():
+    result = search_readiness_check(
+        title="Operator handoff summary",
+        summary="Closed webhook auth review and queued Pangolin config follow-up for operator decision.",
+        content={"evidence": "handoff-2026-06-09"},
+        source_type="session",
+        source_id="handoff-2026-06-09",
+        confidence=0.9,
+        title_collision_count=3,
+    )
+    assert result["satisfied"] is False
+    assert "title_collision" in result["flags"]
+
+
+def test_graph_readiness_allows_benchmark_exemption():
+    result = graph_readiness_check(
+        degree=1,
+        content={"search_noise": True},
+        source_type="benchmark",
+    )
+    assert result["satisfied"] is True
+    assert result["exempt"] is True
+
+
+def test_graph_readiness_flags_low_degree_operator_atoms():
+    result = graph_readiness_check(
+        degree=1,
+        content={"evidence": "ops/handoff.md"},
+        source_type="session",
+    )
+    assert result["satisfied"] is False
+    assert "low_degree" in result["flags"]
 
 
 def test_rich_embedding_text_includes_metadata_fields():
@@ -118,4 +167,3 @@ def test_ingest_atom_blocks_bad_canonical_before_write():
 
     assert atom_id is None
     assert "canonical_quality_gate" in pg._last_ingest_error
-

@@ -335,6 +335,65 @@ def stats(conn) -> dict[str, Any]:
     }
 
 
+def operator_load_state(conn) -> dict[str, Any]:
+    """Return a first-class routing signal for the human operator's load.
+
+    This intentionally uses durable human-required queue state rather than a
+    mood guess. Agents can route differently when the queue says the human is
+    already carrying high-priority decisions or explicit overload work.
+    """
+    queue_stats = stats(conn)
+    open_total = int(queue_stats.get("open_total") or 0)
+    by_kind = queue_stats.get("by_kind") or {}
+    by_priority = queue_stats.get("by_priority") or {}
+    high = int(by_priority.get("high") or 0)
+    critical = int(by_priority.get("critical") or 0)
+    overload = int(by_kind.get("operator_overload") or 0)
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT COUNT(*)
+            FROM human_required_queue
+            WHERE status IN ('open', 'acknowledged')
+              AND priority IN ('high', 'critical')
+              AND (assignee IS NULL OR assignee = '')
+            """
+        )
+        high_unassigned = int(cur.fetchone()[0])
+
+    score = open_total + (2 * high) + (3 * critical) + (3 * overload) + high_unassigned
+    if critical or high_unassigned >= 2 or overload:
+        level = "high"
+        routing = "defer_optional_decisions"
+    elif high or open_total >= 6:
+        level = "elevated"
+        routing = "batch_questions"
+    elif open_total:
+        level = "watch"
+        routing = "ask_only_blockers"
+    else:
+        level = "clear"
+        routing = "normal"
+
+    return {
+        "level": level,
+        "routing": routing,
+        "score": score,
+        "open_total": open_total,
+        "high": high,
+        "critical": critical,
+        "operator_overload": overload,
+        "high_unassigned": high_unassigned,
+        "guidance": {
+            "normal": "Proceed normally.",
+            "ask_only_blockers": "Ask only when blocked; keep updates concise.",
+            "batch_questions": "Batch non-urgent questions and avoid optional decisions.",
+            "defer_optional_decisions": "Defer optional decisions; surface only safety, consent, or release blockers.",
+        }[routing],
+    }
+
+
 def seed_defaults(conn) -> dict[str, Any]:
     added = 0
     duplicates = 0

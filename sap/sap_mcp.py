@@ -5271,6 +5271,59 @@ async def human_required_queue_resolve(
 
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
+async def human_attestation_list(
+    app_id: str,
+    subject_id: str = "",
+    subject_type: str = "",
+    status: str = "",
+    limit: int = 20,
+) -> dict:
+    """List durable human attestation records."""
+    if pg is None:
+        return {"error": "postgres not connected"}
+    loop = asyncio.get_running_loop()
+    rows = await loop.run_in_executor(
+        _executor,
+        pg.human_attestation_list,
+        subject_id,
+        subject_type,
+        status,
+        limit,
+    )
+    return {"items": rows, "count": len(rows)}
+
+
+@mcp.tool()
+@sap_gate()
+async def human_attestation_create(
+    app_id: str,
+    subject_id: str,
+    subject_type: str = "knowledge_atom",
+    statement: str = "",
+    status: str = "attested",
+    attested_by: str = "operator",
+    evidence_ref: str = "",
+) -> dict:
+    """Create a durable human attestation/rejection/change-request record."""
+    if pg is None:
+        return {"error": "postgres not connected"}
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor,
+        lambda: pg.human_attestation_create(
+            subject_id=subject_id,
+            subject_type=subject_type,
+            status=status,
+            attested_by=attested_by,
+            agent=app_id,
+            statement=statement,
+            evidence_ref=evidence_ref,
+        ),
+    )
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
 async def willow_find(
     app_id: str,
     query: str,

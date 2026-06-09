@@ -103,14 +103,18 @@ def _postgres_report() -> dict:
 
 def _human_required_report() -> dict:
     try:
-        from core.human_required import list_items, stats
+        from core.human_required import list_items, operator_load_state, stats
         from core.pg_bridge import get_connection, release_connection
 
         conn = get_connection()
         try:
             summary = stats(conn)
             items = list_items(conn, status="open", limit=10)
-            return {"stats": summary, "open": items}
+            return {
+                "stats": summary,
+                "open": items,
+                "operator_load": operator_load_state(conn),
+            }
         finally:
             release_connection(conn)
     except Exception as exc:
@@ -186,6 +190,12 @@ def main() -> int:
         for item in (human.get("open") or [])[:5]:
             print(
                 f"  - [{item.get('kind')}] {item.get('title')} ({item.get('priority')})",
+                file=sys.stderr,
+            )
+        load = human.get("operator_load") or {}
+        if load.get("level") in {"elevated", "high"}:
+            print(
+                f"\nWARN: operator load {load.get('level')} — {load.get('guidance')}",
                 file=sys.stderr,
             )
     meta = report["metabolic"]

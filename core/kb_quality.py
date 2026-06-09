@@ -112,6 +112,73 @@ def session_summary_quality_check(
     }
 
 
+def search_readiness_check(
+    *,
+    title: str,
+    summary: str,
+    content: dict | None = None,
+    source_type: str = "",
+    source_id: str = "",
+    confidence: float | None = None,
+    title_collision_count: int = 0,
+) -> dict:
+    """Validate that an active atom is suitable for semantic search surfacing."""
+    content = content or {}
+    flags: list[str] = []
+
+    base = canonical_quality_check(
+        title=title,
+        summary=summary,
+        content=content,
+        source_type=source_type,
+        source_id=source_id,
+        confidence=confidence,
+    )
+    flags.extend(base["flags"])
+
+    if content.get("search_noise") and not content.get("search_noise_exempt"):
+        flags.append("search_noise")
+    if title_collision_count > 1:
+        flags.append("title_collision")
+
+    flags = sorted(set(flags))
+    satisfied = not flags
+    return {
+        "satisfied": satisfied,
+        "flags": flags,
+        "explanation": "search readiness satisfied" if satisfied else ", ".join(flags),
+    }
+
+
+def graph_readiness_check(
+    *,
+    degree: int = 0,
+    content: dict | None = None,
+    source_type: str = "",
+    min_degree: int = 2,
+) -> dict:
+    """Validate that an atom is sufficiently connected or explicitly exempt."""
+    content = content or {}
+    flags: list[str] = []
+
+    exempt = bool(
+        content.get("search_noise")
+        or content.get("graph_exempt")
+        or content.get("dedup_title_original")
+        or source_type in {"benchmark", "mycorrhizal", "dark_matter", "community_detection"}
+    )
+    if degree < min_degree and not exempt:
+        flags.append("low_degree")
+
+    satisfied = not flags
+    return {
+        "satisfied": satisfied,
+        "flags": flags,
+        "explanation": "graph readiness satisfied" if satisfied else ", ".join(flags),
+        "exempt": exempt,
+    }
+
+
 def route_stop_session_memory(affect: str, *, title: str, summary: str, source_id: str, confidence: float) -> str:
     """Return ``intake`` or ``kb`` for stop-hook session promotion."""
     if affect == "friction":

@@ -81,6 +81,32 @@ def cmd_seed(_args: argparse.Namespace) -> int:
         pg.close()
 
 
+def cmd_report(args: argparse.Namespace) -> int:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "human_required_report_mod", ROOT / "scripts" / "human_required_report.py"
+    )
+    if not spec or not spec.loader:
+        print(json.dumps({"error": "human_required_report unavailable"}), file=sys.stderr)
+        return 1
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    pg = _pg()
+    try:
+        report = mod.build_report(pg.conn, status=args.status, limit=args.limit)
+        print(json.dumps(report, indent=2, default=str))
+        stale = report.get("stale_high_without_assignee") or []
+        if stale:
+            print(
+                f"\nWARN: {len(stale)} high/critical item(s) without assignee",
+                file=sys.stderr,
+            )
+        return 0
+    finally:
+        pg.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Human-required queue operator CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -110,6 +136,11 @@ def main() -> int:
 
     p_seed = sub.add_parser("seed", help="Seed known human-gap items")
     p_seed.set_defaults(func=cmd_seed)
+
+    p_report = sub.add_parser("report", help="Grouped report with KB atom links")
+    p_report.add_argument("--status", default="open", choices=STATUSES)
+    p_report.add_argument("--limit", type=int, default=100)
+    p_report.set_defaults(func=cmd_report)
 
     args = parser.parse_args()
     return args.func(args)
