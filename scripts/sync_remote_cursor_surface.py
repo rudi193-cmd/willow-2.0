@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-import sys
 from pathlib import Path
 
 
@@ -119,13 +118,12 @@ def cloud_mcp_json() -> dict:
 
 def render_codex_config(agent: str = "willow") -> str:
     template = (FYLGJA / "config" / "codex-mcp.toml.template").read_text(encoding="utf-8")
-    home_dir = Path.home()
     values = {
         "REPO_ROOT": ".",
         "AGENT_NAME": agent,
-        "GROVE_ROOT": str(home_dir / "github" / "safe-app-willow-grove"),
-        "SAFE_ROOT": str(home_dir / "github" / "SAFE" / "Applications"),
-        "AGENTS_ROOT": str(home_dir / "github" / "SAFE" / "Agents"),
+        "GROVE_ROOT": ".willow/generated/grove",
+        "SAFE_ROOT": ".willow/generated/SAFE/Applications",
+        "AGENTS_ROOT": ".willow/generated/SAFE/Agents",
         "WILLOW_HOME": ".willow/generated",
         "WILLOW_CONFIG_MODE": "public-fallback",
     }
