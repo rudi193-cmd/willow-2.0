@@ -34,6 +34,7 @@ _FACADE_CORE = frozenset({
     "willow_message",
     "willow_app",
     "willow_external",
+    "willow_web_search",
     "willow_code",
 })
 _ALWAYS = frozenset({"fleet_tool_guide"}) | _FACADE_MINIMAL
