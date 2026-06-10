@@ -16,7 +16,7 @@ from typing import Any
 from ratatosk import ollama
 from ratatosk.protocol.envelope import clear_nonce_cache
 from ratatosk.traces import explain_trace
-from ratatosk.transport.config import _CONFIG_PATH, _TOKEN_PATH, load_transport_config
+from ratatosk.transport.config import config_path, load_transport_config, token_path
 from ratatosk.transport.grove_client import GroveClient
 
 _PANIC_FILE = Path.home() / ".ratatosk" / "panic.json"
@@ -139,14 +139,15 @@ def panic(note: str = "operator panic") -> dict[str, Any]:
     clear_nonce_cache()
     # Best-effort: mark config public_exposure off
     os.environ["RATATOSK_PUBLIC_EXPOSURE"] = "0"
-    if _CONFIG_PATH.exists():
+    path = config_path()
+    if path.exists():
         try:
-            cfg = json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
+            cfg = json.loads(path.read_text(encoding="utf-8"))
             cfg["public_exposure"] = False
-            _CONFIG_PATH.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+            path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
         except Exception:
             pass
-    return {"panic": True, "file": str(_PANIC_FILE), "token_path": str(_TOKEN_PATH)}
+    return {"panic": True, "file": str(_PANIC_FILE), "token_path": str(token_path())}
 
 
 def clear_panic() -> None:

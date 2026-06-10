@@ -14,9 +14,15 @@ from typing import Literal
 
 TransportMode = Literal["tailnet", "ngrok", "cloudflare", "pangolin", "funnel"]
 
-_CONFIG_PATH = Path.home() / ".ratatosk" / "config.json"
-_TOKEN_PATH = Path.home() / ".willow" / "grove_token"
 _PLACEHOLDERS = {"INSERT_NGROK_URL_HERE", "INSERT_GROVE_TOKEN_HERE", ""}
+
+
+def config_path() -> Path:
+    return Path.home() / ".ratatosk" / "config.json"
+
+
+def token_path() -> Path:
+    return Path.home() / ".willow" / "grove_token"
 
 
 @dataclass
@@ -53,16 +59,18 @@ def _read_token() -> str:
     env = os.environ.get("GROVE_TOKEN", "").strip()
     if env and env not in _PLACEHOLDERS:
         return env
-    if _TOKEN_PATH.exists():
-        return _TOKEN_PATH.read_text(encoding="utf-8").strip()
+    path = token_path()
+    if path.exists():
+        return path.read_text(encoding="utf-8").strip()
     return ""
 
 
 def _read_file_config() -> dict:
-    if not _CONFIG_PATH.exists():
+    path = config_path()
+    if not path.exists():
         return {}
     try:
-        return json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return {}
 
@@ -128,7 +136,8 @@ def load_transport_config() -> TransportConfig:
 
 
 def save_transport_config(cfg: TransportConfig) -> Path:
-    _CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    path = config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "transport": cfg.mode,
         "grove_url": cfg.grove_url,
@@ -140,5 +149,5 @@ def save_transport_config(cfg: TransportConfig) -> Path:
         "agent_name": cfg.agent_name,
         "public_exposure": cfg.public_exposure,
     }
-    _CONFIG_PATH.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    return _CONFIG_PATH
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return path
