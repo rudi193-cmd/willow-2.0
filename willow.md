@@ -76,11 +76,21 @@ checkout and expect repo skills, tests, or MCP templates to be present.
 | ID | Severity | Rule |
 |----|----------|------|
 | `boot-order` | Critical | Complete `/boot` before substantive work. |
-| `mcp-first` | High | Use Willow MCP/facade tools when available; fall back when degraded, tell user about the failure. |
+| `mcp-first` | Critical | For any operation covered by Willow MCP/facade tools, call MCP first. Do not substitute Bash, Python, `psql`, `sqlite3`, ad hoc file scraping, or direct repo scripts unless MCP is degraded or returns an explicit blocker. |
 | `namespace` | High | Write only in the active agent namespace. |
 | `worktree-pr` | Critical | Use branches/worktrees/PRs for code changes; avoid direct `master` edits. |
 | `kb-first` | High | Search KB when KB is available; skip only in public-fallback. Critical when starting a new project or before a build. |
-| `finish-to-completion` | Critical | Finish end-to-end or report concrete blockers. ***No Dogfooding!*** |
+| `finish-to-completion` | Critical | Continue until the requested outcome is actually complete, verified, or blocked. Do not stop at a plan, partial implementation, "next steps", or tool existence. Report success only after checking the result. If blocked, name the blocker, the last verified state, and the exact next action. |
+| `public-safety` | Critical | Default-deny public exposure of PII, credentials, private paths, unpublished operator context, and person-identifying session data. If unsure, redact or ask before writing, committing, messaging, or publishing. |
+
+### MCP-First Fallback Protocol
+
+When a Willow MCP/facade tool exists for the action:
+
+1. Use the MCP/facade tool.
+2. If it fails, report the concrete MCP failure.
+3. Use a fallback only when the MCP path is degraded, unavailable, or lacks the needed capability.
+4. Keep the fallback narrow and return to MCP as soon as possible.
 
 ## Tooling Surface
 
@@ -115,6 +125,10 @@ machine-local symlink.
 - Grove credentials, Discord tokens, API keys, and operator secrets
 - Operator personas and machine-specific session anchors
 - Absolute paths from one developer machine
+- PII or person-identifying context of any kind, including names, handles,
+  emails, locations, account IDs, transcripts, private research context,
+  medical/legal/financial details, and relationship data. Public exposure
+  requires explicit user consent for the exact data category and destination.
 
 ## Canonical Principle
 
