@@ -6,6 +6,34 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2026.06.5] - 2026-06-10
+
+Minor release: fleet service inventory, public contract hardening, open-web search, handoff index fixes, and agent permission templates since `v2026.06.4`.
+
+### Added
+
+- **Fleet service inventory** — centralized `WILLOW_SYSTEMD_SERVICES` / `WILLOW_STOP_SERVICES` in `willow.sh`; `journal-watcher` unit; broader `status-all` visibility (#302).
+- **Wildcard permission templates** — global MCP/native allow patterns for agent install surfaces (#300).
+- **Open web search** — `willow_web_search` MCP tool (DuckDuckGo HTML, no API key) (#294).
+- **Operator alert lane** — `notify-send` + `pg_notify` on human-required queue enqueue.
+- **Ratatosk** — local app suite for phone and desktop (#296).
+- **Nest seed** — portable Nest bootstrap from file dump (#298).
+- **RH test harness** — clean vs dirty KB ingestion comparison sandbox (#297).
+
+### Changed
+
+- **Public Willow contract** — `mcp-first` elevated to Critical; verification-based `finish-to-completion`; new `public-safety` default-deny PII rule (#302).
+- **Kart sandbox** — `/run/media` bind for removable media paths (#302).
+
+### Fixed
+
+- **Handoff index** — `handoff_latest` prefers newer same-day KB atoms by mtime over lexicographic id (#303).
+- **Handoff index** — remove cross-agent fallbacks in `handoff_latest` (#295).
+- **Jeles web search** — module-level `_SEARCH_EXECUTOR`; concurrent source dispatch with wall-clock cap (#292, #293).
+- **Claude global hook** — Fylgja venv path fix (#299).
+- **Kart sandbox** — fail-loud guard in `sign_manifest` for bwrap sandbox.
+- **Gate** — `willow_web_search` added to `PERMISSION_GROUPS` and MCP profiles.
+
 ## [2026.06.4] - 2026-06-09
 
 Minor release: Willow 2.0 surface integration, persona boot overlays, human-required gates, and KB ship-shape maintenance since `v2026.06.3`.
