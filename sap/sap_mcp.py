@@ -2808,11 +2808,11 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                             WHERE category = 'handoff'
                               AND source_type = 'session'
                               AND invalid_at IS NULL
-                              AND (project = %s OR content::text ILIKE %s)
+                              AND project = %s
                             ORDER BY valid_at DESC
                             LIMIT 5
                             """,
-                            (agent_filter, f"%{agent_filter}%"),
+                            (agent_filter,),
                         )
                     else:
                         cur.execute(
@@ -2874,10 +2874,7 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                 cur  = conn.cursor()
                 base_sql = handoff_select_sql(conn)
                 sql_agent = f"{base_sql} WHERE h.file_type = 'session' AND f.filename LIKE ?"
-                sql_any = f"{base_sql} WHERE h.file_type = 'session'"
                 rows = cur.execute(sql_agent, (f"%{agent_filter}%",)).fetchall() if agent_filter else []
-                if not rows:
-                    rows = cur.execute(sql_any).fetchall()
                 sqlite_candidates: list[dict] = []
                 for row in rows:
                     sqlite_candidates.append({
