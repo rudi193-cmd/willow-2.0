@@ -18,8 +18,9 @@ def test_build_hooks_block_contains_all_events():
 def test_build_hooks_block_points_at_fylgja():
     block = build_hooks_block(PACKAGE_ROOT)
     rendered = json.dumps(block)
-    assert "hook_runner" in rendered
-    assert "willow.fylgja.events.session_start" in rendered
+    assert "fylgja-hook" in rendered
+    assert "claude session_start" in rendered
+    assert "python3 -m willow.fylgja.hook_runner" not in rendered
 
 
 def test_apply_hooks_dry_run_does_not_write(tmp_path):

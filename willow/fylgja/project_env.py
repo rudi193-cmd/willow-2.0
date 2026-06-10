@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import os
 import shlex
-import sys
 from pathlib import Path
 
 FYLGJA_CONFIG = Path("willow") / "fylgja" / "config"
@@ -187,10 +186,9 @@ def merge_hook_env(repo: Path | None = None, agent: str = "") -> dict[str, str]:
 
 
 def hook_python(repo: Path) -> Path:
-    venv_python = repo / ".venv-dev" / "bin" / "python3"
-    if venv_python.is_file():
-        return venv_python
-    return Path(sys.executable)
+    from willow.fylgja.python_env import willow_python
+
+    return Path(willow_python(repo))
 
 
 def event_module(module: str) -> str:
@@ -207,10 +205,10 @@ def hook_shell_command(repo: Path, fmt: str, module: str) -> str:
 
 
 def hook_python_command(repo: Path, fmt: str, module: str) -> str:
-    """Absolute command when IDE requires it (legacy / global Claude settings)."""
-    py = hook_python(repo)
-    full = event_module(module)
-    return (
-        f"{shlex.quote(str(py))} -m willow.fylgja.hook_runner "
-        f"--format {shlex.quote(fmt)} {shlex.quote(full)}"
-    )
+    """Absolute hook command for global Claude settings.
+
+    Global Claude hooks run from whichever repo the user opened, so calling
+    ``python -m willow...`` directly depends on cwd/PYTHONPATH. Route through
+    the repo wrapper instead; it anchors cwd and resolves the active Python.
+    """
+    return hook_shell_command(repo, fmt, module)
