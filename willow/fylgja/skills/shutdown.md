@@ -1,6 +1,6 @@
 ---
 name: shutdown
-description: Graceful Willow 2.0 session close — audit KB, write handoff, run full pipeline
+description: Graceful Willow 2.0 session close — audit KB, write handoff, run full pipeline. Auto-invoke on any reasonable end-of-session proclamation from the user — goodnight, signing off, done for the day/night, that's all for today, call it a day, see you tomorrow, shutting down — do not wait to be asked for /shutdown by name. If the phrase is ambiguous ("I'm done" mid-task), confirm intent in one line before running.
 ---
 @markdownai
 

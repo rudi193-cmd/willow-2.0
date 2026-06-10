@@ -422,6 +422,43 @@ def _run_persona(prompt: str) -> None:
         pass
 
 
+# End-of-session proclamations that should trigger /shutdown without being asked
+# by name. Deliberately session-scoped — bare "I'm done" is excluded because it
+# usually closes a task, not the session.
+_SHUTDOWN_INTENT = re.compile(
+    r"(?ix)\b(?:"
+    r"good\s*night"
+    r"|signing\s+off|logging\s+off"
+    r"|(?:i'?m|i\s+am)\s+(?:done|out|finished|wrapping\s+up)\s+for\s+(?:the\s+)?(?:day|night|today|tonight|now)"
+    r"|that(?:'?s|\s+is)\s+(?:all|it|enough)\s+for\s+(?:today|tonight|now|the\s+(?:day|night))"
+    r"|done\s+for\s+(?:the\s+)?(?:day|night|today|tonight)"
+    r"|call(?:ing)?\s+it\s+a\s+(?:day|night)"
+    r"|wrap(?:ping)?\s+(?:it\s+)?up\s+for\s+(?:the\s+day|today|tonight)"
+    r"|see\s+you\s+(?:tomorrow|next\s+(?:week|session))"
+    r"|heading\s+(?:out|to\s+bed)"
+    r"|shut(?:ting)?\s+(?:it\s+|things\s+)?down\s+for\s+the\s+(?:day|night)"
+    r"|end\s+(?:of\s+|the\s+)?session"
+    r")\b"
+)
+
+
+def _inject_shutdown_intent(prompt: str) -> bool:
+    """Soft gate: if the prompt reads as an end-of-session signal, direct the
+    agent to run /shutdown. Suggestion, not a hard stop — false matches are
+    explicitly allowed to be ignored so mid-task phrasing can't kill a session.
+    Returns True on match so main() can suppress [BUILD-CONTINUE]."""
+    if not prompt or not _SHUTDOWN_INTENT.search(prompt):
+        return False
+    print(
+        "[SHUTDOWN-INTENT] This message reads as an end-of-session signal.\n"
+        "[SHUTDOWN-INTENT] Unless the rest of the message clearly continues work, "
+        "invoke the shutdown skill now (Skill: shutdown) — resolve flags, KB close "
+        "audit, write handoff, run the close pipeline — then close out.\n"
+        "[SHUTDOWN-INTENT] False match (user is continuing)? Ignore this block and keep working."
+    )
+    return True
+
+
 def _run_build_continue() -> None:
     task = get_active_task()
     if not task:
@@ -495,7 +532,8 @@ def main():
     # Ledger: record human turn as observation (survives context compression)
     if _LEDGER_AVAILABLE and prompt:
         _ledger_observe(prompt[:300], session_id=session_id)
-    _run_build_continue()
+    if not _inject_shutdown_intent(prompt):
+        _run_build_continue()
 
     sys.exit(0)
 
