@@ -1,0 +1,10 @@
+{
+  "transport": "tailnet",
+  "grove_tailnet_url": "http://100.x.x.x:8787",
+  "grove_ngrok_url": "",
+  "grove_cloudflare_url": "",
+  "grove_pangolin_url": "",
+  "grove_funnel_url": "",
+  "agent_name": "ratatosk",
+  "public_exposure": false
+}

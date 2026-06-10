@@ -76,11 +76,11 @@ checkout and expect repo skills, tests, or MCP templates to be present.
 | ID | Severity | Rule |
 |----|----------|------|
 | `boot-order` | Critical | Complete `/boot` before substantive work. |
-| `mcp-first` | High | Prefer Willow MCP/facade tools when available; fall back when degraded. |
+| `mcp-first` | High | Use Willow MCP/facade tools when available; fall back when degraded, tell user about the failure. |
 | `namespace` | High | Write only in the active agent namespace. |
 | `worktree-pr` | Critical | Use branches/worktrees/PRs for code changes; avoid direct `master` edits. |
-| `kb-first` | High | Search KB before building when KB is available; skip only in public-fallback. |
-| `finish-to-completion` | Critical | Finish end-to-end or report concrete blockers. |
+| `kb-first` | High | Search KB when KB is available; skip only in public-fallback. Critical when starting a new project or before a build. |
+| `finish-to-completion` | Critical | Finish end-to-end or report concrete blockers. ***No Dogfooding!*** |
 
 ## Tooling Surface
 
