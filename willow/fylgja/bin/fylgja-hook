@@ -14,9 +14,20 @@ if [[ -f "${REPO_ROOT}/.willow/active-agent" ]]; then
   export AGENT_NAME="${AGENT_NAME:-${WILLOW_AGENT_NAME}}"
 fi
 
-PY="${REPO_ROOT}/.venv-dev/bin/python3"
-if [[ ! -x "${PY}" ]]; then
+if [[ -n "${WILLOW_PYTHON:-}" && -x "${WILLOW_PYTHON}" ]]; then
+  PY="${WILLOW_PYTHON}"
+elif [[ -x "${REPO_ROOT}/.venv-dev/bin/python3" ]]; then
+  PY="${REPO_ROOT}/.venv-dev/bin/python3"
+elif [[ -x "${HOME}/github/.willow/venv/bin/python3" ]]; then
+  PY="${HOME}/github/.willow/venv/bin/python3"
+elif [[ -x "${HOME}/.willow/venv/bin/python3" ]]; then
+  PY="${HOME}/.willow/venv/bin/python3"
+elif [[ -x "${HOME}/.willow-venv/bin/python3" ]]; then
+  PY="${HOME}/.willow-venv/bin/python3"
+else
   PY="$(command -v python3)"
 fi
+
+export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 
 exec "${PY}" -m willow.fylgja.hook_runner --format "${FMT}" "willow.fylgja.events.${MODULE}"

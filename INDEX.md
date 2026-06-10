@@ -168,6 +168,8 @@
 | `CHANGELOG.md` |
 | `CODEX.md` |
 | `CONTRIBUTING.md` |
+| `Independent Figure Verification.txt` |
+| `Verification negative.txt` |
 | `agents/heimdallr` |
 | `agents/loki` |
 | `agents/willow` |
