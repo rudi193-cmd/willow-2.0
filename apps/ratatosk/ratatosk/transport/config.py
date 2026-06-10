@@ -16,13 +16,27 @@ TransportMode = Literal["tailnet", "ngrok", "cloudflare", "pangolin", "funnel"]
 
 _PLACEHOLDERS = {"INSERT_NGROK_URL_HERE", "INSERT_GROVE_TOKEN_HERE", ""}
 
+try:
+    from willow.fylgja.willow_home import willow_home as _willow_home
+except Exception:  # pragma: no cover - standalone Termux install fallback
+    _willow_home = None
+
+
+def fleet_home() -> Path:
+    """Use Willow's canonical fleet home when available; fallback for standalone Termux."""
+    if _willow_home is not None:
+        return _willow_home()
+    if os.environ.get("WILLOW_HOME"):
+        return Path(os.environ["WILLOW_HOME"]).expanduser().resolve()
+    return Path.home() / ".ratatosk"
+
 
 def config_path() -> Path:
     return Path.home() / ".ratatosk" / "config.json"
 
 
 def token_path() -> Path:
-    return Path.home() / ".willow" / "grove_token"
+    return fleet_home() / "grove_token"
 
 
 @dataclass
