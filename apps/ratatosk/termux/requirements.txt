@@ -1,0 +1,7 @@
+# ratatosk-termux requirements
+# Install: pip install -r requirements.txt
+
+requests>=2.31.0
+
+# Optional — Termux:GUI native UI (F-Droid Termux only)
+# termuxgui

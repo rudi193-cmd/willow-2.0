@@ -176,6 +176,7 @@
 | `agents/heimdallr` |
 | `agents/loki` |
 | `agents/willow` |
+| `apps/ratatosk` |
 | `apps/star` |
 | `docs/.nojekyll` |
 | `docs/AGENT_IDENTITY.md` |
