@@ -74,6 +74,7 @@
     "{{HOME}}/.config/pypoetry",
     "{{HOME}}/.local/share/uv",
     "/run/user",
+    "/run/media",
     "{{XDG_RUNTIME_DIR}}",
     "/run/systemd/resolve"
   ],

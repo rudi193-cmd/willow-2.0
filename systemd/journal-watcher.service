@@ -1,0 +1,20 @@
+[Unit]
+Description=Willow Journal Watcher — Saga journal responder trigger
+After=network.target postgresql.service grove-mcp.service
+Wants=postgresql.service grove-mcp.service
+
+[Service]
+Type=simple
+EnvironmentFile=-%h/github/.willow/env
+Environment=WILLOW_ROOT=%h/github/willow-2.0
+Environment=PYTHONPATH=%h/github/willow-2.0
+ExecStart=%h/github/willow-2.0/willow.sh exec-python %h/github/willow-2.0/agents/hanuman/bin/journal_watcher.py
+WorkingDirectory=%h/github/willow-2.0
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=journal-watcher
+
+[Install]
+WantedBy=default.target

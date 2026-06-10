@@ -74,6 +74,69 @@ export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
 export GROVE_SENDER="${WILLOW_AGENT_NAME}"
 export GROVE_NAME="${WILLOW_AGENT_NAME}"
 
+# User-systemd services surfaced by start-all/stop-all/status-all. Keep this as
+# the single inventory so restart hygiene does not drift between commands.
+WILLOW_SYSTEMD_SERVICES=(
+    grove-mcp
+    grove-serve
+    willow-grove-listen
+    upstream-watcher
+    journal-watcher
+    journal-responder
+    willow-dashboard
+    willow-metabolic
+    corpus-watcher
+    willow-discord-responder
+    kart-worker
+    orin-worker
+    willow-mcp
+    nest-watcher
+    drop-server
+)
+
+WILLOW_STOP_SERVICES=(
+    willow-dashboard
+    corpus-watcher
+    journal-responder
+    journal-watcher
+    upstream-watcher
+    willow-discord-responder
+    willow-grove-listen
+    grove-mcp
+    grove-serve
+    willow-metabolic
+    kart-worker
+    orin-worker
+    willow-mcp
+    nest-watcher
+    drop-server
+)
+
+_willow_service_note() {
+    case "$1" in
+        journal-responder)
+            echo "helper; spawned by journal-watcher per entry"
+            ;;
+        corpus-watcher)
+            echo "missing local unit/script; human-start only when restored"
+            ;;
+        willow-metabolic)
+            echo "timer/socket capable; service is oneshot"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+_willow_unit_file_exists() {
+    [[ -f "${WILLOW_ROOT}/systemd/${1}.service" ]]
+}
+
+_willow_user_unit_known() {
+    systemctl --user list-unit-files "${1}.service" --no-legend 2>/dev/null | grep -q .
+}
+
 # ── LLM provider keys — uncomment whichever is active ────────────────────────
 # export ANTHROPIC_API_KEY=""
 # export GROQ_API_KEY=""  # set in local env, not committed
@@ -459,8 +522,14 @@ print('  The Einherjar grow stronger.')
 
     start-all)
         echo "Willow 2.0 — starting all services"
-        _services=(grove-mcp grove-serve upstream-watcher journal-watcher journal-responder willow-dashboard willow-metabolic corpus-watcher)
-        for svc in "${_services[@]}"; do
+        for svc in "${WILLOW_SYSTEMD_SERVICES[@]}"; do
+            note="$(_willow_service_note "${svc}")"
+            if [[ -n "${note}" ]]; then
+                if ! _willow_user_unit_known "${svc}" && ! _willow_unit_file_exists "${svc}"; then
+                    echo "  [–] ${svc} skipped (${note})"
+                    continue
+                fi
+            fi
             if systemctl --user is-active --quiet "${svc}.service" 2>/dev/null; then
                 echo "  [✓] ${svc} already running"
             else
@@ -475,8 +544,14 @@ print('  The Einherjar grow stronger.')
 
     stop-all)
         echo "Willow 2.0 — stopping all services"
-        _services=(willow-dashboard upstream-watcher grove-mcp grove-serve journal-watcher journal-responder willow-metabolic corpus-watcher)
-        for svc in "${_services[@]}"; do
+        for svc in "${WILLOW_STOP_SERVICES[@]}"; do
+            if ! _willow_user_unit_known "${svc}" && ! _willow_unit_file_exists "${svc}"; then
+                note="$(_willow_service_note "${svc}")"
+                if [[ -n "${note}" ]]; then
+                    echo "  [–] ${svc} skipped (${note})"
+                fi
+                continue
+            fi
             systemctl --user stop "${svc}.service" 2>/dev/null \
                 && echo "  [↓] ${svc} stopped" \
                 || echo "  [–] ${svc} was not running"
@@ -510,14 +585,20 @@ else:
             || echo "  [✗] ollama            unreachable"
 
         # Systemd user services
-        _services=(grove-mcp grove-serve upstream-watcher journal-watcher journal-responder willow-dashboard willow-metabolic corpus-watcher)
-        for svc in "${_services[@]}"; do
+        for svc in "${WILLOW_SYSTEMD_SERVICES[@]}"; do
+            note="$(_willow_service_note "${svc}")"
             if systemctl --user is-active --quiet "${svc}.service" 2>/dev/null; then
                 printf "  [\033[32m✓\033[0m] %-18s running\n" "${svc}"
             elif systemctl --user is-enabled --quiet "${svc}.service" 2>/dev/null; then
                 printf "  [\033[31m✗\033[0m] %-18s dead (enabled)\n" "${svc}"
-            else
+            elif _willow_user_unit_known "${svc}"; then
                 printf "  [\033[33m–\033[0m] %-18s disabled\n" "${svc}"
+            elif _willow_unit_file_exists "${svc}"; then
+                printf "  [\033[33m–\033[0m] %-18s available (not installed)\n" "${svc}"
+            elif [[ -n "${note}" ]]; then
+                printf "  [\033[33m–\033[0m] %-18s %s\n" "${svc}" "${note}"
+            else
+                printf "  [\033[33m–\033[0m] %-18s missing unit\n" "${svc}"
             fi
         done
 
