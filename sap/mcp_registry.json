@@ -50,6 +50,7 @@
     "willow_message":      {"group": "willow", "tier": "core", "description": "Facade: read, search, or send Grove messages."},
     "willow_app":          {"group": "willow", "tier": "core", "description": "Facade: inspect SAFE app registration and manifest state."},
     "willow_external":     {"group": "willow", "tier": "core", "description": "Facade: ask, search, or verify cited external sources through Jeles/source-trail."},
+    "willow_web_search":   {"group": "willow", "tier": "core", "description": "Open web search via DuckDuckGo HTML. Use for current events, tech news, and general queries the institutional Jeles sources cannot cover."},
     "willow_code":         {"group": "willow", "tier": "core", "description": "Facade: search or suggest code context through the code graph."},
 
     "kb_search":          {"group": "kb",     "description": "Search KB atoms by title/content. Use semantic=true for embedding-based retrieval (nomic-embed). Depth limit 3 before asking user."},
