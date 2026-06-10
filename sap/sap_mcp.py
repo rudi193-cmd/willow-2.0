@@ -2127,6 +2127,29 @@ async def mem_jeles_web_search(
 
 @mcp.tool()
 @sap_gate()
+async def willow_web_search(
+    app_id:           str,
+    query:            str,
+    max_results:      int  = 8,
+    trusted_only:     bool = False,
+    include_handoffs: bool = False,
+) -> dict:
+    """Open web search via DuckDuckGo HTML (no API key required). Returns title, url, snippet,
+    source, and hostname for each result. Use for current events, tech news, personnel moves,
+    and any query that needs the live open web rather than institutional archives.
+    trusted_only: filter results to verified institutional domain suffixes.
+    include_handoffs: prepend OpenStreetMap/Google Maps links for navigational queries."""
+    logger.info("[w2] willow_web_search app_id=%s query=%r max=%d trusted=%s", app_id, query, max_results, trusted_only)
+    from core.web_search import search_web
+    loop = asyncio.get_running_loop()
+    hits = await loop.run_in_executor(
+        _executor, lambda: search_web(query, max_results=max_results, trusted_only=trusted_only, include_handoffs=include_handoffs)
+    )
+    return {"query": query, "results": hits, "count": len(hits)}
+
+
+@mcp.tool()
+@sap_gate()
 async def source_trail_verify(
     app_id:  str,
     text:    str,
