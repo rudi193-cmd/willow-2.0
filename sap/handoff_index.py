@@ -41,8 +41,8 @@ def latest_handoff_sort_key(
     return (
         session_date,
         session_suffix,
-        filename or "",
         mtime or "",
+        filename or "",
     )
 
 

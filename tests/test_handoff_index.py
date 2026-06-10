@@ -119,6 +119,30 @@ def test_empty_kb_stub_loses_to_richer_markdown_same_day():
     assert best["filename"] == "session_handoff-2026-06-04g_hanuman.md"
 
 
+def test_select_best_handoff_prefers_newer_same_day_kb_atom():
+    older = {
+        "filename": "kb_BE69F92D.json",
+        "date": "2026-06-10",
+        "summary": "Older same-day handoff atom with lexically larger id.",
+        "open_threads": [],
+        "questions": [],
+        "_valid_at": "2026-06-10T09:00:00-06:00",
+    }
+    newer = {
+        "filename": "kb_3CC79359.json",
+        "date": "2026-06-10",
+        "summary": "Newer same-day handoff atom with lexically smaller id.",
+        "open_threads": [],
+        "questions": [],
+        "_valid_at": "2026-06-10T16:12:00-06:00",
+    }
+
+    best = select_best_handoff([older, newer])
+
+    assert best is not None
+    assert best["filename"] == "kb_3CC79359.json"
+
+
 def test_scan_markdown_handoffs_finds_hanuman_session_files():
     root = handoffs_root()
     if not (root / "hanuman").is_dir():
