@@ -172,6 +172,7 @@
 | `agents/loki` |
 | `agents/willow` |
 | `apps/ratatosk` |
+| `cursor-cli.json` |
 | `docs/.nojekyll` |
 | `docs/AGENT_IDENTITY.md` |
 | `docs/LANDING_DESIGN.md` |
@@ -192,6 +193,7 @@
 | `docs/provenance` |
 | `docs/static` |
 | `install-windows.ps1` |
+| `permissions.json` |
 | `sap/MCP_SPEC.lock.json` |
 | `sap/adapters` |
 | `sap/handoff_paths.py` |
@@ -201,6 +203,7 @@
 | `sap/mcp_registry.json` |
 | `sap/spec` |
 | `seed-windows.py` |
+| `settings.local.json` |
 | `setup.sh` |
 | `stubs` |
 | `uv.lock` |
