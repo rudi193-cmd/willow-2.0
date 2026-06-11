@@ -12,6 +12,17 @@ OUTPUT_FILE = REPO_ROOT / "INDEX.md"
 TODO = "# TODO: add annotation"
 
 
+import os as _os
+
+# Finding #16 (SYSTEM_AUDIT_2026-06-10): under the Kart bwrap sandbox this
+# script sees only the sandbox's view of the tree and deletes INDEX rows for
+# host-only files. Never regenerate from inside the sandbox.
+if _os.environ.get("WILLOW_IN_KART", "").strip():
+    import sys as _sys
+    print("gen_index: skipped inside Kart sandbox (finding #16)")
+    _sys.exit(0)
+
+
 def load_annotations():
     with open(ANNOTATIONS_FILE) as f:
         return json.load(f)

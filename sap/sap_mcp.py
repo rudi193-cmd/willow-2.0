@@ -1464,6 +1464,7 @@ async def agent_task_submit(
     Prefer this over agent Bash for ls, git, pytest, pipelines, and scripts.
     Use script_body (not inline task strings) when Python or nested quotes are involved —
     writes {WILLOW_ROOT}/.kart-scripts/kart-*.py and queues python3 <path>.
+    script_body must be Python (it always runs via python3); shell goes in task=.
 
     Set allow_net=True for git push, gh, curl, etc.
     After submit, call kart_task_run(app_id) or wait for kart-worker / Stop kart_poll."""
@@ -5467,7 +5468,12 @@ async def willow_run(
     )
     out = {"facade": "willow_run", "backend": "agent_task_submit", "submitted": submitted}
     if run_now and not submitted.get("error"):
+        # kart_task_run drains the whole pending backlog, not just this task —
+        # label the drain stats and return THIS task's own result explicitly.
         out["run"] = await kart_task_run(app_id=app_id, agent=agent)
+        tid = submitted.get("task_id")
+        if tid:
+            out["result"] = await agent_task_status(app_id=app_id, task_id=tid)
     return out
 
 
