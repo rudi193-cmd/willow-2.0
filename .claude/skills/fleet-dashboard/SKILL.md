@@ -1,14 +1,9 @@
 ---
 name: fleet-dashboard
-description: Willow Fylgja skill: Fleet Dashboard.
+description: Live fleet health view — all agents, Postgres, Ollama, open forks, pending tasks, policy rules.
 ---
 
 @markdownai v1.0
-
----
-name: fleet-dashboard
-description: Live fleet health view — all agents, Postgres, Ollama, open forks, pending tasks, policy rules.
----
 
 Call in parallel:
   fleet_status(app_id: heimdallr)

@@ -50,15 +50,26 @@ def write_text(path: Path, text: str) -> None:
 
 def skill_text(src: Path, skill_name: str) -> str:
     text = src.read_text(encoding="utf-8")
-    if text.startswith("---\n") and "\nname:" in text.split("---", 2)[1]:
-        return text
+    mai_line = ""
+    body = text
+    if body.startswith("@markdownai"):
+        head, _, rest = body.partition("\n")
+        mai_line = head
+        body = rest.lstrip("\n")
+    if body.startswith("---\n") and "\nname:" in body.split("---", 2)[1]:
+        if not mai_line:
+            return text
+        # Canonical order for copies: YAML frontmatter first, @markdownai as body line 1.
+        _, yaml_block, rest = body.split("---\n", 2)
+        return f"---\n{yaml_block}---\n\n{mai_line}\n\n{rest.lstrip()}"
     title = skill_name.replace("-", " ").title()
+    prefix = f"{mai_line}\n\n" if mai_line else ""
     return (
         "---\n"
         f"name: {skill_name}\n"
         f"description: Willow Fylgja skill: {title}.\n"
         "---\n\n"
-        f"{text}"
+        f"{prefix}{body}"
     )
 
 
@@ -100,7 +111,7 @@ def sync_commands(dst_root: Path) -> None:
     if dst_root.exists() or dst_root.is_symlink():
         rm_path(dst_root)
     dst_root.mkdir(parents=True, exist_ok=True)
-    for src_root in (FYLGJA / "commands", SKILLS / "commands"):
+    for src_root in (SKILLS / "commands",):
         if not src_root.is_dir():
             continue
         for src in sorted(src_root.glob("*.md")):

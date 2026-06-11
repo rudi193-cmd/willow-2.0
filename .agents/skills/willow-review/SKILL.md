@@ -1,14 +1,9 @@
 ---
 name: willow-review
-description: Willow Fylgja skill: Willow Review.
+description: Code review the current fork's changes — fork-aware, MCP-native.
 ---
 
 @markdownai v1.0
-
----
-name: willow-review
-description: Code review the current fork's changes — fork-aware, MCP-native.
----
 
 1. git diff HEAD to see uncommitted changes (or git diff main...HEAD for full fork diff)
 2. Check each changed file:

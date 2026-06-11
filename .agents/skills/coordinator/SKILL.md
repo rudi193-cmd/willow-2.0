@@ -1,14 +1,9 @@
 ---
 name: coordinator
-description: Willow Fylgja skill: Coordinator.
+description: Coordinator mode — fan-out tasks to sub-agents, track progress, synthesize results. Run fleet-dashboard first.
 ---
 
 @markdownai v1.0
-
----
-name: coordinator
-description: Coordinator mode — fan-out tasks to sub-agents, track progress, synthesize results. Run fleet-dashboard first.
----
 
 ## When to use coordinator mode
 

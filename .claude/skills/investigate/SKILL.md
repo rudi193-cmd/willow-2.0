@@ -1,14 +1,9 @@
 ---
 name: investigate
-description: Willow Fylgja skill: Investigate.
+description: Systematic problem-solving — brainstorm new approaches or debug existing issues
 ---
 
 @markdownai v1.0
-
----
-name: investigate
-description: Systematic problem-solving — brainstorm new approaches or debug existing issues
----
 
 # /investigate — Problem-Solving Framework
 

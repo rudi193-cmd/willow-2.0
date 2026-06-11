@@ -1,14 +1,9 @@
 ---
 name: consent
-description: Willow Fylgja skill: Consent.
+description: Guardian sign-off for CHILD/TEEN users — SAFE protocol session authorization
 ---
 
 @markdownai v1.0
-
----
-name: consent
-description: Guardian sign-off for CHILD/TEEN users — SAFE protocol session authorization
----
 
 # /consent — Guardian Sign-Off
 
