@@ -100,4 +100,12 @@ def main():
 
 
 if __name__ == "__main__":
+    import os
+
+    # Finding #16 (SYSTEM_AUDIT_2026-06-10): under the Kart bwrap sandbox this
+    # script sees only the sandbox's view of the tree and would delete INDEX
+    # rows for host-only files. Never regenerate from inside the sandbox.
+    if os.environ.get("WILLOW_IN_KART", "").strip():
+        print("gen_index: skipped inside Kart sandbox (finding #16)")
+        raise SystemExit(0)
     main()

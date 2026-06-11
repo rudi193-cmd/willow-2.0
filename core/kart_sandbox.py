@@ -417,14 +417,28 @@ def run_shell(
         }
 
 
+def clip_output(text: str, limit: int) -> str:
+    """Clip long output keeping head and tail, with an explicit marker.
+
+    Replaces the old silent tail-keep slice ([-N:]) that dropped the
+    beginning of output with no indication anything was missing.
+    """
+    if len(text) <= limit:
+        return text
+    head = limit * 2 // 3
+    tail = limit - head
+    dropped = len(text) - head - tail
+    return f"{text[:head]}\n…[kart: {dropped} chars clipped]…\n{text[-tail:]}"
+
+
 def run_shell_result_for_task(cmd: str, *, timeout: int = 120, allow_net: bool = False) -> tuple[str, dict]:
     """Normalize run_shell output for pg.task_complete(status, result)."""
     raw = run_shell(cmd, timeout=timeout, allow_net=allow_net)
     status = "completed" if raw.get("returncode") == 0 and raw.get("error") != "timeout" else "failed"
     result = {
         "returncode": raw.get("returncode"),
-        "stdout": (raw.get("stdout") or "").strip()[-2000:],
-        "stderr": (raw.get("stderr") or "").strip()[-500:],
+        "stdout": clip_output((raw.get("stdout") or "").strip(), 8000),
+        "stderr": clip_output((raw.get("stderr") or "").strip(), 1500),
         "elapsed_s": raw.get("elapsed_s"),
         "sandbox": raw.get("sandbox"),
     }
