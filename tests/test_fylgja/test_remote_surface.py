@@ -21,7 +21,7 @@ def test_cursor_remote_surface_is_materialized():
 
 
 def test_core_cursor_skills_are_real_files():
-    for name in ("boot", "startup", "handoff", "shutdown", "power", "willow-remote"):
+    for name in ("boot", "startup", "shutdown", "power", "willow-remote"):
         path = ROOT / ".cursor" / "skills" / name / "SKILL.md"
         assert path.is_file(), name
         assert not path.is_symlink(), name
@@ -105,12 +105,12 @@ def test_workspace_skill_surfaces_are_materialized(tmp_path):
     claude = {p.parent.name for p in (tmp_path / ".claude" / "skills").glob("*/SKILL.md")}
 
     assert cursor == claude
-    assert {"boot", "handoff", "power", "willow-remote"}.issubset(cursor)
+    assert {"boot", "shutdown", "power", "willow-remote"}.issubset(cursor)
 
 
 def test_all_remote_skill_surfaces_have_core_skills():
     for surface in (".cursor", ".claude", ".agents", ".codex"):
-        for name in ("boot", "startup", "handoff", "shutdown", "power", "willow-remote"):
+        for name in ("boot", "startup", "shutdown", "power", "willow-remote"):
             path = ROOT / surface / "skills" / name / "SKILL.md"
             assert path.is_file(), f"{surface}:{name}"
             assert not path.is_symlink(), f"{surface}:{name}"
