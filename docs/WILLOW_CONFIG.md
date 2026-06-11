@@ -45,7 +45,7 @@ Personal/archive data: `~/github/sean-data-vault` (`~/sean-data-vault` → symli
 
 `bash scripts/consolidate_github_layout.sh` — wire home symlinks, move untracked drops out of willow-2.0, run `link_fleet_home`. See `~/github/README-fleet-layout.md`.
 
-Templates for new machines: `fleet.env.example`, `settings.global.template.json` (in willow-2.0 only).
+Templates for new machines: `fleet.env.example`, `willow/fylgja/config/public/settings.global.json` (public fallback pack, in willow-2.0 only).
 
 **Public-only clones:** see [`PUBLIC_REMOTE_BOOT.md`](PUBLIC_REMOTE_BOOT.md) — tracked pack at
 `willow/fylgja/config/public/`, materialized to `.willow/generated/` when private config is absent.

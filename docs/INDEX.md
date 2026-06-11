@@ -17,7 +17,7 @@ root `../willow.md` as an agent.
 | What lives at repo root | [`ROOT_LAYOUT.md`](ROOT_LAYOUT.md) |
 | Private config vs public code | [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) · [`PUBLIC_REMOTE_BOOT.md`](PUBLIC_REMOTE_BOOT.md) |
 | Fleet contract (public snapshot) | [`CONTRACT.md`](CONTRACT.md) — sync via `scripts/sync_contract_snapshot.py` |
-| Session dev log (layout + CI, 2026-05-27) | [`dev-log-2026-05-27-fleet-github-layout.md`](dev-log-2026-05-27-fleet-github-layout.md) |
+| Audits (fleet/system reports) | [`audits/`](audits/) — latest: [`audits/SYSTEM_AUDIT_2026-06-10.md`](audits/SYSTEM_AUDIT_2026-06-10.md) |
 | Open work (curated backlog) | [`OPEN_WORK.md`](OPEN_WORK.md) |
 | Agent identity (not all hanuman) | [`AGENT_IDENTITY.md`](AGENT_IDENTITY.md) |
 | CLI + provider agnostic inference | [`RUNTIME_AND_INFERENCE.md`](RUNTIME_AND_INFERENCE.md) |
@@ -28,6 +28,8 @@ root `../willow.md` as an agent.
 ---
 
 ## Common Workflows
+
+_Dev log archive: [`dev-log-2026-05-27-fleet-github-layout.md`](dev-log-2026-05-27-fleet-github-layout.md)_
 
 | Goal | Path |
 |------|------|
