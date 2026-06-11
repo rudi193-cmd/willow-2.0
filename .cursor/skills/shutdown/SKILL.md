@@ -120,6 +120,13 @@ Q17: "What is the next single bite?"
    If this audit changes open threads or agreements materially, amend the handoff (re-run 2c–2f
    for the delta) — cheap compared to a wrong handoff.
 
+3b. **Handoff gate** — verify the file written in step 2 passes the v2 completeness check:
+   ```
+   python3 scripts/session_close.py --check-handoff ${WILLOW_AGENT_NAME}
+   ```
+   On REJECT, fix the handoff (missing sections, empty Open Threads, no Q17) before continuing.
+   A handoff that fails the gate will not surface via `handoff_latest`.
+
 4. **Memory audit** — run `/health memory` to check for STALE/DEAD/REDUNDANT/DARK records. Archive or fix before closing.
 
 5. **Run the close pipeline** — the Stop hook is now cleanup-only. Run the full pipeline explicitly:
@@ -136,6 +143,10 @@ Q17: "What is the next single bite?"
    - `run_handoff_rebuild` — rebuild handoffs DB
    - `close_session` — mark session complete in SAFE
    - `run_ingot` — cat observation from local model
+
+5b. **Norn pass (the pump)** — promote pending intake records so nothing buffers unpumped:
+   `intake_schedule(app_id=<agent>, days=1)` then `kart_task_run(app_id=<agent>)`.
+   Weekly or after heavy sessions, run the fleet variant: `intake_schedule_fleet(app_id=<agent>)`.
 
 6. **State the next bite** from Q17. One sentence.
 

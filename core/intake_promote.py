@@ -126,6 +126,27 @@ def promote_record(pg: PgBridge, rec: dict, tier: str, agent: str, dry_run: bool
     return False
 
 
+def _ratified_is_attested(rec_id: str) -> bool:
+    """Tier 'ratified' is the highest automated trust — it requires a durable
+    human attestation (work order, rev 5). Fail closed: no attestation, no
+    reachable Postgres, or no table => not attested."""
+    try:
+        from core.human_attestation import has_attestation
+        from core.pg_bridge import get_connection, release_connection
+
+        conn = get_connection()
+        try:
+            return any(
+                has_attestation(conn, subject_id=rec_id, subject_type=st)
+                for st in ("other", "queue_item", "knowledge_atom")
+            )
+        finally:
+            release_connection(conn)
+    except Exception as exc:
+        log.warning("attestation check failed for %s: %s — treating as unattested", rec_id, exc)
+        return False
+
+
 def promote_agent(
     pg: PgBridge,
     agent: str,
@@ -145,6 +166,16 @@ def promote_agent(
 
     for rec in records:
         rec_id = rec.get("id", "?")
+
+        if rec.get("tier") == "ratified" and not _ratified_is_attested(rec_id):
+            rec["tier"] = "verified"
+            if not dry_run:
+                pg.ledger_append("willow-ratification", "ratified_downgraded_no_attestation", {
+                    "record_id": rec_id,
+                    "downgraded_to": "verified",
+                    "reason": "tier 'ratified' requires an attested human_attestations record",
+                })
+
         if no_llm:
             tier = fallback_route(rec)
         else:
