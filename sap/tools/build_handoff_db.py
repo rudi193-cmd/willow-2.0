@@ -144,7 +144,10 @@ def parse_session_handoff(content: str, filename: str = "") -> dict:
             break
     for marker in ("## 17 Questions", "## Questions"):
         if marker in content:
-            section = content[content.find(marker):]
+            # Terminate at the next section — Q-like lines in later sections
+            # (e.g. Agent Notes for Human) must not be swallowed as questions.
+            tail = content[content.find(marker) + len(marker):]
+            section = re.split(r"\n(?=## )", tail)[0]
             questions = re.findall(r"^Q\d+:\s*(.+)$", section, re.MULTILINE)
             if not questions:
                 questions = re.findall(r"^\d+\.\s(.+)$", section, re.MULTILINE)

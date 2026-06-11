@@ -58,9 +58,21 @@ Q17: What is the next single bite?
 
 - 
 
+## Agent Notes for Human
+
+<!-- reminders, to-do's, stated unfinished tasks, patterns surfaced — max 17 lines -->
+
+-
+
+## Human Notes to Agent
+
+<!-- leave empty at close; the operator writes here afterward — surfaced live at next boot via handoff_latest -->
+
+-
+
 ---
 
-## Machine block (optional — for handoff_rebuild / kb_ingest)
+## Machine block for handoff_rebuild / kb_ingest
 
 ```json
 {

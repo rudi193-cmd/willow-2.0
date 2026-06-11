@@ -226,10 +226,24 @@ Q2: {open question}
 ...
 Q16: {open question}
 Q17: {next single bite — one sentence, no preamble}
+
+## Agent Notes for Human
+
+- {reminders, to-do's, stated unfinished tasks, patterns surfaced — max 17 lines}
+
+## Human Notes to Agent
+
+- {leave empty at close; the operator writes here afterward — handoff_latest reads it live from the file at next boot}
+
+## Machine block for handoff_rebuild / kb_ingest
+
+```json
+{"summary": "", "open_threads": [], "agreements": [], "key_actions": [], "next_steps": [], "tools_used": [], "signals": {}}
+```
 ```
 
 **Required:** `format: v2` and `session:` in frontmatter. Without them `handoff_latest` will not surface this file.
-**Required:** Section headers must match exactly — `## What I Now Understand`, `## Open Threads`, `## What We Agreed On`, `## 17 Questions`.
+**Required:** Section headers must match exactly — `## What I Now Understand`, `## Open Threads`, `## What We Agreed On`, `## 17 Questions`, `## Agent Notes for Human`, `## Human Notes to Agent`, `## Machine block …`.
 **Required:** Q17 line must be `Q17: <text>` — no question mark in the key, colon-delimited, no preamble. Q17 is always "What is the next single bite?" answered.
 **Convention:** Q1-Q16 are open questions for the next session — things unresolved, decisions pending, gates not yet crossed. Write as many as are genuinely open (pad to 17 only if needed). Q17 is always the next action.
 

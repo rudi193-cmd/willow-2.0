@@ -49,3 +49,15 @@ Link to session, ADR, or issue id.
 ---
 
 *Task lives in willow-config (USER root), not willow-2.0.*
+
+## Agent Notes for Human
+
+<!-- reminders, to-do's, stated unfinished tasks, patterns surfaced — max 17 lines -->
+
+-
+
+## Human Notes to Agent
+
+<!-- operator writes here after review -->
+
+-

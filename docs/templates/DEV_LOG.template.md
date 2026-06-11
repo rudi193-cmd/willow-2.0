@@ -150,3 +150,15 @@ systemctl --user is-active drop-server nest-watcher kart-worker grove-mcp willow
 ---
 
 *b17: DEVLOG · ΔΣ=42*
+
+## Agent Notes for Human
+
+<!-- reminders, to-do's, stated unfinished tasks, patterns surfaced — max 17 lines -->
+
+-
+
+## Human Notes to Agent
+
+<!-- operator writes here after review -->
+
+-
