@@ -6,6 +6,35 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2026.06.6] - 2026-06-10
+
+Audit-execution release: six of the eight SYSTEM_AUDIT_2026-06-10 action-plan PRs, the boot-order contract hardening, the upstream-tracker convergence fix, and two-way handoff notes since `v2026.06.5`.
+
+### Added
+
+- **System audit landed** — `docs/audits/SYSTEM_AUDIT_2026-06-10.md` at rev 8 (16 findings, autonomy map, capability inventory); finding #16: bwrap sandbox environment divergence (#308).
+- **Repo-fleet hygiene sweep** — `scripts/repo_fleet_sweep.py`: diverged/unpushed repos, untracked deliverables, runtime dirt, branch litter, stash↔atom parity; `--emit-flags` into SOIL (#312).
+- **Memory-stack tightening** — ratified tier requires human attestation (fail-closed); handoff completeness gate (`session_close.py --check-handoff`, wired into /shutdown); norn-pass pump at close + fleet weekly; `scripts/soil_graduate.py` (stable SOIL → intake); `scripts/audit_bitemporal.py` supersede⇔invalid_at verifier (#313).
+- **Two-way handoff notes** — `## Agent Notes for Human` + `## Human Notes to Agent` in HANDOFF (and AUDIT/INVESTIGATION/TASK/DEV_LOG) templates; `handoff_latest` reads both live from the newest file so post-close operator notes surface at next boot; machine block now required (#319).
+- **Kart retention sweep** — `scripts/kart_scripts_sweep.py`: auto-generated bodies >14d deleted (dry-run default), named files report-only (#311).
+
+### Changed
+
+- **boot-order rule hardened** — boot before any response; the agent does not classify a turn as exempt; only explicit user waiver or user emergency (#307).
+- **/handoff retired** — /shutdown absorbs the handoff write as step 2; surface checks and tests track the retirement (#306).
+- **Contract & docs truth** — `docs/CONTRACT.md` regenerated (mcp-first Critical, public-safety, PII clause); handoff path notation standardized to `~/.willow/`; docs INDEX gains an Audits row (#308).
+- **Upstream Contribution Tracker** — single stable `bot/upstream-tracker` branch, PR reuse, no self-triggered runs, concurrency cancel; 44 stale bot branches swept (#318).
+
+### Fixed
+
+- **Skill sync frontmatter** — `skill_text()` recognizes `@markdownai` ahead of YAML; all four surface trees regenerated, double frontmatter and placeholder descriptions gone (#310).
+- **Kart facade defects** — stdout clipped head+tail with explicit marker (was silent front-truncation), `script_body` shell shebangs rejected with a clear error, `willow_run(run_now)` returns the submitted task's own result; `gen_index.py` refuses to regenerate inside the sandbox (#311).
+- **17-Questions parser** — extraction terminates at the next section instead of EOF (#319).
+
+### Security / Privacy
+
+- **Operator data untracked** — machine-private `settings.local.json` removed from the repo; desktop IP/username in `tools/xfer.sh` moved to env vars; kart skill examples parameterized; Desktop/Ashokoa sandbox binds demoted to `bind_try` (#309).
+
 ## [2026.06.5] - 2026-06-10
 
 Minor release: fleet service inventory, public contract hardening, open-web search, handoff index fixes, and agent permission templates since `v2026.06.4`.
