@@ -1,5 +1,3 @@
-import importlib
-
 import scripts.session_close as session_close
 
 
