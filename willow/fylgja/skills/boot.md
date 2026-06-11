@@ -8,7 +8,7 @@ description: Willow 2.0 primary boot gate — reads contract, establishes contex
 
 > **Primary boot gate.** Run before producing any response to the user. A greeting, short message, or casual opening is not an exception — boot first.
 >
-> **Exceptions (narrow):**
+> **Exceptions (narrow — only these two; the agent does not classify a turn as exempt on its own judgment):**
 > - User is in a physical, mental, or personal emergency — respond immediately, boot after.
 > - User explicitly says to skip it ("sandbox", "load without context", "no startup", or equivalent) — acknowledge and proceed without boot.
 
