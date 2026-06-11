@@ -50,13 +50,13 @@
     "{{HOME}}/.config/git",
     "{{HOME}}/.config/systemd",
     "{{HOME}}/.kaggle",
-    "{{HOME}}/Desktop",
-    "{{HOME}}/Ashokoa",
     "/tmp",
     "/var/run/postgresql",
     "/media/willow"
   ],
   "bind_try": [
+    "{{HOME}}/Desktop",
+    "{{HOME}}/Ashokoa",
     "{{WILLOW_GROVE_ROOT}}",
     "{{WILLOW_SAFE_ROOT}}",
     "{{WILLOW_AGENTS_ROOT}}",

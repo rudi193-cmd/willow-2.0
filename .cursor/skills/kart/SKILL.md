@@ -17,7 +17,7 @@ Kart runs **all shell-class work** (ls, git, pytest, pipelines, scripts). Agent 
 
 ```
 # Simple shell
-agent_task_submit(app_id="hanuman", task="ls -la /home/sean-campbell/github/willow-2.0")
+agent_task_submit(app_id="hanuman", task="ls -la ${WILLOW_ROOT}")
 kart_task_run(app_id="hanuman")
 agent_task_status(app_id="hanuman", task_id="<task_id>")
 
