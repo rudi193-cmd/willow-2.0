@@ -15,7 +15,7 @@ format: v2
 <!--
 AGENT INSTRUCTIONS
 - Use for: end of every substantive session (default).
-- Save as: ~/github/.willow/handoffs/<agent>/session_handoff-YYYY-MM-DD_<agent>.md
+- Save as: ~/.willow/handoffs/<agent>/session_handoff-YYYY-MM-DD_<agent>.md (~/.willow is a symlink to ~/github/.willow — same place)
 - Repo: willow-config (commit handoff if USER asks; many stay local until promoted).
 - Also run willow/fylgja/skills/handoff.md sequence: handoff_latest → kb_ingest → ledger_write → handoff_rebuild.
 - AGENT = $WILLOW_AGENT_NAME only — not the IDE model name.

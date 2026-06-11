@@ -14,7 +14,7 @@
 
 | Lifespan | Template | Where it lives after fill |
 |----------|----------|---------------------------|
-| **Session continuity** | [`HANDOFF.template.md`](HANDOFF.template.md) | `~/github/.willow/handoffs/<agent>/session_handoff-YYYY-MM-DD_<agent>.md` |
+| **Session continuity** | [`HANDOFF.template.md`](HANDOFF.template.md) | `~/.willow/handoffs/<agent>/session_handoff-YYYY-MM-DD_<agent>.md` |
 | **Multi-hour arc** | [`DEV_LOG.template.md`](DEV_LOG.template.md) | `willow-2.0/docs/dev-log-YYYY-MM-DD-<slug>.md` |
 | **Architecture decision** | [`ADR.template.md`](ADR.template.md) | `willow-2.0/docs/adrs/ADR-YYYYMMDD-<slug>.md` |
 | **Operator task** | [`TASK.template.md`](TASK.template.md) | `willow-config` → `~/github/.willow/tasks/T-YYYYMMDD-<slug>.md` |
