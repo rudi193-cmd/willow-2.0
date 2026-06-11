@@ -120,6 +120,9 @@ REQUIRED_HANDOFF_HEADERS = (
     "## Open Threads",
     "## What We Agreed On",
     "## 17 Questions",
+    "## Agent Notes for Human",
+    "## Human Notes to Agent",
+    "## Machine block",
 )
 
 

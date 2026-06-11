@@ -65,3 +65,15 @@ AGENT INSTRUCTIONS
 ---
 
 *b17: AUDIT · ΔΣ=42*
+
+## Agent Notes for Human
+
+<!-- reminders, to-do's, stated unfinished tasks, patterns surfaced — max 17 lines -->
+
+-
+
+## Human Notes to Agent
+
+<!-- operator writes here after review -->
+
+-

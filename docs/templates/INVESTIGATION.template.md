@@ -76,3 +76,15 @@ What broke, for whom, and when?
 ---
 
 *b17: INVEST · ΔΣ=42*
+
+## Agent Notes for Human
+
+<!-- reminders, to-do's, stated unfinished tasks, patterns surfaced — max 17 lines -->
+
+-
+
+## Human Notes to Agent
+
+<!-- operator writes here after review -->
+
+-

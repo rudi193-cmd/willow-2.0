@@ -27,6 +27,20 @@ Things.
 
 Q1: open?
 Q17: the next bite
+
+## Agent Notes for Human
+
+- remember the thing
+
+## Human Notes to Agent
+
+-
+
+## Machine block for handoff_rebuild / kb_ingest
+
+```json
+{"summary": ""}
+```
 """
 
 
@@ -71,3 +85,17 @@ def test_missing_v2_rejected(tmp_path, monkeypatch):
 def test_no_handoffs_rejected(tmp_path, monkeypatch):
     ok, problems = _gate(tmp_path, monkeypatch, agent="ghost")
     assert not ok
+
+
+def test_missing_agent_notes_rejected(tmp_path, monkeypatch):
+    _write(tmp_path, "tester", GOOD.replace("## Agent Notes for Human", "## Renamed"))
+    ok, problems = _gate(tmp_path, monkeypatch)
+    assert not ok
+    assert any("Agent Notes" in p for p in problems)
+
+
+def test_missing_machine_block_rejected(tmp_path, monkeypatch):
+    _write(tmp_path, "tester", GOOD.replace("## Machine block for handoff_rebuild / kb_ingest", "## Renamed"))
+    ok, problems = _gate(tmp_path, monkeypatch)
+    assert not ok
+    assert any("Machine block" in p for p in problems)
