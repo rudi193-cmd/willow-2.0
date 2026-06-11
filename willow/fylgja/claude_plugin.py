@@ -18,13 +18,12 @@ CLAUDE_COMMAND_SKILLS: tuple[str, ...] = (
     "boot.md",
     "cold-recovery.md",
     "startup.md",
-    "handoff.md",
     "shutdown.md",
 )
 
 _PLUGIN_MANIFEST = {
     "name": "fylgja",
-    "description": "Willow 2.0 Fylgja behavioral skills — boot, cold-recovery, handoff, startup.",
+    "description": "Willow 2.0 Fylgja behavioral skills — boot, cold-recovery, shutdown, startup.",
     "commands": "./commands",
 }
 

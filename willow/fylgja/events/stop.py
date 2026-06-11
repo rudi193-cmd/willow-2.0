@@ -184,7 +184,7 @@ def mark_session_clean(turn_count: int = 0) -> None:
 
 def _write_session_composite(session_id: str) -> None:
     """Write session composite atom. Fast — no LLM, pure store_put.
-    next_bite is populated later by the /handoff skill via store_update.
+    next_bite is populated later by the /shutdown skill (handoff step) via store_update.
     """
     if call is None:
         return

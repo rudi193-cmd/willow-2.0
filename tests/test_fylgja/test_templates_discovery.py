@@ -78,10 +78,10 @@ def test_gen_index_includes_docs_index(tmp_path: Path) -> None:
 def test_agents_and_boot_point_at_templates() -> None:
     agents = (REPO / "AGENTS.md").read_text(encoding="utf-8")
     boot = (REPO / "willow" / "fylgja" / "skills" / "boot.md").read_text(encoding="utf-8")
-    handoff = (REPO / "willow" / "fylgja" / "skills" / "handoff.md").read_text(encoding="utf-8")
+    shutdown = (REPO / "willow" / "fylgja" / "skills" / "shutdown.md").read_text(encoding="utf-8")
     docs_index = (REPO / "docs" / "INDEX.md").read_text(encoding="utf-8")
 
     assert "docs/templates/README.md" in agents
     assert "docs/templates/README.md" in boot
-    assert "HANDOFF.template.md" in handoff
+    assert "HANDOFF.template.md" in shutdown
     assert "AUDIT.template.md" in docs_index
