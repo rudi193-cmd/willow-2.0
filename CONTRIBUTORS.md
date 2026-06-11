@@ -35,6 +35,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [Emerging-Rule/community](https://github.com/Emerging-Rule/community) | Emerging-Rule | Add: Creature Lab CS showcase + Neva and Theo science lesson (grades 3–8) | [PR #11](https://github.com/Emerging-Rule/community/pull/11) merged |
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | fix(mcp): include hot-cold cold signatures in bundled server (#201) | [PR #216](https://github.com/manojmallick/sigmap/pull/216) merged |
 | [Emerging-Rule/community](https://github.com/Emerging-Rule/community) | Emerging-Rule | Example: Calibration Series (6–10 + Social Studies 6–8) | [PR #10](https://github.com/Emerging-Rule/community/pull/10) merged |
 | [alash3al/stash](https://github.com/alash3al/stash) | alash3al | fix(security): escape LIKE wildcards in namespace path resolution | [PR #10](https://github.com/alash3al/stash/pull/10) merged |
@@ -57,7 +58,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: Willow adapter for Postgres-backed knowledge store | [PR #145](https://github.com/manojmallick/sigmap/pull/145) merged |
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: native Python AST extractor for accurate signature extraction | [PR #144](https://github.com/manojmallick/sigmap/pull/144) merged |
 | [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #401](https://github.com/TensorBlock/awesome-mcp-servers/pull/401) merged |
-| [Emerging-Rule/community](https://github.com/Emerging-Rule/community) | Emerging-Rule | Add: Creature Lab CS showcase + Neva and Theo science lesson (grades 3–8) | [PR #11](https://github.com/Emerging-Rule/community/pull/11) open |
 | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat(plugins): dreaming — automatic background memory consolidation | [PR #40737](https://github.com/NousResearch/hermes-agent/pull/40737) open |
 | [kelos-dev/kanon](https://github.com/kelos-dev/kanon) | kelos-dev | Add repo-local project overlays (#33) | [PR #34](https://github.com/kelos-dev/kanon/pull/34) open |
 | [moazbuilds/claudeclaw](https://github.com/moazbuilds/claudeclaw) | moazbuilds | fix(sessions): treat session.json without sessionId as absent (#228) | [PR #234](https://github.com/moazbuilds/claudeclaw/pull/234) open |
