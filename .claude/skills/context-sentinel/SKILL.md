@@ -1,14 +1,9 @@
 ---
 name: context-sentinel
-description: Willow Fylgja skill: Context Sentinel.
+description: Check whether the current session is approaching context limits. Routes to compact or handoff.
 ---
 
 @markdownai v1.0
-
----
-name: context-sentinel
-description: Check whether the current session is approaching context limits. Routes to compact or handoff.
----
 
 # Context Sentinel
 

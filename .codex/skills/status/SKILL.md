@@ -1,14 +1,9 @@
 ---
 name: status
-description: Willow Fylgja skill: Status.
+description: System status — atoms, edges, ratio, boot health, unpushed work, open threads
 ---
 
 @markdownai v1.0
-
----
-name: status
-description: System status — atoms, edges, ratio, boot health, unpushed work, open threads
----
 
 # /status — System Status
 

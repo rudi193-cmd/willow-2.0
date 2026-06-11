@@ -1,14 +1,9 @@
 ---
 name: health
-description: Willow Fylgja skill: Health.
+description: Willow stack health check — boot/daily/weekly tiers + memory audit. Works without an active MCP session.
 ---
 
 @markdownai v1.0
-
----
-name: health
-description: Willow stack health check — boot/daily/weekly tiers + memory audit. Works without an active MCP session.
----
 
 # /health [mode]
 
