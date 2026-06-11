@@ -269,7 +269,7 @@ def check_surfaces() -> list[str]:
             if count < 30:
                 errors.append(f"too few skills under {surface}/skills ({count})")
 
-    for name in ("boot", "startup", "handoff", "power", "willow-remote"):
+    for name in ("boot", "startup", "shutdown", "power", "willow-remote"):
         for surface in REMOTE_SURFACES:
             skill = ROOT / surface / "skills" / name / "SKILL.md"
             if not skill.is_file():
