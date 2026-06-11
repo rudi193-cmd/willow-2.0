@@ -1,14 +1,9 @@
 ---
 name: dream
-description: Willow Fylgja skill: Dream.
+description: Run the AutoDream synthesis pipeline — tension detection + pattern synthesis over recent KB atoms
 ---
 
 @markdownai v1.0
-
----
-name: dream
-description: Run the AutoDream synthesis pipeline — tension detection + pattern synthesis over recent KB atoms
----
 
 # /dream — AutoDream Synthesis
 

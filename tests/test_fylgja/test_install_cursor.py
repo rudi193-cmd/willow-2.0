@@ -125,11 +125,6 @@ def test_install_project_writes_agent_config(tmp_path, monkeypatch):
     if not skills_dst.exists():
         import shutil
         shutil.copytree(skills_src, skills_dst)
-    commands_src = PACKAGE_ROOT / "willow" / "fylgja" / "commands"
-    commands_dst = repo / "willow" / "fylgja" / "commands"
-    if not commands_dst.exists():
-        import shutil
-        shutil.copytree(commands_src, commands_dst)
     agents_src = PACKAGE_ROOT / "willow" / "fylgja" / "agents" / "rlm-subcall.md"
     agents_dst = repo / "willow" / "fylgja" / "agents" / "rlm-subcall.md"
     agents_dst.parent.mkdir(parents=True, exist_ok=True)

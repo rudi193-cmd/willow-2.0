@@ -1,14 +1,9 @@
 ---
 name: restart-server
-description: Willow Fylgja skill: Restart Server.
+description: Hot-reload MCP servers — Willow (in-process) and Grove (systemd). Use after editing any MCP layer file.
 ---
 
 @markdownai v1.0
-
----
-name: restart-server
-description: Hot-reload MCP servers — Willow (in-process) and Grove (systemd). Use after editing any MCP layer file.
----
 
 # /restart-server — MCP Hot Reload
 

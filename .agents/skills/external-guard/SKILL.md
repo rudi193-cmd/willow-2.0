@@ -1,14 +1,9 @@
 ---
 name: external-guard
-description: Willow Fylgja skill: External Guard.
+description: Scan and wrap untrusted external content before ingestion — web, jeles, corpus, sub-agent outputs.
 ---
 
 @markdownai v1.0
-
----
-name: external-guard
-description: Scan and wrap untrusted external content before ingestion — web, jeles, corpus, sub-agent outputs.
----
 
 # External Guard
 

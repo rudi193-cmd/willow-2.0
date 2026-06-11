@@ -1,14 +1,9 @@
 ---
 name: iterative-retrieval
-description: Willow Fylgja skill: Iterative Retrieval.
+description: Progressively refine a search across Willow KB, store, and JELES before reading files
 ---
 
 @markdownai v1.0
-
----
-name: iterative-retrieval
-description: Progressively refine a search across Willow KB, store, and JELES before reading files
----
 
 # Iterative Retrieval
 

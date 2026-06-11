@@ -1,14 +1,9 @@
 ---
 name: willow-deploy
-description: Willow Fylgja skill: Willow Deploy.
+description: Push changes to a Grove-connected node and verify.
 ---
 
 @markdownai v1.0
-
----
-name: willow-deploy
-description: Push changes to a Grove-connected node and verify.
----
 
 1. Commit all changes on a feature branch: git add -p && git commit
 2. Push to GitHub: git push origin <feature-branch> && gh pr create --base master
