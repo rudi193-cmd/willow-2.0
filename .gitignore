@@ -19,6 +19,7 @@ agents/*/config/mcp.json
 /willow.md
 willow/fylgja/config/fleet.env
 willow/fylgja/config/settings.global.json
+willow/fylgja/config/settings.local.json
 
 # Public fallback materialization (per-clone generated home)
 .willow/generated/

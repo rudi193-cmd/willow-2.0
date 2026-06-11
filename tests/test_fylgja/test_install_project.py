@@ -59,7 +59,7 @@ def test_ensure_canonical_local_settings_writes_agent_env(tmp_path, monkeypatch)
     repo.mkdir()
     wh = tmp_path / ".willow"
     monkeypatch.setenv("WILLOW_HOME", str(wh))
-    template = PACKAGE_ROOT / "willow" / "fylgja" / "config" / "settings.local.json"
+    template = PACKAGE_ROOT / "willow" / "fylgja" / "config" / "public" / "settings.local.json"
     (repo / "willow" / "fylgja" / "config").mkdir(parents=True)
     (repo / "willow" / "fylgja" / "config" / "settings.local.json").write_bytes(
         template.read_bytes()
