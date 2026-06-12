@@ -354,7 +354,7 @@ def _run_silent_startup(session_id: str = "") -> dict:
             try:
                 row = call("store_get", {
                     "app_id": AGENT,
-                    "collection": f"{AGENT}/sessions/store",
+                    "collection": f"{AGENT}/sessions",
                     "id": store_id,
                 }, timeout=5)
                 if isinstance(row, dict) and row and not row.get("error"):
@@ -369,7 +369,7 @@ def _run_silent_startup(session_id: str = "") -> dict:
 
     # 4. Open flags
     try:
-        gaps = call("store_list", {"app_id": AGENT, "collection": f"{AGENT}/gaps/store"}, timeout=5)
+        gaps = call("store_list", {"app_id": AGENT, "collection": f"{AGENT}/gaps"}, timeout=5)
         open_gaps = sorted(
             [g for g in (gaps or []) if g.get("status") == "open"],
             key=lambda g: g.get("severity", 0), reverse=True,
@@ -388,7 +388,7 @@ def _run_silent_startup(session_id: str = "") -> dict:
 
     # 5. Recent traces since last handoff
     try:
-        params: dict = {"app_id": AGENT, "collection": f"{AGENT}/turns/store", "query": ""}
+        params: dict = {"app_id": AGENT, "collection": f"{AGENT}/turns", "query": ""}
         if handoff_date:
             params["after"] = handoff_date
         traces = call("store_search", params, timeout=5)

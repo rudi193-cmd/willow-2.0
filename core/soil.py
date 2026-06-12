@@ -15,14 +15,12 @@ from pathlib import Path
 
 from core.willow_store import WillowStore
 
-_store: WillowStore | None = None
-
 
 def _get_store() -> WillowStore:
-    global _store
-    if _store is None:
-        _store = WillowStore()
-    return _store
+    # A fresh instance per call: WillowStore.__init__ is cheap, and caching one
+    # here would freeze the store root past a WILLOW_STORE_ROOT change
+    # (test isolation, fork sandboxes).
+    return WillowStore()
 
 
 def _root() -> Path:

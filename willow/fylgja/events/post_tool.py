@@ -162,7 +162,7 @@ def _write_trace(session_id: str, tool_name: str, tool_input: dict) -> None:
         }
         call("store_put", {
             "app_id": _AGENT,
-            "collection": f"{_AGENT}/turns/store",
+            "collection": f"{_AGENT}/turns",
             "record": record,
         }, timeout=3)
         _record_rate(key)

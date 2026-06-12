@@ -7,12 +7,12 @@ def _make_store(tmp_path):
 
 def test_put_writes_hebbian_edge_for_same_domain(tmp_path):
     store = _make_store(tmp_path)
-    store.put("hanuman/atoms/store", {
+    store.put("hanuman/atoms", {
         "id": "existing-a1",
         "type": "reflection",
         "domain": "pg_bridge",
     })
-    store.put("hanuman/atoms/store", {
+    store.put("hanuman/atoms", {
         "id": "new-a2",
         "type": "reflection",
         "domain": "pg_bridge",
@@ -26,10 +26,10 @@ def test_put_writes_hebbian_edge_for_same_domain(tmp_path):
 
 def test_put_no_edge_for_different_domain(tmp_path):
     store = _make_store(tmp_path)
-    store.put("hanuman/atoms/store", {
+    store.put("hanuman/atoms", {
         "id": "a1", "type": "reflection", "domain": "pg_bridge",
     })
-    store.put("hanuman/atoms/store", {
+    store.put("hanuman/atoms", {
         "id": "a2", "type": "reflection", "domain": "willow_store",
     })
     edges = store.list("hanuman/atoms/edges")
@@ -38,10 +38,10 @@ def test_put_no_edge_for_different_domain(tmp_path):
 
 def test_put_no_edge_for_non_atom_collection(tmp_path):
     store = _make_store(tmp_path)
-    store.put("hanuman/sessions/store", {
+    store.put("hanuman/sessions", {
         "id": "s1", "domain": "pg_bridge",
     })
-    store.put("hanuman/sessions/store", {
+    store.put("hanuman/sessions", {
         "id": "s2", "domain": "pg_bridge",
     })
     edges = store.list("hanuman/atoms/edges")

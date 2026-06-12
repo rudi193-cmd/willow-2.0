@@ -15,10 +15,7 @@ from scripts.soil_merge_layouts import find_legacy_stores, merge_one
 @pytest.fixture
 def store_root(tmp_path, monkeypatch):
     monkeypatch.setenv("WILLOW_STORE_ROOT", str(tmp_path))
-    import core.soil as soil
-    soil._store = None  # reset the shim's lazy singleton
-    yield tmp_path
-    soil._store = None
+    return tmp_path
 
 
 # ── shim ──────────────────────────────────────────────────────────────────────

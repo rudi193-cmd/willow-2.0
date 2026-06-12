@@ -377,7 +377,7 @@ def insight_pass(store_call) -> dict:
     try:
         result = store_call("store_list", {
             "app_id": _AGENT,
-            "collection": f"{_AGENT}/atoms/store",
+            "collection": f"{_AGENT}/atoms",
         }, timeout=8)
         all_atoms = result if isinstance(result, list) else []
     except Exception:
@@ -414,7 +414,7 @@ def insight_pass(store_call) -> dict:
                 try:
                     store_call("store_update", {
                         "app_id": _AGENT,
-                        "collection": f"{_AGENT}/atoms/store",
+                        "collection": f"{_AGENT}/atoms",
                         "record_id": r["id"],
                         "record": {**r, "insight_skip": True},
                     }, timeout=4)
@@ -428,7 +428,7 @@ def insight_pass(store_call) -> dict:
         try:
             store_call("store_put", {
                 "app_id": _AGENT,
-                "collection": f"{_AGENT}/atoms/store",
+                "collection": f"{_AGENT}/atoms",
                 "record": {
                     "id": insight_id,
                     "type": "insight",
@@ -453,7 +453,7 @@ def insight_pass(store_call) -> dict:
             try:
                 store_call("store_update", {
                     "app_id": _AGENT,
-                    "collection": f"{_AGENT}/atoms/store",
+                    "collection": f"{_AGENT}/atoms",
                     "record_id": r["id"],
                     "record": {**r, "invalid_at": now.isoformat(), "superseded_by": insight_id},
                 }, timeout=4)
@@ -478,8 +478,8 @@ def chunk_pass(store_call) -> dict:
     Returns {"chunks_written": int}.
     """
     try:
-        r1 = store_call("store_list", {"app_id": _AGENT, "collection": f"{_AGENT}/atoms/store"}, timeout=8)
-        r2 = store_call("store_list", {"app_id": _AGENT, "collection": f"{_AGENT}/skills/store"}, timeout=5)
+        r1 = store_call("store_list", {"app_id": _AGENT, "collection": f"{_AGENT}/atoms"}, timeout=8)
+        r2 = store_call("store_list", {"app_id": _AGENT, "collection": f"{_AGENT}/skills"}, timeout=5)
         all_atoms = r1 if isinstance(r1, list) else []
         existing_skills = r2 if isinstance(r2, list) else []
     except Exception:
@@ -521,7 +521,7 @@ def chunk_pass(store_call) -> dict:
         try:
             store_call("store_put", {
                 "app_id": _AGENT,
-                "collection": f"{_AGENT}/skills/store",
+                "collection": f"{_AGENT}/skills",
                 "record": {
                     "id": chunk_id,
                     "type": "chunk",
