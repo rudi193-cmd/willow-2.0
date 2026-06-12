@@ -150,6 +150,38 @@ Q17: "What is the next single bite?"
 
 6. **State the next bite** from Q17. One sentence.
 
+7. **Session Close Report** — the final user-facing output. Render the session's data as
+   compact visual **tables** (not prose) so the close is legible at a glance. Pull values from
+   the steps above; do not recompute. Omit any table whose data is empty. Keep ~5 rows max per
+   table; make IDs/paths/PRs clickable. This is the user's receipt — the last thing they see.
+
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     SESSION CLOSE — {agent} · {session}
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+   **Shipped** — PRs, commits, releases
+   | What | Where | State |
+   |------|-------|-------|
+
+   **Memory written** — the session's durable trace
+   | Kind | ID / path | Title |
+   |------|-----------|-------|
+   (KB atoms via `kb_ingest`, the handoff file, the FRANK ledger `check_in`)
+
+   **Flags resolved** — from step 1
+   | Flag | Resolution |
+   |------|-----------|
+
+   **Open threads** ({N}) — carried to next session
+   | Thread | Next action |
+   |--------|-------------|
+
+   **Pipeline** — step 5, one line: stages passed / failed.
+
+   **Next bite (Q17):** {one sentence}
+
 ## Context-critical mode
 
 When invoked by `/context-sentinel` (HANDOFF_NOW) or when remaining context is plainly too small
@@ -173,4 +205,5 @@ before the pipeline runs.
 - Phases 3+4 (atom synthesis + edge linking) only run if `WILLOW_ATOM_EXTRACTION=1`.
 - Stop hook is cleanup-only (depth stack + thread file). Pipeline only runs on explicit /shutdown.
 - Step 1 (process flag resolution) is not optional. A handoff written over a stale running flag is incorrect state — the next session will surface it as an open problem that is already solved.
+- Step 7 (Session Close Report) is the final user-facing output — always render it. The user should never have to open the handoff file to see what the session did. In context-critical mode the floor is a minimal version: **Shipped** + **Next bite**.
 - Do NOT write to `docs/handoffs/` (deprecated, unindexed) or `~/Ashokoa/` (does not exist).
