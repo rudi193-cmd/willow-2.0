@@ -60,6 +60,17 @@ Q17: "What is the next single bite?"
 
 ## Risks / Open Gates
 <anything that could break the next session>
+
+## Agent Notes for Human
+<the agent's reflections to the operator — reminders, to-dos, unfinished tasks, patterns
+ surfaced this session. Max 17 lines.>
+
+## Human Notes to Agent
+<leave EMPTY at close. The operator writes here after the session; handoff_latest reads it
+ live from the file at next boot.>
+
+## Machine block for handoff_rebuild / kb_ingest
+<the content JSONB from step 2c, fenced as ```json — required for handoff_rebuild to parse>
 ```
 
    c. **Write to KB** — call `kb_ingest` with `category="handoff"`, `source_type="session"`,
@@ -205,5 +216,6 @@ before the pipeline runs.
 - Phases 3+4 (atom synthesis + edge linking) only run if `WILLOW_ATOM_EXTRACTION=1`.
 - Stop hook is cleanup-only (depth stack + thread file). Pipeline only runs on explicit /shutdown.
 - Step 1 (process flag resolution) is not optional. A handoff written over a stale running flag is incorrect state — the next session will surface it as an open problem that is already solved.
+- The draft template must keep **## Agent Notes for Human** and **## Human Notes to Agent** (matching `docs/templates/HANDOFF.template.md` and the v2 parser). Agent Notes = the agent's reflections to the operator; Human Notes = left empty at close for the operator to fill after, read live at next boot. Dropping either breaks parity with `handoff_latest`.
 - Step 7 (Session Close Report) is the final user-facing output — always render it. The user should never have to open the handoff file to see what the session did. In context-critical mode the floor is a minimal version: **Shipped** + **Next bite**.
 - Do NOT write to `docs/handoffs/` (deprecated, unindexed) or `~/Ashokoa/` (does not exist).
