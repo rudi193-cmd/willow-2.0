@@ -181,6 +181,29 @@ def chk_s9():
         else (OPEN, "silent bind skip")
 
 
+def chk_s5():
+    """Transcript stores ro-bound (KP4, operator decision 2026-06-12: bind).
+
+    ~/.claude/projects + ~/.cursor in the optional-ro tier; the
+    credential-bearing ~/.claude root in no bind list at all.
+    """
+    cfg = ks.load_sandbox_config(ks.willow_repo_root())
+    optional_ro = cfg.get("bind_try_read_only", [])
+    missing = [p for p in ("{{HOME}}/.claude/projects", "{{HOME}}/.cursor")
+               if p not in optional_ro]
+    if missing:
+        return OPEN, f"not in bind_try_read_only: {missing}"
+    for key in ("bind_read_only", "bind_read_write", "bind_try", "bind_try_read_only"):
+        if "{{HOME}}/.claude" in cfg.get(key, []):
+            return OPEN, f"~/.claude root bound via {key} (credential exposure)"
+    m = _mounts()
+    for rel in (".claude/projects", ".cursor"):
+        host = str((Path.home() / rel).resolve())
+        if host in m and m[host] is not True:
+            return OPEN, f"{host} bound read-write"
+    return CLOSED, "transcript stores ro; ~/.claude root unbound"
+
+
 # ── V-series (verification class — file state) ─────────────────────────────────
 
 def chk_v1():
@@ -244,12 +267,13 @@ CHECKS = [
     {"id": "V1",  "axis": "bookkeeping",   "gate": False, "fn": chk_v1,   "title": "no placeholder skill descriptions"},
     {"id": "V2",  "axis": "bookkeeping",   "gate": False, "fn": chk_v2,   "title": "startup.md frontmatter"},
     {"id": "V3",  "axis": "bookkeeping",   "gate": False, "fn": chk_v3,   "title": "repo_fleet_sweep scheduled"},
+    # Phase 2 — KP4 transcript binds (gated; operator decision 2026-06-12)
+    {"id": "S5",  "axis": "visibility",    "gate": True,  "fn": chk_s5,   "title": "transcript stores ro (KP4)"},
     # Deferred by design — named, not silent
-    {"id": "S5",  "axis": "visibility",    "gate": False, "deferred": True, "title": "transcript access (KP4 — operator decision)"},
     {"id": "S7",  "axis": "observability", "gate": False, "deferred": True, "title": "opaque &&-chain failures (partial)"},
     {"id": "S8",  "axis": "maintainability", "gate": False, "deferred": True, "title": "symlink-bind generalization (KP6b)"},
     {"id": "S10", "axis": "observability", "gate": False, "deferred": True, "title": "durable failure artifacts (KP7)"},
-    {"id": "S13", "axis": "security",      "gate": False, "deferred": True, "title": "seccomp syscall filter"},
+    {"id": "S13", "axis": "security",      "gate": False, "deferred": True, "title": "seccomp syscall filter — declined 2026-06-12, --new-session accepted as CVE-2017-5226 coverage"},
     {"id": "S18", "axis": "maintainability", "gate": False, "deferred": True, "title": "worktree self-management (KP8)"},
 ]
 
