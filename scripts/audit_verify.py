@@ -216,6 +216,20 @@ def chk_soil1():
     return CLOSED, "soil.py shims WillowStore; '/store' names rejected"
 
 
+def chk_s10():
+    """Durable per-task log artifacts (KP7): write_task_log exists, the
+    unclipped output rides to it, and execute_task_row references log_dir."""
+    ks_src = _source("core/kart_sandbox.py")
+    if "def write_task_log" not in ks_src:
+        return OPEN, "write_task_log missing from kart_sandbox"
+    if "_full_stdout" not in ks_src:
+        return OPEN, "unclipped output not captured for the artifact"
+    ke_src = _source("core/kart_execute.py")
+    if "log_dir" not in ke_src or "write_task_log" not in ke_src:
+        return OPEN, "execute_task_row does not write/reference the artifact"
+    return CLOSED, ".kart-logs/<id>/ artifact wired; log_dir in result"
+
+
 # ── V-series (verification class — file state) ─────────────────────────────────
 
 def chk_v1():
@@ -283,10 +297,11 @@ CHECKS = [
     {"id": "S5",  "axis": "visibility",    "gate": True,  "fn": chk_s5,   "title": "transcript stores ro (KP4)"},
     # SOIL layout unification (gated; operator decisions 2026-06-12)
     {"id": "SOIL1", "axis": "maintainability", "gate": True, "fn": chk_soil1, "title": "SOIL dual-layout unified (shim + /store reject)"},
+    # Phase 2 — KP7 durable failure artifacts (gated)
+    {"id": "S10", "axis": "observability", "gate": True,  "fn": chk_s10,  "title": "durable .kart-logs/<id>/ artifacts (KP7)"},
     # Deferred by design — named, not silent
     {"id": "S7",  "axis": "observability", "gate": False, "deferred": True, "title": "opaque &&-chain failures (partial)"},
     {"id": "S8",  "axis": "maintainability", "gate": False, "deferred": True, "title": "symlink-bind generalization (KP6b)"},
-    {"id": "S10", "axis": "observability", "gate": False, "deferred": True, "title": "durable failure artifacts (KP7)"},
     {"id": "S13", "axis": "security",      "gate": False, "deferred": True, "title": "seccomp syscall filter — declined 2026-06-12, --new-session accepted as CVE-2017-5226 coverage"},
     {"id": "S18", "axis": "maintainability", "gate": False, "deferred": True, "title": "worktree self-management (KP8)"},
 ]
