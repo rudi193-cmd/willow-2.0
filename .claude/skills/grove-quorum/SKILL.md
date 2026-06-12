@@ -1,6 +1,6 @@
 ---
 name: grove-quorum
-description: Willow Fylgja skill: Grove Quorum.
+description: Fleet-wide quorum decisions over Grove — post a structured proposal to #fleet, collect ACK/NACK replies until threshold or deadline, announce the result.
 ---
 
 @markdownai v1.0
