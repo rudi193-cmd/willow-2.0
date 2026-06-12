@@ -188,8 +188,30 @@ def test_kp3_unreachable_note_for_unbound_home_path(repo_root):
     if m["engine"] != "bwrap":
         pytest.skip("manifest notes only apply under bwrap")
     home = str(Path.home())
-    notes = unreachable_notes(f"cat {home}/.claude/projects/x.jsonl", m)
+    # ~/.claude root stays unbound (only ~/.claude/projects is a KP4 bind),
+    # so a path directly under it is the stable unreachable probe.
+    notes = unreachable_notes(f"cat {home}/.claude/x.jsonl", m)
     assert any(".claude" in n for n in notes)
+
+
+# ── Phase 2 — KP4 transcript stores ro (S5) ───────────────────────────────────
+
+def test_kp4_transcript_stores_in_optional_ro_config(repo_root):
+    cfg = load_sandbox_config(repo_root)
+    optional_ro = cfg.get("bind_try_read_only", [])
+    assert "{{HOME}}/.claude/projects" in optional_ro
+    assert "{{HOME}}/.cursor" in optional_ro
+    # the credential-bearing ~/.claude root must not appear in any bind list
+    for key in ("bind_read_only", "bind_read_write", "bind_try", "bind_try_read_only"):
+        assert "{{HOME}}/.claude" not in cfg.get(key, [])
+
+
+def test_kp4_transcript_mounts_read_only_when_present(repo_root):
+    mounts = {str(h): ro for h, _c, ro in collect_bind_mounts(repo_root)}
+    for rel in (".claude/projects", ".cursor"):
+        host = str((Path.home() / rel).resolve())
+        if host in mounts:
+            assert mounts[host] is True, f"{host} must be read-only"
 
 
 def test_kp3_no_note_for_bound_path(repo_root):
