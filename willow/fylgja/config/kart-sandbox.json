@@ -85,6 +85,8 @@
     "{{WILLOW_SAFE_ROOT}}",
     "{{WILLOW_AGENTS_ROOT}}",
     "{{HOME}}/sean-data-vault",
+    "{{HOME}}/.claude/projects",
+    "{{HOME}}/.cursor",
     "/lib32",
     "{{HOME}}/SAFE",
     "{{HOME}}/safe-app-store",
@@ -99,6 +101,7 @@
     "safe_ro": "SAFE store + agents + data-vault are read-only via bind_try_read_only (GAP-A: the sovereign data must not be mutable by an arbitrary task).",
     "ssh_dropped": "~/.ssh is no longer bound (S1). SSH git uses SSH_AUTH_SOCK (reachable via /run/user) + ~/.ssh/known_hosts ro, both only on allow_net. Private keys never enter the sandbox.",
     "creds_gated": "~/.config/gh + ~/.netrc and credential_env_prefixes are present only on allow_net (S1/GAP-B). A no-network task gets zero credentials.",
-    "tmp_tmpfs": "/tmp + /dev/shm are private tmpfs, not host binds (S11/S16)."
+    "tmp_tmpfs": "/tmp + /dev/shm are private tmpfs, not host binds (S11/S16).",
+    "transcripts_ro": "S5/KP4 (operator decision 2026-06-12: bind): ~/.claude/projects + ~/.cursor are ro via bind_try_read_only. ~/.claude root stays unbound — it can hold .credentials.json, which must never enter the sandbox."
   }
 }
