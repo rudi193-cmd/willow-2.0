@@ -230,6 +230,25 @@ def chk_s10():
     return CLOSED, ".kart-logs/<id>/ artifact wired; log_dir in result"
 
 
+def chk_s8():
+    """Symlink binds generalized (KP6b): every configured bind path that is a
+    host symlink is auto re-emitted as --symlink — no hand-maintained list."""
+    if not hasattr(ks, "collect_config_symlinks"):
+        return OPEN, "collect_config_symlinks missing"
+    links = ks.collect_config_symlinks()
+    argv = _argv()
+    missing = [
+        link for _target, link in links
+        if not any(
+            argv[i] == "--symlink" and argv[i + 2] == link
+            for i in range(len(argv) - 2)
+        )
+    ]
+    if missing:
+        return OPEN, f"config symlinks not re-emitted: {missing}"
+    return CLOSED, f"{len(links)} config symlink(s) auto re-emitted in argv"
+
+
 # ── V-series (verification class — file state) ─────────────────────────────────
 
 def chk_v1():
@@ -299,9 +318,10 @@ CHECKS = [
     {"id": "SOIL1", "axis": "maintainability", "gate": True, "fn": chk_soil1, "title": "SOIL dual-layout unified (shim + /store reject)"},
     # Phase 2 — KP7 durable failure artifacts (gated)
     {"id": "S10", "axis": "observability", "gate": True,  "fn": chk_s10,  "title": "durable .kart-logs/<id>/ artifacts (KP7)"},
+    # Phase 2 — KP6b symlink-bind generalization (gated)
+    {"id": "S8",  "axis": "maintainability", "gate": True,  "fn": chk_s8,   "title": "config symlinks auto re-emitted (KP6b)"},
     # Deferred by design — named, not silent
     {"id": "S7",  "axis": "observability", "gate": False, "deferred": True, "title": "opaque &&-chain failures (partial)"},
-    {"id": "S8",  "axis": "maintainability", "gate": False, "deferred": True, "title": "symlink-bind generalization (KP6b)"},
     {"id": "S13", "axis": "security",      "gate": False, "deferred": True, "title": "seccomp syscall filter — declined 2026-06-12, --new-session accepted as CVE-2017-5226 coverage"},
     {"id": "S18", "axis": "maintainability", "gate": False, "deferred": True, "title": "worktree self-management (KP8)"},
 ]

@@ -198,6 +198,38 @@ def collect_bind_mounts(root: Path | None = None) -> list[tuple[Path, Path, bool
     return sorted(mounts.values(), key=lambda t: str(t[0]))
 
 
+def collect_config_symlinks(root: Path | None = None) -> list[tuple[str, str]]:
+    """S8/KP6b: (resolved_target, configured_path) for every configured bind
+    path that is a symlink on the host.
+
+    collect_bind_mounts resolves and dedups by real path, so a symlinked
+    store never appears in the container at its configured path unless the
+    sandbox re-emits it as a --symlink. Generalizing here replaces the old
+    hand-maintained re-add list — a new symlinked store in config Just Works.
+    """
+    repo = root or willow_repo_root()
+    cfg = load_sandbox_config(repo)
+    ctx = _template_ctx(repo)
+    links: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for key in ("bind_read_only", "bind_try_read_only", "bind_read_write", "bind_try"):
+        for raw in cfg.get(key, []):
+            p = Path(_render(str(raw), ctx))
+            try:
+                if not p.is_symlink():
+                    continue
+                resolved = p.resolve()
+                if not resolved.exists():
+                    continue
+            except OSError:
+                continue
+            if str(p) in seen:
+                continue
+            seen.add(str(p))
+            links.append((str(resolved), str(p)))
+    return links
+
+
 def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> list[str]:
     args = ["bwrap"]
     if not allow_net:
@@ -246,15 +278,27 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
         if p.is_symlink():
             args += ["--symlink", target, link_path]
 
-    # ~/.willow is typically a symlink → $WILLOW_HOME. collect_bind_mounts
-    # resolves the canonical path, deduplicates it against an existing mount,
-    # and never creates the ~/.willow path in the container.
-    # Re-add it as a symlink so legacy ~/.willow paths work inside bwrap.
+    # S8/KP6b: any configured bind path that is a host symlink resolves away in
+    # collect_bind_mounts (dedup by real path), so re-emit each one as --symlink
+    # at its configured path. Generalizes the old hand-coded ~/.willow re-add —
+    # the next symlinked store added to config needs no code change.
+    _emitted_links: set[str] = set()
+    for _target, _link in collect_config_symlinks(root):
+        args += ["--symlink", _target, _link]
+        _emitted_links.add(_link)
+
+    # ~/.willow keeps one extra behavior the generic pass can't infer: on hosts
+    # where the alias does not exist at all, create it anyway so legacy
+    # ~/.willow paths work inside bwrap.
     from willow.fylgja.willow_home import willow_home, willow_home_alias
 
     _home_willow = willow_home_alias()
     _canonical_willow = willow_home()
-    if _canonical_willow.is_dir() and (_home_willow.is_symlink() or not _home_willow.exists()):
+    if (
+        str(_home_willow) not in _emitted_links
+        and _canonical_willow.is_dir()
+        and (_home_willow.is_symlink() or not _home_willow.exists())
+    ):
         args += ["--symlink", str(_canonical_willow), str(_home_willow)]
 
     # psycopg2's default socket dir is /var/run/postgresql. collect_bind_mounts
