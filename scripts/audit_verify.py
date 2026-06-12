@@ -204,6 +204,18 @@ def chk_s5():
     return CLOSED, "transcript stores ro; ~/.claude root unbound"
 
 
+def chk_soil1():
+    """SOIL layout unified: core/soil.py is the WillowStore shim and the legacy
+    '/store' addressing is hard-rejected (operator decisions 2026-06-12)."""
+    shim = _source("core/soil.py")
+    if "WillowStore" not in shim:
+        return OPEN, "core/soil.py is not the WillowStore shim"
+    ws = _source("core/willow_store.py")
+    if "Legacy '/store' collection addressing rejected" not in ws:
+        return OPEN, "WillowStore does not reject legacy '/store' names"
+    return CLOSED, "soil.py shims WillowStore; '/store' names rejected"
+
+
 # ── V-series (verification class — file state) ─────────────────────────────────
 
 def chk_v1():
@@ -269,6 +281,8 @@ CHECKS = [
     {"id": "V3",  "axis": "bookkeeping",   "gate": False, "fn": chk_v3,   "title": "repo_fleet_sweep scheduled"},
     # Phase 2 — KP4 transcript binds (gated; operator decision 2026-06-12)
     {"id": "S5",  "axis": "visibility",    "gate": True,  "fn": chk_s5,   "title": "transcript stores ro (KP4)"},
+    # SOIL layout unification (gated; operator decisions 2026-06-12)
+    {"id": "SOIL1", "axis": "maintainability", "gate": True, "fn": chk_soil1, "title": "SOIL dual-layout unified (shim + /store reject)"},
     # Deferred by design — named, not silent
     {"id": "S7",  "axis": "observability", "gate": False, "deferred": True, "title": "opaque &&-chain failures (partial)"},
     {"id": "S8",  "axis": "maintainability", "gate": False, "deferred": True, "title": "symlink-bind generalization (KP6b)"},

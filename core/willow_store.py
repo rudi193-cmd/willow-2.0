@@ -182,6 +182,14 @@ class WillowStore:
         if not clean:
             raise ValueError(f"Invalid collection name: {collection!r}")
         parts = clean.split("/")
+        # Legacy core/soil.py layout ({collection}/store.db) was merged into
+        # {collection}.db on 2026-06-12; the '/store' addressing is rejected so
+        # the dual layout cannot silently return (operator decision: hard reject).
+        if len(parts) > 1 and parts[-1] == "store" and "_archive" not in parts:
+            raise ValueError(
+                f"Legacy '/store' collection addressing rejected: {collection!r} — "
+                f"use {'/'.join(parts[:-1])!r} (SOIL layout unification 2026-06-12)"
+            )
         db_dir = self.root / Path(*parts[:-1]) if len(parts) > 1 else self.root
         db_path = (db_dir / f"{parts[-1]}.db").resolve()
 
@@ -274,9 +282,10 @@ class WillowStore:
         """Auto-write domain-based edges when a new atom is stored.
 
         Links new atom to up to 3 existing atoms with same domain in same collection.
-        Fires for any {agent}/atoms/store or {agent}/skills/store collection.
+        Fires for any {agent}/atoms or {agent}/skills collection (post-unification
+        canonical names; the legacy /store suffix is rejected by _db_path).
         """
-        if not (collection.endswith("/atoms/store") or collection.endswith("/skills/store")):
+        if not collection.endswith(("/atoms", "/skills")):
             return
         domain = new_record.get("domain")
         if not domain:
@@ -297,7 +306,7 @@ class WillowStore:
             and a.get("invalid_at") is None
         ][:3]
 
-        ns = collection.rsplit("/", 2)[0]  # "agent/atoms/store" → "agent"
+        ns = collection.rsplit("/", 1)[0]  # "agent/atoms" → "agent"
         edges_coll = f"{ns}/atoms/edges"
         now = datetime.now().isoformat()
         for peer in peers:

@@ -58,7 +58,7 @@ def _compute_affect_with_traces(session_id: str) -> tuple[str, list]:
     try:
         traces = call("store_search", {
             "app_id": _AGENT,
-            "collection": f"{_AGENT}/turns/store",
+            "collection": f"{_AGENT}/turns",
             "query": "",
             "limit": 50,
         }, timeout=5) or []
@@ -82,7 +82,7 @@ def _compute_affect(session_id: str) -> str:
 
 
 def _write_failure_atom(session_id: str, traces: list) -> None:
-    """Write failure atom to hanuman/atoms/store. Only called for friction sessions."""
+    """Write failure atom to hanuman/atoms. Only called for friction sessions."""
     if call is None:
         return
     pairs = Counter((t.get("tool", ""), t.get("target", "")) for t in traces)
@@ -92,7 +92,7 @@ def _write_failure_atom(session_id: str, traces: list) -> None:
     try:
         call("store_put", {
             "app_id": _AGENT,
-            "collection": f"{_AGENT}/atoms/store",
+            "collection": f"{_AGENT}/atoms",
             "record": {
                 "id": f"failure-{session_id[:8]}",
                 "type": "failure",
@@ -135,7 +135,7 @@ def _write_reflection_atom(session_id: str, affect: str, traces: list) -> None:
             try:
                 call("store_put", {
                     "app_id": _AGENT,
-                    "collection": f"{_AGENT}/atoms/store",
+                    "collection": f"{_AGENT}/atoms",
                     "record": {
                         "id": f"reflection-{session_id[:8]}",
                         "type": "reflection",
@@ -160,7 +160,7 @@ def _write_reflection_atom(session_id: str, affect: str, traces: list) -> None:
     try:
         call("store_put", {
             "app_id": _AGENT,
-            "collection": f"{_AGENT}/atoms/store",
+            "collection": f"{_AGENT}/atoms",
             "record": {
                 "id": f"reflection-pending-{session_id[:8]}",
                 "type": "reflection_pending",
@@ -202,7 +202,7 @@ def _write_session_composite(session_id: str) -> None:
         }
         call("store_put", {
             "app_id": _AGENT,
-            "collection": f"{_AGENT}/sessions/store",
+            "collection": f"{_AGENT}/sessions",
             "record": record,
         }, timeout=4)
     except Exception:
