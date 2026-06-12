@@ -19,12 +19,13 @@ def load_annotations():
 
 def collect_paths(config):
     exclude = set(config.get("exclude", []))
+    root_only_exclude = set(config.get("root_only_exclude", []))
     expand = set(config.get("expand", []))
     paths = {}
 
     for entry in sorted(REPO_ROOT.iterdir()):
         name = entry.name
-        if name in exclude:
+        if name in exclude or name in root_only_exclude:
             continue
         rel = name
         paths[rel] = entry.is_dir()
@@ -99,4 +100,12 @@ def main():
 
 
 if __name__ == "__main__":
+    import os
+
+    # Finding #16 (SYSTEM_AUDIT_2026-06-10): under the Kart bwrap sandbox this
+    # script sees only the sandbox's view of the tree and would delete INDEX
+    # rows for host-only files. Never regenerate from inside the sandbox.
+    if os.environ.get("WILLOW_IN_KART", "").strip():
+        print("gen_index: skipped inside Kart sandbox (finding #16)")
+        raise SystemExit(0)
     main()

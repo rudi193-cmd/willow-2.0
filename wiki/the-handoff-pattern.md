@@ -48,10 +48,10 @@ Partial fix: this wiki. Read `what-is-willow.md` + `the-fleet.md` before the han
 
 ## What survives compression
 
-- Ratifications ("Sean said yes to X")  
-- KB atom ids  
-- Paths, SHAs, fork ids  
-- Explicit "do not touch" flags  
+- Ratifications ("USER said yes to X")
+- KB atom ids
+- Paths, SHAs, fork ids
+- Explicit "do not touch" flags
 
 What dies: tone, nuance, the reasoning between bullets. Put reasoning in KB atoms.
 

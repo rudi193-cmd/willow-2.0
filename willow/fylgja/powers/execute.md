@@ -3,7 +3,7 @@
 # power: execute
 b17: FYLP3 · ΔΣ=42
 
-**When:** Written plan exists and Sean authorized start.
+**When:** Written plan exists and USER authorized start.
 
 1. Do **next** incomplete step only.
 2. Report at **scope boundary** (plan done, phase done, or blocker) — not after every micro-step.

@@ -88,13 +88,19 @@ else
   _warn "no .willow/active-agent (run: ./willow agents active willow)"
 fi
 
-# Cursor hooks symlink (repo)
-if [[ -L .cursor/hooks.json ]]; then
-  _ok ".cursor/hooks.json is symlink"
+# Cursor hooks — committed real file or legacy symlink to canonical template
+if [[ -f .cursor/hooks.json && ! -L .cursor/hooks.json && -f willow/fylgja/config/cursor-hooks.json ]]; then
+  if cmp -s .cursor/hooks.json willow/fylgja/config/cursor-hooks.json; then
+    _ok ".cursor/hooks.json matches canonical template"
+  else
+    _warn ".cursor/hooks.json stale — run: python3 scripts/sync_remote_cursor_surface.py"
+  fi
+elif [[ -L .cursor/hooks.json ]]; then
+  _ok ".cursor/hooks.json is legacy symlink"
 elif [[ -f .cursor/hooks.json ]]; then
-  _warn ".cursor/hooks.json is file not symlink"
+  _warn ".cursor/hooks.json present but canonical template missing"
 else
-  _warn ".cursor/hooks.json missing — install --ide cursor"
+  _warn ".cursor/hooks.json missing — run: python3 scripts/sync_remote_cursor_surface.py"
 fi
 
 echo "[verify_layout] fail=${fail} warn=${warn}"

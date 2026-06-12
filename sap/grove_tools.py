@@ -12,7 +12,6 @@ import os
 import socket
 import threading
 import asyncio
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -42,8 +41,30 @@ def set_main_loop(loop: asyncio.AbstractEventLoop) -> None:
     _main_loop = loop
 
 
+def _relay_human_required(payload_str: str) -> None:
+    """Forward a willow_human_required pg_notify to the Grove willow channel."""
+    if not _GROVE_AVAILABLE:
+        return
+    import json as _json
+    try:
+        item = _json.loads(payload_str)
+    except Exception:
+        return
+    kind = item.get("kind", "")
+    title = item.get("title", "")
+    priority = item.get("priority", "normal")
+    item_id = item.get("id", "?")
+    msg = f"[human-required:{priority}] {kind} · {title} (id={item_id})"
+    try:
+        conn = db.get_connection()
+        channel = db.get_or_create_channel(conn, "willow")
+        db.send_message(conn, channel["id"], "willow", msg)
+    except Exception:
+        pass
+
+
 def pg_notify_thread() -> None:
-    """Dedicated Postgres LISTEN thread for grove channel notifications."""
+    """Dedicated Postgres LISTEN thread for grove channel and human-required notifications."""
     if not _GROVE_AVAILABLE:
         return
     import psycopg2
@@ -63,6 +84,7 @@ def pg_notify_thread() -> None:
             cur = conn.cursor()
             cur.execute("SET search_path = grove, public")
             cur.execute("LISTEN grove_channel")
+            cur.execute("LISTEN willow_human_required")
             while True:
                 ready = _select.select([conn], [], [], 5.0)
                 if not ready[0]:
@@ -70,6 +92,9 @@ def pg_notify_thread() -> None:
                 conn.poll()
                 while conn.notifies:
                     n = conn.notifies.pop(0)
+                    if n.channel == "willow_human_required":
+                        _relay_human_required(n.payload)
+                        continue
                     try:
                         channel_id = int(n.payload)
                     except ValueError:
@@ -221,7 +246,9 @@ def register(mcp: "FastMCP") -> None:
         if not _GROVE_AVAILABLE:
             return _unavailable()
         from u2u.identity import Identity
-        identity_path = Path.home() / ".willow" / "grove_identity.json"
+        from willow.fylgja.willow_home import willow_home
+
+        identity_path = willow_home() / "grove_identity.json"
         identity = Identity.load_or_generate(identity_path)
         name = os.getenv("GROVE_NAME", os.getenv("USER", "me"))
         port = int(os.getenv("GROVE_PORT", "8550"))

@@ -19,20 +19,28 @@ from willow.fylgja.project_env import (
     repo_root,
     write_active_agent,
 )
+from willow.fylgja.willow_home import (
+    config_mode,
+    fleet_home,
+    settings_template_path,
+    willow_home_alias,
+)
 
 _PACKAGE_ROOT = Path(__file__).resolve().parent.parent.parent
 _ALL_IDES = ("cursor", "claude", "codex")
 
 
 def _default_paths(repo: Path) -> dict[str, str]:
-    home = Path.home()
+    home_dir = Path.home()
+    wh = fleet_home(repo)
     return {
         "REPO_ROOT": str(repo.resolve()),
         "AGENT_NAME": "",  # filled per call
-        "GROVE_ROOT": str(home / "github" / "safe-app-willow-grove"),
-        "SAFE_ROOT": str(home / "github" / "SAFE" / "Applications"),
-        "AGENTS_ROOT": str(home / "github" / "SAFE" / "Agents"),
-        "WILLOW_HOME": str(home / "github" / ".willow"),
+        "GROVE_ROOT": str(home_dir / "github" / "safe-app-willow-grove"),
+        "SAFE_ROOT": str(home_dir / "github" / "SAFE" / "Applications"),
+        "AGENTS_ROOT": str(home_dir / "github" / "SAFE" / "Agents"),
+        "WILLOW_HOME": str(wh),
+        "WILLOW_CONFIG_MODE": config_mode(repo),
     }
 
 
@@ -90,16 +98,29 @@ def render_mcp_config(agent: str, package_root: Path | None = None) -> dict:
         willow_env["WILLOW_AGENT_NAME"] = agent
         willow_env["GROVE_SENDER"] = agent
         willow_env["GROVE_NAME"] = agent
+        willow_env["WILLOW_HOME"] = values["WILLOW_HOME"]
+        willow_env["WILLOW_CONFIG_MODE"] = values["WILLOW_CONFIG_MODE"]
 
     # Preserve operator secrets and extra env from existing MCP configs
     dest = agent_config_dir(root, agent) / "mcp.json"
     preserve_keys = ("GROQ_API_KEY", "WILLOW_INFERENCE_PROVIDER", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY")
-    for path in (dest, root / ".mcp.json", Path.home() / ".willow" / "mcp.json"):
+    home_mcp = fleet_home(root) / "mcp" / "willow-2.0.mcp.json"
+    merged_env: dict[str, str] = {}
+    for path in (dest, root / ".mcp.json", home_mcp, willow_home_alias() / "mcp.json"):
         for k, v in _merge_existing_mcp_env(path).items():
             if not isinstance(v, str):
                 continue
+            if k in merged_env:
+                continue
             if k in preserve_keys or not k.startswith("WILLOW_"):
-                config["mcpServers"]["willow"]["env"][k] = v
+                merged_env[k] = v
+    if isinstance(willow_env, dict):
+        willow_env.update(merged_env)
+        willow_env["WILLOW_AGENT_NAME"] = agent
+        willow_env["GROVE_SENDER"] = agent
+        willow_env["GROVE_NAME"] = agent
+        willow_env.setdefault("WILLOW_HOME", values["WILLOW_HOME"])
+        willow_env.setdefault("WILLOW_CONFIG_MODE", values["WILLOW_CONFIG_MODE"])
 
     # Merge non-willow servers from an existing root .mcp.json file
     root_mcp = root / ".mcp.json"
@@ -128,11 +149,18 @@ def write_agent_identity(agent: str, package_root: Path, dry_run: bool) -> None:
 
 def write_agent_mcp(agent: str, package_root: Path, dry_run: bool) -> None:
     cfg = agent_config_dir(package_root, agent)
-    _write_json(cfg / "mcp.json", render_mcp_config(agent, package_root), dry_run)
+    config = render_mcp_config(agent, package_root)
+    _write_json(cfg / "mcp.json", config, dry_run)
+    export_home_mcp(agent, package_root, config, dry_run)
 
 
-def fleet_home() -> Path:
-    return Path(os.environ.get("WILLOW_HOME", str(Path.home() / "github" / ".willow")))
+def export_home_mcp(
+    agent: str, package_root: Path, config: dict | None, dry_run: bool
+) -> None:
+    """Mirror rendered MCP JSON to $WILLOW_HOME/mcp/willow-2.0.mcp.json."""
+    dest = fleet_home(package_root) / "mcp" / "willow-2.0.mcp.json"
+    payload = config if config is not None else render_mcp_config(agent, package_root)
+    _write_json(dest, payload, dry_run)
 
 
 def canonical_local_settings(agent: str) -> Path:
@@ -143,7 +171,7 @@ def canonical_local_settings(agent: str) -> Path:
 def ensure_canonical_local_settings(agent: str, package_root: Path, dry_run: bool) -> Path:
     """Create or patch WILLOW_HOME/agents/<agent>/settings.local.json from repo template."""
     canon = canonical_local_settings(agent)
-    template = package_root / "willow" / "fylgja" / "config" / "settings.local.json"
+    template = settings_template_path(package_root)
     if dry_run:
         print(f"[install_project] Would ensure canonical {canon}")
         return canon
@@ -185,32 +213,24 @@ def _symlink_to(link: Path, target: Path, dry_run: bool) -> None:
     print(f"[install_project] Symlinked {link} → {dest}")
 
 
+def ensure_remote_surfaces(package_root: Path, dry_run: bool) -> None:
+    """Materialize committed discovery files for remote/cloud agents."""
+    script = package_root / "scripts" / "sync_remote_cursor_surface.py"
+    if dry_run:
+        print(f"[install_project] Would run {script.name}")
+        return
+    import subprocess
+    import sys
+
+    subprocess.run([sys.executable, str(script)], cwd=str(package_root), check=True)
+
+
 def install_cursor(agent: str, package_root: Path, dry_run: bool) -> None:
-    _symlink_to(
-        package_root / ".cursor" / "hooks.json",
-        Path("..") / "willow" / "fylgja" / "config" / "cursor-hooks.json",
-        dry_run,
-    )
-    _symlink_to(
-        package_root / ".cursor" / "cli.json",
-        Path("..") / "willow" / "fylgja" / "config" / "cursor-cli.json",
-        dry_run,
-    )
-    _symlink_to(
-        package_root / ".cursor" / "mcp.json",
-        Path("..") / "agents" / agent / "config" / "mcp.json",
-        dry_run,
-    )
     canon = ensure_canonical_local_settings(agent, package_root, dry_run)
     _symlink_to(package_root / ".cursor" / "settings.local.json", canon, dry_run)
 
 
 def install_claude_project(agent: str, package_root: Path, dry_run: bool) -> None:
-    _symlink_to(
-        package_root / ".claude" / "settings.json",
-        Path("..") / "willow" / "fylgja" / "config" / "claude-settings.json",
-        dry_run,
-    )
     canon = ensure_canonical_local_settings(agent, package_root, dry_run)
     _symlink_to(package_root / ".claude" / "settings.local.json", canon, dry_run)
 
@@ -293,6 +313,13 @@ def install_codex(agent: str, package_root: Path, dry_run: bool) -> None:
     tables = _parse_toml_tables(existing)
     frag_tables = _parse_toml_tables(fragment)
     tables.update(frag_tables)
+    env_key = "mcp_servers.willow.env"
+    if env_key in tables:
+        env_tbl = tables[env_key]
+        if isinstance(env_tbl, dict):
+            env_tbl["GROVE_SENDER"] = agent
+            env_tbl["GROVE_NAME"] = agent
+            env_tbl["WILLOW_AGENT_NAME"] = agent
     merged = _dump_toml_tables(tables)
 
     if dry_run:
@@ -331,6 +358,7 @@ def install_project(
     write_agent_identity(agent, root, dry_run)
     write_agent_mcp(agent, root, dry_run)
     install_root_mcp_symlink(agent, root, dry_run)
+    ensure_remote_surfaces(root, dry_run)
 
     if "cursor" in selected:
         install_cursor(agent, root, dry_run)

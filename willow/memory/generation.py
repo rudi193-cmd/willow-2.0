@@ -33,7 +33,7 @@ Usage:
     # Write a new fact
     fact_id = gs.put_fact({
         "id": "my-fact-123",
-        "title": "Sean prefers Postgres over SQLite for production",
+        "title": "USER prefers Postgres over SQLite for production",
         "content": "...",
         "type": "preference",
         "importance": 4,

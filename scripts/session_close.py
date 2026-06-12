@@ -14,9 +14,14 @@ import sqlite3
 import sys
 from pathlib import Path
 
+_REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO))
+
+from willow.fylgja.willow_home import willow_home
+
 _REPO_SLUG   = str(Path(__file__).parent.resolve()).replace("/", "-").replace(".", "-")
 SESSIONS_DIR = Path.home() / ".claude" / "projects" / _REPO_SLUG
-DB_PATH      = Path.home() / ".willow" / "willow-2.0.db"
+DB_PATH      = willow_home(_REPO) / "willow-2.0.db"
 
 
 def latest_session_id() -> str | None:
@@ -110,7 +115,63 @@ def write_summary(conn: sqlite3.Connection, session_id: str, summary: str) -> No
     conn.commit()
 
 
+REQUIRED_HANDOFF_HEADERS = (
+    "## What I Now Understand",
+    "## Open Threads",
+    "## What We Agreed On",
+    "## 17 Questions",
+    "## Agent Notes for Human",
+    "## Human Notes to Agent",
+    "## Machine block",
+)
+
+
+def check_handoff_completeness(agent: str) -> tuple[bool, list[str]]:
+    """Validate the newest handoff for the agent against the v2 schema.
+
+    Gate for the close sequence (work order, rev 5): a handoff with no open
+    threads section or a broken schema never surfaces via handoff_latest and
+    causes rediscovery loops next session.
+    """
+    import re
+
+    hd = willow_home(_REPO) / "handoffs" / agent
+    files = sorted(hd.glob("session_handoff-*.md"),
+                   key=lambda p: p.stat().st_mtime, reverse=True)
+    if not files:
+        return False, [f"no handoff files under {hd}"]
+    text = files[0].read_text(encoding="utf-8")
+    problems = []
+    if "format: v2" not in text:
+        problems.append("frontmatter missing 'format: v2' (handoff_latest will not surface it)")
+    if not re.search(r"^session:", text, re.M):
+        problems.append("frontmatter missing 'session:'")
+    for header in REQUIRED_HANDOFF_HEADERS:
+        if header not in text:
+            problems.append(f"missing section {header!r}")
+    if not re.search(r"^Q17:", text, re.M):
+        problems.append("missing 'Q17:' next-bite line")
+    threads = re.split(r"^## Open Threads\s*$", text, maxsplit=1, flags=re.M)
+    if len(threads) == 2:
+        body = threads[1].split("\n## ", 1)[0]
+        if not re.search(r"^\s*-\s+\S", body, re.M):
+            problems.append("'## Open Threads' has no bullets — record threads or an explicit 'none'")
+    return (not problems), [f"{files[0].name}: {p}" for p in problems]
+
+
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "--check-handoff":
+        import os
+        agent = sys.argv[2] if len(sys.argv) > 2 else os.environ.get("WILLOW_AGENT_NAME", "willow")
+        ok, problems = check_handoff_completeness(agent)
+        if ok:
+            print(f"handoff gate: OK ({agent})")
+            return 0
+        print(f"handoff gate: REJECT ({agent})", file=sys.stderr)
+        for p in problems:
+            print(f"  - {p}", file=sys.stderr)
+        return 2
+
     if not DB_PATH.exists():
         print("session_close.py: DB not found — skipping", file=sys.stderr)
         return 0

@@ -20,6 +20,7 @@ from willow.fylgja.events.stop import (
     _write_reflection_atom,
     _promote_session_to_kb,
     _write_stack_snapshot,
+    _refresh_projects_atom,
     _drain_kart_queue,
     call,
 )
@@ -43,7 +44,7 @@ try:
 except Exception:
     pass
 
-# Promote session to KB (3b inference + kb_ingest)
+# Promote session summary (friction → intake; clean + rubric pass → KB)
 try:
     _promote_session_to_kb(session_id, affect, session_traces)
 except Exception:
@@ -62,6 +63,12 @@ try:
 except Exception:
     pass
 
+# Refresh current-projects KB atom — keeps the responder grounded
+try:
+    _refresh_projects_atom(session_id)
+except Exception:
+    pass
+
 # Drain pending Kart tasks
 try:
     _drain_kart_queue()
@@ -71,7 +78,9 @@ except Exception:
 # Timing log
 _dur_ms = int((_time.monotonic() - _t0) * 1000)
 try:
-    _log_dir = Path.home() / ".willow" / "logs"
+    from willow.fylgja.willow_home import willow_home
+
+    _log_dir = willow_home() / "logs"
     _log_dir.mkdir(parents=True, exist_ok=True)
     with open(_log_dir / "hook_timing.jsonl", "a") as _f:
         _f.write(json.dumps({

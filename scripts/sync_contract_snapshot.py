@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Generate docs/CONTRACT.md from private willow.md (willow-config).
+"""Generate docs/CONTRACT.md from the public root contract.
 
-Run from repo root after editing the fleet contract:
+Run from repo root after editing the public fleet contract:
 
     python3 scripts/sync_contract_snapshot.py
 
 Source resolution order:
-  1. WILLOW_HOME/willow.md
-  2. ~/github/.willow/willow.md
-  3. repo willow.md (symlink OK)
+  1. repo willow.md
+  2. WILLOW_HOME/willow.md
+  3. resolved willow_home()/willow.md
 """
 from __future__ import annotations
 
@@ -19,9 +19,20 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 OUT_PATH = REPO_ROOT / "docs" / "CONTRACT.md"
+sys.path.insert(0, str(REPO_ROOT))
+from willow.fylgja.willow_home import willow_home
 
 # Headings copied verbatim from willow.md (public-safe sections only).
 SECTION_HEADINGS = (
+    "## Boot Modes",
+    "## Public-Fallback Boot",
+    "## Private-Config Overlay",
+    "## Identity",
+    "## Operating Rules",
+    "## Tooling Surface",
+    "## Config Layout",
+    "## What Does Not Travel Publicly",
+    "## Canonical Principle",
     "## Glossary",
     "## Constraints",
     "## Boot sequence",
@@ -38,9 +49,9 @@ SECTION_HEADINGS = (
 def _resolve_willow_md() -> Path | None:
     env_home = os.environ.get("WILLOW_HOME", "").strip()
     candidates = [
-        Path(env_home) / "willow.md" if env_home else None,
-        Path.home() / "github" / ".willow" / "willow.md",
         REPO_ROOT / "willow.md",
+        Path(env_home) / "willow.md" if env_home else None,
+        willow_home(REPO_ROOT) / "willow.md",
     ]
     for path in candidates:
         if path and path.is_file():
@@ -104,9 +115,9 @@ def _banner(source: Path) -> str:
 b17: PUBCNT · ΔΣ=42
 
 > **Auto-generated** from `{display}` on {today}.
-> Run `python3 scripts/sync_contract_snapshot.py` after editing the private contract.
+> Run `python3 scripts/sync_contract_snapshot.py` after editing the public root contract.
 >
-> This file is a **redacted snapshot** for GitHub-only clones. Machine-specific paths,
+> This file is a public snapshot for GitHub-only clones. Machine-specific paths,
 > persona tables, and operator secrets stay in **willow-config** — see [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md).
 
 ---
@@ -134,7 +145,7 @@ def main() -> int:
 
 ---
 
-*Public snapshot · canonical contract lives in willow-config · ΔΣ=42*
+*Public snapshot · canonical contract lives at repo root · ΔΣ=42*
 """
     OUT_PATH.write_text(
         _banner(source) + _apply_link_aliases(_fix_repo_root_links(body)) + footer,

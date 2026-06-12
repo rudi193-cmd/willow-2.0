@@ -3,6 +3,7 @@
   "_source": "sap/sap_mcp.py + sap/unified_mcp.py",
 
   "groups": {
+    "willow":     "Canonical facade — intent-shaped front doors for agents",
     "kb":         "Knowledge Base — long-term atoms in Postgres",
     "soil":       "SOIL Store — structured local records on disk",
     "fleet":      "Fleet — health, status, registry, reload",
@@ -31,6 +32,7 @@
     "cmb":        "CMB — compact message bus atoms",
     "context":    "Context — compact context summaries in DB",
     "hook":       "Hooks — hook registry and execution log",
+    "human":      "Human — consent queue, attestation, and operator gates",
     "routing":    "Routing — routing decision log",
     "session":    "Session — session index and messages",
     "pg":         "Postgres graph — durable KB edges (distinct from SOIL)",
@@ -38,6 +40,19 @@
   },
 
   "tools": {
+    "willow_status":       {"group": "willow", "tier": "minimal", "description": "Facade: answer 'is Willow healthy?' via fleet/app/identity/diagnostic status routes."},
+    "willow_attention":    {"group": "willow", "tier": "minimal", "description": "Facade: desk cockpit — inbox, open flags, nest backlog, kart queue, dream overdue."},
+    "willow_find":         {"group": "willow", "tier": "minimal", "description": "Facade: find the thing across KB, SOIL state, handoffs, sessions, code, messages, external sources, or all."},
+    "willow_remember":     {"group": "willow", "tier": "minimal", "description": "Facade: store an observation, note, task, decision, context, or journal entry in the right backend lane."},
+    "willow_run":          {"group": "willow", "tier": "minimal", "description": "Facade: submit, run, list, or inspect local work through Kart."},
+    "willow_delegate":     {"group": "willow", "tier": "core", "description": "Facade: route or dispatch work to another reasoning agent."},
+    "willow_work":         {"group": "willow", "tier": "core", "description": "Facade: create, inspect, list, or log a bounded unit of work."},
+    "willow_message":      {"group": "willow", "tier": "core", "description": "Facade: read, search, or send Grove messages."},
+    "willow_app":          {"group": "willow", "tier": "core", "description": "Facade: inspect SAFE app registration and manifest state."},
+    "willow_external":     {"group": "willow", "tier": "core", "description": "Facade: ask, search, or verify cited external sources through Jeles/source-trail."},
+    "willow_web_search":   {"group": "willow", "tier": "core", "description": "Open web search via DuckDuckGo HTML. Use for current events, tech news, and general queries the institutional Jeles sources cannot cover."},
+    "willow_code":         {"group": "willow", "tier": "core", "description": "Facade: search or suggest code context through the code graph."},
+
     "kb_search":          {"group": "kb",     "description": "Search KB atoms by title/content. Use semantic=true for embedding-based retrieval (nomic-embed). Depth limit 3 before asking user."},
     "kb_get":             {"group": "kb",     "description": "Fetch a single KB atom by ID."},
     "kb_ingest":          {"group": "kb",     "description": "Write a new atom to the KB. Requires title, summary, category, project."},
@@ -88,6 +103,7 @@
 
     "skill_list":         {"group": "skill",  "description": "List available Fylgja skills."},
     "skill_load":         {"group": "skill",  "description": "Load a skill by name — returns full skill content."},
+    "skill_mastery":      {"group": "skill",  "description": "Bayesian-Knowledge-Tracing mastery for a skill, or the N weakest skills."},
     "skill_put":          {"group": "skill",  "description": "Register or update a skill in the skill registry."},
 
     "mem_check":          {"group": "mem",    "description": "Gate check — validate a memory candidate before writing."},
@@ -113,6 +129,7 @@
     "tension_scan":       {"group": "soul",   "description": "Scan KB atoms for semantic tensions or redundancies via nomic-embed + mistral:7b. write_kb=true saves findings as a tension atom."},
     "dream_check":        {"group": "soul",   "description": "Check whether AutoDream synthesis conditions are met."},
     "dream_run":          {"group": "soul",   "description": "Run AutoDream — tension scan → pattern synthesis via mistral:7b → dream KB atom. Call dream_check first unless force=true."},
+    "dream_schedule":     {"group": "soul",   "description": "Queue auto_dream.py as a Kart task. check_first skips unless dream_check says should_dream; call kart_task_run after."},
 
     "nest_scan":          {"group": "nest",   "description": "Scan the Nest intake queue for pending items."},
     "nest_queue":         {"group": "nest",   "description": "Add an item to the Nest intake queue."},
@@ -188,9 +205,16 @@
     "hook_list":          {"group": "hook",   "tier": "extended", "description": "List registered hooks from hook_registry. active_only=True filters to enabled hooks."},
     "hook_log_read":      {"group": "hook",   "tier": "extended", "description": "Read hook execution log, optionally filtered by hook_name."},
 
+    "human_attestation_create":      {"group": "human", "tier": "standard", "description": "Create a durable human attestation, rejection, or change-request record."},
+    "human_attestation_list":        {"group": "human", "tier": "minimal", "description": "List durable human attestation records, optionally filtered by subject."},
+    "human_required_queue_enqueue":  {"group": "human", "tier": "standard", "description": "Enqueue work that must pause automation until a human acts."},
+    "human_required_queue_list":     {"group": "human", "tier": "minimal", "description": "List human-required queue items: consent, attestation, review, overload, onboarding."},
+    "human_required_queue_resolve":  {"group": "human", "tier": "standard", "description": "Resolve, dismiss, or acknowledge a human-required queue item."},
+
     "intake_list":        {"group": "intake", "tier": "standard", "description": "List pending (not yet promoted) intake records for an agent."},
     "intake_promote":     {"group": "intake", "tier": "standard", "description": "Run promote pass on pending intake — routes records to Jeles/schema."},
     "intake_schedule":    {"group": "intake", "tier": "standard", "description": "Queue promote_intake as a Kart task. Returns task_id; call kart_task_run after."},
+    "intake_schedule_fleet": {"group": "intake", "tier": "standard", "description": "Queue fleet-wide promote_intake (--fleet --all-files) as a Kart task. Returns task_id; call kart_task_run after."},
     "intake_write":       {"group": "intake", "tier": "standard", "description": "Write one annotated record to the unified intake layer."},
 
     "journal_read":       {"group": "journal","tier": "standard", "description": "Read journal entries. Filter by agent and/or session_id."},

@@ -184,7 +184,7 @@ def mark_session_clean(turn_count: int = 0) -> None:
 
 def _write_session_composite(session_id: str) -> None:
     """Write session composite atom. Fast — no LLM, pure store_put.
-    next_bite is populated later by the /handoff skill via store_update.
+    next_bite is populated later by the /shutdown skill (handoff step) via store_update.
     """
     if call is None:
         return
@@ -329,8 +329,8 @@ def _infer_3b_summarize(content: str, timeout: int = 10) -> dict:
 
 
 def _promote_session_to_kb(session_id: str, affect: str, session_traces: list) -> None:
-    """Annotate session with llama3.2:3b and write one atom to the knowledge table."""
-    if call is None or not session_traces:
+    """Summarize session traces; friction → intake, rubric-passing clean → KB."""
+    if not session_traces:
         return
 
     trace_text = " | ".join(
@@ -353,22 +353,116 @@ def _promote_session_to_kb(session_id: str, affect: str, session_traces: list) -
     if not one_line:
         one_line = trace_text[:120]
 
+    title = f"session {session_id[:8]} · {affect}"
     tags = [affect, "session", _AGENT, f"session:{session_id[:8]}"]
-    confidence = 0.9 if affect == "clean" else 0.7
+    confidence = 0.9 if affect == "clean" else 0.65
+
+    from core.kb_quality import route_stop_session_memory
+
+    destination = route_stop_session_memory(
+        affect,
+        title=title,
+        summary=one_line,
+        source_id=session_id,
+        confidence=confidence,
+    )
+
+    payload = {
+        "title": title,
+        "summary": one_line,
+        "source_type": "hook_stop",
+        "source_id": session_id,
+        "category": "session",
+        "keywords": keywords,
+        "tags": tags,
+        "tier": "frontier",
+        "confidence": confidence,
+    }
 
     try:
-        call("kb_ingest", {
-            "app_id":      _AGENT,
-            "title":       f"session {session_id[:8]} · {affect}",
-            "summary":     one_line,
-            "source_type": "hook_stop",
-            "source_id":   session_id,
-            "category":    "session",
-            "keywords":    keywords,
-            "tags":        tags,
-            "tier":        "observed",
-            "confidence":  confidence,
-        }, timeout=12)
+        if destination == "kb" and call is not None:
+            call("kb_ingest", {"app_id": _AGENT, **payload}, timeout=12)
+            return
+    except Exception:
+        pass
+
+    try:
+        if call is not None:
+            call("intake_write", {
+                "app_id": _AGENT,
+                "title": title,
+                "content": one_line,
+                "source": f"hook_stop:{affect}:{session_id}",
+                "tier": "frontier",
+                "confidence": confidence,
+                "keywords": keywords,
+                "tags": tags,
+            }, timeout=10)
+            return
+    except Exception:
+        pass
+
+    try:
+        from core.intake import write as intake_write
+
+        intake_write(
+            content=one_line,
+            source=f"hook_stop:{affect}:{session_id}",
+            agent=_AGENT,
+            tier="frontier",
+            confidence=confidence,
+            keywords=keywords,
+            tags=tags,
+            title=title,
+            extra={"session_id": session_id, "affect": affect},
+        )
+    except Exception:
+        pass
+
+
+def _refresh_projects_atom(session_id: str) -> None:
+    """Write/refresh the canonical current-projects KB atom at every session end.
+
+    Gives the Discord responder accurate, vocabulary-matched context so it
+    stops routing 'what are the open projects' to 3b with no KB grounding.
+    """
+    if call is None:
+        return
+    try:
+        h = call("handoff_latest", {"app_id": _AGENT}, timeout=8)
+        if not isinstance(h, dict):
+            return
+        threads = h.get("open_threads") or []
+        next_bite = h.get("next_bite", "")
+        agreements = h.get("agreements") or []
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        parts = [f"Willow 2.0 open projects as of {date}:\n"]
+        for t in threads[:8]:
+            parts.append(f"- {t}")
+        if next_bite:
+            parts.append(f"\nNext: {next_bite}")
+        if agreements and agreements[0]:
+            parts.append(f"\nRecent decision: {str(agreements[0])[:200]}")
+
+        content = "\n".join(parts).strip()
+        if not content:
+            return
+
+        call("intake_write", {
+            "app_id": _AGENT,
+            "title": f"Current open projects — Willow 2.0 fleet ({date})",
+            "content": content,
+            "source": f"stop_hook:session:{session_id[:8]}",
+            "tier": "canonical",
+            "confidence": 0.95,
+            "category": "project-state",
+            "keywords": [
+                "open projects", "what are you working on", "current work",
+                "active projects", "willow projects", "what is willow working on",
+            ],
+            "tags": ["projects", "fleet-state", "responder-grounding", "auto-refresh"],
+        }, timeout=10)
     except Exception:
         pass
 
@@ -534,6 +628,14 @@ def main():
     except Exception:
         pass
 
+    # BKT: record a successful shutdown outcome — one real data point per session.
+    # Wrapped so any import or SOIL failure never blocks the Stop hook.
+    try:
+        from core import skill_mastery as _sm
+        _sm.record("shutdown", correct=True)
+    except Exception:
+        pass
+
     # Fire slow path (affect tagging, 3b KB annotation, stack snapshot,
     # handoff_rebuild, kart drain) as a detached background process.
     _launch_slow_path(session_id)
@@ -541,7 +643,9 @@ def main():
     # Hook timing log
     _dur_ms = int((_time.monotonic() - _t0) * 1000)
     try:
-        _log_dir = Path.home() / ".willow" / "logs"
+        from willow.fylgja.willow_home import willow_home
+
+        _log_dir = willow_home() / "logs"
         _log_dir.mkdir(parents=True, exist_ok=True)
         with open(_log_dir / "hook_timing.jsonl", "a") as _f:
             import json as _json

@@ -32,7 +32,7 @@ Trust tiers and fleet registry: `core/safe_agents.py`.
 Sync all fleet manifests:
 
 ```bash
-./willow agents sync-manifests
+./willow.sh agents sync-manifests
 # or: python3 scripts/sync_safe_agent_manifests.py
 ```
 

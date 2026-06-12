@@ -5,9 +5,15 @@ init_db.py — willow-2.0 sandbox DB (records/notes/sessions schema)
 Run once: python3 init_db.py
 """
 import sqlite3
+import sys
 from pathlib import Path
 
-DB_PATH = Path.home() / ".willow" / "willow-2.0.db"
+_REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO))
+
+from willow.fylgja.willow_home import willow_home
+
+DB_PATH = willow_home(_REPO) / "willow-2.0.db"
 
 def init():
     conn = sqlite3.connect(str(DB_PATH))
@@ -52,4 +58,5 @@ CREATE TABLE IF NOT EXISTS seed_sections (
     print(f"DB ready: {DB_PATH}")
 
 if __name__ == "__main__":
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     init()

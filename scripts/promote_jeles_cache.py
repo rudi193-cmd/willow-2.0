@@ -30,9 +30,10 @@ sys.path.insert(0, str(_REPO_ROOT))
 
 from core.agent_identity import require_agent_name
 from core.pg_bridge import PgBridge
+from willow.fylgja.willow_home import willow_home
 
 AGENT      = require_agent_name()
-CACHE_DIR  = Path.home() / ".willow" / "jeles_cache"
+CACHE_DIR  = willow_home(_REPO_ROOT) / "jeles_cache"
 META_FILE  = CACHE_DIR / ".meta.json"
 
 _HIGH_CONFIDENCE_THRESHOLD = 0.90   # promote single-hit if confidence >= this

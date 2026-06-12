@@ -34,6 +34,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from willow.fylgja.willow_home import willow_home
 from sap.core.gate import authorized
 from sap.core.context import assemble
 from sap.core.deliver import to_string
@@ -266,7 +267,7 @@ def _load_creds() -> dict:
     creds: dict = {}
     paths = (
         CREDENTIALS_PATH,
-        Path.home() / ".willow" / "secrets" / "credentials.json",
+        willow_home() / "secrets" / "credentials.json",
     )
     for path in paths:
         try:
@@ -377,8 +378,8 @@ _DEFAULT_CTX_CHARS = 24_000
 _OLLAMA_CACHE: dict[str, tuple[str, float]] = {}
 _CACHE_TTL = 300  # seconds
 
-# Persistent cache (L2): ~/.willow/ollama_cache.db
-_CACHE_DB = Path.home() / ".willow" / "ollama_cache.db"
+# Persistent cache (L2): $WILLOW_HOME/ollama_cache.db
+_CACHE_DB = willow_home() / "ollama_cache.db"
 _cache_db_conn: Optional[sqlite3.Connection] = None
 _cache_db_lock = __import__("threading").Lock()
 

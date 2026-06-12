@@ -9,7 +9,7 @@ Environment=WILLOW_ROOT=%h/github/willow-2.0
 Environment=WILLOW_PG_DB=willow_20
 Environment=WILLOW_PG_USER=%u
 Environment=PYTHONPATH=%h/github/willow-2.0
-ExecStart=%h/github/willow-2.0/.venv-dev/bin/python3 %h/github/willow-2.0/sap/sap_mcp.py --http
+ExecStart=%h/github/willow-2.0/sap/willow_mcp.sh --http
 WorkingDirectory=%h/github/willow-2.0
 Restart=on-failure
 RestartSec=5

@@ -35,18 +35,26 @@ def prepare_task_command(
     Return (command, script_path).
 
     If script_body is set, write {WILLOW_ROOT}/.kart-scripts/kart-<id>.py
-    and return python3 <absolute path>.
+    and return a command that uses $WILLOW_PYTHON inside Kart.
+    script_body must be PYTHON — it always runs via python3. Shell commands
+    (including shebang scripts) belong in task=, never script_body.
     Otherwise return task unchanged.
     """
     body = (script_body or "").strip()
     if body:
+        first = body.splitlines()[0].strip()
+        if first.startswith("#!") and "python" not in first:
+            raise ValueError(
+                "script_body is executed with python3 — shell scripts are not "
+                f"supported here (got shebang {first!r}). Put shell commands in task= instead."
+            )
         name = (script_name or "").strip() or f"kart_{uuid.uuid4().hex[:10]}.py"
         if not name.endswith(".py"):
             name += ".py"
         path = kart_scripts_dir() / name
         path.write_text(body if body.endswith("\n") else body + "\n", encoding="utf-8")
         path.chmod(0o755)
-        return f"python3 {path}", str(path)
+        return f'"${{WILLOW_PYTHON:-python3}}" {path}', str(path)
     cmd = (task or "").strip()
     if not cmd:
         raise ValueError("task or script_body required")

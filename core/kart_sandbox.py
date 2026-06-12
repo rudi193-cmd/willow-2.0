@@ -49,12 +49,14 @@ def willow_repo_root() -> Path | None:
 def _template_ctx(root: Path | None) -> dict[str, str]:
     home = str(Path.home())
     repo = str(root or willow_repo_root() or Path.cwd())
+    xdg_runtime = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
     return {
         "HOME": home,
         "WILLOW_ROOT": repo,
         "WILLOW_GROVE_ROOT": os.environ.get("WILLOW_GROVE_ROOT", str(Path(home) / "github" / "safe-app-willow-grove")),
         "WILLOW_SAFE_ROOT": os.environ.get("WILLOW_SAFE_ROOT", str(Path(home) / "SAFE" / "Applications")),
         "WILLOW_AGENTS_ROOT": os.environ.get("WILLOW_AGENTS_ROOT", str(Path(home) / "SAFE" / "Agents")),
+        "XDG_RUNTIME_DIR": xdg_runtime,
     }
 
 
@@ -136,13 +138,20 @@ def collect_bind_mounts(root: Path | None = None) -> list[tuple[Path, Path, bool
     for wt in _discover_worktree_targets(scan_roots):
         _add(wt, False)
 
-    # Python runtime paths for venv / psycopg2 inside bwrap
-    repo_venv = (repo / ".venv-dev") if repo else None
-    if repo_venv and repo_venv.is_dir():
-        _add(repo_venv, True)
-    home_venv = Path.home() / ".willow-venv"
-    if home_venv.is_dir() and (not repo_venv or home_venv.resolve() != repo_venv.resolve()):
-        _add(home_venv, True)
+    # Python runtime paths for Willow venvs / psycopg2 inside bwrap.
+    # Worktrees usually do not have .venv-dev, so bind every known venv candidate.
+    try:
+        from willow.fylgja.python_env import venv_candidates
+        for venv in venv_candidates(repo):
+            if venv.is_dir():
+                _add(venv, True)
+    except Exception:
+        repo_venv = (repo / ".venv-dev") if repo else None
+        if repo_venv and repo_venv.is_dir():
+            _add(repo_venv, True)
+        home_venv = Path.home() / ".willow-venv"
+        if home_venv.is_dir() and (not repo_venv or home_venv.resolve() != repo_venv.resolve()):
+            _add(home_venv, True)
     try:
         import psycopg2 as _pg2
 
@@ -185,14 +194,16 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
         if p.is_symlink():
             args += ["--symlink", target, link_path]
 
-    # ~/.willow is typically a symlink → ~/github/.willow. collect_bind_mounts
-    # resolves it to ~/github/.willow, deduplicates it against the existing
-    # ~/github mount, and never creates the ~/.willow path in the container.
-    # Re-add it as a symlink so scripts using ~/.willow paths work inside bwrap.
-    _home_willow = Path.home() / ".willow"
-    _github_willow = Path.home() / "github" / ".willow"
-    if _github_willow.is_dir() and (_home_willow.is_symlink() or not _home_willow.exists()):
-        args += ["--symlink", str(_github_willow), str(_home_willow)]
+    # ~/.willow is typically a symlink → $WILLOW_HOME. collect_bind_mounts
+    # resolves the canonical path, deduplicates it against an existing mount,
+    # and never creates the ~/.willow path in the container.
+    # Re-add it as a symlink so legacy ~/.willow paths work inside bwrap.
+    from willow.fylgja.willow_home import willow_home, willow_home_alias
+
+    _home_willow = willow_home_alias()
+    _canonical_willow = willow_home()
+    if _canonical_willow.is_dir() and (_home_willow.is_symlink() or not _home_willow.exists()):
+        args += ["--symlink", str(_canonical_willow), str(_home_willow)]
 
     # psycopg2's default socket dir is /var/run/postgresql. collect_bind_mounts
     # resolves the /var/run → /run symlink, so the socket ends up mounted at
@@ -259,6 +270,8 @@ def kart_env(root: Path | None = None) -> dict[str, str]:
         "HOME": str(Path.home()),
         "LANG": os.environ.get("LANG", "en_US.UTF-8"),
         "PYTHONUNBUFFERED": "1",
+        # Marker so code inside bwrap tasks can detect the Kart sandbox context.
+        "WILLOW_IN_KART": "1",
     }
     for key, val in os.environ.items():
         if key.startswith(prefixes):
@@ -267,7 +280,9 @@ def kart_env(root: Path | None = None) -> dict[str, str]:
     # Supplement with fleet env file so API keys (ANTHROPIC_API_KEY, GROQ_API_KEY, …)
     # reach bwrap tasks even when the calling process (MCP server, kart worker) didn't
     # inherit them from the user's shell. os.environ values take priority.
-    _fleet_env_path = Path.home() / "github" / ".willow" / "env"
+    from willow.fylgja.willow_home import willow_home
+
+    _fleet_env_path = willow_home(repo) / "env"
     for k, v in _parse_fleet_env_file(_fleet_env_path, prefixes).items():
         if k not in env:
             env[k] = v
@@ -277,13 +292,21 @@ def kart_env(root: Path | None = None) -> dict[str, str]:
         env["WILLOW_ROOT"] = str(repo.resolve())
         env["PYTHONPATH"] = str(repo.resolve())
 
-    venv_bin = None
-    if repo and (repo / ".venv-dev" / "bin").is_dir():
-        venv_bin = str(repo / ".venv-dev" / "bin")
-    elif (Path.home() / ".willow-venv" / "bin").is_dir():
-        venv_bin = str(Path.home() / ".willow-venv" / "bin")
-    if venv_bin and venv_bin not in env["PATH"]:
-        env["PATH"] = venv_bin + ":" + env["PATH"]
+    try:
+        from willow.fylgja.python_env import venv_bin_dirs, willow_python
+        env["WILLOW_PYTHON"] = willow_python(repo)
+        for bin_dir in reversed(venv_bin_dirs(repo)):
+            venv_bin = str(bin_dir)
+            if venv_bin not in env["PATH"].split(":"):
+                env["PATH"] = venv_bin + ":" + env["PATH"]
+    except Exception:
+        venv_bin = None
+        if repo and (repo / ".venv-dev" / "bin").is_dir():
+            venv_bin = str(repo / ".venv-dev" / "bin")
+        elif (Path.home() / ".willow-venv" / "bin").is_dir():
+            venv_bin = str(Path.home() / ".willow-venv" / "bin")
+        if venv_bin and venv_bin not in env["PATH"]:
+            env["PATH"] = venv_bin + ":" + env["PATH"]
 
     if "GIT_AUTHOR_NAME" not in env:
         try:
@@ -394,14 +417,28 @@ def run_shell(
         }
 
 
+def clip_output(text: str, limit: int) -> str:
+    """Clip long output keeping head and tail, with an explicit marker.
+
+    Replaces the old silent tail-keep slice ([-N:]) that dropped the
+    beginning of output with no indication anything was missing.
+    """
+    if len(text) <= limit:
+        return text
+    head = limit * 2 // 3
+    tail = limit - head
+    dropped = len(text) - head - tail
+    return f"{text[:head]}\n…[kart: {dropped} chars clipped]…\n{text[-tail:]}"
+
+
 def run_shell_result_for_task(cmd: str, *, timeout: int = 120, allow_net: bool = False) -> tuple[str, dict]:
     """Normalize run_shell output for pg.task_complete(status, result)."""
     raw = run_shell(cmd, timeout=timeout, allow_net=allow_net)
     status = "completed" if raw.get("returncode") == 0 and raw.get("error") != "timeout" else "failed"
     result = {
         "returncode": raw.get("returncode"),
-        "stdout": (raw.get("stdout") or "").strip()[-2000:],
-        "stderr": (raw.get("stderr") or "").strip()[-500:],
+        "stdout": clip_output((raw.get("stdout") or "").strip(), 8000),
+        "stderr": clip_output((raw.get("stderr") or "").strip(), 1500),
         "elapsed_s": raw.get("elapsed_s"),
         "sandbox": raw.get("sandbox"),
     }

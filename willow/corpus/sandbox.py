@@ -70,8 +70,21 @@ def needs_intake(app_id: str) -> bool:
     return not bool(seed.get("content"))
 
 
-def save_seed(app_id: str, why_here: str, session_id: str = "") -> str:
+def save_seed(app_id: str, why_here: str, session_id: str = "", human_consent: bool = False) -> str | dict:
     """Save the user's answer to 'Why are you here?' as the corpus seed atom."""
+    try:
+        from core.human_required import check_write_gate
+        from core.pg_bridge import get_connection, release_connection
+
+        conn = get_connection()
+        try:
+            gate = check_write_gate(conn, "seed_fire", consent=human_consent)
+            if not gate.get("allowed"):
+                return gate
+        finally:
+            release_connection(conn)
+    except Exception:
+        pass
     record = {
         "id": "seed",
         "type": "seed",

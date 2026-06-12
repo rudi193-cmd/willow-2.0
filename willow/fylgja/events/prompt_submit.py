@@ -13,11 +13,13 @@ from willow.fylgja._mcp import call
 from willow.fylgja._state import (
     AGENT, is_first_turn, increment_turn_count, get_trust_state, save_trust_state,
 )
+from willow.fylgja.willow_home import willow_home
 
+_HOME = willow_home()
 ANCHOR_INTERVAL = 25
 FLAT_HANDOFF_INTERVAL = 10  # write flat handoff every N prompts
-ANCHOR_CACHE = Path.home() / ".willow" / f"session_anchor_{AGENT}.json"
-STATE_FILE = Path.home() / ".willow" / f"anchor_state_{AGENT}.json"
+ANCHOR_CACHE = _HOME / f"session_anchor_{AGENT}.json"
+STATE_FILE = _HOME / f"anchor_state_{AGENT}.json"
 TURNS_FILE = Path.home() / "agents" / AGENT / "cache" / "turns.txt"
 ACTIVE_BUILD_FILE = Path(f"/tmp/{AGENT}-active-build.json")
 DISPATCH_INBOX = Path(f"/tmp/willow-dispatch-inbox-{AGENT}.json")
@@ -444,7 +446,8 @@ def _check_identity() -> None:
             print(
                 f"[IDENTITY MISMATCH] anchor={anchor_agent} running={AGENT}\n"
                 f"  CWD: {Path.cwd()}\n"
-                f"  Re-run /startup to reset the anchor, or delete ~/.willow/session_anchor_{AGENT}.json."
+                f"  Re-run /startup to reset the anchor, or delete "
+                f"{ANCHOR_CACHE}."
             )
             sys.exit(1)
     except Exception:

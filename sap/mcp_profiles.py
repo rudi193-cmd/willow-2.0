@@ -3,8 +3,8 @@ sap/mcp_profiles.py — Tool visibility profiles for unified Willow MCP.
 
 Reduces IDE tool-picker noise. Set WILLOW_MCP_PROFILE (default: standard).
 
-  minimal  ~25   boot + health + handoff + mai read
-  core     ~45   daily data lane + kart + grove basics
+  minimal  ~20   facade + boot primitives
+  core     ~55   facade + daily data lane + kart + grove basics
   standard ~95   registry core+standard tiers (default)
   full     all   every registered tool (+ unlisted live tools)
 """
@@ -21,7 +21,23 @@ _REGISTRY_PATH = Path(__file__).resolve().parent / "mcp_registry.json"
 VALID_PROFILES = frozenset({"minimal", "core", "standard", "full"})
 
 # Always visible (every profile except nothing)
-_ALWAYS = frozenset({"fleet_tool_guide"})
+_FACADE_MINIMAL = frozenset({
+    "willow_status",
+    "willow_attention",
+    "willow_find",
+    "willow_remember",
+    "willow_run",
+})
+_FACADE_CORE = frozenset({
+    "willow_delegate",
+    "willow_work",
+    "willow_message",
+    "willow_app",
+    "willow_external",
+    "willow_web_search",
+    "willow_code",
+})
+_ALWAYS = frozenset({"fleet_tool_guide"}) | _FACADE_MINIMAL
 
 # minimal — session boot
 _MINIMAL = _ALWAYS | {
@@ -38,6 +54,7 @@ _MINIMAL = _ALWAYS | {
 
 # core — daily work (+ minimal)
 _CORE_EXTRA = {
+    *_FACADE_CORE,
     "fleet_agents",
     "fleet_system_status",
     "handoff_search",
@@ -259,7 +276,8 @@ def format_tool_guide(*, profile: str | None = None, group: str | None = None) -
 
     lines = [
         f"[WILLOW-TOOLS] profile={prof}  (set WILLOW_MCP_PROFILE: minimal|core|standard|full)",
-        "Lanes: data=Willow MCP · exec=agent_task_submit+kart_task_run · docs=mai_read/write",
+        "Start here: willow_status · willow_find · willow_remember · willow_run",
+        "Backend lanes: data=kb/soil · exec=Kart · messages=Grove · docs=mai",
         "",
     ]
     for g, desc in groups.items():

@@ -11,9 +11,9 @@
 
 set -euo pipefail
 
-REMOTE_HOST="192.168.12.237"
-REMOTE_USER="sean-campbell"
-SSH_KEY="$HOME/.ssh/id_ed25519_desktop"
+REMOTE_HOST="${XFER_REMOTE_HOST:?set XFER_REMOTE_HOST (desktop IP/hostname)}"
+REMOTE_USER="${XFER_REMOTE_USER:?set XFER_REMOTE_USER}"
+SSH_KEY="${XFER_SSH_KEY:-$HOME/.ssh/id_ed25519_desktop}"
 REMOTE="${REMOTE_USER}@${REMOTE_HOST}"
 
 usage() {

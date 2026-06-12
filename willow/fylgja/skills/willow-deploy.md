@@ -9,7 +9,7 @@ description: Push changes to a Grove-connected node and verify.
 2. Push to GitHub: git push origin <feature-branch> && gh pr create --base master
 3. Run willow.sh check-updates to queue Grove notification
 4. fork_log(fork_id, "grove", "deploy", "github/<branch>", app_id="hanuman")
-5. Confirm with Sean that target node received the update banner
+5. Confirm with USER that target node received the update banner
 
 For Felix: the update-check.timer fires every 30 min automatically.
 Felix sees a banner → clicks yes → willow.sh update runs → dashboard restarts.

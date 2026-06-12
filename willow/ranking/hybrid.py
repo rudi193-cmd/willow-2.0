@@ -28,6 +28,7 @@ Temporal re-ranking (half-life decay):
 from __future__ import annotations
 
 import re
+import math
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
@@ -58,6 +59,14 @@ def _tokenize(text: str) -> list[str]:
 def _row_text(row: dict) -> str:
     """Concatenate the searchable text surface of a knowledge atom."""
     parts = [row.get("title") or "", row.get("summary") or ""]
+    content = row.get("content")
+    if isinstance(content, dict):
+        for key in ("tags", "keywords", "evidence", "source_id"):
+            value = content.get(key)
+            if isinstance(value, list):
+                parts.extend(str(item) for item in value)
+            elif value:
+                parts.append(str(value))
     return " ".join(p for p in parts if p)
 
 
@@ -67,13 +76,46 @@ def _build_bm25(rows: list[dict]):
     """
     Build a BM25Okapi index over the given rows.
     Returns (bm25_obj, local_indices) where local_indices maps bm25 position
-    back to list position in `rows`.
-    Raises ImportError if rank_bm25 is not installed — callers handle fallback.
+    back to list position in `rows`. Falls back to a small in-process lexical
+    scorer when rank_bm25 is unavailable so hybrid search keeps an exact-token
+    leg in minimal runtime environments.
     """
-    from rank_bm25 import BM25Okapi  # type: ignore
     corpus = [_tokenize(_row_text(r)) for r in rows]
-    bm25 = BM25Okapi(corpus)
-    return bm25
+    try:
+        from rank_bm25 import BM25Okapi  # type: ignore
+        return BM25Okapi(corpus)
+    except ImportError:
+        return _SimpleLexicalRanker(corpus)
+
+
+class _SimpleLexicalRanker:
+    """Tiny IDF-weighted fallback with the same get_scores() shape as BM25Okapi."""
+
+    def __init__(self, corpus: list[list[str]]) -> None:
+        self.corpus = corpus
+        doc_count = max(len(corpus), 1)
+        dfs: dict[str, int] = {}
+        for doc in corpus:
+            for token in set(doc):
+                dfs[token] = dfs.get(token, 0) + 1
+        self.idf = {
+            token: math.log((doc_count + 1) / (df + 1)) + 1.0
+            for token, df in dfs.items()
+        }
+
+    def get_scores(self, query_tokens: list[str]) -> list[float]:
+        scores: list[float] = []
+        query = [token for token in query_tokens if token]
+        for doc in self.corpus:
+            if not doc:
+                scores.append(0.0)
+                continue
+            freqs: dict[str, int] = {}
+            for token in doc:
+                freqs[token] = freqs.get(token, 0) + 1
+            score = sum(self.idf.get(token, 0.0) * freqs.get(token, 0) for token in query)
+            scores.append(score / math.sqrt(len(doc)))
+        return scores
 
 
 # ── pgvector leg ─────────────────────────────────────────────────────────────
@@ -128,6 +170,9 @@ def _pgvector_search_raw(
     fork_id: Optional[str],
     include_invalid: bool,
     wide_k: int,
+    tier: Optional[str] = None,
+    exclude_search_noise: bool = True,
+    exclude_superseded: bool = True,
 ) -> list[dict]:
     """Clean wrapper around the ANN search to avoid param duplication."""
     vec_str = str(query_vec)
@@ -142,6 +187,13 @@ def _pgvector_search_raw(
     if fork_id:
         filters.append("fork_id = %s")
         where_params.append(fork_id)
+    pg._knowledge_retrieval_filters(
+        filters,
+        where_params,
+        tier=tier,
+        exclude_search_noise=exclude_search_noise,
+        exclude_superseded=exclude_superseded,
+    )
 
     where = " AND ".join(filters)
 
@@ -167,6 +219,9 @@ def _bm25_search(
     fork_id: Optional[str],
     include_invalid: bool,
     wide_k: int,
+    tier: Optional[str] = None,
+    exclude_search_noise: bool = True,
+    exclude_superseded: bool = True,
 ) -> list[dict]:
     """
     BM25 search over knowledge table.
@@ -178,7 +233,7 @@ def _bm25_search(
     This avoids needing a PostgreSQL full-text ranking function and keeps
     BM25 parameters in Python where they're tunable.
     """
-    candidate_limit = max(wide_k * 3, 200)
+    candidate_limit = max(wide_k * 10, 1000)
 
     filters = []
     params: list = []
@@ -191,6 +246,22 @@ def _bm25_search(
     if fork_id:
         filters.append("fork_id = %s")
         params.append(fork_id)
+    pg._knowledge_retrieval_filters(
+        filters,
+        params,
+        tier=tier,
+        exclude_search_noise=exclude_search_noise,
+        exclude_superseded=exclude_superseded,
+    )
+    token_predicates = []
+    for token in dict.fromkeys(query_tokens[:8]):
+        like = f"%{token}%"
+        token_predicates.append(
+            "(title ILIKE %s OR summary ILIKE %s OR content::text ILIKE %s)"
+        )
+        params.extend([like, like, like])
+    if token_predicates:
+        filters.append("(" + " OR ".join(token_predicates) + ")")
 
     where = ("WHERE " + " AND ".join(filters)) if filters else ""
     params.append(candidate_limit)
@@ -255,6 +326,30 @@ def _rrf_fuse(
 
     results.sort(key=lambda r: -r["_rrf_score"])
     return results
+
+
+def _apply_lexical_coverage_bias(results: list[dict], query_tokens: list[str]) -> list[dict]:
+    """Prefer fused hits that cover more of the user's explicit query tokens."""
+    unique_query = list(dict.fromkeys(query_tokens))
+    if not results or not unique_query:
+        return results
+
+    biased = []
+    query_count = len(unique_query)
+    for row in results:
+        row_tokens = set(_tokenize(_row_text(row)))
+        covered = sum(1 for token in unique_query if token in row_tokens)
+        coverage = covered / query_count
+        multiplier = 0.25 + (0.75 * coverage) + (0.75 * coverage * coverage)
+        hybrid_score = float(row.get("_rrf_score") or 0.0) * multiplier
+        biased.append({
+            **row,
+            "_lexical_coverage": round(coverage, 4),
+            "_hybrid_score": hybrid_score,
+        })
+
+    biased.sort(key=lambda r: -r["_hybrid_score"])
+    return biased
 
 
 # ── Temporal re-ranking ───────────────────────────────────────────────────────
@@ -373,6 +468,9 @@ def hybrid_search(
     temporal: bool = False,
     temporal_decay_days: float = 30.0,
     temporal_weight: float = 0.15,
+    tier: Optional[str] = None,
+    exclude_search_noise: bool = True,
+    exclude_superseded: bool = True,
 ) -> list[dict]:
     """
     Hybrid pgvector cosine + BM25 keyword search with RRF fusion.
@@ -439,7 +537,10 @@ def hybrid_search(
         query_vec = embed(query)
         if query_vec is not None:
             vec_rows = _pgvector_search_raw(
-                pg, query_vec, project, fork_id, include_invalid, wide_k
+                pg, query_vec, project, fork_id, include_invalid, wide_k,
+                tier=tier,
+                exclude_search_noise=exclude_search_noise,
+                exclude_superseded=exclude_superseded,
             )
             if vec_rows:
                 ranked_lists.append(vec_rows)
@@ -451,7 +552,10 @@ def hybrid_search(
     if query_tokens:
         try:
             bm25_rows = _bm25_search(
-                pg, query_tokens, project, fork_id, include_invalid, wide_k
+                pg, query_tokens, project, fork_id, include_invalid, wide_k,
+                tier=tier,
+                exclude_search_noise=exclude_search_noise,
+                exclude_superseded=exclude_superseded,
             )
             if bm25_rows:
                 ranked_lists.append(bm25_rows)
@@ -463,10 +567,14 @@ def hybrid_search(
     # --- Fallback: ILIKE ---
     if not ranked_lists:
         return pg.knowledge_search(query, project=project,
-                                   include_invalid=include_invalid, limit=limit)
+                                   include_invalid=include_invalid, limit=limit,
+                                   tier=tier,
+                                   exclude_search_noise=exclude_search_noise,
+                                   exclude_superseded=exclude_superseded)
 
     # --- RRF fusion ---
     fused = _rrf_fuse(ranked_lists, k=rrf_k, weight_col=True)
+    fused = _apply_lexical_coverage_bias(fused, query_tokens)
 
     # --- Temporal re-ranking ---
     if temporal:

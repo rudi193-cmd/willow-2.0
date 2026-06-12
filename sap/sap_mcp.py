@@ -62,6 +62,19 @@ _core_str = str(_WILLOW_CORE)
 if _core_str not in sys.path:
     sys.path.insert(1, _core_str)
 
+
+def _fleet_home() -> Path:
+    from willow.fylgja.willow_home import willow_home
+
+    return willow_home(_SAP_ROOT)
+
+
+def _store_root() -> Path:
+    from willow.fylgja.willow_home import resolve_store_root
+
+    return resolve_store_root(_SAP_ROOT)
+
+
 # ── Version ───────────────────────────────────────────────────────────────────
 from core.version import VERSION
 
@@ -201,7 +214,7 @@ def _init_pg():
     except Exception as err:
         logger.error("[w2] pg init failed: %s — falling back to SQLite", err)
         try:
-            flag = Path.home() / "github" / ".willow" / "pg_failure.flag"
+            flag = _fleet_home() / "pg_failure.flag"
             flag.parent.mkdir(parents=True, exist_ok=True)
             flag.write_text(str(err))
         except Exception:
@@ -268,7 +281,7 @@ def _startup_backfill_check() -> None:
             existing = cur.fetchone()
         if not existing:
             script = _SAP_ROOT / "scripts" / "willow_embed_backfill.py"
-            pb.submit_task(f"python3 {script}", submitted_by="sap_startup", agent="kart")
+            pb.submit_task(f'"${{WILLOW_PYTHON:-python3}}" {script}', submitted_by="sap_startup", agent="kart")
             logger.info("[w2] %d rows with NULL embedding — backfill queued", total_null)
         else:
             logger.info("[w2] %d rows with NULL embedding — backfill already queued", total_null)
@@ -333,7 +346,7 @@ def _check_ollama() -> dict:
 def _check_metabolic() -> dict:
     import sqlite3 as _sqlite3
     result: dict = {"last_briefing": None, "socket": "unknown"}
-    briefings_db = Path.home() / ".willow" / "store" / "briefings" / "daily.db"
+    briefings_db = _store_root() / "briefings" / "daily.db"
     if briefings_db.exists():
         try:
             conn = _sqlite3.connect(str(briefings_db))
@@ -345,7 +358,7 @@ def _check_metabolic() -> dict:
                 result["last_briefing"] = row[1]
         except Exception:
             pass
-    socket_path = Path.home() / ".willow" / "metabolic.sock"
+    socket_path = _fleet_home() / "metabolic.sock"
     result["socket"] = "active" if socket_path.exists() else "inactive"
     return result
 
@@ -488,6 +501,13 @@ async def fleet_status(app_id: str) -> dict:
         except Exception as e:
             kart_stats = {"error": str(e)}
 
+    human_required: dict = {}
+    if pg and hasattr(pg, "human_required_stats"):
+        try:
+            human_required = await loop.run_in_executor(_executor, pg.human_required_stats)
+        except Exception as e:
+            human_required = {"error": str(e)}
+
     frank_ledger: dict = {}
     if pg and hasattr(pg, "ledger_verify"):
         try:
@@ -510,6 +530,7 @@ async def fleet_status(app_id: str) -> dict:
         "manifests":   manifests,
         "metabolic":   metabolic,
         "kart":        kart_stats,
+        "human_required": human_required,
         "frank_ledger": frank_ledger,
         "gate_mode":   _gm,
         "gate_hostname_check": _ghd,
@@ -606,10 +627,10 @@ async def fleet_agents(app_id: str) -> dict:
     if not agents:
         agents = list(_static_agents)
 
-    # Merge locally registered agents from ~/.willow/agents.json
+    # Merge locally registered agents from $WILLOW_HOME/agents.json
     try:
         import json as _json
-        override = Path.home() / "github" / ".willow" / "agents.json"
+        override = _fleet_home() / "agents.json"
         if override.exists():
             existing = {a["name"] for a in agents}
             for entry in _json.loads(override.read_text()):
@@ -841,6 +862,7 @@ async def pg_edge_add(
     to_id:    str,
     relation: str,
     context:  str = "",
+    human_consent: bool = False,
 ) -> dict:
     """Add a directed edge to the Postgres edges table (durable KB graph).
     Distinct from SOIL graph — use soil_add_edge for in-session working graph."""
@@ -849,7 +871,10 @@ async def pg_edge_add(
         return _no_pg()
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(
-        _executor, pg.edge_add, from_id, to_id, relation, app_id, context or None,
+        _executor,
+        lambda: pg.edge_add(
+            from_id, to_id, relation, app_id, context or None, human_consent=human_consent
+        ),
     )
 
 
@@ -893,15 +918,18 @@ async def kb_search(
     app_id:            str,
     query:             str,
     limit:             int  = 20,
-    semantic:          bool = False,
+    semantic:          bool = True,
     include_embedding: bool = False,
     fields:            list = None,
     tier:              str  = "",
+    expand_neighbors:  bool = True,
 ) -> dict:
     """Search Willow's Postgres knowledge graph before building anything.
     Returns atoms by title and summary. Search first — another agent may have already
     solved or decided this. Use kb_get to fetch the full atom.
-    tier: filter to frontier|contested|canonical|superseded (omit for all tiers)."""
+    tier: filter to frontier|contested|canonical|superseded (omit for all tiers).
+    expand_neighbors: one-hop graph expansion via public.edges (default on).
+    semantic=True uses the hybrid pgvector+BM25 RRF hot path when available."""
     logger.info("[w2] kb_search app_id=%s q=%r semantic=%s tier=%r", app_id, query, semantic, tier)
     if not pg:
         return _no_pg()
@@ -912,11 +940,12 @@ async def kb_search(
         if semantic:
             try:
                 knowledge = pg.knowledge_search_semantic(
-                    query, limit=limit, include_embedding=include_embedding, fields=fields
+                    query, limit=limit, include_embedding=include_embedding,
+                    fields=fields, tier=tier_filter,
                 )
                 jeles    = pg.search_jeles_semantic(query, limit=limit // 2)
                 opus     = pg.search_opus_semantic(query, limit=limit // 2)
-                mode = "semantic"
+                mode = "hybrid" if any("_rrf_score" in row for row in knowledge[:3]) else "semantic"
             except Exception:
                 knowledge = pg.knowledge_search(
                     query, limit=limit, include_embedding=include_embedding,
@@ -933,6 +962,19 @@ async def kb_search(
             jeles = pg.jeles_keyword_search(query, limit=limit // 2)
             opus  = pg.search_opus(query, limit=limit // 2)
             mode = "keyword"
+
+        neighbors: list = []
+        if expand_neighbors and knowledge:
+            seed_ids = [a["id"] for a in knowledge[:10] if a.get("id")]
+            try:
+                neighbors = pg.knowledge_expand_neighbors(
+                    seed_ids, limit=max(5, limit // 3),
+                )
+            except Exception:
+                neighbors = []
+            seen = {a["id"] for a in knowledge if a.get("id")}
+            knowledge = knowledge + [n for n in neighbors if n.get("id") not in seen]
+
         for atom in knowledge[:3]:
             try:
                 pg.promote(atom["id"])
@@ -946,6 +988,7 @@ async def kb_search(
             "knowledge": knowledge,
             "jeles_atoms": jeles,
             "opus_atoms": opus,
+            "neighbors": neighbors,
             "total": len(knowledge) + len(jeles) + len(opus),
             "mode": mode,
         }
@@ -960,6 +1003,7 @@ async def kb_promote(
     atom_id: str,
     tier:    str,
     reason:  str = "",
+    human_attestation: bool = False,
 ) -> dict:
     """Promote or demote a knowledge atom to a new lifecycle tier.
     tier: frontier → contested → canonical → superseded
@@ -972,7 +1016,12 @@ async def kb_promote(
     if canonical not in KNOWLEDGE_TIERS:
         return {"error": f"invalid tier {tier!r} — valid: {KNOWLEDGE_TIERS}"}
     loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(_executor, pg.promote_knowledge_tier, atom_id, tier, app_id, reason)
+    result = await loop.run_in_executor(
+        _executor,
+        lambda: pg.promote_knowledge_tier(
+            atom_id, tier, app_id, reason, human_attestation=human_attestation
+        ),
+    )
     if result.get("promoted"):
         try:
             pg.ledger_append("willow", "kb_tier_promotion", {
@@ -1084,6 +1133,38 @@ async def kb_ingest(
             logger.warning("[w2] kb_ingest quality_gate failed: %s", qe)
             quality_result = {"error": str(qe)}
 
+    from core.pg_bridge import normalize_tier
+
+    normalized_tier = normalize_tier(tier)
+    content_for_quality = {"source_id": clean_source_id}
+    if keywords:
+        content_for_quality["keywords"] = keywords
+    if tags:
+        content_for_quality["tags"] = tags
+    if normalized_tier == "canonical":
+        try:
+            from core.kb_quality import canonical_quality_check
+
+            canonical_quality = canonical_quality_check(
+                title=title,
+                summary=clean_summary,
+                content=content_for_quality,
+                source_type=source_type,
+                source_id=clean_source_id,
+                confidence=confidence,
+            )
+            quality_result["canonical"] = canonical_quality
+            if not canonical_quality["satisfied"]:
+                return {
+                    "blocked": True,
+                    "reason": "canonical_quality_gate",
+                    "quality": quality_result,
+                    "hint": "Canonical atoms require specific summary, provenance, and sufficient confidence.",
+                }
+        except Exception as qe:
+            logger.warning("[w2] canonical quality gate failed: %s", qe)
+            quality_result["canonical"] = {"error": str(qe)}
+
     def _ingest():
         retired: list[str] = []
         if not force:
@@ -1126,7 +1207,7 @@ async def kb_ingest(
             category=category, domain=effective_domain or None,
             keywords=keywords or [],
             tags=tags or [],
-            tier=tier,
+            tier=normalized_tier,
             confidence=confidence,
         )
         out: dict = {"id": atom_id, "status": "ingested" if atom_id else "failed"}
@@ -1383,6 +1464,7 @@ async def agent_task_submit(
     Prefer this over agent Bash for ls, git, pytest, pipelines, and scripts.
     Use script_body (not inline task strings) when Python or nested quotes are involved —
     writes {WILLOW_ROOT}/.kart-scripts/kart-*.py and queues python3 <path>.
+    script_body must be Python (it always runs via python3); shell goes in task=.
 
     Set allow_net=True for git push, gh, curl, etc.
     After submit, call kart_task_run(app_id) or wait for kart-worker / Stop kart_poll."""
@@ -1540,15 +1622,17 @@ async def kart_task_run(
 @mcp.tool()
 @sap_gate(write=True)
 async def intake_schedule(
-    app_id:  str,
-    agent:   str = "",
-    days:    int = 7,
-    limit:   int = 0,
-    no_llm:  bool = True,
+    app_id:     str,
+    agent:      str = "",
+    days:       int = 7,
+    limit:      int = 0,
+    no_llm:     bool = True,
+    all_files:  bool = False,
 ) -> dict:
     """Queue a promote_intake run as a Kart task. Returns task_id.
     Call kart_task_run() afterwards to execute it, or let Kart poll automatically.
-    no_llm=True (default) uses fallback routing; False routes via orin (requires Ollama)."""
+    no_llm=True (default) uses fallback routing; False routes via orin (requires Ollama).
+    all_files=True scans every intake JSONL (not just the days window)."""
     logger.info("[w2] intake_schedule app_id=%s agent=%s days=%d", app_id, agent or app_id, days)
     if not pg:
         return _no_pg()
@@ -1561,6 +1645,42 @@ async def intake_schedule(
         cmd_parts = [sys.executable, script, f"--days={days}", f"--agent={target}"]
         if no_llm:
             cmd_parts.append("--no-llm")
+        if all_files:
+            cmd_parts.append("--all-files")
+        if limit:
+            cmd_parts.append(f"--limit={limit}")
+        cmd = " ".join(cmd_parts)
+        task_id = pg.submit_task(cmd, submitted_by=app_id, agent="kart")
+        if not task_id:
+            return {"error": "failed to submit task"}
+        return {"task_id": task_id, "status": "queued", "cmd": cmd}
+
+    return await loop.run_in_executor(_executor, _schedule)
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def intake_schedule_fleet(
+    app_id:     str,
+    days:       int = 7,
+    limit:      int = 0,
+    no_llm:     bool = True,
+    all_files:  bool = True,
+) -> dict:
+    """Queue a fleet-wide promote_intake run as a Kart task (--fleet --all-files)."""
+    logger.info("[w2] intake_schedule_fleet app_id=%s days=%d all_files=%s", app_id, days, all_files)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+
+    def _schedule():
+        import sys
+        script = str(_SAP_ROOT.parent / "scripts" / "promote_intake.py")
+        cmd_parts = [sys.executable, script, "--fleet", f"--days={days}"]
+        if no_llm:
+            cmd_parts.append("--no-llm")
+        if all_files:
+            cmd_parts.append("--all-files")
         if limit:
             cmd_parts.append(f"--limit={limit}")
         cmd = " ".join(cmd_parts)
@@ -1859,16 +1979,18 @@ async def skill_put(
     trigger:         str,
     auto_load:       bool = True,
     model_agnostic:  bool = True,
+    risk:            str = "low",
 ) -> dict:
-    """Store or update a Willow skill in the registry."""
-    logger.info("[w2] skill_put app_id=%s name=%s domain=%s", app_id, name, domain)
+    """Store or update a Willow skill in the registry.
+    risk: 'low' | 'medium' | 'high' — gates needs_scrutiny confirmation on load."""
+    logger.info("[w2] skill_put app_id=%s name=%s domain=%s risk=%s", app_id, name, domain, risk)
     loop = asyncio.get_running_loop()
 
     def _put():
         from willow.skills import skill_put as _skill_put
         skill_id = _skill_put(
             store, name=name, domain=domain, content=content, trigger=trigger,
-            auto_load=auto_load, model_agnostic=model_agnostic,
+            auto_load=auto_load, model_agnostic=model_agnostic, risk=risk,
         )
         return {"skill_id": skill_id}
 
@@ -1905,6 +2027,35 @@ async def skill_list(app_id: str, domain: str = "") -> dict:
         return {"skills": skills}
 
     return await loop.run_in_executor(_executor, _list)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def skill_mastery(app_id: str, skill_id: str = "", weakest: int = 0) -> dict:
+    """Bayesian-Knowledge-Tracing mastery for skills (read-only).
+    skill_id: one skill → mastery, p_next_correct, opportunities, mastered.
+    weakest=N: the N lowest-mastery skills (drill list)."""
+    logger.info("[w2] skill_mastery app_id=%s skill_id=%r weakest=%d", app_id, skill_id, weakest)
+    loop = asyncio.get_running_loop()
+
+    def _mastery():
+        from core import skill_mastery as _sm
+        if weakest and weakest > 0:
+            return {"weakest": _sm.weakest(weakest)}
+        if not skill_id:
+            return {"error": "provide skill_id or weakest=N"}
+        rec = _sm.mastery(skill_id)
+        if rec is None:
+            return {"error": "no mastery record", "skill_id": skill_id}
+        return {
+            "skill_id":       skill_id,
+            "mastery":        rec.get("p_known"),
+            "p_next_correct": rec.get("p_next_correct"),
+            "opportunities":  rec.get("opportunities"),
+            "mastered":       rec.get("mastered"),
+        }
+
+    return await loop.run_in_executor(_executor, _mastery)
 
 
 # ── Tools — mem_ domain (Jeles / Binder / Ratify) ────────────────────────────
@@ -1973,6 +2124,29 @@ async def mem_jeles_web_search(
         _executor, jeles_search,
         query, sources or None, limit,
     )
+
+
+@mcp.tool()
+@sap_gate()
+async def willow_web_search(
+    app_id:           str,
+    query:            str,
+    max_results:      int  = 8,
+    trusted_only:     bool = False,
+    include_handoffs: bool = False,
+) -> dict:
+    """Open web search via DuckDuckGo HTML (no API key required). Returns title, url, snippet,
+    source, and hostname for each result. Use for current events, tech news, personnel moves,
+    and any query that needs the live open web rather than institutional archives.
+    trusted_only: filter results to verified institutional domain suffixes.
+    include_handoffs: prepend OpenStreetMap/Google Maps links for navigational queries."""
+    logger.info("[w2] willow_web_search app_id=%s query=%r max=%d trusted=%s", app_id, query, max_results, trusted_only)
+    from core.web_search import search_web
+    loop = asyncio.get_running_loop()
+    hits = await loop.run_in_executor(
+        _executor, lambda: search_web(query, max_results=max_results, trusted_only=trusted_only, include_handoffs=include_handoffs)
+    )
+    return {"query": query, "results": hits, "count": len(hits)}
 
 
 @mcp.tool()
@@ -2350,106 +2524,28 @@ async def intake_list(
 @mcp.tool()
 @sap_gate(write=True)
 async def intake_promote(
-    app_id:  str,
-    agent:   str = "",
-    days:    int = 7,
-    limit:   int = 0,
-    no_llm:  bool = True,
+    app_id:     str,
+    agent:      str = "",
+    days:       int = 7,
+    limit:      int = 0,
+    no_llm:     bool = True,
+    all_files:  bool = False,
 ) -> dict:
     """Run the fallback-routing promote pass on pending intake records.
     Routes each record to jeles_atoms / knowledge / opus / binder_queue based on
     tier + confidence. no_llm=True (default) uses deterministic routing only.
-    For LLM-assisted routing run promote_intake.py directly."""
+    all_files=True scans every intake JSONL (not just the days window)."""
     logger.info("[w2] intake_promote app_id=%s agent=%s days=%d limit=%d", app_id, agent or app_id, days, limit)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
 
     def _promote():
-        from core.intake import read_pending, mark_promoted
-
-        _VERIFIED_MIN = 0.95
-        _FETCHED_MIN  = 0.85
-        _OBSERVED_MIN = 0.85
-
-        def _fallback_route(rec: dict) -> str:
-            tier       = rec.get("tier", "observed")
-            confidence = float(rec.get("confidence", 0.0))
-            source     = rec.get("source", "")
-            if tier in ("verified", "ratified", "canonical"):
-                return "knowledge" if confidence >= _VERIFIED_MIN else "binder_queue"
-            if tier in ("fetched",):
-                return "jeles_atoms" if confidence >= _FETCHED_MIN else "binder_queue"
-            if tier in ("observed", "frontier"):
-                if any(k in source for k in ("opus", "feedback", "reasoning")):
-                    return "opus" if confidence >= _OBSERVED_MIN else "binder_queue"
-                return "knowledge" if confidence >= _OBSERVED_MIN else "binder_queue"
-            return "binder_queue"
-
-        target  = agent or app_id
-        records = read_pending(target, days=days)
-        if limit:
-            records = records[:limit]
-
-        routed   = {"jeles_atoms": 0, "knowledge": 0, "opus": 0, "binder_queue": 0}
-        promoted = 0
-        failed   = 0
-
-        for rec in records:
-            rec_id  = rec.get("id", "")
-            content = rec.get("content", "")
-            title   = rec.get("title", "") or content[:80]
-            rec_agent = rec.get("agent", target)
-            tier    = _fallback_route(rec)
-
-            try:
-                ok = False
-                if tier == "jeles_atoms":
-                    jid = rec.get("extra", {}).get("jeles_session_id", rec_id) if isinstance(rec.get("extra"), dict) else rec_id
-                    result = pg.jeles_extract_atom(
-                        agent=rec_agent, jsonl_id=jid, content=content,
-                        domain=(rec.get("extra") or {}).get("domain", "meta"),
-                        certainty=float(rec.get("confidence", 0.90)), title=title or None,
-                    )
-                    ok = "id" in result
-                elif tier == "knowledge":
-                    atom_id = pg.ingest_atom(
-                        title=title, summary=content, source_type="intake",
-                        source_id=rec_id,
-                        category=(rec.get("extra") or {}).get("category", "general"),
-                        domain=(rec.get("extra") or {}).get("domain", ""),
-                    )
-                    ok = bool(atom_id)
-                elif tier == "opus":
-                    atom_id = pg.ingest_opus_atom(
-                        content=content,
-                        domain=(rec.get("extra") or {}).get("domain", "meta"),
-                    )
-                    ok = bool(atom_id)
-                elif tier == "binder_queue":
-                    result = pg.jeles_register_jsonl(
-                        agent=rec_agent,
-                        jsonl_path=str(Path.home() / "github" / ".willow" / "intake" / rec_agent),
-                        session_id=f"binder-{rec_id}",
-                        cwd="",
-                        file_size=len(content),
-                    )
-                    ok = "id" in result
-
-                routed[tier] += 1
-                if ok:
-                    mark_promoted(target, rec_id, tier)
-                    promoted += 1
-                else:
-                    failed += 1
-            except Exception as e:
-                failed += 1
-                logger.warning("[w2] intake_promote failed for %s: %s", rec_id, e)
-
-        return {
-            "promoted": promoted, "failed": failed,
-            "routed": routed, "agent": target,
-        }
+        from core.intake_promote import promote_agent
+        return promote_agent(
+            pg, agent or app_id,
+            days=days, all_files=all_files, no_llm=no_llm, limit=limit,
+        )
 
     return await loop.run_in_executor(_executor, _promote)
 
@@ -2685,6 +2781,49 @@ async def hook_log_read(app_id: str, hook_name: str = "", limit: int = 50) -> di
 
 # ── Tools — handoff_ domain ───────────────────────────────────────────────────
 
+_NOTE_SECTION_MARKERS = {
+    "agent_notes": "## Agent Notes for Human",
+    "human_notes": "## Human Notes to Agent",
+}
+
+
+def extract_live_handoff_notes(agent: str) -> dict:
+    """Read agent/human note sections from the newest handoff FILE on disk.
+
+    Human notes are written by the operator AFTER the close pipeline ran, so
+    the DB row is stale for them by design — these always come live from disk.
+    """
+    import re as _re
+
+    out: dict = {}
+    try:
+        root = handoffs_root() / agent
+        files = sorted(
+            root.glob("session_handoff-*.md"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if not files:
+            return out
+        text = files[0].read_text(encoding="utf-8")
+        for key, marker in _NOTE_SECTION_MARKERS.items():
+            if marker in text:
+                block = _re.split(r"\n(?=## |---)", text[text.find(marker) + len(marker):])[0]
+                items = [
+                    ln.strip()[2:].strip()
+                    for ln in block.splitlines()
+                    if ln.strip().startswith("- ")
+                ]
+                items = [i for i in items if i]
+                if items:
+                    out[key] = items
+        if out:
+            out["notes_file"] = files[0].name
+    except Exception as _e:
+        logger.warning("[w2] live handoff notes extract failed: %s", _e)
+    return out
+
+
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
 async def handoff_latest(app_id: str, agent: str = "") -> dict:
@@ -2713,11 +2852,11 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                             WHERE category = 'handoff'
                               AND source_type = 'session'
                               AND invalid_at IS NULL
-                              AND (project = %s OR content::text ILIKE %s)
+                              AND project = %s
                             ORDER BY valid_at DESC
                             LIMIT 5
                             """,
-                            (agent_filter, f"%{agent_filter}%"),
+                            (agent_filter,),
                         )
                     else:
                         cur.execute(
@@ -2779,10 +2918,7 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                 cur  = conn.cursor()
                 base_sql = handoff_select_sql(conn)
                 sql_agent = f"{base_sql} WHERE h.file_type = 'session' AND f.filename LIKE ?"
-                sql_any = f"{base_sql} WHERE h.file_type = 'session'"
                 rows = cur.execute(sql_agent, (f"%{agent_filter}%",)).fetchall() if agent_filter else []
-                if not rows:
-                    rows = cur.execute(sql_any).fetchall()
                 sqlite_candidates: list[dict] = []
                 for row in rows:
                     sqlite_candidates.append({
@@ -2819,6 +2955,8 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
         if not candidates:
             return {"error": "No session handoffs found."}
         result = select_best_handoff(candidates) or candidates[0]
+        if agent_filter:
+            result.update(extract_live_handoff_notes(agent_filter))
         result["next_bite"] = extract_next_bite(
             result.get("questions") or [],
             str(result.get("summary") or ""),
@@ -3070,55 +3208,8 @@ async def dream_check(app_id: str) -> dict:
     loop = asyncio.get_running_loop()
 
     def _check():
-        from datetime import datetime, timezone
-
-        dream_state = store.get(f"{app_id}/dream", "state") or {}
-        if dream_state.get("locked"):
-            return {"should_dream": False, "locked": True, "reason": "dream already running"}
-
-        now = datetime.now(timezone.utc)
-        last_str = dream_state.get("last_dream_at", "")
-        hours_elapsed = 999.0
-        if last_str:
-            try:
-                last = datetime.fromisoformat(last_str)
-                if last.tzinfo is None:
-                    last = last.replace(tzinfo=timezone.utc)
-                hours_elapsed = (now - last).total_seconds() / 3600
-            except Exception:
-                pass
-
-        sessions_since = 0
-        if pg is not None:
-            try:
-                pg._ensure_conn()
-                with pg.conn.cursor() as cur:
-                    if last_str:
-                        cur.execute(
-                            "SELECT COUNT(*) FROM willow.runs WHERE initiator=%s AND started_at > %s",
-                            (app_id, last_str),
-                        )
-                    else:
-                        cur.execute(
-                            "SELECT COUNT(*) FROM willow.runs WHERE initiator=%s", (app_id,),
-                        )
-                    row = cur.fetchone()
-                    sessions_since = row[0] if row else 0
-            except Exception:
-                sessions_since = dream_state.get("sessions_since_dream", 0)
-
-        should_dream = hours_elapsed >= 24 and sessions_since >= 5
-        return {
-            "should_dream":         should_dream,
-            "hours_since_dream":    round(hours_elapsed, 1),
-            "sessions_since_dream": sessions_since,
-            "last_dream_at":        last_str or None,
-            "reason": (
-                f"{hours_elapsed:.1f}h elapsed, {sessions_since} sessions since last dream"
-                if should_dream
-                else f"conditions not met: {hours_elapsed:.1f}h / 24h, {sessions_since} / 5 sessions"
-            ),
-        }
+        from core.dream_state import dream_conditions
+        return dream_conditions(app_id, store, pg=pg)
 
     return await loop.run_in_executor(_executor, _check)
 
@@ -3270,6 +3361,36 @@ async def dream_run(app_id: str, force: bool = False) -> dict:
     return await loop.run_in_executor(_executor, _run)
 
 
+@mcp.tool()
+@sap_gate(write=True)
+async def dream_schedule(
+    app_id: str,
+    force: bool = False,
+    check_first: bool = True,
+) -> dict:
+    """Queue AutoDream (auto_dream.py) as a Kart task. Returns task_id.
+    check_first=True (default) skips queue unless dream_check says should_dream.
+    Call kart_task_run() afterwards or let Kart poll. Requires Ollama (# allow_net)."""
+    logger.info("[w2] dream_schedule app_id=%s force=%s check_first=%s", app_id, force, check_first)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+
+    def _schedule():
+        from core.dream_state import dream_conditions, queue_dream_task
+
+        if check_first and not force:
+            check = dream_conditions(app_id, store, pg=pg)
+            if not check.get("should_dream"):
+                return {"status": "skipped", "dream_check": check}
+        task_id = queue_dream_task(pg, app_id, submitted_by=app_id, force=force)
+        if not task_id:
+            return {"error": "failed to submit task"}
+        return {"task_id": task_id, "status": "queued", "app_id": app_id, "force": force}
+
+    return await loop.run_in_executor(_executor, _schedule)
+
+
 # ── Tools — intelligence passes (P4.1/P4.2/P4.3) ─────────────────────────────
 
 @mcp.tool()
@@ -3377,7 +3498,7 @@ async def kb_extract_from_session(
 @mcp.tool()
 @sap_gate(write=True)
 async def kb_backup(app_id: str, label: str = "") -> dict:
-    """Backup the Willow Postgres DB to ~/.willow/backups/ using pg_dump -Fc.
+    """Backup the Willow Postgres DB to $WILLOW_HOME/backups/ using pg_dump -Fc.
     label: optional tag appended to filename. Returns path and size on success."""
     logger.info("[w2] kb_backup app_id=%s label=%r", app_id, label)
     loop = asyncio.get_running_loop()
@@ -3390,7 +3511,7 @@ async def kb_backup(app_id: str, label: str = "") -> dict:
         if not shutil.which("pg_dump"):
             return {"error": "pg_dump not found in PATH"}
 
-        backup_dir = Path.home() / "github" / ".willow" / "backups"
+        backup_dir = _fleet_home() / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
 
         db_name = os.environ.get("WILLOW_PG_DB", "willow_20")
@@ -3584,6 +3705,7 @@ async def outcome_run(
     max_iterations: int = 3,
     title:          str = "",
     timeout_s:      int = 600,
+    skill_id:       str = "",
 ) -> dict:
     """Run an Outcomes flow against a registered Managed Agent.
 
@@ -3601,7 +3723,7 @@ async def outcome_run(
         return {"error": f"agent '{agent_name}' not registered — call outcome_agent_register first"}
 
     run_id = await loop.run_in_executor(
-        _executor, pg.outcome_run_create, agent["id"], prompt, rubric, max_iterations, app_id
+        _executor, pg.outcome_run_create, agent["id"], prompt, rubric, max_iterations, app_id, skill_id
     )
 
     try:
@@ -4523,6 +4645,20 @@ def _app_source(app_id: str) -> str:
     return "unknown"
 
 
+def _mcp_points_at_willow(cfg: dict) -> tuple[bool, str]:
+    """Return whether an app's Willow MCP server points at this Willow 2.0 tree."""
+    server = cfg.get("mcpServers", {}).get("willow", {})
+    command = str(server.get("command", ""))
+    args = [str(arg) for arg in server.get("args", [])]
+    command_line = " ".join([command] + args).strip()
+    if not command_line:
+        return False, "empty"
+    ok = "willow-2.0" in command_line or "unified_mcp" in command_line
+    if ok:
+        return True, "willow-2.0"
+    return False, f"stale: {command_line}"
+
+
 @mcp.tool()
 @sap_gate(write=True)
 async def app_install(
@@ -4723,9 +4859,7 @@ async def app_status(app_id: str, target_app_id: str = "") -> dict:
             if mcp_file.exists():
                 try:
                     cfg   = json.loads(mcp_file.read_text())
-                    cmd   = cfg.get("mcpServers", {}).get("willow", {}).get("args", [""])[0]
-                    mcp_ok   = "willow-2.0" in cmd or "unified_mcp" in cmd
-                    mcp_note = "willow-2.0" if mcp_ok else f"stale: {cmd}"
+                    mcp_ok, mcp_note = _mcp_points_at_willow(cfg)
                 except Exception as e:
                     mcp_note = f"parse error: {e}"
 
@@ -4746,7 +4880,7 @@ async def app_status(app_id: str, target_app_id: str = "") -> dict:
 
 _CODE_GRAPH_DB = Path(os.environ.get(
     "WILLOW_CODE_GRAPH_DB",
-    str(Path.home() / "github" / ".willow" / "code_graph.db"),
+    str(_fleet_home() / "code_graph.db"),
 ))
 _CODE_GRAPH_ROOT = Path(os.environ.get(
     "WILLOW_CODE_GRAPH_ROOT",
@@ -4997,6 +5131,528 @@ async def session_query(
             release_connection(conn)
 
     return await loop.run_in_executor(_executor, _run)
+
+
+# ── Tools — willow_ facade domain ─────────────────────────────────────────────
+
+def _as_list(value) -> list:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def _looks_like_code_query(query: str) -> bool:
+    q = query.lower()
+    markers = (".py", ".ts", ".tsx", ".js", "/", "::", "def ", "class ", "function ", "symbol")
+    return any(m in q for m in markers)
+
+
+def _grove_search_simple(query: str, channel_name: str = "", limit: int = 10) -> list[dict]:
+    try:
+        from sap import grove_tools as _gt
+        if not getattr(_gt, "_GROVE_AVAILABLE", False):
+            return [{"error": "Grove package not available"}]
+        conn = _gt.db.get_connection()
+        try:
+            channel_id = None
+            if channel_name:
+                channels = _gt.db.list_channels(conn)
+                ch = next((c for c in channels if c["name"] == channel_name), None)
+                channel_id = ch["id"] if ch else None
+            msgs = _gt.db.search_messages(conn, query, channel_id=channel_id)
+            return [
+                {
+                    "id": m.get("id"),
+                    "sender": m.get("sender"),
+                    "content": m.get("content"),
+                    "created_at": m["created_at"].isoformat() if m.get("created_at") else None,
+                }
+                for m in msgs[:limit]
+            ]
+        finally:
+            _gt.db.release_connection(conn)
+    except Exception as e:
+        return [{"error": str(e)}]
+
+
+def _grove_inbox_simple(agent: str, since_id: int = 0, limit: int = 10) -> list[dict]:
+    try:
+        from sap import grove_tools as _gt
+        if not getattr(_gt, "_GROVE_AVAILABLE", False):
+            return [{"error": "Grove package not available"}]
+        conn = _gt.db.get_connection()
+        try:
+            target = agent or os.getenv("GROVE_SENDER") or os.getenv("GROVE_NAME") or _MCP_AGENT
+            msgs = _gt.db.inbox(conn, target, since_id=since_id, limit=limit)
+            return [
+                {
+                    "id": m.get("id"),
+                    "channel": m.get("channel"),
+                    "sender": m.get("sender"),
+                    "content": m.get("content"),
+                    "created_at": m["created_at"].isoformat() if m.get("created_at") else None,
+                }
+                for m in msgs[:limit]
+            ]
+        finally:
+            _gt.db.release_connection(conn)
+    except Exception as e:
+        return [{"error": str(e)}]
+
+
+def _grove_send_simple(channel_name: str, content: str, sender: str) -> dict:
+    try:
+        from sap import grove_tools as _gt
+        if not getattr(_gt, "_GROVE_AVAILABLE", False):
+            return {"error": "Grove package not available"}
+        conn = _gt.db.get_connection()
+        try:
+            channels = _gt.db.list_channels(conn)
+            ch = next((c for c in channels if c["name"] == channel_name), None)
+            if not ch:
+                ch = _gt.db.create_channel(conn, name=channel_name, channel_type="group")
+            msg = _gt.db.send_message(conn, channel_id=ch["id"], sender=sender, content=content)
+            return {"id": msg["id"], "channel": channel_name, "sent": True}
+        finally:
+            _gt.db.release_connection(conn)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def willow_status(app_id: str, level: str = "quick", target_app_id: str = "") -> dict:
+    """Facade: answer "is Willow healthy?" with one status entry point.
+
+    level: quick|health|system|identity|app|diagnostic.
+    """
+    level = (level or "quick").strip().lower()
+    if level == "health":
+        result = await fleet_health(app_id=app_id)
+    elif level == "system":
+        result = await fleet_system_status(app_id=app_id)
+    elif level == "identity":
+        result = await fleet_identity_status(app_id=app_id)
+    elif level == "app":
+        result = await app_status(app_id=app_id, target_app_id=target_app_id)
+    elif level == "diagnostic":
+        result = await diagnostic_summary(app_id=app_id)
+    else:
+        result = await fleet_status(app_id=app_id)
+    return {"facade": "willow_status", "level": level, "backend": level if level != "quick" else "fleet_status", "result": result}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def willow_attention(app_id: str, limit: int = 10) -> dict:
+    """Facade: what needs attention — inbox, flags, nest, kart, dream (desk cockpit)."""
+    from willow.fylgja.desk_attention import attention_as_dict, fetch_attention_summary
+
+    loop = asyncio.get_running_loop()
+    inbox = await loop.run_in_executor(_executor, _grove_inbox_simple, app_id, 0, limit)
+    summary = fetch_attention_summary(inbox=inbox)
+    return {
+        "facade": "willow_attention",
+        "summary": attention_as_dict(summary),
+        "headline": " · ".join(summary.lines),
+    }
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def human_required_queue_list(
+    app_id: str,
+    status: str = "open",
+    kind: str = "",
+    limit: int = 20,
+) -> dict:
+    """List human-required queue items: consent, attestation, review, overload, onboarding."""
+    if pg is None:
+        return {"error": "postgres not connected"}
+    loop = asyncio.get_running_loop()
+    rows = await loop.run_in_executor(
+        _executor,
+        pg.human_required_list,
+        status,
+        kind or None,
+        limit,
+    )
+    stats = await loop.run_in_executor(_executor, pg.human_required_stats)
+    return {"items": rows, "count": len(rows), "stats": stats}
+
+
+@mcp.tool()
+@sap_gate()
+async def human_required_queue_enqueue(
+    app_id: str,
+    kind: str,
+    title: str,
+    summary: str = "",
+    priority: str = "normal",
+    source_ref: str = "",
+    assignee: str = "",
+) -> dict:
+    """Enqueue work that must pause automation until a human acts."""
+    if pg is None:
+        return {"error": "postgres not connected"}
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor,
+        lambda: pg.human_required_enqueue(
+            kind=kind,
+            title=title,
+            summary=summary,
+            priority=priority,
+            source_agent=app_id,
+            source_ref=source_ref,
+            assignee=assignee,
+        ),
+    )
+
+
+@mcp.tool()
+@sap_gate()
+async def human_required_queue_resolve(
+    app_id: str,
+    item_id: str,
+    status: str = "resolved",
+    note: str = "",
+) -> dict:
+    """Resolve, dismiss, or acknowledge a human-required queue item."""
+    if pg is None:
+        return {"error": "postgres not connected"}
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor,
+        lambda: pg.human_required_resolve(
+            item_id,
+            resolved_by=app_id,
+            status=status,
+            note=note,
+        ),
+    )
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def human_attestation_list(
+    app_id: str,
+    subject_id: str = "",
+    subject_type: str = "",
+    status: str = "",
+    limit: int = 20,
+) -> dict:
+    """List durable human attestation records."""
+    if pg is None:
+        return {"error": "postgres not connected"}
+    loop = asyncio.get_running_loop()
+    rows = await loop.run_in_executor(
+        _executor,
+        pg.human_attestation_list,
+        subject_id,
+        subject_type,
+        status,
+        limit,
+    )
+    return {"items": rows, "count": len(rows)}
+
+
+@mcp.tool()
+@sap_gate()
+async def human_attestation_create(
+    app_id: str,
+    subject_id: str,
+    subject_type: str = "knowledge_atom",
+    statement: str = "",
+    status: str = "attested",
+    attested_by: str = "operator",
+    evidence_ref: str = "",
+) -> dict:
+    """Create a durable human attestation/rejection/change-request record."""
+    if pg is None:
+        return {"error": "postgres not connected"}
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor,
+        lambda: pg.human_attestation_create(
+            subject_id=subject_id,
+            subject_type=subject_type,
+            status=status,
+            attested_by=attested_by,
+            agent=app_id,
+            statement=statement,
+            evidence_ref=evidence_ref,
+        ),
+    )
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def willow_find(
+    app_id: str,
+    query: str,
+    scope: str = "auto",
+    limit: int = 5,
+) -> dict:
+    """Facade: find knowledge, state, handoffs, sessions, code, messages, or sources.
+
+    scope: auto|kb|state|handoff|sessions|code|messages|external|all.
+    """
+    scope = (scope or "auto").strip().lower()
+    routes: list[str]
+    if scope == "all":
+        routes = ["kb", "state", "handoff", "sessions", "code", "messages", "external"]
+    elif scope == "auto":
+        routes = ["kb", "state", "handoff"]
+        if _looks_like_code_query(query):
+            routes.append("code")
+    else:
+        routes = [scope]
+
+    results: dict[str, object] = {}
+    for route in routes:
+        if route in {"kb", "memory"}:
+            results["kb"] = await kb_search(app_id=app_id, query=query, limit=limit)
+        elif route in {"state", "soil"}:
+            results["state"] = await soil_search_all(app_id=app_id, query=query)
+        elif route == "handoff":
+            results["handoff"] = await handoff_search(app_id=app_id, query=query, limit=limit)
+        elif route in {"sessions", "session"}:
+            results["sessions"] = await session_query(app_id=app_id, query=f"search:{query}", limit=limit)
+        elif route == "code":
+            results["code"] = await code_graph_search(app_id=app_id, query=query, max_results=limit)
+        elif route in {"messages", "grove"}:
+            loop = asyncio.get_running_loop()
+            results["messages"] = await loop.run_in_executor(_executor, _grove_search_simple, query, "", limit)
+        elif route in {"external", "sources", "jeles"}:
+            results["external"] = await mem_jeles_web_search(app_id=app_id, query=query, limit=limit)
+        elif route == "opus":
+            results["opus"] = await index_search(app_id=app_id, query=query, limit=limit)
+        else:
+            results[route] = {"error": f"unknown scope {route!r}"}
+    return {"facade": "willow_find", "scope": scope, "routes": routes, "results": results}
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def willow_remember(
+    app_id: str,
+    content: str,
+    kind: str = "observation",
+    title: str = "",
+    source: str = "willow_remember",
+    confidence: float = 0.80,
+    tags: list = None,
+) -> dict:
+    """Facade: store a note, decision, context, or observation in the right lane.
+
+    kind: observation|note|task|decision|context|journal.
+    """
+    kind = (kind or "observation").strip().lower()
+    tags = _as_list(tags)
+    if kind == "decision":
+        result = await ledger_write(
+            app_id=app_id,
+            project=app_id,
+            event_type="decision",
+            content={"title": title, "content": content, "source": source, "tags": tags},
+        )
+        backend = "ledger_write"
+    elif kind == "context":
+        result = await context_save(app_id=app_id, content=content, category=title or "context")
+        backend = "context_save"
+    elif kind == "journal":
+        result = await kb_journal(app_id=app_id, entry=content, domain=app_id)
+        backend = "kb_journal"
+    else:
+        result = await intake_write(
+            app_id=app_id,
+            content=content,
+            source=source,
+            tier="frontier" if kind in {"observation", "note", "task"} else "contested",
+            confidence=confidence,
+            tags=tags,
+            title=title,
+            namespace=app_id,
+            category=kind,
+        )
+        backend = "intake_write"
+    return {"facade": "willow_remember", "kind": kind, "backend": backend, "result": result}
+
+
+@mcp.tool()
+@sap_gate()
+async def willow_run(
+    app_id: str,
+    task: str = "",
+    script_body: str = "",
+    script_name: str = "",
+    task_id: str = "",
+    run_now: bool = False,
+    allow_net: bool = False,
+    agent: str = "kart",
+) -> dict:
+    """Facade: run or inspect local work through Kart."""
+    if task_id:
+        result = await agent_task_status(app_id=app_id, task_id=task_id)
+        return {"facade": "willow_run", "backend": "agent_task_status", "result": result}
+    if not task and not script_body:
+        result = await agent_task_list(app_id=app_id, agent=agent)
+        return {"facade": "willow_run", "backend": "agent_task_list", "result": result}
+
+    submitted = await agent_task_submit(
+        app_id=app_id,
+        task=task,
+        script_body=script_body,
+        script_name=script_name,
+        agent=agent,
+        submitted_by=app_id,
+        allow_net=allow_net,
+    )
+    out = {"facade": "willow_run", "backend": "agent_task_submit", "submitted": submitted}
+    if run_now and not submitted.get("error"):
+        # kart_task_run drains the whole pending backlog, not just this task —
+        # label the drain stats and return THIS task's own result explicitly.
+        out["run"] = await kart_task_run(app_id=app_id, agent=agent)
+        tid = submitted.get("task_id")
+        if tid:
+            out["result"] = await agent_task_status(app_id=app_id, task_id=tid)
+    return out
+
+
+@mcp.tool()
+@sap_gate()
+async def willow_delegate(
+    app_id: str,
+    prompt: str,
+    to: str = "",
+    mode: str = "route",
+    priority: str = "normal",
+) -> dict:
+    """Facade: route or dispatch work to another reasoning agent."""
+    mode = (mode or "route").strip().lower()
+    if mode == "dispatch" or to:
+        result = await agent_dispatch(app_id=app_id, to=to, prompt=prompt, priority=priority, reply_to=app_id)
+        backend = "agent_dispatch"
+    else:
+        result = await agent_route(app_id=app_id, message=prompt)
+        backend = "agent_route"
+    return {"facade": "willow_delegate", "backend": backend, "result": result}
+
+
+@mcp.tool()
+@sap_gate()
+async def willow_work(
+    app_id: str,
+    action: str = "status",
+    fork_id: str = "",
+    title: str = "",
+    note: str = "",
+) -> dict:
+    """Facade: manage a bounded unit of work.
+
+    action: create|status|log|list.
+    """
+    action = (action or "status").strip().lower()
+    if action == "create":
+        result = await fork_create(app_id=app_id, title=title or note or "Willow work", created_by=app_id, topic=note)
+        backend = "fork_create"
+    elif action == "log":
+        result = await fork_log(app_id=app_id, fork_id=fork_id, component=app_id, type="note", ref=title or "note", description=note)
+        backend = "fork_log"
+    elif action == "list":
+        result = await fork_list(app_id=app_id)
+        backend = "fork_list"
+    else:
+        result = await fork_status(app_id=app_id, fork_id=fork_id) if fork_id else await handoff_latest(app_id=app_id, agent=app_id)
+        backend = "fork_status" if fork_id else "handoff_latest"
+    return {"facade": "willow_work", "backend": backend, "result": result}
+
+
+@mcp.tool()
+@sap_gate()
+async def willow_message(
+    app_id: str,
+    action: str = "inbox",
+    content: str = "",
+    channel_name: str = "hanuman",
+    query: str = "",
+    since_id: int = 0,
+    limit: int = 10,
+) -> dict:
+    """Facade: read, search, or send Grove messages."""
+    action = (action or "inbox").strip().lower()
+    loop = asyncio.get_running_loop()
+    if action == "send":
+        result = await loop.run_in_executor(_executor, _grove_send_simple, channel_name, content, app_id)
+        backend = "grove_send_message"
+    elif action == "search":
+        result = await loop.run_in_executor(_executor, _grove_search_simple, query or content, channel_name, limit)
+        backend = "grove_search"
+    else:
+        result = await loop.run_in_executor(_executor, _grove_inbox_simple, app_id, since_id, limit)
+        backend = "grove_inbox"
+    return {"facade": "willow_message", "backend": backend, "result": result}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def willow_app(app_id: str, action: str = "status", target_app_id: str = "") -> dict:
+    """Facade: inspect SAFE app registration and manifest state."""
+    action = (action or "status").strip().lower()
+    if action == "list":
+        result = await app_list(app_id=app_id)
+        backend = "app_list"
+    else:
+        result = await app_status(app_id=app_id, target_app_id=target_app_id)
+        backend = "app_status"
+    return {"facade": "willow_app", "backend": backend, "result": result}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def willow_external(
+    app_id: str,
+    query: str = "",
+    text: str = "",
+    mode: str = "ask",
+    sources: list = None,
+    limit: int = 2,
+) -> dict:
+    """Facade: use cited external sources through Jeles/source-trail."""
+    mode = (mode or "ask").strip().lower()
+    sources = _as_list(sources)
+    if mode == "verify":
+        result = await source_trail_verify(app_id=app_id, text=text or query, sources=sources)
+        backend = "source_trail_verify"
+    elif mode == "search":
+        result = await mem_jeles_web_search(app_id=app_id, query=query or text, sources=sources, limit=limit)
+        backend = "mem_jeles_web_search"
+    else:
+        result = await mem_jeles_ask(app_id=app_id, question=query or text, sources=sources, limit=limit)
+        backend = "mem_jeles_ask"
+    return {"facade": "willow_external", "backend": backend, "result": result}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def willow_code(
+    app_id: str,
+    query: str,
+    mode: str = "search",
+    max_results: int = 10,
+) -> dict:
+    """Facade: search or suggest code context."""
+    mode = (mode or "search").strip().lower()
+    if mode == "suggest":
+        result = await code_graph_suggest(app_id=app_id, task=query, max_results=max_results)
+        backend = "code_graph_suggest"
+    else:
+        result = await code_graph_search(app_id=app_id, query=query, max_results=max_results)
+        backend = "code_graph_search"
+    return {"facade": "willow_code", "backend": backend, "result": result}
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

@@ -20,7 +20,7 @@ Night-time **man-on-the-street** news segment: **Muninn** and **Huginn** (named 
 
 | Knob | Choice |
 |------|--------|
-| Aesthetic north star | Sean's voice (UTETY was **reference**, not template) |
+| Aesthetic north star | USER's voice (UTETY was **reference**, not template) |
 | Base | **Dark** page, **colorful** accent pops per clip |
 | Quote format | **Man-on-the-street** filmstrip / montage |
 | Oden | **Voiceover only** — no desk, no portrait |

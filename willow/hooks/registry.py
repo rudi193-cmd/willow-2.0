@@ -49,14 +49,16 @@ def register_hook(
             (name, category, handler_path, destructive, approval_required, test_path, priority, active)
             VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)
             ON CONFLICT (name) DO NOTHING
+            RETURNING name
         """, (
             name, category, handler_path,
             destructive, approval_required, test_path, priority
         ))
+        inserted = cur.fetchone() is not None
 
         bridge.conn.commit()
         bridge.close()
-        return True
+        return inserted
 
     except Exception:
         return False
@@ -178,6 +180,24 @@ def seed_builtin_hooks() -> int:
             'approval_required': False,
             'test_path': None,
             'priority': 40,
+        },
+        {
+            'name': 'stop_slow',
+            'category': 'session_events',
+            'handler_path': 'willow/fylgja/events/stop_slow.py',
+            'destructive': False,
+            'approval_required': False,
+            'test_path': None,
+            'priority': 30,
+        },
+        {
+            'name': 'shutdown',
+            'category': 'session_events',
+            'handler_path': 'willow/fylgja/events/shutdown.py',
+            'destructive': False,
+            'approval_required': False,
+            'test_path': None,
+            'priority': 20,
         },
     ]
 

@@ -270,10 +270,22 @@ def main():
         except Exception:
             pass
 
+    # BKT: record a successful boot outcome when the boot sentinel is written.
+    if tool_name == "Write":
+        _fp = tool_input.get("file_path", "")
+        if f"willow-boot-done-{_AGENT}" in _fp:
+            try:
+                from core import skill_mastery as _sm
+                _sm.record("boot", correct=True)
+            except Exception:
+                pass
+
     # Hook timing log
     _dur_ms = int((_time.monotonic() - _t0) * 1000)
     try:
-        _log_dir = Path.home() / ".willow" / "logs"
+        from willow.fylgja.willow_home import willow_home
+
+        _log_dir = willow_home() / "logs"
         _log_dir.mkdir(parents=True, exist_ok=True)
         with open(_log_dir / "hook_timing.jsonl", "a") as _f:
             import json as _json

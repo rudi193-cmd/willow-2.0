@@ -24,8 +24,9 @@ pre-commit install --hook-type pre-push
 **IDE wiring:**
 
 ```bash
-./willow agents active <agent-id>
-./willow agents install <agent-id> --ide all
+./willow.sh agents active <agent-id>
+./willow.sh agents install <agent-id> --ide <cursor|claude|codex>
+./willow.sh agents check --ide <surface>   # --ide all only when every IDE is installed
 ```
 
 Per-agent IDE permissions live at `$WILLOW_HOME/agents/<agent>/settings.local.json` (symlinked into `.cursor/` and `.claude/` — not committed).
@@ -57,7 +58,7 @@ First-party scope excludes vendored trees (`worktrees/`, `mcp-memory-service/`, 
 1. Branch from `master`; keep PRs focused.
 2. Use the [PR template](.github/PULL_REQUEST_TEMPLATE.md).
 3. Ensure required checks **`test`** and **`path-guard`** pass (exact names — branch protection depends on them).
-4. Do not commit secrets, `.cursor/settings.local.json`, or machine-specific symlinks like `willow.md`.
+4. Do not commit secrets, `.cursor/settings.local.json`, or machine-specific symlinks; root `willow.md` must remain a public tracked file.
 5. Prefer extending existing patterns over new abstractions.
 
 ## Branch hygiene

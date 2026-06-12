@@ -10,7 +10,7 @@ Key ideas taken:
   - Pre-compact hook dumps a structured snapshot before compression
 
 Willow adaptations:
-  - Written to ~/.willow/ledger_{agent}_{date}.jsonl (per-agent, per-day)
+  - Written to $WILLOW_HOME/ledger_{agent}_{date}.jsonl (per-agent, per-day)
   - Entry types: decision | action | observation | block | compact_snapshot
   - No external deps (pure stdlib)
   - Wired into prompt_submit.py (human turns → observation) and
@@ -36,8 +36,10 @@ from core.agent_identity import require_agent_name
 from datetime import datetime, timezone
 from pathlib import Path
 
+from willow.fylgja.willow_home import willow_home
+
 _AGENT = require_agent_name()
-_WILLOW_HOME = Path.home() / ".willow"
+_WILLOW_HOME = willow_home()
 
 # How many recent entries to surface on context resume
 _RESUME_ENTRY_LIMIT = 40
@@ -56,7 +58,7 @@ COMPACT_SNAPSHOT = "compact_snapshot"
 # ---------------------------------------------------------------------------
 
 def _ledger_path(agent: str = _AGENT, date: str | None = None) -> Path:
-    """Return ~/.willow/ledger_{agent}_{date}.jsonl for today."""
+    """Return $WILLOW_HOME/ledger_{agent}_{date}.jsonl for today."""
     if date is None:
         date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     _WILLOW_HOME.mkdir(parents=True, exist_ok=True)

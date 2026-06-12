@@ -32,6 +32,13 @@ def _build_sensitive_paths(home: str, cwd: str) -> list[dict]:
     full, label, description, score."""
     h = pathlib.Path(home)
     c = pathlib.Path(cwd)
+    try:
+        from willow.fylgja.willow_home import willow_home
+
+        fleet = willow_home()
+    except Exception:
+        fleet = h / ".willow"
+    fleet_label = "$WILLOW_HOME"
     return [
         # SSH
         {"full": str(h / ".ssh" / "id_rsa"),      "label": "~/.ssh/id_rsa",      "description": "RSA private key — grants SSH access to your servers",      "score": 20},
@@ -46,9 +53,9 @@ def _build_sensitive_paths(home: str, cwd: str) -> list[dict]:
         {"full": str(h / ".netrc"),                "label": "~/.netrc",           "description": "FTP/HTTP credentials in plain text",                        "score": 15},
         {"full": str(h / ".npmrc"),                "label": "~/.npmrc",           "description": "npm auth token — can publish packages as you",              "score": 10},
         # Willow sovereign stack
-        {"full": str(h / ".willow" / "secrets" / ".willow_master.key"), "label": "~/.willow/secrets/.willow_master.key", "description": "Willow Fernet master key — decrypts all vault credentials", "score": 20},
-        {"full": str(h / ".willow" / "secrets" / ".willow_creds.db"),   "label": "~/.willow/secrets/.willow_creds.db",   "description": "Willow encrypted credential vault (SQLite + Fernet)",        "score": 10},
-        {"full": str(h / ".willow" / "secrets" / "credentials.json"),   "label": "~/.willow/secrets/credentials.json",   "description": "Willow plaintext credential fallback — API keys in clear text", "score": 15},
+        {"full": str(fleet / "secrets" / ".willow_master.key"), "label": f"{fleet_label}/secrets/.willow_master.key", "description": "Willow Fernet master key — decrypts all vault credentials", "score": 20},
+        {"full": str(fleet / "secrets" / ".willow_creds.db"),   "label": f"{fleet_label}/secrets/.willow_creds.db",   "description": "Willow encrypted credential vault (SQLite + Fernet)",        "score": 10},
+        {"full": str(fleet / "secrets" / "credentials.json"),   "label": f"{fleet_label}/secrets/credentials.json",   "description": "Willow plaintext credential fallback — API keys in clear text", "score": 15},
         # CWD secrets
         {"full": str(c / ".env"),                  "label": ".env (cwd)",         "description": "App secrets — database passwords, API keys",                "score": 20},
         {"full": str(c / ".env.local"),            "label": ".env.local (cwd)",   "description": "Local overrides — often contains real credentials",         "score": 15},

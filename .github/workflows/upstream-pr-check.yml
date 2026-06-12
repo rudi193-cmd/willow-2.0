@@ -10,10 +10,18 @@ on:
     types: [closed]
     branches: [master, main]
 
+concurrency:
+  group: upstream-tracker
+  cancel-in-progress: true
+
 jobs:
   update-tracker:
-    # On PR close, only refresh after a merge to the default branch
-    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    # On PR close, only refresh after a merge to the default branch.
+    # Skip runs triggered by the tracker's own auto-merge (github-actions[bot])
+    # — they spawned a new racing PR per merge and the loop never converged.
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.merged == true)
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -49,13 +57,20 @@ jobs:
             echo "No CONTRIBUTORS.md changes"
             exit 0
           fi
-          branch="bot/upstream-tracker-${{ github.run_id }}"
-          git checkout -b "$branch"
+          # One stable branch, force-reset each run. A unique branch per run
+          # (the old bot/upstream-tracker-<run_id> scheme) left 40+ stale
+          # branches and racing PRs that conflicted on CONTRIBUTORS.md.
+          branch="bot/upstream-tracker"
+          git checkout -B "$branch"
           git commit -m "docs: auto-update upstream contributions tracker"
-          git push -u origin "$branch"
-          gh pr create \
-            --title "docs: auto-update upstream contributions tracker" \
-            --body "Automated update from the Upstream Contribution Tracker workflow (run ${{ github.run_id }})." \
-            --base master \
-            --head "$branch"
-          gh pr merge --squash --delete-branch "$branch"
+          git push -f -u origin "$branch"
+          # Reuse the open PR for this branch when one exists.
+          existing=$(gh pr list --repo "${{ github.repository }}" --head "$branch" --state open --json number -q '.[0].number')
+          if [ -z "$existing" ]; then
+            gh pr create \
+              --title "docs: auto-update upstream contributions tracker" \
+              --body "Automated update from the Upstream Contribution Tracker workflow (latest run ${{ github.run_id }})." \
+              --base master \
+              --head "$branch"
+          fi
+          gh pr merge --auto --squash "$branch" --repo "${{ github.repository }}"

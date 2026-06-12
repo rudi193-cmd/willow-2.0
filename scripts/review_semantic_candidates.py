@@ -9,9 +9,17 @@ import argparse
 import json
 import os
 import sqlite3
+import sys
 from pathlib import Path
 
-DEFAULT_DB = Path(os.environ.get("WILLOW_20_DB", "~/.willow/willow-2.0.db")).expanduser()
+_REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO))
+
+from willow.fylgja.willow_home import willow_home
+
+DEFAULT_DB = Path(
+    os.environ.get("WILLOW_20_DB", str(willow_home(_REPO) / "willow-2.0.db"))
+).expanduser()
 
 
 def main():

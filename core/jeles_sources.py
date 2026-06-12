@@ -33,13 +33,15 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from pathlib import Path
 from typing import Optional
+
+from willow.fylgja.willow_home import willow_home
 
 log = logging.getLogger("jeles.sources")
 
-_CREDS_PATH = Path.home() / ".willow" / "secrets" / "credentials.json"
-_CACHE_DIR  = Path.home() / ".willow" / "jeles_cache"
+_FLEET_HOME = willow_home()
+_CREDS_PATH = _FLEET_HOME / "secrets" / "credentials.json"
+_CACHE_DIR  = _FLEET_HOME / "jeles_cache"
 _TIMEOUT = 15
 _UA = "Willow-Jeles/2.0 (academic librarian; mailto:rudi193@gmail.com)"
 
@@ -1865,12 +1867,17 @@ SOURCES: dict[str, dict] = {
 # jeles_sources table is canonical. SOURCES above is fallback only.
 # Dispatch resolves fn_name strings via getattr — no function pointers needed.
 
+import concurrent.futures as _cf
 import sys as _sys
 import time as _time
 
 _REGISTRY_CACHE: dict[str, dict] = {}
 _REGISTRY_LOADED_AT: float = 0.0
 _REGISTRY_TTL: float = 300.0  # 5-minute cache
+
+# Shared executor for concurrent source dispatch — avoids spawning N×12 threads
+# when the MCP server calls search() concurrently from multiple requests.
+_SEARCH_EXECUTOR = _cf.ThreadPoolExecutor(max_workers=16, thread_name_prefix="jeles-src")
 
 _ROUTES_CACHE: list[tuple[list[str], list[str]]] = []
 _ROUTES_LOADED_AT: float = 0.0
@@ -2096,7 +2103,7 @@ def route_sources(query: str) -> list[str]:
 # that keyword matching misses.
 
 _OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
-_CENTROIDS_PATH = Path.home() / ".willow" / "jeles_centroids.json"
+_CENTROIDS_PATH = willow_home() / "jeles_centroids.json"
 
 # Representative sentences per domain — averaged into a centroid embedding.
 _DOMAIN_SEEDS: dict[str, list[str]] = {
@@ -2534,16 +2541,23 @@ def search(
     query: str,
     sources: list[str] | None = None,
     limit_per_source: int = 3,
+    wall_clock_limit: float = 20.0,
 ) -> dict:
     """Search across trusted sources. DB-registry dispatch via fn_name strings.
-    sources=None → all non-opt-in sources. Pass a list to target specific ones."""
+    sources=None → all non-opt-in sources. Pass a list to target specific ones.
+
+    Concurrent: up to 16 sources run in parallel via _SEARCH_EXECUTOR (module-level,
+    shared across MCP calls). wall_clock_limit caps total wait time; per-source urllib
+    timeout (_TIMEOUT) handles individual hangs. Sources not done within
+    wall_clock_limit are dropped."""
     registry = _load_registry()
     if sources:
         active = sources
     else:
         active = [sid for sid, cfg in registry.items()
                   if not cfg.get("opt_in") and cfg.get("enabled", True)]
-    out: dict[str, list] = {}
+
+    resolved: list[tuple[str, object]] = []
     for sid in active:
         cfg = registry.get(sid)
         if not cfg:
@@ -2553,12 +2567,32 @@ def search(
         if not fn:
             log.warning("No function found for source %s (fn_name=%s)", sid, cfg["fn_name"])
             continue
+        resolved.append((sid, fn))
+
+    out: dict[str, list] = {}
+
+    def _call(sid: str, fn) -> tuple[str, list]:
         try:
-            hits = fn(query, limit_per_source)
-            if hits:
-                out[sid] = hits
+            return sid, fn(query, limit_per_source)
         except Exception as e:
             log.warning("Source %s failed: %s", sid, e)
+            return sid, []
+
+    futures = {_SEARCH_EXECUTOR.submit(_call, sid, fn): sid for sid, fn in resolved}
+    try:
+        for fut in _cf.as_completed(futures, timeout=wall_clock_limit):
+            try:
+                sid, hits = fut.result()
+                if hits:
+                    out[sid] = hits
+            except Exception as e:
+                log.warning("Source %s result error: %s", futures[fut], e)
+    except _cf.TimeoutError:
+        pending = sum(1 for f in futures if not f.done())
+        log.warning(
+            "jeles.search wall-clock limit %.1fs reached — %d source(s) still pending",
+            wall_clock_limit, pending,
+        )
 
     total = sum(len(v) for v in out.values())
     if out:

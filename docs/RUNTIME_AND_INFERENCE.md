@@ -19,9 +19,9 @@ The model behind the CLI has no fleet namespace. It must not claim hanuman’s P
 Set per session:
 
 ```bash
-cd ~/willow-2.0
-./willow agents active heimdallr
-./willow agents install heimdallr --ide all
+cd ~/github/willow-2.0
+./willow.sh agents active heimdallr
+./willow.sh agents install heimdallr --ide <cursor|claude|codex>
 ```
 
 - MCP `app_id` / env `WILLOW_AGENT_NAME` = **caller**
@@ -47,7 +47,7 @@ See [`AGENT_IDENTITY.md`](AGENT_IDENTITY.md).
 - `OPENROUTER_API_KEY`
 - Ollama at `OLLAMA_URL` (no key)
 
-Set in `~/.willow/env`, agent `mcp.json`, or `~/.willow/secrets/credentials.json`.
+Set in `$WILLOW_HOME/env` (`~/github/.willow/env`; `~/.willow` alias OK), agent `mcp.json`, or `$WILLOW_HOME/secrets/credentials.json`.
 
 **Local model defaults** (ThinkPad T500, 4 GB VRAM):
 

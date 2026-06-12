@@ -39,14 +39,21 @@ ASPECT_TO_WH: dict[str, tuple[int, int]] = {
 
 # ── Credential loading ─────────────────────────────────────────────────────────
 
+def _secrets_dir() -> pathlib.Path:
+    from willow.fylgja.willow_home import willow_home
+
+    return willow_home() / "secrets"
+
+
 def load_credential(key: str) -> str | None:
     # Primary: Fernet vault (encrypted SQLite)
     try:
         from cryptography.fernet import Fernet
         import sqlite3 as _sqlite3
-        _mk = pathlib.Path("~/.willow/secrets/.willow_master.key").expanduser().read_bytes().strip()
+        secrets = _secrets_dir()
+        _mk = (secrets / ".willow_master.key").read_bytes().strip()
         _f  = Fernet(_mk)
-        _db = _sqlite3.connect(str(pathlib.Path("~/.willow/secrets/.willow_creds.db").expanduser()))
+        _db = _sqlite3.connect(str(secrets / ".willow_creds.db"))
         row = _db.execute("SELECT value_enc FROM credentials WHERE name=?", (key,)).fetchone()
         _db.close()
         if row:
@@ -57,7 +64,7 @@ def load_credential(key: str) -> str | None:
         pass
     # Fallback: credentials.json (plaintext)
     try:
-        with open(os.path.expanduser("~/.willow/secrets/credentials.json")) as fh:
+        with open(_secrets_dir() / "credentials.json") as fh:
             val = json.load(fh).get(key)
             if val:
                 return val

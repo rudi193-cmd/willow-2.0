@@ -182,3 +182,41 @@ def test_workflow_phase_uses_llm_without_rubric(pg):
     assert status == "completed"
     m_llm.assert_called_once()
     m_outcome.assert_not_called()
+
+
+# ── BKT skill_id wiring ───────────────────────────────────────────────────────
+
+def test_outcome_run_create_stores_skill_id(pg):
+    agent = pg.outcome_agent_register("bkt-agent-1", "agt_bkt1", "env_bkt1", "", "test")
+    run_id = pg.outcome_run_create(agent["id"], "Do X", "X must be done.", 3, "test",
+                                    skill_id="my_skill")
+    row = pg.outcome_run_get(run_id)
+    assert row["skill_id"] == "my_skill"
+
+
+def test_outcome_run_update_records_bkt_on_terminal(pg):
+    agent = pg.outcome_agent_register("bkt-agent-2", "agt_bkt2", "env_bkt2", "", "test")
+    run_id = pg.outcome_run_create(agent["id"], "Do Y", "Y must be done.", 3, "test",
+                                    skill_id="skill_bkt_test")
+    with unittest.mock.patch("core.skill_mastery.record_outcome") as m_rec:
+        pg.outcome_run_update(run_id, status="satisfied", result="satisfied")
+    m_rec.assert_called_once_with(
+        "skill_bkt_test", {"result": "satisfied", "success": True}
+    )
+
+
+def test_outcome_run_update_no_bkt_without_skill_id(pg):
+    agent = pg.outcome_agent_register("bkt-agent-3", "agt_bkt3", "env_bkt3", "", "test")
+    run_id = pg.outcome_run_create(agent["id"], "Do Z", "Z must be done.", 3, "test")
+    with unittest.mock.patch("core.skill_mastery.record_outcome") as m_rec:
+        pg.outcome_run_update(run_id, status="satisfied", result="satisfied")
+    m_rec.assert_not_called()
+
+
+def test_outcome_run_update_no_bkt_nonterminal(pg):
+    agent = pg.outcome_agent_register("bkt-agent-4", "agt_bkt4", "env_bkt4", "", "test")
+    run_id = pg.outcome_run_create(agent["id"], "Do W", "W must be done.", 3, "test",
+                                    skill_id="skill_bkt_nonterminal")
+    with unittest.mock.patch("core.skill_mastery.record_outcome") as m_rec:
+        pg.outcome_run_update(run_id, status="running")
+    m_rec.assert_not_called()

@@ -27,8 +27,6 @@ from pathlib import Path
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 WILLOW_ROOT   = Path(__file__).parent
-VENV_DIR      = Path.home() / ".willow" / "venv"
-BOOT_CONFIG   = Path.home() / ".willow" / "seed-boot.json"
 BOOT_LOG      = Path(tempfile.gettempdir()) / "willow-seed-debug.log"
 GROVE_DIR      = Path(os.environ.get(
     "WILLOW_GROVE_DIR",
@@ -39,6 +37,15 @@ GROVE_REPO     = "https://github.com/rudi193-cmd/safe-app-willow-grove.git"
 sys.path.insert(0, str(WILLOW_ROOT))
 
 from core.version import VERSION, sync_installed_version
+from willow.fylgja.willow_home import resolve_store_root, willow_home
+
+
+def _fleet_home() -> Path:
+    return willow_home(WILLOW_ROOT)
+
+
+VENV_DIR = _fleet_home() / "venv"
+BOOT_CONFIG = _fleet_home() / "seed-boot.json"
 
 
 # ── Venv bootstrap ────────────────────────────────────────────────────────────
@@ -55,7 +62,7 @@ def _ensure_venv() -> None:
             break
     venv_python = VENV_DIR / "bin" / "python3"
     if not venv_python.exists():
-        print("  [venv] creating ~/.willow/venv (Ubuntu 24.04 compatibility)...")
+        print(f"  [venv] creating {VENV_DIR} (Ubuntu 24.04 compatibility)...")
         subprocess.run([preferred, "-m", "venv", str(VENV_DIR)], check=True)
     os.execv(str(venv_python), [str(venv_python)] + sys.argv)
 
@@ -294,8 +301,9 @@ def _write_fp_to_profile(fp: str) -> None:
 def _vault_init() -> bool:
     try:
         from cryptography.fernet import Fernet
-        key_path   = Path.home() / ".willow" / ".master.key"
-        vault_path = Path.home() / ".willow" / "vault.db"
+        home = _fleet_home()
+        key_path   = home / ".master.key"
+        vault_path = home / "vault.db"
         if not key_path.exists():
             key_path.write_bytes(Fernet.generate_key())
             key_path.chmod(0o600)
@@ -311,8 +319,9 @@ def _vault_init() -> bool:
 def _vault_write(name: str, env_key: str, value: str) -> bool:
     try:
         from cryptography.fernet import Fernet
-        key_path   = Path.home() / ".willow" / ".master.key"
-        vault_path = Path.home() / ".willow" / "vault.db"
+        home = _fleet_home()
+        key_path   = home / ".master.key"
+        vault_path = home / "vault.db"
         f   = Fernet(key_path.read_bytes().strip())
         enc = f.encrypt(value.encode())
         conn = sqlite3.connect(str(vault_path))
@@ -327,8 +336,9 @@ def _vault_write(name: str, env_key: str, value: str) -> bool:
 def _vault_has(name: str) -> bool:
     try:
         from cryptography.fernet import Fernet
-        key_path   = Path.home() / ".willow" / ".master.key"
-        vault_path = Path.home() / ".willow" / "vault.db"
+        home = _fleet_home()
+        key_path   = home / ".master.key"
+        vault_path = home / "vault.db"
         if not vault_path.exists() or not key_path.exists():
             return False
         f    = Fernet(key_path.read_bytes().strip())
@@ -545,15 +555,15 @@ def _run_install(win, name_str: str, email: str, passphrase: str) -> str:
 
 # ── Individual install steps ──────────────────────────────────────────────────
 def _step_dirs() -> None:
-    home = Path.home()
-    for sub in (".willow", ".willow/store", ".willow/secrets", ".willow/logs"):
-        (home / sub).mkdir(parents=True, exist_ok=True)
-    (home / "SAFE" / "Applications").mkdir(parents=True, exist_ok=True)
+    fleet = _fleet_home()
+    for sub in ("store", "secrets", "logs"):
+        (fleet / sub).mkdir(parents=True, exist_ok=True)
+    (Path.home() / "SAFE" / "Applications").mkdir(parents=True, exist_ok=True)
     (Path.home() / "github").mkdir(parents=True, exist_ok=True)
 
 
 def _step_telemetry() -> None:
-    tel = Path.home() / ".willow" / "telemetry.json"
+    tel = _fleet_home() / "telemetry.json"
     if not tel.exists():
         tel.write_text(json.dumps({"enabled": False,
                                    "what": "Nothing is collected when disabled.",
@@ -619,14 +629,19 @@ def _ensure_postgres() -> bool:
 
     user = os.environ.get("USER", "")
 
+    _linux = sys.platform.startswith("linux")
     if subprocess.run(["pg_isready", "-q"], capture_output=True).returncode != 0:
-        subprocess.run(["sudo", "service", "postgresql", "start"], capture_output=True)
-        if subprocess.run(["pg_isready", "-q"], capture_output=True).returncode != 0:
-            print("  [postgres] not found — installing (requires sudo)...")
-            subprocess.run(
-                ["sudo", "apt-get", "install", "-y", "postgresql"], check=False
-            )
+        if _linux:
             subprocess.run(["sudo", "service", "postgresql", "start"], capture_output=True)
+        if subprocess.run(["pg_isready", "-q"], capture_output=True).returncode != 0:
+            if _linux:
+                print("  [postgres] not found — installing (requires sudo)...")
+                subprocess.run(
+                    ["sudo", "apt-get", "install", "-y", "postgresql"], check=False
+                )
+                subprocess.run(["sudo", "service", "postgresql", "start"], capture_output=True)
+            else:
+                print("  [postgres] not found — install PostgreSQL manually: https://www.postgresql.org/download/")
 
     if subprocess.run(["pg_isready", "-q"], capture_output=True).returncode != 0:
         print("  [postgres] could not start — fix manually then re-run seed.py")
@@ -634,10 +649,11 @@ def _ensure_postgres() -> bool:
 
     # Install pgvector matching the running postgres major version
     pg_ver = _pg_major_version()
-    subprocess.run(
-        ["sudo", "apt-get", "install", "-y", f"postgresql-{pg_ver}-pgvector"],
-        capture_output=True,
-    )
+    if _linux:
+        subprocess.run(
+            ["sudo", "apt-get", "install", "-y", f"postgresql-{pg_ver}-pgvector"],
+            capture_output=True,
+        )
     # Enable pgvector in willow_20 — requires superuser (apt installs the SO but doesn't activate it)
     subprocess.run(
         ["sudo", "-u", "postgres", "psql", "-c",
@@ -688,21 +704,29 @@ def _ensure_ollama() -> bool:
     """
     if not shutil.which("ollama"):
         print("  [ollama] not found — installing...")
-        install_script = Path(tempfile.gettempdir()) / "ollama-install.sh"
-        try:
-            urllib.request.urlretrieve("https://ollama.ai/install.sh", str(install_script))
-            install_script.chmod(0o755)
-            subprocess.run([str(install_script)], check=False)
-        except Exception as e:
-            print(f"  [ollama] install failed: {e} — semantic search unavailable")
+        if sys.platform.startswith("linux") or sys.platform == "darwin":
+            install_script = Path(tempfile.gettempdir()) / "ollama-install.sh"
+            try:
+                urllib.request.urlretrieve("https://ollama.ai/install.sh", str(install_script))
+                install_script.chmod(0o755)
+                subprocess.run([str(install_script)], check=False)
+            except Exception as e:
+                print(f"  [ollama] install failed: {e} — semantic search unavailable")
+                return False
+            finally:
+                install_script.unlink(missing_ok=True)
+        else:
+            print("  [ollama] install it manually: https://ollama.com/download")
             return False
-        finally:
-            install_script.unlink(missing_ok=True)
         if not shutil.which("ollama"):
             print("  [ollama] install did not land — semantic search unavailable")
             return False
 
-    if subprocess.run(["pgrep", "-f", "ollama serve"], capture_output=True).returncode != 0:
+    _pgrep = shutil.which("pgrep")
+    ollama_running = (
+        _pgrep and subprocess.run([_pgrep, "-f", "ollama serve"], capture_output=True).returncode == 0
+    )
+    if not ollama_running:
         subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(3)
 
@@ -877,7 +901,7 @@ def _step_grove_clone() -> None:
 
 
 def _step_grove_identity() -> None:
-    key_path = Path.home() / ".willow" / "identity.key"
+    key_path = _fleet_home() / "identity.key"
     if key_path.exists():
         return
     try:
@@ -903,10 +927,12 @@ def _step_grove_identity() -> None:
 
 def _step_env_profile(agent_name: str) -> None:
     """Add Willow env vars to shell profiles so the MCP server can start."""
+    fleet = _fleet_home()
     safe_root = str(Path.home() / "SAFE" / "Applications")
-    store_root = str(Path.home() / ".willow" / "store")
+    store_root = str(resolve_store_root(WILLOW_ROOT))
     pg_user = os.environ.get("USER", "")
     additions = {
+        "WILLOW_HOME":        str(fleet),
         "WILLOW_AGENT_NAME":  agent_name,
         "WILLOW_SAFE_ROOT":   safe_root,
         "WILLOW_STORE_ROOT":  store_root,
@@ -1423,7 +1449,7 @@ def page_features(win) -> dict:
 
 # ── Card creation ─────────────────────────────────────────────────────────────
 def _soil_path(collection: str) -> Path:
-    return Path.home() / ".willow" / "store" / collection
+    return resolve_store_root(WILLOW_ROOT) / collection
 
 
 def _soil_put(collection: str, record_id: str, data: dict) -> None:
@@ -1580,7 +1606,7 @@ def page_splash(win, cfg: dict) -> bool:
 
 # ── Launch Grove ──────────────────────────────────────────────────────────────
 def _grove_already_running() -> bool:
-    pid_file = Path.home() / ".willow" / "grove.pid"
+    pid_file = _fleet_home() / "grove.pid"
     try:
         pid = int(pid_file.read_text().strip())
         os.kill(pid, 0)
@@ -1595,7 +1621,7 @@ def _launch_dashboard(env_extra: dict | None = None) -> None:
         env.update(env_extra)
     if _grove_already_running():
         print("\nGrove is already running — switch to that window.")
-        print("If it's unresponsive, run:  kill $(cat ~/.willow/grove.pid)")
+        print(f"If it's unresponsive, run:  kill $(cat {_fleet_home() / 'grove.pid'})")
         return
     if GROVE_APP.exists():
         os.chdir(str(GROVE_DIR))

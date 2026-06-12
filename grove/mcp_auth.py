@@ -5,7 +5,7 @@ Single-user OAuth 2.0 PKCE provider for grove.mcp_local --serve mode.
 
 Flow:
   1. claude.ai hits /authorize → provider redirects to /grove-approve?pending=<key>
-  2. Sean opens that URL in a browser, clicks Allow
+  2. USER opens that URL in a browser, clicks Allow
   3. Provider issues an auth code → client exchanges for access + refresh tokens
   4. Tokens stored in token_path JSON file; access tokens expire in 30 days
 
@@ -38,7 +38,7 @@ def _tok() -> str:
 class GroveOAuthProvider:
     """
     Minimal single-user OAuth provider. Clients register dynamically.
-    Authorization requires Sean to click Allow at /grove-approve.
+    Authorization requires USER to click Allow at /grove-approve.
     """
 
     def __init__(self, token_path: Path, base_url: str) -> None:

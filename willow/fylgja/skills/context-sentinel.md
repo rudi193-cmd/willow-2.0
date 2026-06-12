@@ -32,7 +32,7 @@ Session start
     │
     ├─ STATUS_OK       → continue
     ├─ COMPACT_NOW     → `/compact` → re-check
-    └─ HANDOFF_NOW     → /handoff → willow task submit → end
+    └─ HANDOFF_NOW     → /shutdown (context-critical mode) → end
 ```
 
 ## When to run

@@ -21,8 +21,22 @@ from pathlib import Path
 from typing import Any
 
 
+_REPO = Path(__file__).resolve().parent.parent
+
 DEFAULT_SOURCE_DIR = Path.home() / ".claude" / "projects" / str(Path(__file__).parent.resolve()).replace("/", "-").replace(".", "-")
-DEFAULT_DB_PATH = Path(os.environ.get("WILLOW_20_DB", str(Path.home() / ".willow" / "willow-2.0.db"))).expanduser()
+
+
+def _default_db_path() -> Path:
+    import sys
+
+    if str(_REPO) not in sys.path:
+        sys.path.insert(0, str(_REPO))
+    from willow.fylgja.willow_home import willow_home
+
+    return Path(os.environ.get("WILLOW_20_DB", str(willow_home(_REPO) / "willow-2.0.db"))).expanduser()
+
+
+DEFAULT_DB_PATH = _default_db_path()
 
 
 def _sha(text: str) -> str:

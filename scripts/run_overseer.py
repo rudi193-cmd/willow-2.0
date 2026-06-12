@@ -223,7 +223,7 @@ def main() -> None:
 
     digest = textwrap.dedent(
         f"""\
-        # Phase 0 digest (machine + local disk) — paste to Sean in chat
+        # Phase 0 digest (machine + local disk) — paste to USER in chat
 
         **Run:** `{run_id}`
         **Repo:** `{repo}`
@@ -244,7 +244,7 @@ def main() -> None:
         - `willow_knowledge_search` semantic on initiative keywords
         - Private org: use authenticated `gh search` if Jeles returns 404
 
-        **Rule:** Sean sees this digest in **chat** before plan/spec hardens.
+        **Rule:** USER sees this digest in **chat** before plan/spec hardens.
         """
     )
 
@@ -255,9 +255,9 @@ def main() -> None:
         1. `willow_health` (or `willow_status` if boot allowed)
         2. `willow_knowledge_search` — initiative + u2u + discovery + ngrok + Cloudflare
         3. `jeles_sources` / `jeles_fetch` — narrow questions, one hypothesis per call
-        4. After Sean reacts: optional `willow_memory_check` → `willow_knowledge_ingest`
+        4. After USER reacts: optional `willow_memory_check` → `willow_knowledge_ingest`
 
-        Paste findings back to Sean in chat (do not file only in spec).
+        Paste findings back to USER in chat (do not file only in spec).
         """
     )
 
@@ -316,11 +316,11 @@ def main() -> None:
         - **Worktree path:** `{wt_path}`
         - **Branch:** `{branch}`
         - **HEAD:** `{short}`
-        - **Not on `{dbranch}`:** initiative work happens only in this worktree until Sean ratifies merge.
+        - **Not on `{dbranch}`:** initiative work happens only in this worktree until USER ratifies merge.
         - **Run dir:** `{run_root}`
         - **Next bite:** (fill) first verifiable plan step inside the worktree
 
-        Copy the bullet list above to Sean in chat.
+        Copy the bullet list above to USER in chat.
         """
     )
     write_text(run_root / "CLOSEOUT.md", closeout)

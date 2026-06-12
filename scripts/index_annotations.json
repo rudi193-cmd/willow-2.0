@@ -15,7 +15,10 @@
   "exclude": [
     ".git", "worktrees", "__pycache__", ".venv", ".venv-dev",
     ".mypy_cache", ".pytest_cache", ".ruff_cache", "node_modules",
-    ".all-contributorsrc", ".mcp.json.example", "INDEX.md"
+    ".all-contributorsrc", ".mcp.json.example"
+  ],
+  "root_only_exclude": [
+    "INDEX.md"
   ],
   "paths": {
     "willow.md":            {"description": "Fleet contract — read this first at boot", "group": "contract"},
@@ -94,7 +97,7 @@
     "sap/sap_mcp.py":           {"description": "SAP MCP server (FastMCP) — primary Willow tool surface", "group": "sap"},
     "sap/unified_mcp.py":       {"description": "Unified MCP server — willow + grove + mai in one FastMCP process", "group": "sap"},
     "sap/unified_mcp.sh":       {"description": "Unified MCP server launcher (shell)", "group": "sap"},
-    "sap/willow_mcp.sh":        {"description": "Willow-only MCP server launcher (shell)", "group": "sap"},
+    "sap/willow_mcp.sh":        {"description": "Legacy Willow-only MCP server launcher (shell)", "group": "sap"},
     "sap/ONBOARDING.md":        {"description": "SAP onboarding guide for agents", "group": "sap"},
     "sap/README.md":            {"description": "SAP module readme", "group": "sap"},
 
@@ -117,8 +120,20 @@
     "docs/FOR_AHS.md":              {"description": "Beta reader decoder ring (Warhammer lexicon overlay)", "group": "dev"},
     "docs/IDE_INTEGRATION.md":      {"description": "IDE setup guide — Cursor and Claude Code MCP wiring", "group": "dev"},
     "docs/INDEX.md":                {"description": "Human/agent doc router — start here for docs", "group": "dev"},
+    "docs/templates":               {"description": "Agent artifact templates — handoff, audit, ADR, PR, atom", "group": "dev"},
+    "docs/templates/README.md":   {"description": "Template router — which artifact when + runtime config pointers", "group": "dev"},
+    "docs/templates/HANDOFF.template.md":      {"description": "Session continuity template (v2 handoff)", "group": "dev"},
+    "docs/templates/DEV_LOG.template.md":      {"description": "Multi-hour session dev log template", "group": "dev"},
+    "docs/templates/ADR.template.md":          {"description": "Architecture decision record template", "group": "dev"},
+    "docs/templates/AUDIT.template.md":        {"description": "Fleet/subsystem audit report template", "group": "dev"},
+    "docs/templates/INVESTIGATION.template.md":{"description": "Debug and root-cause investigation template", "group": "dev"},
+    "docs/templates/GROVE_DECISION.template.md":{"description": "Grove quorum and decision post template", "group": "dev"},
+    "docs/templates/ATOM.template.md":       {"description": "KB/SOIL atom candidate template", "group": "dev"},
+    "docs/templates/PR_WORKTREE.template.md":  {"description": "Branch/worktree/PR summary template", "group": "dev"},
+    "docs/templates/TASK.template.md":         {"description": "Operator backlog task template", "group": "dev"},
+    "docs/templates/RELEASE.template.md":      {"description": "Release/changelog fragment template", "group": "dev"},
     "docs/KNOWN_GAPS.md":           {"description": "Broken-in-master engineering gaps", "group": "dev"},
-    "docs/CONTRACT.md":             {"description": "Public fleet contract snapshot (from willow-config)", "group": "dev"},
+    "docs/CONTRACT.md":             {"description": "Public fleet contract snapshot (from root willow.md)", "group": "dev"},
     "docs/OPEN_WORK.md":           {"description": "Curated open backlog (not install blockers)", "group": "dev"},
     "docs/QUICKSTART.md":           {"description": "Quickstart guide", "group": "dev"},
     "docs/BRANDING.md":             {"description": "Branding guidelines", "group": "dev"},
@@ -139,6 +154,8 @@
     ".github":              {"description": "GitHub Actions workflows and issue templates", "group": "dev"},
     ".claude":              {"description": "Claude Code project config — hooks, commands, skills", "group": "dev"},
     ".cursor":              {"description": "Cursor IDE config — commands, rules", "group": "dev"},
+    ".agents":              {"description": "OpenAI Agents IDE surface — vendored skills and commands", "group": "dev"},
+    ".codex":               {"description": "Codex CLI surface — vendored skills, commands, MCP config", "group": "dev"},
     ".willow":              {"description": "Runtime state — session anchors, handoffs, MCP config", "group": "dev"},
 
     "archive":              {"description": "Deprecated and superseded code — do not build on", "group": "archive"}

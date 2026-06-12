@@ -33,6 +33,8 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from willow.fylgja.willow_home import willow_home
+
 # Ensure willow-2.0 root is on path when invoked via -m
 _ROOT = Path(__file__).parent.parent
 if str(_ROOT) not in sys.path:
@@ -42,7 +44,7 @@ if str(_ROOT) not in sys.path:
 
 DEFAULT_PORT = int(os.environ.get("WILLOW_GROVE_PORT", "7777"))
 WILLOW_ROOT  = Path(os.environ.get("WILLOW_ROOT", Path(__file__).parent.parent))
-TOKEN_PATH   = Path.home() / ".willow" / "grove_token"
+TOKEN_PATH   = willow_home() / "grove_token"
 
 # Commands the serve endpoint will run. Allowlist — nothing else executes.
 ALLOWED_COMMANDS = {
@@ -668,8 +670,9 @@ def _u2u_listen_thread() -> None:
         print(f"[u2u] import error — u2u bridge disabled: {e}", flush=True)
         return
 
-    identity_path = Path.home() / ".willow" / "u2u_identity.json"
-    contacts_path = Path.home() / ".willow" / "u2u_contacts.json"
+    home = willow_home()
+    identity_path = home / "u2u_identity.json"
+    contacts_path = home / "u2u_contacts.json"
     identity = Identity.load_or_generate(identity_path)
     store    = ContactStore(contacts_path)
     gate     = ConsentGate(store)

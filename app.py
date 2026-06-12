@@ -60,9 +60,12 @@ from widgets.card_builder_modal import CardBuilderModal
 
 from core import grove_db, grove_reader, grove_session
 from core.fleet import FleetManager, already_running
+from willow.fylgja.willow_home import willow_home
 
+_LOG_PATH = willow_home() / "grove_error.log"
+_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
-    filename=Path.home() / ".willow" / "grove_error.log",
+    filename=_LOG_PATH,
     level=logging.DEBUG,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )

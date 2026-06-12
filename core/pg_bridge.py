@@ -357,6 +357,36 @@ CREATE TABLE IF NOT EXISTS hook_executions (
     error        TEXT
 );
 
+CREATE TABLE IF NOT EXISTS human_required_queue (
+    id              TEXT PRIMARY KEY,
+    kind            TEXT NOT NULL,
+    title           TEXT NOT NULL,
+    summary         TEXT,
+    status          TEXT NOT NULL DEFAULT 'open',
+    priority        TEXT NOT NULL DEFAULT 'normal',
+    source_agent    TEXT,
+    source_ref      TEXT,
+    assignee        TEXT,
+    context         JSONB NOT NULL DEFAULT '{}',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    resolved_at     TIMESTAMPTZ,
+    resolved_by     TEXT
+);
+
+CREATE TABLE IF NOT EXISTS human_attestations (
+    id              TEXT PRIMARY KEY,
+    subject_id      TEXT NOT NULL,
+    subject_type    TEXT NOT NULL DEFAULT 'knowledge_atom',
+    status          TEXT NOT NULL DEFAULT 'attested',
+    attested_by     TEXT NOT NULL DEFAULT 'operator',
+    agent           TEXT,
+    statement       TEXT,
+    evidence_ref    TEXT,
+    context         JSONB NOT NULL DEFAULT '{}',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS policy_rules (
     id          TEXT PRIMARY KEY,
     name        TEXT NOT NULL UNIQUE,
@@ -446,6 +476,41 @@ _MIGRATIONS = [
         status TEXT NOT NULL DEFAULT 'pending', input JSONB, output JSONB,
         error TEXT, task_id TEXT, started_at TIMESTAMPTZ, ended_at TIMESTAMPTZ
     )""",
+    """CREATE TABLE IF NOT EXISTS human_required_queue (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT,
+        status TEXT NOT NULL DEFAULT 'open',
+        priority TEXT NOT NULL DEFAULT 'normal',
+        source_agent TEXT,
+        source_ref TEXT,
+        assignee TEXT,
+        context JSONB NOT NULL DEFAULT '{}',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        resolved_at TIMESTAMPTZ,
+        resolved_by TEXT
+    )""",
+    """CREATE UNIQUE INDEX IF NOT EXISTS human_required_queue_open_ref
+        ON human_required_queue (kind, source_ref)
+        WHERE status IN ('open', 'acknowledged')
+          AND source_ref IS NOT NULL
+          AND source_ref <> ''""",
+    """CREATE TABLE IF NOT EXISTS human_attestations (
+        id TEXT PRIMARY KEY,
+        subject_id TEXT NOT NULL,
+        subject_type TEXT NOT NULL DEFAULT 'knowledge_atom',
+        status TEXT NOT NULL DEFAULT 'attested',
+        attested_by TEXT NOT NULL DEFAULT 'operator',
+        agent TEXT,
+        statement TEXT,
+        evidence_ref TEXT,
+        context JSONB NOT NULL DEFAULT '{}',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )""",
+    """CREATE INDEX IF NOT EXISTS idx_human_attestations_subject
+        ON human_attestations (subject_type, subject_id, created_at DESC)""",
     # GAP 3 — migrate legacy tier values to canonical vocabulary.
     # observed/fetched/hypothesis/NULL → frontier
     # validated/ratified             → canonical
@@ -465,6 +530,13 @@ _MIGRATIONS = [
             tier IN ('frontier', 'contested', 'canonical', 'superseded')
         );
     EXCEPTION WHEN others THEN NULL; END $$""",
+    # BKT: skill_id on outcome_runs — records which skill a run was evaluating.
+    """DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='outcome_runs' AND column_name='skill_id') THEN
+            ALTER TABLE outcome_runs ADD COLUMN skill_id TEXT;
+        END IF;
+    END $$""",
 ]
 
 _INDEXES = """
@@ -977,9 +1049,7 @@ class PgBridge:
 
     def knowledge_put(self, record: dict) -> str:
         self._ensure_conn()
-        title = record.get("title") or ""
-        summary = record.get("summary") or ""
-        vec = embed(f"{title} {summary}")
+        vec = embed(self._knowledge_embedding_text(record))
         vec_str = str(vec) if vec is not None else None
         with self.conn.cursor() as cur:
             cur.execute("""
@@ -1018,6 +1088,39 @@ class PgBridge:
         self.conn.commit()
         return record["id"]
 
+    def _knowledge_embedding_text(self, record: dict) -> str:
+        """Build embedding input from searchable atom fields, not summary alone."""
+        content = record.get("content") or {}
+        if not isinstance(content, dict):
+            content = {"content": content}
+
+        def _flatten(value) -> str:
+            if value is None:
+                return ""
+            if isinstance(value, str):
+                return value.strip()
+            if isinstance(value, (int, float, bool)):
+                return str(value)
+            if isinstance(value, dict):
+                return " ".join(_flatten(v) for v in value.values())
+            if isinstance(value, (list, tuple, set)):
+                return " ".join(_flatten(v) for v in value)
+            return str(value).strip()
+
+        keywords = record.get("keywords") or content.get("keywords")
+        tags = record.get("tags") or content.get("tags")
+        evidence = content.get("evidence") or content.get("source_id") or content.get("source_file")
+        parts = [
+            f"Title: {record.get('title') or ''}",
+            f"Summary: {record.get('summary') or ''}",
+            f"Category: {record.get('category') or ''}",
+            f"Source type: {record.get('source_type') or ''}",
+            f"Keywords: {_flatten(keywords)}",
+            f"Tags: {_flatten(tags)}",
+            f"Evidence: {_flatten(evidence)}",
+        ]
+        return "\n".join(p for p in parts if p.split(":", 1)[-1].strip())
+
     def ingest_atom(self, title: str, summary: str, source_type: str = "mcp",
                     source_id: str = "", category: str = "general",
                     domain: Optional[str] = None, keywords: Optional[list] = None,
@@ -1032,6 +1135,21 @@ class PgBridge:
                 content["keywords"] = keywords
             if tags:
                 content["tags"] = tags
+            normalized_tier = normalize_tier(tier)
+            if normalized_tier == "canonical":
+                from core.kb_quality import canonical_quality_check
+
+                quality = canonical_quality_check(
+                    title=title,
+                    summary=summary,
+                    content=content,
+                    source_type=source_type,
+                    source_id=source_id,
+                    confidence=confidence,
+                )
+                if not quality["satisfied"]:
+                    self._last_ingest_error = f"canonical_quality_gate: {quality['explanation']}"
+                    return None
             self.knowledge_put({
                 "id":          atom_id,
                 "project":     domain or "global",
@@ -1040,7 +1158,7 @@ class PgBridge:
                 "source_type": source_type,
                 "content":     content,
                 "category":    category,
-                "tier":        tier,
+                "tier":        normalized_tier,
                 "confidence":  confidence,
             })
             return atom_id
@@ -1112,6 +1230,55 @@ class PgBridge:
             out_cols.append("distance")
         return select_sql, out_cols
 
+    def _knowledge_retrieval_filters(
+        self,
+        filters: list,
+        params: list,
+        *,
+        tier: Optional[str] = None,
+        exclude_search_noise: bool = True,
+        exclude_superseded: bool = True,
+    ) -> None:
+        """Append standard retrieval visibility filters (noise, superseded tier)."""
+        if exclude_search_noise:
+            filters.append("NOT COALESCE((content->>'search_noise')::boolean, false)")
+        if tier:
+            filters.append("tier = %s")
+            params.append(normalize_tier(tier))
+        elif exclude_superseded:
+            filters.append("(tier IS NULL OR tier != %s)")
+            params.append("superseded")
+
+    def _knowledge_shape_rows(
+        self,
+        rows: list[dict],
+        *,
+        include_embedding: bool = False,
+        fields: Optional[list] = None,
+    ) -> list[dict]:
+        """Apply the same projection rules to in-process ranked rows."""
+        allowed = {
+            "id", "project", "agent", "domain", "valid_at", "invalid_at",
+            "created_at", "updated_at", "title", "summary", "content",
+            "source_type", "category", "tier", "confidence", "visit_count",
+            "weight", "last_visited", "fork_id", "embedding",
+        }
+        meta_prefixes = ("_",)
+        shaped: list[dict] = []
+        for row in rows:
+            if fields is None:
+                keep = {k for k in allowed if include_embedding or k != "embedding"}
+            else:
+                keep = {k for k in fields if k in allowed}
+                keep.add("id")
+                if include_embedding:
+                    keep.add("embedding")
+                else:
+                    keep.discard("embedding")
+            out = {k: v for k, v in row.items() if k in keep or k.startswith(meta_prefixes)}
+            shaped.append(out)
+        return shaped
+
     def knowledge_get(self, atom_id: str, include_invalid: bool = False,
                       include_embedding: bool = False,
                       fields: Optional[list] = None) -> Optional[dict]:
@@ -1130,7 +1297,9 @@ class PgBridge:
                          include_invalid: bool = False, limit: int = 20,
                          include_embedding: bool = False,
                          fields: Optional[list] = None,
-                         tier: Optional[str] = None) -> list:
+                         tier: Optional[str] = None,
+                         exclude_search_noise: bool = True,
+                         exclude_superseded: bool = True) -> list:
         self._ensure_conn()
         # Split multi-word queries into AND-ed ILIKE terms so "grove fleet"
         # finds atoms containing both words, not the exact phrase.
@@ -1148,9 +1317,11 @@ class PgBridge:
             params.append(project)
         if not include_invalid:
             filters.append("invalid_at IS NULL")
-        if tier:
-            filters.append("tier = %s")
-            params.append(normalize_tier(tier))
+        self._knowledge_retrieval_filters(
+            filters, params, tier=tier,
+            exclude_search_noise=exclude_search_noise,
+            exclude_superseded=exclude_superseded,
+        )
         where_template = " AND ".join(f"({f})" for f in filters)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             select_sql, _ = self._knowledge_select_cols(fields=fields, include_embedding=include_embedding)
@@ -1158,7 +1329,8 @@ class PgBridge:
             return [dict(r) for r in cur.fetchall()]
 
     def promote_knowledge_tier(self, atom_id: str, new_tier: str,
-                                agent: str = "", reason: str = "") -> dict:
+                                agent: str = "", reason: str = "",
+                                human_attestation: bool = False) -> dict:
         """Move a knowledge atom to a new lifecycle tier.
         Accepts canonical values (frontier/contested/canonical/superseded)
         and legacy values (hypothesis/observed/validated etc)."""
@@ -1167,6 +1339,44 @@ class PgBridge:
         if tier not in KNOWLEDGE_TIERS:
             return {"error": f"invalid tier {new_tier!r} — valid: {KNOWLEDGE_TIERS}"}
         try:
+            from core.human_required import ELEVATED_TIERS, check_write_gate
+
+            if tier in ELEVATED_TIERS:
+                from core.human_required import _truthy_env, attestation_stamp
+
+                gate = check_write_gate(
+                    self.conn,
+                    "tier_promote_elevated",
+                    attestation=human_attestation,
+                )
+                if not gate.get("allowed"):
+                    return gate
+                if human_attestation or _truthy_env("WILLOW_HUMAN_ATTESTATION"):
+                    stamp = attestation_stamp(agent)
+                    reason = f"{reason}; {stamp}" if reason else stamp
+                    try:
+                        from core.human_attestation import create as create_attestation
+
+                        create_attestation(
+                            self.conn,
+                            subject_id=atom_id,
+                            subject_type="knowledge_atom",
+                            attested_by=agent or "operator",
+                            agent=agent or "",
+                            statement=(
+                                reason
+                                or f"Human attested promotion of {atom_id} to {tier}"
+                            ),
+                            evidence_ref=f"tier:{tier}",
+                            context={
+                                "action": "tier_promote_elevated",
+                                "tier": tier,
+                            },
+                        )
+                    except Exception:
+                        # Attestation stamps still preserve the gate decision in reason;
+                        # promotion should not fail if the auxiliary record cannot write.
+                        pass
             with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute(
                     "UPDATE knowledge SET tier=%s, updated_at=now()"
@@ -1181,10 +1391,45 @@ class PgBridge:
         except Exception as e:
             return {"error": str(e)}
 
+    # ── Human attestations ─────────────────────────────────────────────────────
+
+    def human_attestation_create(self, **kwargs) -> dict:
+        from core.human_attestation import create
+
+        self._ensure_conn()
+        try:
+            return create(self.conn, **kwargs)
+        except Exception as e:
+            return {"error": str(e)}
+
+    def human_attestation_list(
+        self,
+        subject_id: str = "",
+        subject_type: str = "",
+        status: str = "",
+        limit: int = 50,
+    ) -> list:
+        from core.human_attestation import list_records
+
+        self._ensure_conn()
+        try:
+            return list_records(
+                self.conn,
+                subject_id=subject_id,
+                subject_type=subject_type,
+                status=status,
+                limit=limit,
+            )
+        except Exception as e:
+            return [{"error": str(e)}]
+
     def _knowledge_ann(self, vec: list, limit: int,
                        project: Optional[str] = None,
                        include_embedding: bool = False,
-                       fields: Optional[list] = None) -> list:
+                       fields: Optional[list] = None,
+                       tier: Optional[str] = None,
+                       exclude_search_noise: bool = True,
+                       exclude_superseded: bool = True) -> list:
         self._ensure_conn()  # re-acquire if Ollama embed call staled the connection
         vec_str = str(vec)
         filters = ["embedding IS NOT NULL", "invalid_at IS NULL"]
@@ -1193,10 +1438,16 @@ class PgBridge:
             include_embedding=include_embedding,
             include_distance=True,
         )
-        params: list = [vec_str, limit]
+        params: list = [vec_str]
         if project:
-            filters.insert(1, "project = %s")
-            params.insert(1, project)
+            filters.append("project = %s")
+            params.append(project)
+        self._knowledge_retrieval_filters(
+            filters, params, tier=tier,
+            exclude_search_noise=exclude_search_noise,
+            exclude_superseded=exclude_superseded,
+        )
+        params.append(limit)
         where = " AND ".join(filters)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
@@ -1210,19 +1461,113 @@ class PgBridge:
     def knowledge_search_semantic(self, query: str, limit: int = 20,
                                    project: Optional[str] = None,
                                    include_embedding: bool = False,
-                                   fields: Optional[list] = None) -> list:
+                                   fields: Optional[list] = None,
+                                   tier: Optional[str] = None,
+                                   exclude_search_noise: bool = True,
+                                   exclude_superseded: bool = True) -> list:
+        try:
+            from willow.ranking.hybrid import hybrid_search
+
+            hybrid = hybrid_search(
+                query,
+                self,
+                project=project,
+                include_invalid=False,
+                limit=limit,
+                tier=tier,
+                exclude_search_noise=exclude_search_noise,
+                exclude_superseded=exclude_superseded,
+            )
+            if hybrid:
+                return self._knowledge_shape_rows(
+                    hybrid,
+                    include_embedding=include_embedding,
+                    fields=fields,
+                )[:limit]
+        except Exception:
+            pass
+
         vec = embed(query)
         if vec is None:
             raise EmbedDegradedError("embedder unavailable — keyword search only")
         ann = self._knowledge_ann(
             vec, limit=limit, project=project,
             include_embedding=include_embedding, fields=fields,
+            tier=tier, exclude_search_noise=exclude_search_noise,
+            exclude_superseded=exclude_superseded,
         )
         ilike = self.knowledge_search(
             query, limit=limit, project=project,
             include_embedding=include_embedding, fields=fields,
+            tier=tier, exclude_search_noise=exclude_search_noise,
+            exclude_superseded=exclude_superseded,
         )
         return _rrf_merge(ann, ilike)[:limit]
+
+    def knowledge_expand_neighbors(
+        self,
+        seed_ids: list,
+        *,
+        limit: int = 10,
+        exclude_search_noise: bool = True,
+        exclude_superseded: bool = True,
+        include_embedding: bool = False,
+        fields: Optional[list] = None,
+    ) -> list:
+        """One-hop graph expansion via public.edges for retrieval."""
+        if not seed_ids:
+            return []
+        self._ensure_conn()
+        seeds = list(dict.fromkeys(seed_ids))[:20]
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT from_id, to_id, relation, agent
+                FROM edges
+                WHERE from_id = ANY(%s) OR to_id = ANY(%s)
+                ORDER BY created_at DESC
+                LIMIT %s
+                """,
+                (seeds, seeds, max(limit * 3, 30)),
+            )
+            edge_rows = [dict(r) for r in cur.fetchall()]
+
+        neighbor_ids: set[str] = set()
+        edge_meta: dict[str, dict] = {}
+        seed_set = set(seeds)
+        for row in edge_rows:
+            fid, tid = row["from_id"], row["to_id"]
+            if fid in seed_set and tid not in seed_set:
+                neighbor_ids.add(tid)
+                edge_meta.setdefault(tid, {"via": fid, "relation": row["relation"]})
+            elif tid in seed_set and fid not in seed_set:
+                neighbor_ids.add(fid)
+                edge_meta.setdefault(fid, {"via": tid, "relation": row["relation"]})
+
+        if not neighbor_ids:
+            return []
+
+        filters = ["id = ANY(%s)", "invalid_at IS NULL"]
+        params: list = [list(neighbor_ids)]
+        self._knowledge_retrieval_filters(
+            filters, params,
+            exclude_search_noise=exclude_search_noise,
+            exclude_superseded=exclude_superseded,
+        )
+        select_sql, _ = self._knowledge_select_cols(
+            fields=fields, include_embedding=include_embedding,
+        )
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                f"SELECT {select_sql} FROM knowledge WHERE {' AND '.join(filters)} LIMIT %s",
+                params + [limit],
+            )
+            rows = [dict(r) for r in cur.fetchall()]
+        for row in rows:
+            meta = edge_meta.get(row["id"], {})
+            row["_neighbor_via"] = meta.get("via")
+            row["_neighbor_relation"] = meta.get("relation")
+        return rows
 
     def search_opus_semantic(self, query: str, limit: int = 20) -> list:
         vec = embed(query)
@@ -1631,14 +1976,16 @@ class PgBridge:
             return dict(row) if row else None
 
     def outcome_run_create(self, outcome_agent_id: str, prompt: str, rubric: str,
-                            max_iterations: int = 3, created_by: str = "") -> str:
+                            max_iterations: int = 3, created_by: str = "",
+                            skill_id: str = "") -> str:
         self._ensure_conn()
         run_id = self.gen_id(10)
         with self.conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO outcome_runs (id, outcome_agent_id, prompt, rubric,"
-                " max_iterations, created_by) VALUES (%s,%s,%s,%s,%s,%s)",
-                (run_id, outcome_agent_id, prompt, rubric, max_iterations, created_by),
+                " max_iterations, created_by, skill_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                (run_id, outcome_agent_id, prompt, rubric, max_iterations, created_by,
+                 skill_id or None),
             )
         self.conn.commit()
         return run_id
@@ -1654,7 +2001,10 @@ class PgBridge:
                 vals.append(v)
         if not sets:
             return
-        if kwargs.get("status") in ("completed", "failed", "cancelled"):
+        _terminal = {"satisfied", "needs_revision", "max_iterations_reached",
+                     "failed", "interrupted"}
+        _status = kwargs.get("status", "")
+        if _status in ("completed", "failed", "cancelled") or _status in _terminal:
             sets.append("ended_at=now()")
         with self.conn.cursor() as cur:
             cur.execute(
@@ -1662,6 +2012,16 @@ class PgBridge:
                 vals + [run_id],
             )
         self.conn.commit()
+        if _status in _terminal:
+            try:
+                row = self.outcome_run_get(run_id)
+                if row and row.get("skill_id"):
+                    from core import skill_mastery as _sm
+                    _result = kwargs.get("result") or row.get("result") or _status
+                    _sm.record_outcome(row["skill_id"],
+                                       {"result": _result, "success": _result == "satisfied"})
+            except Exception:
+                pass
 
     def outcome_run_get(self, run_id: str) -> Optional[dict]:
         self._ensure_conn()
@@ -1833,6 +2193,83 @@ class PgBridge:
             return atom_id
         except Exception:
             return None
+
+    def opus_put(self, record: dict) -> Optional[str]:
+        """Upsert an Opus atom by stable id (used by file index writes)."""
+        self._ensure_conn()
+        try:
+            atom_id = record["id"]
+            title = record.get("title")
+            content = record.get("content", "")
+            vec = embed(f"{title or ''} {content}")
+            vec_str = str(vec) if vec is not None else None
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO opus_atoms
+                        (id, agent, title, summary, content, domain, depth, confidence, source_session, embedding)
+                    VALUES (%(id)s, %(agent)s, %(title)s, %(summary)s, %(content)s,
+                            %(domain)s, %(depth)s, %(confidence)s, %(source_session)s, %(embedding)s::vector)
+                    ON CONFLICT (id) DO UPDATE SET
+                        agent          = EXCLUDED.agent,
+                        title          = EXCLUDED.title,
+                        summary        = EXCLUDED.summary,
+                        content        = EXCLUDED.content,
+                        domain         = EXCLUDED.domain,
+                        depth          = EXCLUDED.depth,
+                        confidence     = EXCLUDED.confidence,
+                        source_session = EXCLUDED.source_session,
+                        embedding      = EXCLUDED.embedding
+                """, {
+                    "id": record["id"],
+                    "agent": record.get("agent"),
+                    "title": title,
+                    "summary": record.get("summary"),
+                    "content": content,
+                    "domain": record.get("domain", "file_index"),
+                    "depth": record.get("depth", 1),
+                    "confidence": record.get("confidence", 1.0),
+                    "source_session": record.get("source_session"),
+                    "embedding": vec_str,
+                })
+            self.conn.commit()
+            return atom_id
+        except Exception:
+            return None
+
+    def knowledge_rows_for_file_audit(
+        self, ids: list[str], rel_paths: list[str]
+    ) -> list[dict]:
+        """Fetch knowledge rows relevant to repo-local file index audit."""
+        if not ids and not rel_paths:
+            return []
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, project, title, summary, content
+                FROM knowledge
+                WHERE id = ANY(%s)
+                   OR content->>'rel_path' = ANY(%s)
+                   OR project IN ('docs', 'codebase', 'file_index')
+            """, (ids, rel_paths))
+            return [dict(r) for r in cur.fetchall()]
+
+    def opus_rows_for_file_audit(self, rel_paths: list[str]) -> list[dict]:
+        """Fetch opus_atoms rows that may represent indexed repo files."""
+        if not rel_paths:
+            return []
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, agent, title, summary, content, domain
+                FROM opus_atoms
+                WHERE domain = 'file_index'
+                   OR title = ANY(%s)
+                   OR content ILIKE ANY(%s)
+            """, (
+                rel_paths,
+                [f'%"rel_path": "{rp}"%' for rp in rel_paths],
+            ))
+            return [dict(r) for r in cur.fetchall()]
 
     def opus_feedback(self, domain: Optional[str] = None) -> list:
         self._ensure_conn()
@@ -2257,9 +2694,18 @@ class PgBridge:
     # ── Postgres Edges ───────────────────────────────────────────────────────────
 
     def edge_add(self, from_id: str, to_id: str, relation: str,
-                 agent: Optional[str] = None, context: Optional[str] = None) -> dict:
+                 agent: Optional[str] = None, context: Optional[str] = None,
+                 human_consent: bool = False) -> dict:
         self._ensure_conn()
         try:
+            from core.human_required import _truthy_env, check_write_gate, consent_stamp
+
+            gate = check_write_gate(self.conn, "edge_write", consent=human_consent)
+            if not gate.get("allowed"):
+                return gate
+            if human_consent or _truthy_env("WILLOW_HUMAN_CONSENT"):
+                stamp = consent_stamp(agent)
+                context = f"{context}; {stamp}" if context else stamp
             eid = self.gen_id(8)
             with self.conn.cursor() as cur:
                 cur.execute("""
@@ -2344,18 +2790,61 @@ class PgBridge:
             )
             return [dict(r) for r in cur.fetchall()]
 
+    def binder_promote_edge_to_postgres(self, edge: dict) -> dict:
+        """Mirror an approved/active binder edge into public.edges."""
+        return self.edge_add(
+            edge["source_atom"],
+            edge["target_atom"],
+            edge["edge_type"],
+            agent=edge.get("agent"),
+            context=f"binder:{edge.get('id', '')}",
+        )
+
+    def binder_backfill_postgres_edges(self, limit: int = 500) -> dict:
+        """Sync approved/active binder_edges into public.edges (idempotent)."""
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT * FROM binder_edges
+                WHERE status IN ('approved', 'active')
+                ORDER BY created_at ASC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            rows = [dict(r) for r in cur.fetchall()]
+        synced = skipped = 0
+        for row in rows:
+            result = self.binder_promote_edge_to_postgres(row)
+            if result.get("status") == "added":
+                synced += 1
+            elif "error" not in result:
+                skipped += 1
+        return {"candidates": len(rows), "synced": synced, "skipped": skipped}
+
     def binder_edge_update_status(self, edge_id: str, status: str) -> dict:
         self._ensure_conn()
         try:
-            with self.conn.cursor() as cur:
+            row = None
+            with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute(
-                    "UPDATE binder_edges SET status=%s, updated_at=now() WHERE id=%s",
+                    """
+                    UPDATE binder_edges SET status=%s, updated_at=now()
+                    WHERE id=%s
+                    RETURNING *
+                    """,
                     (status, edge_id),
                 )
+                row = cur.fetchone()
+                rowcount = cur.rowcount
             self.conn.commit()
-            if cur.rowcount == 0:
+            if rowcount == 0:
                 return {"updated": False, "reason": "not found"}
-            return {"updated": True, "id": edge_id, "status": status}
+            result: dict = {"updated": True, "id": edge_id, "status": status}
+            if status in ("approved", "active") and row:
+                result["postgres_edge"] = self.binder_promote_edge_to_postgres(dict(row))
+            return result
         except Exception as e:
             return {"error": str(e)}
 
@@ -2375,6 +2864,53 @@ class PgBridge:
                 f"SELECT * FROM ratifications {where} ORDER BY created_at DESC LIMIT %s", params
             )
             return [dict(r) for r in cur.fetchall()]
+
+    # ── Human-required queue ─────────────────────────────────────────────────────
+
+    def human_required_enqueue(self, **kwargs) -> dict:
+        from core.human_required import enqueue
+
+        self._ensure_conn()
+        try:
+            return enqueue(self.conn, **kwargs)
+        except Exception as e:
+            return {"error": str(e)}
+
+    def human_required_list(self, status: str = "open", kind: Optional[str] = None, limit: int = 50) -> list:
+        from core.human_required import list_items
+
+        self._ensure_conn()
+        try:
+            return list_items(self.conn, status=status, kind=kind, limit=limit)
+        except Exception as e:
+            return [{"error": str(e)}]
+
+    def human_required_resolve(self, item_id: str, resolved_by: str, status: str = "resolved", note: str = "") -> dict:
+        from core.human_required import resolve
+
+        self._ensure_conn()
+        try:
+            return resolve(self.conn, item_id, resolved_by=resolved_by, status=status, note=note)
+        except Exception as e:
+            return {"error": str(e)}
+
+    def human_required_stats(self) -> dict:
+        from core.human_required import stats
+
+        self._ensure_conn()
+        try:
+            return stats(self.conn)
+        except Exception as e:
+            return {"error": str(e)}
+
+    def human_required_seed_defaults(self) -> dict:
+        from core.human_required import seed_defaults
+
+        self._ensure_conn()
+        try:
+            return seed_defaults(self.conn)
+        except Exception as e:
+            return {"error": str(e)}
 
     # ── Hook registry ────────────────────────────────────────────────────────────
 

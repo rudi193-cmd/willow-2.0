@@ -5,7 +5,7 @@ AGENT INSTRUCTIONS
 - Use for: multi-hour sessions, infra moves, audits, cross-repo work, CI fights.
 - Do NOT use for: routine feature work (use HANDOFF template + handoff skill).
 - Save as: willow-2.0/docs/dev-log-YYYY-MM-DD-<slug>.md
-- Commit via worktree + PR unless Sean explicitly asks otherwise.
+- Commit via worktree + PR unless USER explicitly asks otherwise.
 - Extract data: transcript id, user turns, tool counts, git log, gh run list, ./willow.sh verify.
 - Link ADRs for decisions; do not duplicate ADR prose here.
 - MarkdownAI: keep @markdownai v1.0 line 1. Read with mai_read_file; write with mai_write_file; do not use IDE Read/Write on filled file.
@@ -120,7 +120,7 @@ WILLOW_AGENTS_ROOT=
 
 ```bash
 cd ~/github/willow-2.0 && source ~/github/.willow/env
-./willow.sh agents check
+./willow.sh agents check --ide <surface>   # --ide all only when every IDE installed
 ./willow.sh verify
 systemctl --user is-active drop-server nest-watcher kart-worker grove-mcp willow-grove-listen
 ```
@@ -150,3 +150,15 @@ systemctl --user is-active drop-server nest-watcher kart-worker grove-mcp willow
 ---
 
 *b17: DEVLOG · ΔΣ=42*
+
+## Agent Notes for Human
+
+<!-- reminders, to-do's, stated unfinished tasks, patterns surfaced — max 17 lines -->
+
+-
+
+## Human Notes to Agent
+
+<!-- operator writes here after review -->
+
+-

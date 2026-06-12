@@ -11,13 +11,13 @@ Runs on socket activation. Three jobs then exits:
 Triggered by: session open, file lands in Nest, nightly timer, manual call.
 """
 import json
-import os
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-STORE_ROOT = Path(os.environ.get("WILLOW_STORE_ROOT",
-                                  str(Path.home() / ".willow" / "store")))
+from willow.fylgja.willow_home import resolve_store_root
+
+STORE_ROOT = resolve_store_root()
 WILLOW_ROOT = Path(__file__).parent.parent
 
 # Ensure willow-2.0 is first on path — strip any willow-1.7 entries
@@ -392,8 +392,40 @@ def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> di
     report["reflections_written"] = reflections_written
 
     if not dry_run:
+        try:
+            from core.intake_promote import promote_fleet
+            report["intake_promote"] = promote_fleet(
+                all_files=True, no_llm=True, dry_run=False,
+            )
+        except Exception as _ipe:
+            import sys as _sys
+            print(f"[norn] intake promote error: {_ipe}", file=_sys.stderr)
+            report["intake_promote_error"] = str(_ipe)
+
+        try:
+            from core import soil as _soil
+            from core.dream_state import dream_conditions, queue_dream_task
+            from core.pg_bridge import PgBridge
+
+            _pg = PgBridge()
+            _dream = dream_conditions("willow", _soil, pg=_pg)
+            report["dream_check"] = _dream
+            if _dream.get("should_dream"):
+                task_id = queue_dream_task(_pg, "willow", submitted_by="norn_pass")
+                report["dream_scheduled"] = {"task_id": task_id, "status": "queued" if task_id else "failed"}
+            _pg.close()
+        except Exception as _de:
+            import sys as _sys
+            print(f"[norn] dream schedule error: {_de}", file=_sys.stderr)
+            report["dream_schedule_error"] = str(_de)
+
         write_briefing(report)
     return report
+
+
+def metabolic_pass(dry_run: bool = False, collections: list[str] | None = None) -> dict:
+    """Fleet metabolic cycle — alias for norn_pass (intake promote runs at end)."""
+    return norn_pass(dry_run=dry_run, collections=collections)
 
 
 if __name__ == "__main__":

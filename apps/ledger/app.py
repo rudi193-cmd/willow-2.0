@@ -22,8 +22,9 @@ from textual.widgets import (
 from .db import LedgerDB
 from .llm import DEFAULT_MODEL, parse_transaction, stream_insights
 from .schema import init_ledger
+from willow.fylgja.willow_home import willow_home
 
-DB_PATH = os.environ.get("WILLOW_20_DB", str(Path.home() / ".willow" / "willow-2.0.db"))
+DB_PATH = os.environ.get("WILLOW_20_DB", str(willow_home() / "willow-2.0.db"))
 
 
 # ── Insights modal ────────────────────────────────────────────────────────────

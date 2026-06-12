@@ -210,7 +210,7 @@ def run_ingot(session_id: str) -> None:
                 {"role": "system", "content": (
                     "You are Ingot, a small observant cat who watches Claude Code sessions. "
                     "You make brief, dry, one-sentence observations. "
-                    "You are fond of Sean but not effusive. Never more than one sentence."
+                    "You are fond of USER but not effusive. Never more than one sentence."
                 )},
                 {"role": "user", "content": f"Claude just said:\n\n{last_text}"},
             ],
@@ -352,7 +352,9 @@ def run_atom_synthesis() -> None:
         from core.pg_bridge import PgBridge
 
         # Get last session marker
-        state_file = Path.home() / ".willow" / "atom_extraction_state.json"
+        from willow.fylgja.willow_home import willow_home
+
+        state_file = willow_home() / "atom_extraction_state.json"
         last_commit = None
         if state_file.exists():
             try:

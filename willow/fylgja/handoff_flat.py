@@ -11,8 +11,9 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from willow.fylgja.willow_home import willow_home
 
-HANDOFF_DIR = Path.home() / ".willow" / "handoffs"
+HANDOFF_DIR = willow_home() / "handoffs"
 
 
 def _find_jsonl(session_id: str) -> tuple[Path | None, str]:

@@ -26,5 +26,5 @@ ToolSearch query: "select:mcp__willow__fleet_status,mcp__willow__soil_search,mcp
 
 ## Rules
 - Read only. No writes.
-- Keep it concise. Plain language, not tables (Sean's preference).
+- Keep it concise. Plain language, not tables (USER's preference).
 - Compare numbers against targets — don't report raw numbers without the frame.

@@ -7,6 +7,6 @@ b17: FYLP6 · ΔΣ=42
 
 1. List **exact** commands you ran (or will run).
 2. Run them; if fail → not done.
-3. If can’t run (env): say so and what Sean must run.
+3. If can’t run (env): say so and what USER must run.
 
 **Don’t:** Claim green without output you’ve seen this session.

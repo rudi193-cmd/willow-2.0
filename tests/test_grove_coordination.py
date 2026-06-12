@@ -32,7 +32,8 @@ def test_node_announce_and_list(store):
 
 
 def test_node_has_2_0_stub(store):
-    node_announce(store, "test@host:8550", "Test", "1.9.0")
+    with patch("willow.grove_coordination._query_ollama_models", return_value=[]):
+        node_announce(store, "test@host:8550", "Test", "1.9.0")
     nodes = node_list(store)
     node = next(n for n in nodes if n["addr"] == "test@host:8550")
     assert "2.0_stub" in node

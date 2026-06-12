@@ -7,9 +7,23 @@ willow, grove, and markdownai tools — no separate servers to configure.
 
 ---
 
-## Canonical config (Cursor / Claude Code)
+## Fast Path
 
-Copy [`.mcp.json.example`](../.mcp.json.example) → `.mcp.json`:
+Install exactly the surface you use:
+
+```bash
+./willow.sh agents active <agent>
+./willow.sh agents install <agent> --ide <cursor|claude|codex>
+./willow.sh agents check --ide <cursor|claude|codex>
+```
+
+Restart the IDE after install. Agents should read [`willow.md`](../willow.md)
+first, then check fleet health and handoff.
+
+## Manual Config (Cursor / Claude Code)
+
+Prefer the fast path above. Use manual config only when an IDE cannot consume the
+generated files. Copy [`.mcp.json.example`](../.mcp.json.example) → `.mcp.json`:
 
 ```json
 {
@@ -29,19 +43,13 @@ Copy [`.mcp.json.example`](../.mcp.json.example) → `.mcp.json`:
 }
 ```
 
-**Cursor:** symlink MCP via install — canonical templates live under `willow/fylgja/config/`:
-
-```bash
-python3 -m willow.fylgja.install_project hanuman --ide all
-# or cursor-only:
-python3 -m willow.fylgja.install_project hanuman --ide cursor
-```
+**Cursor:** install via `./willow.sh agents install <agent> --ide cursor`. Committed
+`.cursor/hooks.json`, `.cursor/mcp.json`, commands, and skills are real files for
+remote agents; local install only symlinks ignored `settings.local.json`.
+**Claude Code:** committed `.claude/settings.json` plus global hooks via
+`python3 -m willow.fylgja.install` when `--ide claude` includes global wiring.
 
 Use an **absolute** path in unified MCP `args` when the IDE does not launch from repo root (template uses `{{REPO_ROOT}}`).
-
-**Claude Code:** `install_project` symlinks `.claude/settings.json` and wires global hooks via `python3 -m willow.fylgja.install`.
-
-Agents read [`willow.md`](../willow.md) via `mai_read_file` first.
 
 Restart the IDE after changing MCP config, hooks, or `sap/unified_mcp.sh`.
 
@@ -57,10 +65,46 @@ Restart the IDE after changing MCP config, hooks, or `sap/unified_mcp.sh`.
 | `beforeMCPExecution` | `pre_tool` | MCP write-path guards |
 | `stop` | `stop` | Session composite, affect tagging |
 
-Install: `python3 -m willow.fylgja.install_project <agent> --ide cursor` (symlinks `.cursor/hooks.json` → `willow/fylgja/config/cursor-hooks.json`).  
+`PostToolUse` (`post_tool`) is wired for **Claude Code** global hooks only. Cursor's
+hook schema in this repo does not expose an equivalent post-tool event, so output
+scanning runs on Claude sessions via `install_project --ide claude`.
+
+Install: `./willow.sh agents install <agent> --ide cursor` — syncs committed
+`.cursor/hooks.json` from canonical templates and symlinks only ignored
+`.cursor/settings.local.json` into `$WILLOW_HOME/agents/<agent>/`.  
 Runner: `willow/fylgja/bin/fylgja-hook` → `willow.fylgja.hook_runner` (legacy shims: `tools/run_cursor_hook.py`).
 
 Debug: Cursor **Output → Hooks** channel.
+
+---
+
+## Remote Agents
+
+Remote agents start from a clean git checkout. They do not have the operator's
+private `~/github/.willow`, and symlinked discovery paths are not reliable. Any
+surface a remote agent should discover must be committed as real files.
+
+Tracked remote-safe surface:
+
+| Surface | Path |
+|---------|------|
+| Cursor hooks | `.cursor/hooks.json` |
+| Cursor permissions | `.cursor/permissions.json` |
+| Cursor commands / skills / subagents | `.cursor/commands/`, `.cursor/skills/<skill>/SKILL.md`, `.cursor/agents/` |
+| Claude commands / skills / agents | `.claude/commands/`, `.claude/skills/<skill>/SKILL.md`, `.claude/agents/` |
+| Generic agent commands / skills / agents | `.agents/commands/`, `.agents/skills/<skill>/SKILL.md`, `.agents/agents/` |
+| Codex commands / skills / agents | `.codex/commands/`, `.codex/skills/<skill>/SKILL.md`, `.codex/agents/` |
+
+After editing canonical Fylgja skills, commands, or hook templates, refresh the
+vendored remote surface:
+
+```bash
+python3 scripts/sync_remote_cursor_surface.py
+pytest tests/test_fylgja/test_remote_surface.py
+```
+
+Local private config still belongs in `~/github/.willow`; it is runtime state,
+not remote discovery state.
 
 ---
 
@@ -92,13 +136,35 @@ Call **`fleet_tool_guide`** when unsure which tool to use (grouped catalog).
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `WILLOW_AGENT_NAME` | `agent` | Sets identity for handoff + grove |
-| `WILLOW_GROVE_ROOT` | `~/github/safe-app-willow-grove` | Path to grove repo (grove tools bundled in unified MCP) |
+| `WILLOW_HOME` | private `~/github/.willow` or public `.willow/generated` | Fleet home selected by `link_fleet_home`; `~/.willow` alias OK on operator machines |
+| `WILLOW_AGENT_NAME` | `active-agent` or `hanuman` | Identity for handoff, Grove, MCP `app_id` |
+| `GROVE_SENDER` / `GROVE_NAME` | same as agent | Set by `install_project` / `unified_mcp.sh` |
+| `WILLOW_GROVE_ROOT` | `~/github/safe-app-willow-grove` | Grove repo (tools bundled in unified MCP) |
 | `WILLOW_PG_DB` | `willow_20` | Postgres database name |
-| `WILLOW_SAFE_ROOT` | `~/SAFE/Applications` | Installed app manifests — required for SAP gate |
-| `WILLOW_AGENTS_ROOT` | `~/SAFE/Agents` | Agent manifests — required for agent authorization |
-| `WILLOW_STORE_ROOT` | `~/.willow/store` | SOIL store path |
+| `WILLOW_SAFE_ROOT` | `~/github/SAFE/Applications` | Installed app manifests — required for SAP gate |
+| `WILLOW_AGENTS_ROOT` | `~/github/SAFE/Agents` | Agent manifests — required for agent authorization |
+| `WILLOW_STORE_ROOT` | `$WILLOW_HOME/store` | SOIL store path |
 | `WILLOW_MCP_PROFILE` | `standard` | Tool picker filter: `minimal` \| `core` \| `standard` \| `full` |
+
+Path resolver: `willow/fylgja/willow_home.py` (`fleet_home`, `resolve_store_root`, …).
+
+---
+
+## Runtime parity (install + hooks)
+
+| Surface | Install | Check |
+|---------|---------|-------|
+| Cursor | `./willow.sh agents install <id> --ide cursor` | `./willow.sh agents check --ide cursor` |
+| Claude Code | `./willow.sh agents install <id> --ide claude` | `./willow.sh agents check --ide claude` |
+| Codex CLI | `./willow.sh agents install <id> --ide codex` | `./willow.sh agents check --ide codex` |
+| Gemini CLI | Manual MCP fragment (see `GEMINI.md`) | — |
+
+Use `--ide <surface>` for the runtime you actually use. `--ide all` is **strict**: every IDE surface must be installed — it fails on Cursor-only machines missing Claude/Codex globals.
+
+`install_project` re-renders MCP JSON (including `GROVE_SENDER` / `GROVE_NAME`) and exports
+`$WILLOW_HOME/mcp/willow-2.0.mcp.json` on every install.
+
+Layout audit: `bash scripts/audit_canonical_home.sh`
 
 ---
 

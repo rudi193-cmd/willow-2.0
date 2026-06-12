@@ -1,0 +1,31 @@
+{
+  "env": {
+    "WILLOW_AGENT_NAME": "{{AGENT_NAME}}",
+    "AGENT_NAME": "{{AGENT_NAME}}"
+  },
+  "permissions": {
+    "allow": [
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Skill(*)",
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "Task(*)",
+      "mcp__willow__fleet_restart",
+      "mcp__willow__*",
+      "mcp__claude_ai_Grove__*"
+    ],
+    "deny": [
+      "mcp__willow__app_uninstall",
+      "mcp__willow__policy_put",
+      "mcp__willow__policy_delete",
+      "mcp__willow__routine_register"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["willow"]
+}

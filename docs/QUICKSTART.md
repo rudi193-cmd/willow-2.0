@@ -12,7 +12,7 @@ Simpler path? [`FIRST_5_MINUTES.md`](FIRST_5_MINUTES.md).
 |-------|------|
 | **Ollama** | Default inference on your machine |
 | **KB (LOAM)** | Postgres or SQLite — memory that survives sessions |
-| **SAP MCP** | 40+ tools: KB, SOIL, fleet, tasks, handoffs, inference |
+| **SAP MCP** | Unified MCP server with profile-filtered tools for KB, SOIL, fleet, tasks, handoffs, and inference |
 | **Fylgja** | Skills and powers — Markdown behaviors, any model |
 | **Grove** | Terminal dashboard + LAN remote (sibling repo for full bus) |
 | **SAFE gate** | Every tool call checked against manifests |
@@ -28,10 +28,16 @@ Cloud providers are optional.
 ```bash
 git clone https://github.com/rudi193-cmd/willow-2.0
 cd willow-2.0
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"   # optional: pytest, ruff, mypy
-python3 seed.py
+bash setup.sh --public
 ```
+
+Use `bash setup.sh` without `--public` when private `willow-config` is present
+at `~/github/.willow`. Manual lower-level path: create a venv,
+`pip install -e ".[dev]"`, then run `python3 seed.py`.
+
+`setup.sh` prepares the venv, dependencies, runtime config, database, and IDE
+templates. `seed.py` handles the lower-level environment seed: GPG, vault,
+`willow_20`, KB seed, PATH, and optional Grove network URL.
 
 **macOS (Homebrew) — pgvector extra step:**
 `seed.py` tries `apt-get` for Postgres which is unavailable on macOS. Install manually before running `seed.py`:
@@ -43,8 +49,6 @@ make install PG_CONFIG=/opt/homebrew/opt/postgresql@15/bin/pg_config
 cd - && psql postgres -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 The Homebrew pgvector bottle only ships for pg17/pg18 — build from source against pg15 is required.
-
-`seed.py` sets up: deps, GPG, vault, `willow_20`, KB seed, PATH, optional Grove network URL.
 
 ### Termux
 
@@ -84,14 +88,14 @@ LAN server:
 
 ## MCP (IDE)
 
-**Willow server** — `sap/willow_mcp.sh` → `sap/sap_mcp.py`
+**Willow server** — `sap/unified_mcp.sh` → `sap/sap_mcp.py`
 
 ```json
 {
   "mcpServers": {
     "willow": {
       "command": "bash",
-      "args": ["sap/willow_mcp.sh"],
+      "args": ["sap/unified_mcp.sh"],
       "env": {
         "WILLOW_AGENT_NAME": "your_agent",
         "WILLOW_PG_DB": "willow_20"
@@ -101,9 +105,9 @@ LAN server:
 }
 ```
 
-Boot tools (in order): `fleet_status` → `handoff_latest` → `kb_search` on your task.
+Boot tools (in order): read root `willow.md` → `fleet_status` → `handoff_latest` → `kb_search` on your task when KB is available.
 
-Full agent contract: [`CONTRACT.md`](CONTRACT.md) · private full: [`willow.md`](../willow.md) · [`sap/ONBOARDING.md`](../sap/ONBOARDING.md)
+Full agent contract: [`../willow.md`](../willow.md) · public snapshot: [`CONTRACT.md`](CONTRACT.md) · [`sap/ONBOARDING.md`](../sap/ONBOARDING.md)
 
 **Grove server** — separate repo `safe-app-willow-grove`, module `grove.mcp_local`.
 

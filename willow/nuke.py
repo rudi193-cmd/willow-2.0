@@ -6,8 +6,8 @@ b17: NUKE1  ΔΣ=42
 What it deletes:
   - SOIL store: all *.db files under WILLOW_STORE_ROOT (SQLite collections)
   - Postgres: truncates compact_contexts (session-scoped) and willow_session temp data
-  - Tmp: removes ~/.willow/session_anchor.json and anchor_state.json
-  - Writes a timestamped nuke receipt to ~/.willow/logs/
+  - Tmp: removes $WILLOW_HOME/session_anchor.json and anchor_state.json
+  - Writes a timestamped nuke receipt to $WILLOW_HOME/logs/
 
 What it does NOT delete:
   - Postgres knowledge, tasks, jeles_sessions, frank_ledger, agents — these are permanent
@@ -21,16 +21,18 @@ Usage:
 
 import json
 import logging
-import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from willow.fylgja.willow_home import resolve_store_root, willow_home
+
 logger = logging.getLogger("willow.nuke")
 
-STORE_ROOT = Path(os.environ.get("WILLOW_STORE_ROOT", Path.home() / ".willow" / "store"))
-WILLOW_DIR = Path.home() / ".willow"
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+STORE_ROOT = resolve_store_root(_REPO_ROOT)
+WILLOW_DIR = willow_home(_REPO_ROOT)
 LOGS_DIR = WILLOW_DIR / "logs"
 
 _TMP_PATTERNS = [

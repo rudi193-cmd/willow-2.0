@@ -26,10 +26,11 @@ _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.insert(0, _ROOT)
 
 from core import soil
+from willow.fylgja.willow_home import willow_home
 
 _SOIL_DISCOVERY = "upstream_steward/discovery"
 _SOIL_CURSOR = "upstream_steward/scout_cursor"
-_CONFIG_FILE = Path.home() / ".willow" / "upstream_steward" / "config.yaml"
+_CONFIG_FILE = willow_home(Path(__file__).resolve().parents[3]) / "upstream_steward" / "config.yaml"
 
 _SEARCH_QUERIES = [
     "mcp-server postgres stars:50..2000",

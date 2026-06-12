@@ -235,7 +235,13 @@ def main():
     parser.add_argument("--channel", default="general")
     parser.add_argument("--since-id", type=int, default=6400)
     parser.add_argument("--until-id", type=int, default=9999)
-    parser.add_argument("--output", default=str(Path.home() / ".willow" / "exports" / "grove_20260429.jsonl"))
+    from willow.fylgja.willow_home import willow_home
+
+    _repo = Path(__file__).resolve().parent.parent
+    parser.add_argument(
+        "--output",
+        default=str(willow_home(_repo) / "exports" / "grove_20260429.jsonl"),
+    )
     parser.add_argument(
         "--operator",
         default=os.environ.get("WILLOW_OPERATOR", "operator"),

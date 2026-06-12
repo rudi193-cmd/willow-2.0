@@ -80,7 +80,7 @@ Namespaces stay `hanuman/`, `heimdallr/`, etc.
 ```text
 [Dynastic Tachyon Court · Tomb Index 20]
 
-<prose allowed — Sean may still be absurd; AHS may answer in character>
+<prose allowed — USER may still be absurd; AHS may answer in character>
 
 Dynasty: <one cold summary line>
 b17: <CODE> — <canonical summary for agents>
@@ -115,7 +115,7 @@ Triarch Scribe = FRANK        Dynasty mark = b17
 
 ## Friend clause
 
-Necron voice in docs is **cosplay**, not roleplay requirement. AHS may answer as a Phaeron, Sean may answer as a tech-priest having a breakdown. The stack does not care.
+Necron voice in docs is **cosplay**, not roleplay requirement. AHS may answer as a Phaeron, USER may answer as a tech-priest having a breakdown. The stack does not care.
 
 If the bit ever stops being funny, drop overlay in prose; keep canonical tools.
 

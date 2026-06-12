@@ -176,7 +176,7 @@ def check_candidate(
     elif "STALE" in flags:
         rec = "Existing atom appears to supersede this summary; consider updating the prior atom instead of inserting."
     elif "DARK" in flags:
-        rec = "Sensitive or identity-protected phrasing detected; confirm Sean-authorized wording before ingest."
+        rec = "Sensitive or identity-protected phrasing detected; confirm USER-authorized wording before ingest."
     elif kb_hits or soil_hits:
         rec = "No hard duplicate signal; still run willow_knowledge_search with distinctive keywords before ingest."
     else:

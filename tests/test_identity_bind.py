@@ -1,10 +1,15 @@
 """Tests for MCP identity bind (PR 1)."""
 from __future__ import annotations
 
+import json
 import os
+from pathlib import Path
 from unittest import mock
 
-from willow.fylgja.identity_bind import check_app_id, identity_bind_mode
+from willow.fylgja.identity_bind import check_app_id, collect_identity_matrix, identity_bind_mode
+from willow.fylgja.install_project import render_mcp_config
+
+PACKAGE_ROOT = Path(__file__).parent.parent
 
 
 def test_check_app_id_ok_when_match():
@@ -38,3 +43,24 @@ def test_identity_bind_mode_default_warn():
     with mock.patch.dict(os.environ, {}, clear=False):
         os.environ.pop("WILLOW_IDENTITY_BIND", None)
         assert identity_bind_mode() == "warn"
+
+
+def test_collect_identity_matrix_ignores_stale_shell_grove(tmp_path, monkeypatch):
+    """Disk MCP is authoritative; profile GROVE_SENDER must not fail coherence."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".willow").mkdir()
+    (repo / ".willow" / "active-agent").write_text("hanuman\n")
+    agent_cfg = repo / "agents" / "hanuman" / "config"
+    agent_cfg.mkdir(parents=True)
+    mcp = render_mcp_config("hanuman", PACKAGE_ROOT)
+    (agent_cfg / "mcp.json").write_text(json.dumps(mcp) + "\n")
+
+    monkeypatch.chdir(repo)
+    monkeypatch.setenv("GROVE_SENDER", "rudi193-cmd")
+    monkeypatch.setenv("WILLOW_AGENT_NAME", "hanuman")
+
+    matrix = collect_identity_matrix(repo)
+    assert matrix["coherent"] is True
+    assert matrix.get("drift") == []
+    assert matrix.get("shell_grove_stale")

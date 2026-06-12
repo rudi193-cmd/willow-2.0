@@ -3,6 +3,7 @@ import sqlite3
 from pathlib import Path
 
 from sap.handoff_index import handoff_select_sql
+from willow.fylgja.install import _is_fylgja_entry
 from willow.fylgja.install_project import (
     build_claude_hooks_block,
     install_project,
@@ -56,8 +57,25 @@ def test_cursor_hooks_template_uses_fylgja_hook():
 def test_build_claude_hooks_block_uses_hook_runner():
     block = build_claude_hooks_block(PACKAGE_ROOT)
     rendered = json.dumps(block)
-    assert "hook_runner" in rendered
+    assert "fylgja-hook" in rendered
+    assert ".venv-dev" not in rendered
+    assert "python3 -m willow.fylgja.hook_runner" not in rendered
     assert "SessionStart" in block
+
+
+def test_status_strip_hook_is_managed_fylgja_entry():
+    entry = {
+        "hooks": [
+            {
+                "type": "command",
+                "command": (
+                    "/home/sean-campbell/github/willow-2.0/.venv-dev/bin/python3 "
+                    "/home/sean-campbell/github/willow-2.0/willow/fylgja/status_strip.py"
+                ),
+            }
+        ]
+    }
+    assert _is_fylgja_entry(entry)
 
 
 def test_render_mcp_config_sets_agent_name():
@@ -82,16 +100,35 @@ def test_install_project_writes_agent_config(tmp_path, monkeypatch):
         "willow/fylgja/config/cursor-hooks.json",
         "willow/fylgja/config/cursor-cli.json",
         "willow/fylgja/config/claude-settings.json",
+        "willow/fylgja/config/codex-mcp.toml.template",
         "willow/fylgja/bin/fylgja-hook",
         "willow/fylgja/project_env.py",
         "willow/fylgja/hook_runner.py",
         "willow/fylgja/install.py",
         "willow/fylgja/install_project.py",
+        "willow/fylgja/willow_home.py",
+        "willow/fylgja/link_fleet_home.py",
+        "willow/fylgja/global_settings.py",
+        "scripts/sync_remote_cursor_surface.py",
     ):
         src = PACKAGE_ROOT / rel
         dst = repo / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_bytes(src.read_bytes())
+        if src.is_dir():
+            import shutil
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+        else:
+            dst.write_bytes(src.read_bytes())
+
+    skills_src = PACKAGE_ROOT / "willow" / "fylgja" / "skills"
+    skills_dst = repo / "willow" / "fylgja" / "skills"
+    if not skills_dst.exists():
+        import shutil
+        shutil.copytree(skills_src, skills_dst)
+    agents_src = PACKAGE_ROOT / "willow" / "fylgja" / "agents" / "rlm-subcall.md"
+    agents_dst = repo / "willow" / "fylgja" / "agents" / "rlm-subcall.md"
+    agents_dst.parent.mkdir(parents=True, exist_ok=True)
+    agents_dst.write_bytes(agents_src.read_bytes())
 
     install_project(
         agent_name="hanuman",
@@ -107,7 +144,8 @@ def test_install_project_writes_agent_config(tmp_path, monkeypatch):
     assert json.loads(identity.read_text())["WILLOW_AGENT_NAME"] == "hanuman"
     assert mcp.is_file()
     assert (repo / ".willow" / "active-agent").read_text().strip() == "hanuman"
-    assert (repo / ".cursor" / "hooks.json").is_symlink()
+    assert (repo / ".cursor" / "hooks.json").is_file()
+    assert not (repo / ".cursor" / "hooks.json").is_symlink()
     assert (repo / ".mcp.json").is_symlink()
     settings_link = repo / ".cursor" / "settings.local.json"
     assert settings_link.is_symlink()

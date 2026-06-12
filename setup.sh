@@ -3,7 +3,7 @@
 # Run once on a new machine, or re-run to sync config + deps.
 #
 # What it does:
-#   1. Pull private willow-config → ~/github/.willow; link contract into willow-2.0 (symlinks in, not out)
+#   1. Pull private willow-config → ~/github/.willow; link runtime config into willow-2.0
 #   2. Create .venv-dev if missing
 #   3. Install/upgrade requirements.txt
 #   4. Verify Postgres connection
@@ -11,6 +11,7 @@
 #
 # Usage:
 #   bash setup.sh
+#   bash setup.sh --public     # GitHub-only clone — skip private willow-config
 #   bash setup.sh --no-migrate   # skip DB migration step
 
 set -euo pipefail
@@ -20,7 +21,16 @@ WILLOW_HOME="${HOME}/github/.willow"
 GITHUB_ROOT="${HOME}/github"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV="${REPO_ROOT}/.venv-dev"
-NO_MIGRATE="${1:-}"
+PUBLIC_MODE=0
+NO_MIGRATE=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --public) PUBLIC_MODE=1; shift ;;
+        --no-migrate) NO_MIGRATE="--no-migrate"; shift ;;
+        *) echo "Unknown arg: $1" >&2; exit 1 ;;
+    esac
+done
 
 hdr()  { echo ""; echo "─── $1 $(printf '─%.0s' $(seq 1 $((52 - ${#1}))))"; }
 ok()   { echo "  ✓  $1"; }
@@ -46,7 +56,9 @@ mkdir -p "${GITHUB_ROOT}/SAFE/Applications" "${GITHUB_ROOT}/SAFE/Agents"
 [[ -d "${GITHUB_ROOT}/safe-app-store" && ! -e "${HOME}/safe-app-store" ]] && ln -sfn "${GITHUB_ROOT}/safe-app-store" "${HOME}/safe-app-store"
 
 hdr "~/github/.willow (willow-config)"
-if [[ -d "${WILLOW_HOME}/.git" ]]; then
+if [[ "${PUBLIC_MODE}" -eq 1 ]]; then
+    warn "Public mode — skipping willow-config clone (using repo public pack)"
+elif [[ -d "${WILLOW_HOME}/.git" ]]; then
     REMOTE=$(git -C "${WILLOW_HOME}" remote get-url origin 2>/dev/null || echo "")
     if [[ "${REMOTE}" == *"willow-config"* ]]; then
         git -C "${WILLOW_HOME}" pull --ff-only origin master 2>&1 | tail -1
@@ -57,14 +69,21 @@ if [[ -d "${WILLOW_HOME}/.git" ]]; then
 elif [[ -d "${WILLOW_HOME}" && ! -d "${WILLOW_HOME}/.git" ]]; then
     warn "~/.willow exists but is not a git repo. Cloning willow-config alongside..."
     WILLOW_HOME_TMP="${HOME}/.willow-config-tmp"
-    git clone "${WILLOW_CONFIG_REPO}" "${WILLOW_HOME_TMP}"
-    # Merge tracked files without clobbering existing runtime state
-    rsync -a --ignore-existing "${WILLOW_HOME_TMP}/" "${WILLOW_HOME}/"
-    rm -rf "${WILLOW_HOME_TMP}"
-    ok "Merged willow-config into existing ~/.willow"
+    if git clone "${WILLOW_CONFIG_REPO}" "${WILLOW_HOME_TMP}" 2>/dev/null; then
+        rsync -a --ignore-existing "${WILLOW_HOME_TMP}/" "${WILLOW_HOME}/"
+        rm -rf "${WILLOW_HOME_TMP}"
+        ok "Merged willow-config into existing ~/.willow"
+    else
+        warn "willow-config clone failed — continuing with public fallback pack"
+        PUBLIC_MODE=1
+    fi
 else
-    git clone "${WILLOW_CONFIG_REPO}" "${WILLOW_HOME}"
-    ok "Cloned willow-config → ~/.willow"
+    if git clone "${WILLOW_CONFIG_REPO}" "${WILLOW_HOME}" 2>/dev/null; then
+        ok "Cloned willow-config → ~/.willow"
+    else
+        warn "willow-config unavailable — continuing with public fallback pack"
+        PUBLIC_MODE=1
+    fi
 fi
 
 # ── 3. Venv ───────────────────────────────────────────────────────────────────
@@ -80,9 +99,20 @@ fi
 "${VENV}/bin/pip" install --quiet -r "${REPO_ROOT}/requirements.txt"
 ok "Requirements installed"
 
-# Private willow-config (~/github/.willow) is canonical; willow-2.0 symlinks in
-PYTHONPATH="${REPO_ROOT}" "${VENV}/bin/python3" -m willow.fylgja.link_fleet_home
-ok "Linked willow-2.0/willow.md + config → ~/.willow (willow-config)"
+# Fleet contract: private willow-config when present, else repo public pack
+LINK_ARGS=()
+if [[ "${PUBLIC_MODE}" -eq 1 ]]; then
+    export WILLOW_CONFIG_MODE=public-fallback
+    export WILLOW_HOME="${REPO_ROOT}/.willow/generated"
+    LINK_ARGS+=(--public)
+fi
+PYTHONPATH="${REPO_ROOT}" WILLOW_CONFIG_MODE="${WILLOW_CONFIG_MODE:-}" WILLOW_HOME="${WILLOW_HOME:-}" \
+    "${VENV}/bin/python3" -m willow.fylgja.link_fleet_home "${LINK_ARGS[@]}"
+if [[ "${PUBLIC_MODE}" -eq 1 ]]; then
+    ok "Linked willow-2.0 → public fallback pack (.willow/generated)"
+else
+    ok "Linked willow-2.0 runtime config → ~/.willow (willow-config); root willow.md remains public"
+fi
 
 hdr "IDE + agent install"
 ACTIVE_FILE="${REPO_ROOT}/.willow/active-agent"
@@ -90,25 +120,37 @@ if [[ -n "${WILLOW_AGENT_NAME:-}" ]]; then
     AGENT="${WILLOW_AGENT_NAME}"
 elif [[ -f "${ACTIVE_FILE}" ]]; then
     AGENT="$(tr -d '[:space:]' < "${ACTIVE_FILE}")"
+elif [[ "${PUBLIC_MODE}" -eq 1 ]]; then
+    AGENT="willow"
+    mkdir -p "$(dirname "${ACTIVE_FILE}")"
+    echo "${AGENT}" > "${ACTIVE_FILE}"
+    warn "No active agent — defaulted to ${AGENT} (public mode)"
 else
     fail "No active agent. Run: cd ${REPO_ROOT} && ./willow agents active <id> && ./willow agents install <id> --ide all"
 fi
 export WILLOW_AGENT_NAME="${AGENT}"
-PYTHONPATH="${REPO_ROOT}" "${VENV}/bin/python3" -m willow.fylgja.install_project "${AGENT}" --ide all
+PYTHONPATH="${REPO_ROOT}" WILLOW_CONFIG_MODE="${WILLOW_CONFIG_MODE:-}" WILLOW_HOME="${WILLOW_HOME:-}" \
+    "${VENV}/bin/python3" -m willow.fylgja.install_project "${AGENT}" --ide all
 ok "install_project ${AGENT} (active-agent=${ACTIVE_FILE})"
 
 hdr "Systemd fleet units"
 SYSTEMD_USER="${HOME}/.config/systemd/user"
 mkdir -p "${SYSTEMD_USER}"
+for unit in "${REPO_ROOT}"/systemd/*.service "${REPO_ROOT}"/systemd/*.socket; do
+    [[ -f "${unit}" ]] || continue
+    cp -f "${unit}" "${SYSTEMD_USER}/$(basename "${unit}")"
+done
 for unit in willow-metabolic.socket willow-metabolic.service grove-mcp.service \
-            willow-grove-listen.service drop-server.service nest-watcher.service; do
+            willow-grove-listen.service drop-server.service nest-watcher.service \
+            journal-watcher.service; do
     src="${REPO_ROOT}/systemd/${unit}"
-    [[ -f "${src}" ]] && cp -f "${src}" "${SYSTEMD_USER}/${unit}"
+    [[ -f "${src}" ]] || warn "Missing expected systemd unit: ${unit}"
 done
 if command -v systemctl >/dev/null 2>&1; then
     systemctl --user daemon-reload
     systemctl --user enable --now willow-metabolic.socket grove-mcp.service \
-        willow-grove-listen.service drop-server.service nest-watcher.service 2>/dev/null \
+        willow-grove-listen.service drop-server.service nest-watcher.service \
+        journal-watcher.service 2>/dev/null \
         && ok "Fleet units enabled" || warn "Some systemd units failed to enable"
 else
     warn "systemctl not available"

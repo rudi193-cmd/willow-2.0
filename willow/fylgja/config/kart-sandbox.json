@@ -22,7 +22,10 @@
     "HUGGINGFACE_",
     "HF_",
     "OPENAI_",
-    "AWS_"
+    "AWS_",
+    "DISCORD_",
+    "DBUS_",
+    "XDG_"
   ],
   "bind_read_only": [
     "/usr",
@@ -45,14 +48,15 @@
     "{{HOME}}/.ssh",
     "{{HOME}}/.config/gh",
     "{{HOME}}/.config/git",
+    "{{HOME}}/.config/systemd",
     "{{HOME}}/.kaggle",
-    "{{HOME}}/Desktop",
-    "{{HOME}}/Ashokoa",
     "/tmp",
     "/var/run/postgresql",
     "/media/willow"
   ],
   "bind_try": [
+    "{{HOME}}/Desktop",
+    "{{HOME}}/Ashokoa",
     "{{WILLOW_GROVE_ROOT}}",
     "{{WILLOW_SAFE_ROOT}}",
     "{{WILLOW_AGENTS_ROOT}}",
@@ -70,6 +74,8 @@
     "{{HOME}}/.config/pypoetry",
     "{{HOME}}/.local/share/uv",
     "/run/user",
+    "/run/media",
+    "{{XDG_RUNTIME_DIR}}",
     "/run/systemd/resolve"
   ],
   "worktree_scan_roots": [

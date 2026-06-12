@@ -13,6 +13,7 @@ def skill_put(
     trigger: str,
     auto_load: bool = True,
     model_agnostic: bool = True,
+    risk: str = "low",
 ) -> str:
     """Store or update a skill. Returns skill ID (= name)."""
     store.put(_COLLECTION, {
@@ -23,6 +24,7 @@ def skill_put(
         "trigger": trigger,
         "auto_load": auto_load,
         "model_agnostic": model_agnostic,
+        "risk": risk,
     })
     return name
 
@@ -31,8 +33,17 @@ def skill_load(
     store: WillowStore,
     context: str,
     max_skills: int = 3,
+    *,
+    mastery_bias: float = 0.0,
 ) -> list[dict]:
-    """Return up to max_skills auto-loadable skills relevant to context."""
+    """Return up to max_skills auto-loadable skills relevant to context.
+
+    mastery_bias: optional BKT re-rank weight (#3). When non-zero, the sort key
+    becomes ``trigger_overlap + mastery_bias * p_known`` — a positive bias
+    favours skills the agent has demonstrably mastered (core/skill_mastery),
+    breaking ties toward reliability. Default 0.0 keeps the historical
+    overlap-only ordering byte-for-byte; the mastery lookup is skipped entirely.
+    """
     all_skills = store.list(_COLLECTION)
     context_words = set(context.lower().split())
 
@@ -46,8 +57,28 @@ def skill_load(
         if score > 0:
             scored.append((score, data))
 
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return [s for _, s in scored[:max_skills]]
+    if mastery_bias:
+        from core import skill_mastery as _sm
+
+        def _key(item):
+            score, data = item
+            sid = data.get("id") or data.get("name")
+            rec = _sm.mastery(sid) if sid else None
+            p_known = float(rec.get("p_known", 0.0)) if rec else 0.0
+            return score + mastery_bias * p_known
+
+        scored.sort(key=_key, reverse=True)
+    else:
+        scored.sort(key=lambda x: x[0], reverse=True)
+
+    from core import skill_mastery as _sm
+    result = []
+    for _, data in scored[:max_skills]:
+        sid = data.get("id") or data.get("name")
+        risk = data.get("risk", "low")
+        scrutiny = _sm.needs_scrutiny(sid, risk) if sid else False
+        result.append({**data, "needs_scrutiny": scrutiny})
+    return result
 
 
 def skill_list(

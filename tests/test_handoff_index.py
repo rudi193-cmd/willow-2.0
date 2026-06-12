@@ -1,3 +1,6 @@
+import tempfile
+from pathlib import Path
+
 from sap.handoff_index import (
     extract_next_bite,
     handoff_is_empty_stub,
@@ -116,6 +119,30 @@ def test_empty_kb_stub_loses_to_richer_markdown_same_day():
     assert best["filename"] == "session_handoff-2026-06-04g_hanuman.md"
 
 
+def test_select_best_handoff_prefers_newer_same_day_kb_atom():
+    older = {
+        "filename": "kb_BE69F92D.json",
+        "date": "2026-06-10",
+        "summary": "Older same-day handoff atom with lexically larger id.",
+        "open_threads": [],
+        "questions": [],
+        "_valid_at": "2026-06-10T09:00:00-06:00",
+    }
+    newer = {
+        "filename": "kb_3CC79359.json",
+        "date": "2026-06-10",
+        "summary": "Newer same-day handoff atom with lexically smaller id.",
+        "open_threads": [],
+        "questions": [],
+        "_valid_at": "2026-06-10T16:12:00-06:00",
+    }
+
+    best = select_best_handoff([older, newer])
+
+    assert best is not None
+    assert best["filename"] == "kb_3CC79359.json"
+
+
 def test_scan_markdown_handoffs_finds_hanuman_session_files():
     root = handoffs_root()
     if not (root / "hanuman").is_dir():
@@ -126,3 +153,60 @@ def test_scan_markdown_handoffs_finds_hanuman_session_files():
     rich = select_best_handoff(found)
     assert rich is not None
     assert rich.get("open_threads") or rich.get("questions")
+
+
+_HANDOFF_TEMPLATE = """\
+---
+agent: {agent}
+date: {date}
+session: {session}
+runtime: claude-code
+format: v2
+---
+
+# HANDOFF: test
+
+## What I Now Understand
+
+Test session.
+
+## Open Threads
+
+- **item** — something open.
+
+## What We Agreed On
+
+- agreed.
+
+## 17 Questions
+
+Q1: Is this working?
+Q17: Run the test.
+"""
+
+
+def test_scan_markdown_handoffs_excludes_other_agents():
+    """scan_markdown_handoffs must not return files belonging to a different agent."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "hanuman").mkdir()
+        (root / "willow").mkdir()
+
+        # hanuman file — older session
+        (root / "hanuman" / "session_handoff-2026-06-09a_hanuman.md").write_text(
+            _HANDOFF_TEMPLATE.format(agent="hanuman", date="2026-06-09", session="2026-06-09a")
+        )
+        # willow file — newer session (would win a naive recency sort)
+        (root / "willow" / "session_handoff-2026-06-09d_willow.md").write_text(
+            _HANDOFF_TEMPLATE.format(agent="willow", date="2026-06-09", session="2026-06-09d")
+        )
+
+        hanuman_candidates = scan_markdown_handoffs("hanuman", root)
+        names = {c["filename"] for c in hanuman_candidates}
+
+        assert "session_handoff-2026-06-09d_willow.md" not in names
+        assert "session_handoff-2026-06-09a_hanuman.md" in names
+
+        best = select_best_handoff(hanuman_candidates)
+        assert best is not None
+        assert best["filename"] == "session_handoff-2026-06-09a_hanuman.md"

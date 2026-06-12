@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "consent": {
+    "internet": false,
+    "cloud_llm": false,
+    "lan": false
+  },
+  "paths": {},
+  "fleet": {
+    "default_agent": ""
+  },
+  "flags": {
+    "consent_internet_gates_allow_net": {
+      "enabled": false,
+      "implemented": false,
+      "status": "deferred",
+      "targets": ["kart_worker", "kart_sandbox", "sap_gate"],
+      "note": "Public fallback pack — consent defaults closed until operator opts in."
+    }
+  }
+}

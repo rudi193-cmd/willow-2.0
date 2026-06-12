@@ -8,6 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sap.mai.tools import _is_markdownai_content
+from willow.fylgja.willow_home import willow_home
 
 _HEADER = "@markdownai v1.0\n\n"
 _SKIP_PARTS = {"archive", "tasks"}
@@ -34,7 +35,7 @@ def stamp_file(path: Path, *, dry_run: bool = False) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("root", nargs="?", default=str(Path.home() / "github" / ".willow" / "handoffs"))
+    ap.add_argument("root", nargs="?", default=str(willow_home(Path(__file__).resolve().parent.parent) / "handoffs"))
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
     root = Path(args.root).expanduser()

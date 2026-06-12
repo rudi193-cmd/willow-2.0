@@ -27,6 +27,30 @@ if rg -n 'Path\.home\(\) / "willow-2\.0"' \
   fail=1
 fi
 
+if rg -n 'Path\.home\(\)\s*/\s*["'\'']\.willow["'\'']|Path\.home\(\)\s*/\s*["'\'']github["'\'']\s*/\s*["'\'']\.willow["'\'']|expanduser\(["'\'']~/(github/)?\.willow(/|["'\''])' \
+    --glob '*.py' \
+    --glob '!worktrees/**' --glob '!archive/**' \
+    --glob '!docs/**' --glob '!tests/**' \
+    --glob '!willow/fylgja/willow_home.py' \
+    --glob '!scripts/path_guard.sh' . 2>/dev/null; then
+  echo "::error::Use willow.fylgja.willow_home.willow_home()/resolve_store_root(), not hardcoded ~/.willow or ~/github/.willow"
+  fail=1
+fi
+
+if rg -n '\$\{?HOME\}?/\.willow(/|["'\''])' \
+    --glob '*.sh' \
+    --glob '!worktrees/**' --glob '!archive/**' \
+    --glob '!docs/**' \
+    --glob '!willow.sh' \
+    --glob '!setup.sh' \
+    --glob '!scripts/comfort_check.sh' \
+    --glob '!scripts/audit_canonical_home.sh' \
+    --glob '!sap/unified_mcp.sh' \
+    --glob '!scripts/path_guard.sh' . 2>/dev/null; then
+  echo "::error::Shell runtime paths should use \${WILLOW_HOME}; ~/.willow is alias/setup-only"
+  fail=1
+fi
+
 if [[ "${fail}" -eq 0 ]]; then
   echo "path-guard OK"
 fi

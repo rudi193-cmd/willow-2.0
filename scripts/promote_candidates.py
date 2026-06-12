@@ -17,11 +17,15 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+_REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO))
 
 from core.pg_bridge import PgBridge
+from willow.fylgja.willow_home import willow_home
 
-DEFAULT_DB = Path(os.environ.get("WILLOW_20_DB", "~/.willow/willow-2.0.db")).expanduser()
+DEFAULT_DB = Path(
+    os.environ.get("WILLOW_20_DB", str(willow_home(_REPO) / "willow-2.0.db"))
+).expanduser()
 AGENT = os.environ.get("WILLOW_AGENT_NAME", "hanuman")
 
 

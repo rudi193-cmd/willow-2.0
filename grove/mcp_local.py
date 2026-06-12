@@ -32,11 +32,14 @@ from mcp.server.fastmcp import FastMCP
 
 from core import grove_db as db
 from core import grove_reader as _grove_reader
+from willow.fylgja.willow_home import willow_home
 
 # ── Notification state ────────────────────────────────────────────────────────
 _subscriptions: dict[int, set[asyncio.Queue]] = {}
 _subscriptions_lock = threading.Lock()
 _main_loop: asyncio.AbstractEventLoop | None = None
+_notify_thread: threading.Thread | None = None
+_notify_thread_lock = threading.Lock()
 
 
 def _pg_notify_thread() -> None:
@@ -78,12 +81,21 @@ def _pg_notify_thread() -> None:
             time.sleep(3)
 
 
+def _ensure_pg_notify_thread() -> None:
+    """Start the process-wide Postgres LISTEN thread once."""
+    global _notify_thread
+    with _notify_thread_lock:
+        if _notify_thread is not None and _notify_thread.is_alive():
+            return
+        _notify_thread = threading.Thread(target=_pg_notify_thread, daemon=True)
+        _notify_thread.start()
+
+
 @asynccontextmanager
 async def _lifespan(server: FastMCP) -> AsyncIterator[None]:
     global _main_loop
     _main_loop = asyncio.get_running_loop()
-    t = threading.Thread(target=_pg_notify_thread, daemon=True)
-    t.start()
+    _ensure_pg_notify_thread()
     yield
 
 
@@ -111,8 +123,9 @@ if _SERVE_MODE:
     from grove.mcp_auth import GroveOAuthProvider
     from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
 
+    _fleet_home = willow_home()
     _auth_provider = GroveOAuthProvider(
-        token_path=Path.home() / ".willow" / "grove_mcp_token",
+        token_path=_fleet_home / "grove_mcp_token",
         base_url=_BASE_URL,
     )
     mcp = FastMCP(
@@ -241,7 +254,7 @@ def grove_search(query: str, channel_name: str = "") -> list[dict]:
 def grove_get_identity() -> dict:
     """Get this Grove node's u2u address and public key."""
     from u2u.identity import Identity
-    identity_path = Path.home() / ".willow" / "grove_identity.json"
+    identity_path = willow_home() / "grove_identity.json"
     identity = Identity.load_or_generate(identity_path)
     name = os.getenv("GROVE_NAME", os.getenv("USER", "me"))
     port = int(os.getenv("GROVE_PORT", "8550"))
@@ -658,7 +671,7 @@ if _SERVE_MODE and _auth_provider is not None:
 
     @mcp.custom_route("/grove-approve", methods=["GET", "POST"])
     async def grove_approve(request: Request) -> HTMLResponse | RedirectResponse:
-        """Single-user OAuth approval page. Sean opens this to authorize claude.ai."""
+        """Single-user OAuth approval page. USER opens this to authorize claude.ai."""
         pending_key = request.query_params.get("pending", "")
         entry = _auth_provider.pop_pending(pending_key)
 

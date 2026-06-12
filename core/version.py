@@ -4,8 +4,9 @@ b17: VER20 · ΔΣ=42
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
+
+from willow.fylgja.willow_home import willow_home
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _VERSION_FILE = _REPO_ROOT / "VERSION"
@@ -22,8 +23,7 @@ VERSION = get_version()
 
 def installed_version_path() -> Path:
     """Resolved at call time so tests can monkeypatch Path.home() / WILLOW_HOME."""
-    home = Path(os.environ.get("WILLOW_HOME", Path.home() / "github" / ".willow"))
-    return home / "version"
+    return willow_home(_REPO_ROOT) / "version"
 
 
 def sync_installed_version() -> str:

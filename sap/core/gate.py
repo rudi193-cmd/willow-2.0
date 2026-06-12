@@ -7,7 +7,7 @@ Authorization chain (all four must pass):
 1. SAFE/Agents/<agent_id>/ folder exists (agents) or SAFE/Applications/<app_id>/ (user apps)
 2. safe-app-manifest.json present and readable
 3. safe-app-manifest.json.sig present
-4. gpg --verify confirms signature against Sean's key
+4. gpg --verify confirms signature against USER's key
 
 Any failure → deny + log to sap/log/gaps.jsonl.
 Revocation = delete folder or signature.
@@ -118,10 +118,17 @@ def gate_hostname_detail() -> str:
     """
     return _DEV_HOSTNAME_CHECK
 
-_EXPECTED_FP = os.environ.get(
-    "WILLOW_PGP_FINGERPRINT",
-    "96B92D78875F60BE229A0A348F414B8C1B402BB0",
-).upper().replace(" ", "")
+_CANONICAL_PGP_FP = "9B6F87BEB4AE56E23D3D055724AED1D0216053F5"
+
+
+def _expected_pgp_fingerprint() -> str:
+    raw = (os.environ.get("WILLOW_PGP_FINGERPRINT") or "").strip()
+    if not raw:
+        raw = _CANONICAL_PGP_FP
+    return raw.upper().replace(" ", "")
+
+
+_EXPECTED_FP = _expected_pgp_fingerprint()
 
 _APP_ID_RE = _re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_\-]*$')
 
@@ -145,12 +152,15 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
     "postgres_read": frozenset({
         "kb_search", "kb_query", "kb_at", "kb_get",
         "fleet_agents", "fleet_status", "fleet_system_status",
-        "fleet_governance", "mem_check",
+        "fleet_identity_status", "fleet_governance", "mem_check",
         "handoff_latest", "handoff_search",
         "session_review", "session_query", "diagnostic_summary", "env_check",
+        "willow_status", "willow_attention", "willow_find",
+        "human_required_queue_list", "human_attestation_list",
+        "fleet_tool_guide",
     }),
     "skill_read": frozenset({
-        "skill_list", "skill_load",
+        "skill_list", "skill_load", "skill_mastery",
     }),
     "fleet_operator": frozenset({
         "fleet_health", "fleet_blast", "fleet_persona", "fleet_base17",
@@ -202,9 +212,12 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "mem_jeles_register", "mem_jeles_search", "mem_jeles_web_search",
         "mem_jeles_invalidate",
         "source_trail_verify",
+        "willow_web_search",
     }),
     "intake": frozenset({
-        "intake_write", "intake_list", "intake_promote", "intake_schedule",
+        "intake_write", "intake_list", "intake_promote", "intake_schedule", "intake_schedule_fleet",
+        "human_required_queue_enqueue", "human_required_queue_resolve",
+        "human_attestation_create",
     }),
     "nest": frozenset({
         "nest_scan", "nest_queue", "nest_file",
@@ -237,7 +250,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "fork_list", "fork_log", "fork_merge", "fork_status",
     }),
     "skill_manage": frozenset({
-        "skill_list", "skill_load", "skill_put",
+        "skill_list", "skill_load", "skill_put", "skill_mastery",
     }),
     "ledger_read_perm": frozenset({
         "ledger_read",
@@ -257,7 +270,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "app_install", "app_uninstall", "app_list", "app_status",
     }),
     "soul": frozenset({
-        "tension_scan", "dream_check", "dream_run",
+        "tension_scan", "dream_check", "dream_run", "dream_schedule",
     }),
     "code_graph": frozenset({
         "code_graph_index", "code_graph_search", "code_graph_explain",
@@ -284,13 +297,15 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "intake_list",
         "kart_task_run",
         "kb_extract_from_session", "kb_intelligence_run", "kb_backup",
-        "fleet_system_status",
+        "fleet_system_status", "fleet_identity_status",
+        "willow_remember", "willow_run", "willow_delegate", "willow_work",
+        "willow_message", "willow_app", "willow_external", "willow_web_search", "willow_code",
     }),
     # Write tools added since knowledge_write was first cut.
     "knowledge_write_ext": frozenset({
         "pg_edge_add",
         "mem_binder_edge", "mem_binder_edge_update", "mem_binder_file",
-        "intake_promote", "intake_schedule",
+        "intake_promote", "intake_schedule", "intake_schedule_fleet",
         "kb_promote",
     }),
     "outcome_manage": frozenset({

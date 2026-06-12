@@ -12,7 +12,7 @@ Branding: [`docs/BRANDING.md`](docs/BRANDING.md)
 2. Pick one `powers[].id` by task fit (or user id)
 3. Read exactly one `willow/fylgja/powers/<file>` and follow it
 
-Entry: `willow/fylgja/skills/using-fylgja-powers.md` · Index: `willow/fylgja/powers/SURFACES.md`
+Entry: `willow/fylgja/skills/power.md` · Index: `willow/fylgja/powers/SURFACES.md`
 
 Override: `WILLOW_FYLGJA_ROOT` → directory containing `powers/` and `skills/`
 

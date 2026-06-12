@@ -109,9 +109,38 @@ def test_binder_edges_list_and_update(pg):
     edge_id = next(e["id"] for e in edges if e["source_atom"] == src)
     result  = pg.binder_edge_update_status(edge_id, "approved")
     assert result["updated"] is True
+    assert result.get("postgres_edge", {}).get("status") == "added"
+
+    pg_edges = pg.edge_list(from_id=src)
+    assert any(e["to_id"] == tgt for e in pg_edges)
 
     approved = pg.binder_edges_list(status="approved")
     assert any(e["id"] == edge_id for e in approved)
+
+
+def test_knowledge_search_excludes_search_noise(pg):
+    noisy_id = pg.ingest_atom(
+        title="benchmark noise atom",
+        summary="revelation benchmark fixture",
+        source_type="test",
+        category="benchmark",
+    )
+    with pg.conn.cursor() as cur:
+        cur.execute(
+            "UPDATE knowledge SET content = content || '{\"search_noise\": true}'::jsonb WHERE id = %s",
+            (noisy_id,),
+        )
+    pg.conn.commit()
+    hits = pg.knowledge_search("benchmark noise atom", limit=10)
+    assert not any(h["id"] == noisy_id for h in hits)
+
+
+def test_knowledge_expand_neighbors(pg):
+    a = pg.ingest_atom(title="seed A", summary="neighbor test seed", source_type="test")
+    b = pg.ingest_atom(title="seed B", summary="neighbor test target", source_type="test")
+    pg.edge_add(a, b, "relates_to", agent="test")
+    neighbors = pg.knowledge_expand_neighbors([a], limit=5)
+    assert any(n["id"] == b for n in neighbors)
 
 
 # ── Ratifications ─────────────────────────────────────────────────────────────

@@ -2,7 +2,8 @@
 
 b17: DOCIDX · ΔΣ=42
 
-Pick a door:
+Pick a door. If you are unsure, start with `FIRST_5_MINUTES.md` as a human or
+root `../willow.md` as an agent.
 
 | You are… | Start here |
 |----------|------------|
@@ -11,12 +12,12 @@ Pick a door:
 | Friend beta (AHS) | [`FOR_AHS.md`](FOR_AHS.md) · full crossover: [`nomenclature/AXW-20.md`](nomenclature/AXW-20.md) |
 | Developer, want the stack fast | [`QUICKSTART.md`](QUICKSTART.md) |
 | Curious why this exists | [`CONCEPT.md`](CONCEPT.md) |
-| Agent joining the fleet | [`CONTRACT.md`](CONTRACT.md) (public) · full contract: [`../willow.md`](../willow.md) if symlinked · [`../sap/ONBOARDING.md`](../sap/ONBOARDING.md) |
+| Agent joining the fleet | root contract: [`../willow.md`](../willow.md) · public snapshot: [`CONTRACT.md`](CONTRACT.md) · [`../sap/ONBOARDING.md`](../sap/ONBOARDING.md) |
 | Upgrading from 1.9 | [`CODE_DIFF_1.9_to_2.0.md`](CODE_DIFF_1.9_to_2.0.md) |
 | What lives at repo root | [`ROOT_LAYOUT.md`](ROOT_LAYOUT.md) |
-| Private config vs public code | [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) |
+| Private config vs public code | [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) · [`PUBLIC_REMOTE_BOOT.md`](PUBLIC_REMOTE_BOOT.md) |
 | Fleet contract (public snapshot) | [`CONTRACT.md`](CONTRACT.md) — sync via `scripts/sync_contract_snapshot.py` |
-| Session dev log (layout + CI, 2026-05-27) | [`dev-log-2026-05-27-fleet-github-layout.md`](dev-log-2026-05-27-fleet-github-layout.md) |
+| Audits (fleet/system reports) | [`audits/`](audits/) — latest: [`audits/SYSTEM_AUDIT_2026-06-10.md`](audits/SYSTEM_AUDIT_2026-06-10.md) |
 | Open work (curated backlog) | [`OPEN_WORK.md`](OPEN_WORK.md) |
 | Agent identity (not all hanuman) | [`AGENT_IDENTITY.md`](AGENT_IDENTITY.md) |
 | CLI + provider agnostic inference | [`RUNTIME_AND_INFERENCE.md`](RUNTIME_AND_INFERENCE.md) |
@@ -26,15 +27,36 @@ Pick a door:
 
 ---
 
+## Common Workflows
+
+_Dev log archive: [`dev-log-2026-05-27-fleet-github-layout.md`](dev-log-2026-05-27-fleet-github-layout.md)_
+
+| Goal | Path |
+|------|------|
+| Public clone, no private config | `bash setup.sh --public` → [`PUBLIC_REMOTE_BOOT.md`](PUBLIC_REMOTE_BOOT.md) |
+| Fleet operator setup | `bash setup.sh` → [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) |
+| IDE agent setup | `./willow.sh agents install <id> --ide <surface>` → [`IDE_INTEGRATION.md`](IDE_INTEGRATION.md) |
+| Agent boot order | [`../willow.md`](../willow.md) → [`../willow/fylgja/skills/boot.md`](../willow/fylgja/skills/boot.md) |
+| Fix stale or confusing docs | update the source doc, then regenerate root [`../INDEX.md`](../INDEX.md) with `python3 scripts/gen_index.py` when annotations change |
+
+---
+
 ## Templates (agents — copy, don't edit in place)
+
+Start at [`templates/README.md`](templates/README.md) — canonical router for all agent artifacts and runtime config pointers.
 
 | Template | Use |
 |----------|-----|
-| [`templates/README.md`](templates/README.md) | Which artifact when |
+| [`templates/README.md`](templates/README.md) | Which artifact when + runtime template registry |
+| [`templates/HANDOFF.template.md`](templates/HANDOFF.template.md) | Session continuity |
 | [`templates/DEV_LOG.template.md`](templates/DEV_LOG.template.md) | Multi-hour session extract |
 | [`templates/ADR.template.md`](templates/ADR.template.md) | Architecture decision |
+| [`templates/AUDIT.template.md`](templates/AUDIT.template.md) | Fleet/subsystem audit report |
+| [`templates/INVESTIGATION.template.md`](templates/INVESTIGATION.template.md) | Debug / root-cause investigation |
+| [`templates/GROVE_DECISION.template.md`](templates/GROVE_DECISION.template.md) | Grove quorum / decision post |
+| [`templates/ATOM.template.md`](templates/ATOM.template.md) | KB / SOIL atom candidate |
+| [`templates/PR_WORKTREE.template.md`](templates/PR_WORKTREE.template.md) | Branch / worktree / PR summary |
 | [`templates/TASK.template.md`](templates/TASK.template.md) | Operator backlog → willow-config `tasks/` |
-| [`templates/HANDOFF.template.md`](templates/HANDOFF.template.md) | Session continuity |
 | [`templates/RELEASE.template.md`](templates/RELEASE.template.md) | Version / changelog |
 
 ---
