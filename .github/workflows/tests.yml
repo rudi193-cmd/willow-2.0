@@ -163,3 +163,16 @@ jobs:
 
       - name: Reject legacy home paths in tracked code
         run: bash scripts/path_guard.sh
+
+  audit-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Kart sandbox audit — gated findings must stay closed
+        run: python3 scripts/audit_verify.py
