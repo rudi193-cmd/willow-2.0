@@ -7,6 +7,7 @@ Mount policy: willow/fylgja/config/kart-sandbox.json (+ dynamic worktree discove
 """
 from __future__ import annotations
 
+import datetime as _dt
 import functools
 import json
 import logging
@@ -626,6 +627,11 @@ def run_shell_result_for_task(cmd: str, *, timeout: int = 120, allow_net: bool =
         result["sandbox_setup"] = raw["sandbox_setup"]
     if raw.get("error"):
         result["error"] = raw["error"]
+    # KP7/S10: unclipped output rides along under private keys so the task-level
+    # caller (which knows the task_id) can write a durable log artifact. Popped
+    # by execute_task_row before the result reaches task_complete.
+    result["_full_stdout"] = raw.get("stdout") or ""
+    result["_full_stderr"] = raw.get("stderr") or ""
     # KP3: attach the boundary manifest + any unreachable-path notes so a caller can
     # tell "this is empty" from "I couldn't see this." Best-effort — never fail the
     # task over manifest construction.
@@ -638,3 +644,88 @@ def run_shell_result_for_task(cmd: str, *, timeout: int = 120, allow_net: bool =
     except Exception:
         pass
     return status, result
+
+
+# ── KP7/S10 — durable per-task log artifacts ──────────────────────────────────
+
+KART_LOG_RETENTION = 200
+
+
+def _kart_logs_root() -> Path:
+    from willow.fylgja.willow_home import willow_home
+    return Path(willow_home()) / ".kart-logs"
+
+
+def _prune_task_logs(root: Path, keep: int = KART_LOG_RETENTION) -> None:
+    """Keep the newest `keep` task-log dirs; remove the rest. Best-effort."""
+    try:
+        dirs = sorted(
+            (d for d in root.iterdir() if d.is_dir()),
+            key=lambda d: d.stat().st_mtime,
+            reverse=True,
+        )
+        for stale in dirs[keep:]:
+            shutil.rmtree(stale, ignore_errors=True)
+    except Exception:
+        pass
+
+
+def write_task_log(
+    task_id: str,
+    cmd: str,
+    status: str,
+    result: dict,
+    *,
+    full_stdout: str | None = None,
+    full_stderr: str | None = None,
+) -> str | None:
+    """Write a durable forensic artifact for one task (KP7/S10).
+
+    $WILLOW_HOME/.kart-logs/<task_id>/{meta.json, stdout.log, stderr.log}.
+    meta.json carries the env *key list* only — values may hold credentials
+    and must never land in a log file. Never raises; returns the dir path or
+    None if the write failed.
+    """
+    try:
+        safe_id = "".join(c for c in str(task_id) if c.isalnum() or c in "_-") or "unknown"
+        log_dir = _kart_logs_root() / safe_id
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+        manifest = result.get("sandbox_manifest") or {}
+        env = kart_env(allow_net=bool(manifest.get("allow_net")))
+        meta = {
+            "task_id": str(task_id),
+            "cmd": cmd[:4000],
+            "status": status,
+            "returncode": result.get("returncode"),
+            "error": result.get("error"),
+            "elapsed_s": result.get("elapsed_s"),
+            "sandbox": result.get("sandbox"),
+            "sandbox_setup": result.get("sandbox_setup"),
+            "allow_net": manifest.get("allow_net"),
+            "cwd": os.getcwd(),
+            "written_at": _dt.datetime.now().astimezone().isoformat(),
+            "bwrap_argv_summary": {
+                "bound_ro": manifest.get("bound_ro"),
+                "bound_rw": manifest.get("bound_rw"),
+                "tmpfs": manifest.get("tmpfs"),
+                "path_dirs": manifest.get("path_dirs"),
+                "notes": manifest.get("notes"),
+            },
+            "env_keys": sorted(env.keys()),
+        }
+        (log_dir / "meta.json").write_text(
+            json.dumps(meta, indent=2, default=str), encoding="utf-8"
+        )
+        (log_dir / "stdout.log").write_text(
+            full_stdout if full_stdout is not None else (result.get("stdout") or ""),
+            encoding="utf-8",
+        )
+        (log_dir / "stderr.log").write_text(
+            full_stderr if full_stderr is not None else (result.get("stderr") or ""),
+            encoding="utf-8",
+        )
+        _prune_task_logs(log_dir.parent)
+        return str(log_dir)
+    except Exception:
+        return None

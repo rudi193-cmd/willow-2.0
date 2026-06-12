@@ -420,14 +420,13 @@ def run_workflow_phase(
         return "failed", {"error": err, "phase": phase_name, "run_id": run_id}
 
 
-def execute_task_row(
+def _dispatch_task_row(
     row: dict,
     pg: PgBridge,
     *,
     timeout: int | None = None,
     context: str = "poll",
 ) -> tuple[str, dict]:
-    """Route one claimed task row. Returns (status, result)."""
     task_id = row["id"]
     cmd = row.get("task") or ""
     goal = row.get("goal")
@@ -446,6 +445,38 @@ def execute_task_row(
         return run_shell_task(cmd, timeout=timeout, context=context)
     except Exception as e:
         return "failed", {"error": str(e)}
+
+
+def execute_task_row(
+    row: dict,
+    pg: PgBridge,
+    *,
+    timeout: int | None = None,
+    context: str = "poll",
+) -> tuple[str, dict]:
+    """Route one claimed task row. Returns (status, result).
+
+    KP7/S10: on failure (or always, with WILLOW_KART_LOG_ALL=1) a durable
+    forensic artifact lands in $WILLOW_HOME/.kart-logs/<task_id>/ and the
+    result carries its path as `log_dir`. The unclipped-output private keys
+    are popped here so they never reach task_complete.
+    """
+    status, result = _dispatch_task_row(row, pg, timeout=timeout, context=context)
+
+    full_stdout = result.pop("_full_stdout", None) if isinstance(result, dict) else None
+    full_stderr = result.pop("_full_stderr", None) if isinstance(result, dict) else None
+    if isinstance(result, dict) and (
+        status != "completed" or os.environ.get("WILLOW_KART_LOG_ALL")
+    ):
+        from core.kart_sandbox import write_task_log
+
+        log_dir = write_task_log(
+            row["id"], row.get("task") or "", status, result,
+            full_stdout=full_stdout, full_stderr=full_stderr,
+        )
+        if log_dir:
+            result["log_dir"] = log_dir
+    return status, result
 
 
 def drain_claimed_tasks(
