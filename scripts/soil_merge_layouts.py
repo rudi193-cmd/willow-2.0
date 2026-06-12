@@ -71,6 +71,8 @@ def merge_one(src: Path, root: Path, apply: bool) -> dict:
         if "records" not in {r[0] for r in sconn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'")}:
             report["skipped"] = -1  # no records table (empty husk)
+            if apply:
+                _archive_source(src)
             return report
         scols = _columns(sconn)
         created_col = "created_at" if "created_at" in scols else "created"
@@ -83,6 +85,9 @@ def merge_one(src: Path, root: Path, apply: bool) -> dict:
 
     report["rows"] = len(rows)
     if not rows:
+        # empty husks still archive — leaving them keeps --verify red forever
+        if apply:
+            _archive_source(src)
         return report
 
     tconn = sqlite3.connect(str(target))
@@ -126,14 +131,18 @@ def merge_one(src: Path, root: Path, apply: bool) -> dict:
         tconn.close()
 
     if apply:
-        stamp = date.today().isoformat()
-        src.rename(src.with_name(f"store.db.migrated-{stamp}"))
-        # WAL/SHM side files travel with the husk so nothing re-opens them
-        for ext in ("-wal", "-shm"):
-            side = src.with_name(f"store.db{ext}")
-            if side.exists():
-                side.rename(src.with_name(f"store.db.migrated-{stamp}{ext}"))
+        _archive_source(src)
     return report
+
+
+def _archive_source(src: Path) -> None:
+    """Rename a merged/empty store.db (and WAL/SHM side files) out of the live path."""
+    stamp = date.today().isoformat()
+    src.rename(src.with_name(f"store.db.migrated-{stamp}"))
+    for ext in ("-wal", "-shm"):
+        side = src.with_name(f"store.db{ext}")
+        if side.exists():
+            side.rename(src.with_name(f"store.db.migrated-{stamp}{ext}"))
 
 
 def main(argv: list[str] | None = None) -> int:
