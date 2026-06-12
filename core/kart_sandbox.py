@@ -18,6 +18,14 @@ from pathlib import Path
 _ALLOW_NET_DIRECTIVE = "# allow_net"
 _DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "willow" / "fylgja" / "config" / "kart-sandbox.json"
 
+# Credential-bearing env prefixes (GAP-B). Only passed into the sandbox when a task
+# opts into network (allow_net) — a no-network task receives zero credentials.
+# Overridable via the "credential_env_prefixes" key in kart-sandbox.json.
+_DEFAULT_CREDENTIAL_PREFIXES = (
+    "TWINE_", "PYPI_", "ANTHROPIC_", "OPENROUTER_", "GROQ_", "GITHUB_",
+    "NPM_", "HUGGINGFACE_", "HF_", "OPENAI_", "AWS_", "DISCORD_",
+)
+
 
 def bwrap_available() -> bool:
     return shutil.which("bwrap") is not None
@@ -126,6 +134,8 @@ def collect_bind_mounts(root: Path | None = None) -> list[tuple[Path, Path, bool
 
     for raw in cfg.get("bind_read_only", []):
         _add(Path(_render(str(raw), ctx)), True)
+    for raw in cfg.get("bind_try_read_only", []):
+        _add(Path(_render(str(raw), ctx)), True)
     for raw in cfg.get("bind_read_write", []):
         _add(Path(_render(str(raw), ctx)), False)
     for raw in cfg.get("bind_try", []):
@@ -171,7 +181,28 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
     args = ["bwrap"]
     if not allow_net:
         args.append("--unshare-net")
-    args += ["--dev", "/dev", "--proc", "/proc", "--unshare-pid", "--die-with-parent"]
+    # KP2 — namespace + kernel-surface hardening.
+    #  --tmpfs /tmp + /dev/shm : private scratch, not a host bind (S11, S16) — no
+    #                            cross-task channel, no host /tmp pollution.
+    #  --unshare-ipc/--unshare-uts : isolate SysV/POSIX IPC + hostname (S12).
+    #  --new-session           : own session → blocks TIOCSTI terminal injection,
+    #                            CVE-2017-5226 (S2). Safe: Kart is non-interactive.
+    #  --as-pid-1              : init/reaper inside the PID ns so children don't
+    #                            leak as zombies (S14).
+    # NOTE: a --seccomp syscall filter (S13) is deferred — it needs a libseccomp/BPF
+    #       toolchain decision; --new-session already covers the CVE-2017-5226 vector.
+    args += [
+        "--dev", "/dev",
+        "--proc", "/proc",
+        "--tmpfs", "/tmp",
+        "--tmpfs", "/dev/shm",
+        "--unshare-pid",
+        "--unshare-ipc",
+        "--unshare-uts",
+        "--new-session",
+        "--as-pid-1",
+        "--die-with-parent",
+    ]
 
     for host, container, read_only in collect_bind_mounts(root):
         flag = "--ro-bind" if read_only else "--bind"
@@ -215,15 +246,36 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
         args += ["--bind", str(_pg_sock.resolve()), str(_pg_sock)]
 
     if allow_net:
+        # Credentials are present ONLY on a network-opted task (S1, GAP-B/C).
+        # All read-only: a task may use them, never modify or replace them.
         home = Path.home()
         netrc = home / ".netrc"
         if netrc.is_file():
             args += ["--ro-bind", str(netrc), str(netrc)]
 
+        gh_cfg = home / ".config" / "gh"
+        if gh_cfg.is_dir():
+            args += ["--ro-bind", str(gh_cfg), str(gh_cfg)]
+
+        # ~/.ssh is never bound (S1) — private keys do not enter the sandbox.
+        # SSH git auth flows through the agent socket; host-key verification needs
+        # only known_hosts (read-only).
+        known_hosts = home / ".ssh" / "known_hosts"
+        if known_hosts.is_file():
+            args += ["--ro-bind", str(known_hosts), str(known_hosts)]
+        ssh_sock = os.environ.get("SSH_AUTH_SOCK", "").strip()
+        if ssh_sock and Path(ssh_sock).exists():
+            # The agent socket is read-write (clients write requests to it), but it
+            # exposes no key material — the agent holds the keys out of process.
+            args += ["--bind", ssh_sock, ssh_sock]
+
         # Ubuntu/Debian nsswitch.conf has mdns4_minimal [NOTFOUND=return] before dns,
         # which causes non-.local lookups to abort before reaching the DNS backend.
         # Shadow /etc/nsswitch.conf with a minimal version that goes straight to dns.
-        _nsswitch = Path("/tmp/kart-nsswitch.conf")
+        # Written under WILLOW_HOME (not host /tmp) so it survives --tmpfs /tmp and
+        # does not pollute the host /tmp (S11).
+        from willow.fylgja.willow_home import willow_home as _wh
+        _nsswitch = _wh(root) / "kart-nsswitch.conf"
         _nsswitch.write_text(
             "passwd:   files\ngroup:    files\nhosts:    files dns\n",
             encoding="utf-8",
@@ -260,10 +312,13 @@ def _parse_fleet_env_file(path: Path, prefixes: tuple[str, ...]) -> dict[str, st
     return result
 
 
-def kart_env(root: Path | None = None) -> dict[str, str]:
+def kart_env(root: Path | None = None, *, allow_net: bool = False) -> dict[str, str]:
     repo = root or willow_repo_root()
     cfg = load_sandbox_config(repo)
     prefixes = tuple(cfg.get("env_prefixes") or ("WILLOW_", "GROVE_", "PG", "POSTGRES", "OLLAMA_", "GIT_", "ANTHROPIC_", "GROQ_"))
+    # GAP-B: credential-bearing env vars only reach the sandbox on a network-opted
+    # task. A no-network task cannot exfil keys it was never handed.
+    cred_prefixes = tuple(cfg.get("credential_env_prefixes") or _DEFAULT_CREDENTIAL_PREFIXES)
 
     env = {
         "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
@@ -338,6 +393,12 @@ def kart_env(root: Path | None = None) -> dict[str, str]:
         if default_safe.is_dir():
             env["WILLOW_SAFE_ROOT"] = str(default_safe)
 
+    # GAP-B: strip credential env vars unless the task opted into network. Done last
+    # so it catches keys sourced from both os.environ and the fleet env file.
+    if not allow_net and cred_prefixes:
+        for key in [k for k in env if k.startswith(cred_prefixes)]:
+            del env[key]
+
     return env
 
 
@@ -354,7 +415,7 @@ def run_shell(
     Returns {returncode, stdout, stderr, elapsed_s, sandbox: bwrap|plain}.
     """
     started = time.time()
-    run_env = kart_env()
+    run_env = kart_env(allow_net=allow_net)
     if env:
         run_env.update(env)
     if cwd:
