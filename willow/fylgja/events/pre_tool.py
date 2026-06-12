@@ -160,6 +160,33 @@ _SQLITE_USER_PATHS = [
 def _sqlite_access_allowed(command: str) -> bool:
     return any(re.search(p, command) for p in _SQLITE_USER_PATHS)
 
+
+# Worktree-cleanup exception (S18). Git worktree husks are bind-mounted into every
+# Kart sandbox, so their removal returns EBUSY inside bwrap — it MUST run host-side
+# via agent Bash. This is the one shell operation the MCP/Kart lane structurally
+# cannot perform. The exception is deliberately narrow: a SINGLE bare rm/rmdir/
+# git-worktree command whose every target lives under a `/worktrees/` directory, with
+# NO command chaining or substitution (`;`, `&&`, `||`, `|`, backtick, `$(`). That
+# strictness is what lets it also bypass the destructive security scan safely — a
+# chained or substituted command never matches, so nothing can be smuggled through.
+_WORKTREE_CLEANUP_RE = re.compile(
+    r"^(?:"
+    r"rm\s+-[a-zA-Z]*r[a-zA-Z]*\s+(?:[^\s]*/worktrees/[^\s]+\s*)+"
+    r"|rmdir\s+(?:-[a-zA-Z]+\s+)?(?:[^\s]*/worktrees/[^\s]+\s*)+"
+    r"|git\s+(?:-C\s+[^\s]+\s+)?worktree\s+"
+    r"(?:remove(?:\s+--force|\s+-f)?\s+[^\s]*/worktrees/[^\s]+|prune)\s*"
+    r")$"
+)
+_WORKTREE_CLEANUP_FORBIDDEN = (";", "&&", "||", "|", "`", "$(", "\n", ">", "<")
+
+
+def _is_worktree_cleanup(command: str) -> bool:
+    """True only for a single, unchained rm/rmdir/git-worktree on a /worktrees/ path."""
+    c = command.strip()
+    if any(tok in c for tok in _WORKTREE_CLEANUP_FORBIDDEN):
+        return False
+    return bool(_WORKTREE_CLEANUP_RE.match(c))
+
 F5_PROSE_TOOLS = {
     "mcp__willow__soil_put": "record",
     "mcp__willow__soil_update": "record",
@@ -191,6 +218,9 @@ def check_channel_enforce(tool_name: str, tool_input: dict) -> str | None:
 
 def check_bash_block(command: str) -> tuple[str, str] | None:
     """Returns (decision, reason) or None. decision is 'block' or 'warn'."""
+    # S18 exception: worktree husk cleanup is host-only (bind-mount EBUSY in Kart).
+    if _is_worktree_cleanup(command):
+        return None
     if AGENT in _AUDIT_AGENTS:
         for pattern in _AUDIT_ALLOW_PATTERNS:
             if re.search(pattern, command, re.MULTILINE):
@@ -423,9 +453,15 @@ def main():
             else:
                 # warn — let the command through but surface the redirect
                 print(json.dumps({"decision": "warn", "reason": reason}))
-        # Security scan — exfiltration, credential theft, destructive, obfuscation
-        # Skip for user-owned SQLite databases (DROP TABLE etc. on personal data is fine).
-        if command and not (re.search(r"\bsqlite3\b", command) and _sqlite_access_allowed(command)):
+        # Security scan — exfiltration, credential theft, destructive, obfuscation.
+        # Skip for user-owned SQLite databases (DROP TABLE etc. on personal data is fine)
+        # and for worktree-cleanup (a /worktrees/ path matches the destructive-path
+        # rule; the strict single-command check above means nothing else can ride along).
+        _scan_skip = (
+            (re.search(r"\bsqlite3\b", command) and _sqlite_access_allowed(command))
+            or _is_worktree_cleanup(command)
+        )
+        if command and not _scan_skip:
             issues = _scan_bash(command)
             bad = _scan_worst(issues)
             if bad and bad.severity >= SEV_HIGH:
