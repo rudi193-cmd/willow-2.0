@@ -116,3 +116,13 @@ def test_find_legacy_skips_archive(store_root):
     _make_legacy(store_root, "live/coll", [("y", {}, "2026-01-01")])
     found = find_legacy_stores(store_root)
     assert [p.parent.name for p in found] == ["coll"]
+
+
+def test_merge_archives_empty_husks(store_root):
+    # 0-row legacy stores must still archive, or --verify stays red forever
+    _make_legacy(store_root, "willow/gaps", [])
+    src = store_root / "willow/gaps/store.db"
+    rep = merge_one(src, store_root, apply=True)
+    assert rep["rows"] == 0 and rep["inserted"] == 0
+    assert not src.exists()
+    assert find_legacy_stores(store_root) == []
