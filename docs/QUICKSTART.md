@@ -33,6 +33,17 @@ pip install -e ".[dev]"   # optional: pytest, ruff, mypy
 python3 seed.py
 ```
 
+**macOS (Homebrew) — pgvector extra step:**
+`seed.py` tries `apt-get` for Postgres which is unavailable on macOS. Install manually before running `seed.py`:
+```bash
+brew install postgresql@15 && brew services start postgresql@15
+git clone --branch v0.8.0 https://github.com/pgvector/pgvector.git /tmp/pgvector
+cd /tmp/pgvector && make PG_CONFIG=/opt/homebrew/opt/postgresql@15/bin/pg_config
+make install PG_CONFIG=/opt/homebrew/opt/postgresql@15/bin/pg_config
+cd - && psql postgres -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```
+The Homebrew pgvector bottle only ships for pg17/pg18 — build from source against pg15 is required.
+
 `seed.py` sets up: deps, GPG, vault, `willow_20`, KB seed, PATH, optional Grove network URL.
 
 ### Termux
