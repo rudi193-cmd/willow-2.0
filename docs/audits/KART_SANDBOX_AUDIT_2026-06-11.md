@@ -46,6 +46,7 @@ The Kart sandbox is built as a **containment** boundary (protect the host from a
 | S15 | No `--json-status-fd` / `--info-fd` — Kart cannot distinguish "bwrap failed to build the sandbox" (mount/setup error) from "the command failed." Setup errors masquerade as command errors | observability | **Low/Med** |
 | S16 | No `/dev/shm` tmpfs (`--dev /dev` gives a minimal devtmpfs) — tools needing POSIX shared memory (some multiprocessing, Postgres, headless Chromium) fail in non-obvious ways | reliability | **Low** |
 | S17 | No explicit `--cap-drop ALL` / `--unshare-cgroup` — mostly covered by the unprivileged user namespace, but not belt-and-suspenders | security | **Low** |
+| S18 | Kart cannot remove its own worktrees — `worktrees/*` are bind-mounted into every task sandbox, so `git worktree remove`/`rmdir` fail `EBUSY`; cleanup must run host-side. The gate cannot sweep its own threshold | maintainability | **Low/Med** |
 
 ---
 
@@ -99,6 +100,10 @@ Because `_add()` resolves symlinks and dedups by real path, every symlinked stor
 ### S10 — Thin durable failure artifacts *(observability, Low — carry-forward of 06-04 F6)*
 
 PR 5's `clip_output` (`kart_sandbox.py:420-431`) fixed the *silent front-truncation* by adding an explicit head+tail clip marker — a real improvement. Still missing, per 06-04 F6: a durable `.kart-logs/<task_id>/` with full stdout/stderr, the bwrap argv summary, `allow_net`, `cwd`, `script_path`, and an env fingerprint. Failures remain hard to forensically reconstruct after the fact. **Fix:** write a per-task log artifact on failure (or always) and reference its path in `result`.
+
+### S18 — Kart cannot remove its own worktrees *(maintainability, Low/Med — found live this session)*
+
+`collect_bind_mounts` binds `worktrees/` and every child into the sandbox (`kart_sandbox.py:134-139`). So when a Kart task runs `git worktree remove` or `rmdir` against a worktree, the directory is a live bwrap mountpoint and the unlink fails with `Device or resource busy`. Confirmed live tearing down this audit's own worktree: the registration and contents were removed, but the empty directory could not be unlinked from any Kart task — it required a host `rmdir`. The gate cannot sweep its own threshold. **Fix:** see KP8.
 
 ---
 
@@ -175,6 +180,9 @@ Auto-emit `--symlink` for any configured symlinked bind; warn on skipped `bind_r
 
 **KP7 — Durable failure artifacts** *(S10)*
 `.kart-logs/<task_id>/` with full output + env/argv fingerprint, path referenced in `result`. Files: `core/kart_sandbox.py`, `core/kart_execute.py`.
+
+**KP8 — Worktree self-management** *(S18)*
+When a task's purpose is worktree lifecycle, exclude `worktrees/*` from the bind set (or unmount before delete), or route `git worktree remove` through a non-sandboxed host path (`WILLOW_KART_NO_BWRAP`). Files: `core/kart_sandbox.py`, `willow/fylgja/skills/worktree.md`.
 
 Suggested order: **KP1, KP2 first** (security, small, high-value), then **KP3** (the visibility disease), then KP4–KP7.
 
