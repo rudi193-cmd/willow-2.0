@@ -54,6 +54,10 @@ def _normalize_shell_result(raw: dict) -> dict:
     }
     if raw.get("error"):
         out["error"] = raw["error"]
+    # KP3: carry the boundary manifest + setup state through to the task result.
+    for _k in ("sandbox_manifest", "sandbox_setup"):
+        if raw.get(_k) is not None:
+            out[_k] = raw[_k]
     return out
 
 

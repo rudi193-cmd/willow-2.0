@@ -7,13 +7,19 @@ Mount policy: willow/fylgja/config/kart-sandbox.json (+ dynamic worktree discove
 """
 from __future__ import annotations
 
+import functools
 import json
+import logging
 import os
+import re
 import shutil
 import subprocess
 import sysconfig
+import tempfile
 import time
 from pathlib import Path
+
+_log = logging.getLogger("kart.sandbox")
 
 _ALLOW_NET_DIRECTIVE = "# allow_net"
 _DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "willow" / "fylgja" / "config" / "kart-sandbox.json"
@@ -35,6 +41,16 @@ def use_bwrap() -> bool:
     if os.environ.get("WILLOW_KART_NO_BWRAP", "").strip().lower() in ("1", "true", "yes"):
         return False
     return bwrap_available()
+
+
+@functools.lru_cache(maxsize=1)
+def _bwrap_supports_json_status() -> bool:
+    """Whether the host bwrap understands --json-status-fd (KP3/S15)."""
+    try:
+        h = subprocess.run(["bwrap", "--help"], capture_output=True, text=True, timeout=5)
+        return "--json-status-fd" in (h.stdout + h.stderr)
+    except Exception:
+        return False
 
 
 def willow_repo_root() -> Path | None:
@@ -117,9 +133,13 @@ def collect_bind_mounts(root: Path | None = None) -> list[tuple[Path, Path, bool
 
     mounts: dict[str, tuple[Path, Path, bool]] = {}
 
-    def _add(host: Path, read_only: bool) -> None:
+    def _add(host: Path, read_only: bool, *, required: bool = False) -> None:
         try:
             if not host.exists():
+                # KP6a (S9): a required bind that is missing is usually config rot —
+                # surface it. bind_try entries are optional, so they stay silent.
+                if required:
+                    _log.warning("kart-sandbox: required bind target missing, skipped: %s", host)
                 return
             resolved = host.resolve()
         except OSError:
@@ -133,11 +153,11 @@ def collect_bind_mounts(root: Path | None = None) -> list[tuple[Path, Path, bool
             mounts[key] = (resolved, resolved, ro)
 
     for raw in cfg.get("bind_read_only", []):
-        _add(Path(_render(str(raw), ctx)), True)
+        _add(Path(_render(str(raw), ctx)), True, required=True)
     for raw in cfg.get("bind_try_read_only", []):
         _add(Path(_render(str(raw), ctx)), True)
     for raw in cfg.get("bind_read_write", []):
-        _add(Path(_render(str(raw), ctx)), False)
+        _add(Path(_render(str(raw), ctx)), False, required=True)
     for raw in cfg.get("bind_try", []):
         _add(Path(_render(str(raw), ctx)), False)
 
@@ -363,6 +383,20 @@ def kart_env(root: Path | None = None, *, allow_net: bool = False) -> dict[str, 
         if venv_bin and venv_bin not in env["PATH"]:
             env["PATH"] = venv_bin + ":" + env["PATH"]
 
+    # KP5 (S6): ensure host user + npm-global bin dirs are on PATH so host-installed
+    # shims (cursor-agent, npm-global CLIs) resolve inside the sandbox. Appended at
+    # the tail so they never shadow venv/system binaries.
+    _user_bins = [str(Path.home() / ".local" / "bin")]
+    _npm_prefix = os.environ.get("NPM_CONFIG_PREFIX")
+    if _npm_prefix:
+        _user_bins.append(str(Path(_npm_prefix) / "bin"))
+    _user_bins.append(str(Path.home() / ".npm-global" / "bin"))
+    _path_parts = env["PATH"].split(":")
+    for _b in _user_bins:
+        if _b not in _path_parts:
+            env["PATH"] = env["PATH"] + ":" + _b
+            _path_parts.append(_b)
+
     if "GIT_AUTHOR_NAME" not in env:
         try:
             name = subprocess.check_output(["git", "config", "--global", "user.name"], text=True).strip()
@@ -402,6 +436,57 @@ def kart_env(root: Path | None = None, *, allow_net: bool = False) -> dict[str, 
     return env
 
 
+def sandbox_manifest(*, allow_net: bool = False, root: Path | None = None) -> dict:
+    """KP3 — declare the boundary so a caller can tell 'empty' from 'absent'.
+
+    Reports the roots that ARE mounted (rw vs ro), the tmpfs scratch, the network
+    state, and the PATH dirs visible inside the sandbox. This is the read-side cure
+    for the audit's defining defect: an unbound path returns empty, identical to a
+    real absence, with no signal. The manifest is that signal.
+    """
+    engine = "bwrap" if use_bwrap() else "plain"
+    bound_rw: list[str] = []
+    bound_ro: list[str] = []
+    try:
+        for host, _container, read_only in collect_bind_mounts(root):
+            (bound_ro if read_only else bound_rw).append(str(host))
+    except Exception:
+        pass
+    path_dirs = kart_env(root, allow_net=allow_net).get("PATH", "").split(":")
+    return {
+        "engine": engine,
+        "allow_net": allow_net,
+        "bound_rw": sorted(bound_rw),
+        "bound_ro": sorted(bound_ro),
+        "tmpfs": ["/tmp", "/dev/shm"] if engine == "bwrap" else [],
+        "path_dirs": [p for p in path_dirs if p],
+    }
+
+
+def unreachable_notes(cmd: str, manifest: dict) -> list[str]:
+    """KP3 — cheap pre-flight: flag home-dir absolute paths the task references that
+    are not mounted in the sandbox, so a silent empty result is annotated
+    ('note: ~/.claude not mounted') rather than read as a real absence (S3/S5)."""
+    if manifest.get("engine") != "bwrap":
+        return []
+    home = str(Path.home())
+    bound = (
+        manifest.get("bound_rw", [])
+        + manifest.get("bound_ro", [])
+        + manifest.get("tmpfs", [])
+    )
+    notes: list[str] = []
+    seen: set[str] = set()
+    for m in re.finditer(r"(?<![\w])(" + re.escape(home) + r"/[\w.\-/]+)", cmd):
+        path = m.group(1).rstrip("/.,;:)\"'")
+        if path in seen:
+            continue
+        seen.add(path)
+        if not any(path == b or path.startswith(b.rstrip("/") + "/") for b in bound):
+            notes.append(f"path not mounted in sandbox: {path}")
+    return notes
+
+
 def run_shell(
     cmd: str,
     *,
@@ -433,12 +518,33 @@ def run_shell(
     # Use bash -c so shell operators (&&, |, $(), redirects) work correctly.
     argv = ["bash", "-c", cmd]
     sandbox = "plain"
+    pass_fds: tuple[int, ...] = ()
+    status_file = None
     if use_bwrap():
         prefix = build_bwrap_argv(allow_net=allow_net)
+        # KP3/S15: --json-status-fd lets us tell a sandbox-SETUP failure (mount/ns
+        # error, bwrap exits before exec) from a COMMAND failure. bwrap writes
+        # {"child-pid":N} once the child execs; its absence on a non-zero exit
+        # means setup failed. Feature-gated so an old bwrap is unaffected.
+        if _bwrap_supports_json_status():
+            status_file = tempfile.TemporaryFile(mode="w+")
+            fd = status_file.fileno()
+            prefix = [prefix[0], "--json-status-fd", str(fd)] + prefix[1:]
+            pass_fds = (fd,)
         full = prefix + argv
         sandbox = "bwrap"
     else:
         full = argv
+
+    def _setup_state() -> str | None:
+        if status_file is None:
+            return None
+        try:
+            status_file.seek(0)
+            txt = status_file.read()
+        except Exception:
+            return None
+        return "ok" if '"child-pid"' in txt else "failed"
 
     try:
         proc = subprocess.run(
@@ -449,15 +555,22 @@ def run_shell(
             timeout=timeout,
             env=run_env,
             cwd=cwd,
+            pass_fds=pass_fds,
         )
         elapsed = round(time.time() - started, 2)
-        return {
+        setup = _setup_state()
+        out = {
             "returncode": proc.returncode,
             "stdout": proc.stdout,
             "stderr": proc.stderr,
             "elapsed_s": elapsed,
             "sandbox": sandbox,
         }
+        if setup is not None:
+            out["sandbox_setup"] = setup
+            if setup == "failed":
+                out["error"] = "sandbox_setup_failed"
+        return out
     except subprocess.TimeoutExpired as e:
         return {
             "returncode": -1,
@@ -476,6 +589,12 @@ def run_shell(
             "error": str(e),
             "sandbox": sandbox,
         }
+    finally:
+        if status_file is not None:
+            try:
+                status_file.close()
+            except Exception:
+                pass
 
 
 def clip_output(text: str, limit: int) -> str:
@@ -503,6 +622,19 @@ def run_shell_result_for_task(cmd: str, *, timeout: int = 120, allow_net: bool =
         "elapsed_s": raw.get("elapsed_s"),
         "sandbox": raw.get("sandbox"),
     }
+    if raw.get("sandbox_setup"):
+        result["sandbox_setup"] = raw["sandbox_setup"]
     if raw.get("error"):
         result["error"] = raw["error"]
+    # KP3: attach the boundary manifest + any unreachable-path notes so a caller can
+    # tell "this is empty" from "I couldn't see this." Best-effort — never fail the
+    # task over manifest construction.
+    try:
+        manifest = sandbox_manifest(allow_net=allow_net, root=None)
+        notes = unreachable_notes(cmd, manifest)
+        if notes:
+            manifest["notes"] = notes
+        result["sandbox_manifest"] = manifest
+    except Exception:
+        pass
     return status, result

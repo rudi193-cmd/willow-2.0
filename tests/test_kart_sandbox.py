@@ -9,7 +9,10 @@ from core.kart_sandbox import (
     kart_env,
     load_sandbox_config,
     run_shell,
+    run_shell_result_for_task,
+    sandbox_manifest,
     task_allows_network,
+    unreachable_notes,
     willow_repo_root,
 )
 
@@ -166,3 +169,46 @@ def test_gapc_ssh_keys_not_bound_even_with_net(repo_root):
     ssh_dir = str((Path.home() / ".ssh").resolve())
     # the bare ~/.ssh directory must not be a bind target
     assert ssh_dir not in argv
+
+
+# ── Phase 1 — KP3 boundary manifest (S3, S5, S6, S7, S15) ─────────────────────
+
+def test_kp3_manifest_shape(repo_root):
+    m = sandbox_manifest(allow_net=False, root=repo_root)
+    for key in ("engine", "allow_net", "bound_rw", "bound_ro", "tmpfs", "path_dirs"):
+        assert key in m, f"manifest missing {key}"
+    # WILLOW_ROOT is read-write; ~/github (if present) is read-only.
+    assert str(repo_root.resolve()) in m["bound_rw"]
+    if m["engine"] == "bwrap":
+        assert "/tmp" in m["tmpfs"]
+
+
+def test_kp3_unreachable_note_for_unbound_home_path(repo_root):
+    m = sandbox_manifest(allow_net=False, root=repo_root)
+    if m["engine"] != "bwrap":
+        pytest.skip("manifest notes only apply under bwrap")
+    home = str(Path.home())
+    notes = unreachable_notes(f"cat {home}/.claude/projects/x.jsonl", m)
+    assert any(".claude" in n for n in notes)
+
+
+def test_kp3_no_note_for_bound_path(repo_root):
+    m = sandbox_manifest(allow_net=False, root=repo_root)
+    notes = unreachable_notes(f"ls {repo_root}/core", m)
+    assert notes == []
+
+
+def test_kp3_result_carries_manifest(monkeypatch):
+    monkeypatch.setenv("WILLOW_KART_NO_BWRAP", "1")
+    status, result = run_shell_result_for_task("echo manifest-ok", timeout=10)
+    assert status == "completed"
+    assert "sandbox_manifest" in result
+    assert result["sandbox_manifest"]["engine"] == "plain"
+
+
+# ── Phase 1 — KP5 PATH completeness (S6) ──────────────────────────────────────
+
+def test_kp5_local_bin_on_path(repo_root):
+    env = kart_env(repo_root)
+    path_parts = env["PATH"].split(":")
+    assert str(Path.home() / ".local" / "bin") in path_parts
