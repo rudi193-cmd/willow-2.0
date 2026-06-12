@@ -1,0 +1,181 @@
+{
+  "generated": "2026-06-12",
+  "source": "CONTRIBUTORS.md",
+  "summary": {
+    "merged": 23,
+    "closed": 38,
+    "open": 11
+  },
+  "types": {
+    "education_content": {
+      "description": "Showcase lessons, curricula, teacher resources in repos that invite community content.",
+      "merged": 5,
+      "closed": 0,
+      "merge_rate": 1.0,
+      "examples_merged": [
+        "Emerging-Rule/community#7",
+        "Emerging-Rule/community#8",
+        "Emerging-Rule/community#9",
+        "Emerging-Rule/community#10",
+        "Emerging-Rule/community#11"
+      ],
+      "lane": "green_when_invited"
+    },
+    "docs_setup": {
+      "description": "Setup guides, post-install docs, Ollama/local-first alignment, protocol docs.",
+      "merged": 5,
+      "closed": 2,
+      "merge_rate": 0.71,
+      "examples_merged": [
+        "alash3al/stash#8",
+        "alash3al/stash#9",
+        "RikyZ90/ShibaClaw#38",
+        "basicmachines-co/basic-memory#840",
+        "zeroc00I/DontFeedTheAI#4"
+      ],
+      "examples_closed": [
+        "Kludex/starlette#3249",
+        "brainqub3/claude_code_RLM#3"
+      ],
+      "lane": "green"
+    },
+    "narrow_bugfix": {
+      "description": "Single-module fixes for observable broken behavior, ideally linked to an issue.",
+      "merged": 4,
+      "closed": 8,
+      "merge_rate": 0.33,
+      "examples_merged": [
+        "alash3al/stash#10",
+        "basicmachines-co/basic-memory#841",
+        "basicmachines-co/basic-memory#842",
+        "manojmallick/sigmap#216"
+      ],
+      "examples_closed": [
+        "openclaw/openclaw#90165",
+        "voidcraft-labs/commcare-nova#57",
+        "Gentleman-Programming/engram#398",
+        "Gentleman-Programming/engram#399",
+        "NousResearch/hermes-agent#28235",
+        "NousResearch/hermes-agent#28236",
+        "NousResearch/hermes-agent#28241",
+        "holon-run/holon#1435"
+      ],
+      "lane": "yellow_unless_issue_linked"
+    },
+    "mcp_adapter": {
+      "description": "Adapter, indexer, or MCP-surface work inside an existing extension point.",
+      "merged": 4,
+      "closed": 0,
+      "merge_rate": 1.0,
+      "examples_merged": [
+        "manojmallick/sigmap#144",
+        "manojmallick/sigmap#145",
+        "manojmallick/sigmap#202",
+        "manojmallick/sigmap#216"
+      ],
+      "lane": "green_when_extension_point_exists"
+    },
+    "ci_verify": {
+      "description": "Cold-install, conformance, or verification harnesses that reduce maintainer support load.",
+      "merged": 1,
+      "closed": 1,
+      "merge_rate": 0.5,
+      "examples_merged": ["smaramwbc/statewave#154"],
+      "examples_closed": ["ogham-mcp/ogham-mcp#53"],
+      "lane": "green"
+    },
+    "small_feature": {
+      "description": "Focused feature additions with clear user value and bounded scope.",
+      "merged": 3,
+      "closed": 0,
+      "merge_rate": 1.0,
+      "examples_merged": [
+        "Filippo-Venturini/ctxvault#29",
+        "zeroc00I/DontFeedTheAI#5",
+        "Doorman11991/smallcode#32"
+      ],
+      "lane": "yellow"
+    },
+    "listing_awesome": {
+      "description": "Add project to awesome/list/registry repos.",
+      "merged": 1,
+      "closed": 3,
+      "merge_rate": 0.25,
+      "examples_merged": ["TensorBlock/awesome-mcp-servers#401"],
+      "examples_closed": [
+        "TensorBlock/awesome-mcp-servers#432",
+        "punkpeye/awesome-mcp-servers#5247",
+        "punkpeye/awesome-mcp-servers#4991"
+      ],
+      "lane": "yellow"
+    },
+    "willow_branded_integration": {
+      "description": "Willow-named adapters, skills, blast paths, or fleet-specific integrations without maintainer ask.",
+      "merged": 0,
+      "closed": 10,
+      "merge_rate": 0.0,
+      "examples_closed": [
+        "S1LV4/th0th#38",
+        "irodion/adjoint#3",
+        "irodion/adjoint#4",
+        "cneiman/moonshine#2",
+        "samballington/CodeWise#15",
+        "node9-ai/node9-proxy#172",
+        "openclaw/openclaw#67789",
+        "openclaw/openclaw#69792",
+        "NousResearch/hermes-agent#11979",
+        "abhixdd/ghgrab#65"
+      ],
+      "lane": "red"
+    },
+    "unsolicited_large_feature": {
+      "description": "New backends, predictors, or subsystems proposed without prior maintainer signal.",
+      "merged": 0,
+      "closed": 8,
+      "merge_rate": 0.0,
+      "examples_closed": [
+        "monologg/JointBERT#36",
+        "CinnamonInt/Cinnamonint#2",
+        "AllHailSeizure/LLMPhysics-Journal-Ambitions-Contest#3",
+        "RyjoxTechnologies/Octopoda-OS#1",
+        "rish-e/tokenpilot#1",
+        "m4cd4r4/claude-echoes#1",
+        "aviv4339/claude-guard#1",
+        "zeroc00I/DontFeedTheAI#2"
+      ],
+      "lane": "red"
+    },
+    "cookbook_example_large_repo": {
+      "description": "Docs/examples/cookbook PRs to very large, high-churn repos.",
+      "merged": 0,
+      "closed": 5,
+      "merge_rate": 0.0,
+      "examples_closed": [
+        "BerriAI/litellm#26307",
+        "Textualize/textual#6510",
+        "Textualize/rich#4092",
+        "ollama/ollama#15765",
+        "modelcontextprotocol/python-sdk#2494"
+      ],
+      "lane": "yellow_comment_first"
+    },
+    "fun_content": {
+      "description": "Low-stakes content additions (art, cows, easter eggs).",
+      "merged": 1,
+      "closed": 0,
+      "merge_rate": 1.0,
+      "examples_merged": ["paulkaefer/cowsay-files#34"],
+      "lane": "green_when_repo_invites"
+    }
+  },
+  "high_probability_lanes": [
+    "education_content",
+    "docs_setup",
+    "mcp_adapter",
+    "ci_verify"
+  ],
+  "low_probability_lanes": [
+    "willow_branded_integration",
+    "unsolicited_large_feature"
+  ]
+}
