@@ -1742,9 +1742,21 @@ async def infer_imagine(
     output_path:  str = "",
     aspect_ratio: str = "1:1",
 ) -> dict:
-    """Generate an image via Imagen 4 (ganas3 / Google AI). Returns saved file path."""
+    """Generate an image. Uses OpenRouter (OPENROUTER_API_KEY) with flux-schnell;
+    falls back to Novita (NOVITA_API_KEY) if OpenRouter key is absent."""
     logger.info("[w2] infer_imagine app_id=%s", app_id)
     loop = asyncio.get_running_loop()
+    from willow.fylgja.willow_home import willow_home
+    import json as _json
+    creds_path = willow_home() / "secrets" / "credentials.json"
+    try:
+        creds = _json.loads(creds_path.read_text())
+    except Exception:
+        creds = {}
+    if creds.get("OPENROUTER_API_KEY") or __import__("os").environ.get("OPENROUTER_API_KEY"):
+        return await loop.run_in_executor(
+            _executor, _inf.imagine_openrouter, prompt, output_path or None, aspect_ratio,
+        )
     return await loop.run_in_executor(
         _executor, _inf.imagine_novita, prompt, output_path or None, aspect_ratio,
     )
