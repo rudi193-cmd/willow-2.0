@@ -2705,15 +2705,20 @@ async def ledger_write(
 
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
-async def ledger_read(app_id: str, project: str = "", limit: int = 20) -> dict:
-    """Read the FRANK tamper-evident ledger, optionally filtered by project."""
-    logger.info("[w2] ledger_read app_id=%s project=%s", app_id, project)
+async def ledger_read(app_id: str, project: str = "", limit: int = 20, full: bool = False) -> dict:
+    """Read the FRANK tamper-evident ledger, optionally filtered by project.
+
+    Entries with content over ~2k chars are compacted (keys + summary fields
+    survive; bulk payloads are elided). Pass full=True for raw rows."""
+    logger.info("[w2] ledger_read app_id=%s project=%s full=%s", app_id, project, full)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
     entries = await loop.run_in_executor(
         _executor, pg.ledger_read, project or None, limit,
     )
+    if not full:
+        entries = [pg.compact_ledger_entry(e, max_chars=2000) for e in entries]
     return {"entries": entries, "count": len(entries)}
 
 

@@ -326,19 +326,13 @@ def _run_corpus_capture(prompt: str, session_id: str) -> None:
         if _repo_root not in _sys.path:
             _sys.path.insert(0, _repo_root)
         from core.willow_store import WillowStore
-        _store = WillowStore()
-        import uuid as _uuid
-        record_id = f"corr-{_uuid.uuid4().hex[:8]}"
-        _store.put("corpus/corrections", {
-            "id": record_id,
-            "type": "correction",
-            "source": "prompt_submit_hook",
-            "content": prompt.strip()[:300],
-            "session_id": session_id,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "sandbox": True,
-            "b17": "CRPS0",
-        }, record_id=record_id)
+        from willow.fylgja.corrections import upsert_correction
+        upsert_correction(
+            WillowStore(),
+            source="prompt_submit_hook",
+            content=prompt,
+            session_id=session_id,
+        )
     except Exception:
         pass
 
