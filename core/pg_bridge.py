@@ -2618,7 +2618,16 @@ class PgBridge:
         return hashlib.sha256(f"{prev_hash or ''}{payload}".encode()).hexdigest()
 
     def ledger_append(self, project: str, event_type: str, content: dict) -> str:
-        """Append with transactional advisory lock — serializes chain head updates."""
+        """Append with transactional advisory lock — serializes chain head updates.
+
+        clock_timestamp() is used for created_at rather than the column default
+        (now() / CURRENT_TIMESTAMP) because now() returns the transaction start
+        time. Two concurrent transactions that both acquire the advisory lock in
+        sequence can still stamp an earlier created_at if the second transaction
+        started before the first committed, causing ORDER BY created_at to pick
+        the wrong head. clock_timestamp() reflects actual wall-clock time at the
+        moment of INSERT and is strictly increasing across serialized appends.
+        """
         self._ensure_conn()
         record_id = str(uuid.uuid4())
         with self.conn.cursor() as cur:
@@ -2630,8 +2639,9 @@ class PgBridge:
             prev_hash = row[0] if row else None
             new_hash = self._ledger_hash(prev_hash, event_type, content)
             cur.execute("""
-                INSERT INTO frank_ledger (id, project, event_type, content, prev_hash, hash)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO frank_ledger
+                    (id, project, event_type, content, prev_hash, hash, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, clock_timestamp())
             """, (record_id, project, event_type, psycopg2.extras.Json(content),
                   prev_hash, new_hash))
         self.conn.commit()
