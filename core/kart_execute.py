@@ -40,6 +40,21 @@ def _strip_allow_net_directive(task_text: str) -> tuple[str, bool]:
     return "\n".join(lines).strip(), allow_net
 
 
+def trim_task_result(result, status: str = ""):
+    """Drop the bulky sandbox manifest from read surfaces for successful tasks.
+
+    The manifest stays on the stored task row (audit_verify S-gates read it
+    there); failed tasks keep it for boundary debugging.
+    """
+    if not isinstance(result, dict) or "sandbox_manifest" not in result:
+        return result
+    if str(status).lower() in ("failed", "error"):
+        return result
+    out = dict(result)
+    del out["sandbox_manifest"]
+    return out
+
+
 def _normalize_shell_result(raw: dict) -> dict:
     stdout = (raw.get("stdout") or "").strip()
     stderr = (raw.get("stderr") or "").strip()
