@@ -2567,6 +2567,40 @@ class PgBridge:
 
     _LEDGER_LOCK_KEY = 8817001  # pg_advisory_xact_lock id for frank_ledger append
 
+    # Keys preserved verbatim when an oversized content blob is compacted.
+    _LEDGER_COMPACT_KEEP = (
+        "summary", "title", "next_bite", "tags", "event",
+        "a_count", "b_count", "data_op",
+    )
+
+    @classmethod
+    def compact_ledger_entry(cls, entry: dict, max_chars: int = 2000) -> dict:
+        """Return entry with oversized content replaced by a compact view.
+
+        Bulk payloads (e.g. repair before-states) stay in the row for
+        ledger_verify and forensics; read surfaces should not replay them.
+        """
+        content = entry.get("content")
+        try:
+            raw = json.dumps(content, default=str)
+        except (TypeError, ValueError):
+            return entry
+        if len(raw) <= max_chars:
+            return entry
+        compact: dict = {}
+        if isinstance(content, dict):
+            compact = {k: content[k] for k in cls._LEDGER_COMPACT_KEEP if k in content}
+            compact["_keys"] = sorted(content.keys())
+        compact["_truncated"] = True
+        compact["_original_chars"] = len(raw)
+        compact["_note"] = (
+            f"content exceeds {max_chars} chars; full row: "
+            f"frank_ledger id={entry.get('id')}"
+        )
+        out = dict(entry)
+        out["content"] = compact
+        return out
+
     @staticmethod
     def _ledger_payload(event_type: str, content) -> str:
         if isinstance(content, str):
