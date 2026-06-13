@@ -72,24 +72,18 @@ def _markdownai_write_block(tool_name: str, tool_input: dict) -> str | None:
 
 
 def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
-    """Write a correction atom to corpus/corrections when a tool is blocked."""
+    """Upsert a correction atom to corpus/corrections when a tool is blocked."""
     try:
         if _REPO_ROOT not in sys.path:
             sys.path.insert(0, _REPO_ROOT)
         from core.willow_store import WillowStore
-        import uuid as _uuid
-        _store = WillowStore()
-        record_id = f"corr-{_uuid.uuid4().hex[:8]}"
-        _store.put("corpus/corrections", {
-            "id": record_id,
-            "type": "correction",
-            "source": "pre_tool_block",
-            "content": f"Blocked {tool_name}: {reason[:200]}",
-            "session_id": session_id,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "sandbox": True,
-            "b17": "CRPS0",
-        }, record_id=record_id)
+        from willow.fylgja.corrections import upsert_correction
+        upsert_correction(
+            WillowStore(),
+            source="pre_tool_block",
+            content=f"Blocked {tool_name}: {reason[:200]}",
+            session_id=session_id,
+        )
     except Exception:
         pass
 
