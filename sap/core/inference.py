@@ -31,7 +31,7 @@ NOVITA_IMG_MODEL = "revAnimated_v122.safetensors"
 NOVITA_IMG_URL   = "https://api.novita.ai/v3/async/txt2img"
 NOVITA_POLL_URL  = "https://api.novita.ai/v3/async/task-result"
 
-OPENROUTER_IMG_MODEL = "black-forest-labs/flux-schnell"
+OPENROUTER_IMG_MODEL = "black-forest-labs/flux.2-flex"
 
 ASPECT_TO_WH: dict[str, tuple[int, int]] = {
     "1:1": (512, 512), "16:9": (768, 432), "9:16": (432, 768),
@@ -310,13 +310,15 @@ def imagine_openrouter(prompt: str, output_path: str | None, aspect_ratio: str =
         )
         with urllib.request.urlopen(req, timeout=60) as r:
             result = json.loads(r.read())
-        content = result.get("choices", [{}])[0].get("message", {}).get("content", [])
-        if isinstance(content, str):
-            return {"error": f"Unexpected text response: {content[:200]}"}
+        msg = result.get("choices", [{}])[0].get("message", {})
+        # OpenRouter BFL models return images in message.images (not message.content)
         img_data_url = None
-        for item in content:
-            if isinstance(item, dict) and item.get("type") == "image_url":
-                img_data_url = item["image_url"]["url"]
+        for candidate in [msg.get("images") or [], msg.get("content") or []]:
+            for item in candidate:
+                if isinstance(item, dict) and item.get("type") == "image_url":
+                    img_data_url = item["image_url"]["url"]
+                    break
+            if img_data_url:
                 break
         if not img_data_url:
             return {"error": f"No image in response: {json.dumps(result)[:400]}"}
