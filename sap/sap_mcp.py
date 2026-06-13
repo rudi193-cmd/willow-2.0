@@ -1646,7 +1646,7 @@ async def intake_schedule(
     def _schedule():
         import sys
         target  = agent or app_id
-        script  = str(_SAP_ROOT.parent / "scripts" / "promote_intake.py")
+        script  = str(_SAP_ROOT / "scripts" / "promote_intake.py")
         cmd_parts = [sys.executable, script, f"--days={days}", f"--agent={target}"]
         if no_llm:
             cmd_parts.append("--no-llm")
@@ -1680,7 +1680,7 @@ async def intake_schedule_fleet(
 
     def _schedule():
         import sys
-        script = str(_SAP_ROOT.parent / "scripts" / "promote_intake.py")
+        script = str(_SAP_ROOT / "scripts" / "promote_intake.py")
         cmd_parts = [sys.executable, script, "--fleet", f"--days={days}"]
         if no_llm:
             cmd_parts.append("--no-llm")
@@ -3430,7 +3430,7 @@ async def kb_intelligence_run(
 
     def _run():
         import sys
-        script = str(_SAP_ROOT.parent / "scripts" / "sleep_consolidation.py")
+        script = str(_SAP_ROOT / "scripts" / "sleep_consolidation.py")
         cmd = [sys.executable, script]
         if dry_run:
             cmd.append("--dry-run")
