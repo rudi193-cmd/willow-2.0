@@ -1495,6 +1495,9 @@ async def agent_task_submit(
     return await loop.run_in_executor(_executor, _submit)
 
 
+from core.kart_execute import trim_task_result as _trim_task_result
+
+
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
 async def agent_task_status(app_id: str, task_id: str) -> dict:
@@ -1506,6 +1509,8 @@ async def agent_task_status(app_id: str, task_id: str) -> dict:
     row = await loop.run_in_executor(_executor, pg.task_status, task_id)
     if row is None:
         return {"error": "not found", "task_id": task_id}
+    row = dict(row)
+    row["result"] = _trim_task_result(row.get("result"), row.get("status", ""))
     return row
 
 
@@ -1584,7 +1589,7 @@ async def kart_task_run(
                     "task_id": r["id"],
                     "status": r["status"],
                     "cmd": (r.get("task") or "")[:80],
-                    "result": r.get("result"),
+                    "result": _trim_task_result(r.get("result"), r["status"]),
                 })
             if not active:
                 break
@@ -1607,7 +1612,7 @@ async def kart_task_run(
                     "task_id": task_id,
                     "status": status,
                     "cmd": (row.get("task") or "")[:80],
-                    "result": result,
+                    "result": _trim_task_result(result, status),
                     "executed_by": "fallback",
                 })
 
