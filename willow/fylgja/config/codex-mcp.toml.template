@@ -14,3 +14,7 @@ WILLOW_AGENTS_ROOT = "{{AGENTS_ROOT}}"
 WILLOW_ROOT = "{{REPO_ROOT}}"
 WILLOW_HOME = "{{WILLOW_HOME}}"
 WILLOW_CONFIG_MODE = "{{WILLOW_CONFIG_MODE}}"
+
+[mcp_servers.codebase-memory-mcp]
+command = "codebase-memory-mcp"
+args = []

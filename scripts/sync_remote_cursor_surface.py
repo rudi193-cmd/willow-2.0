@@ -134,7 +134,12 @@ def cloud_mcp_json() -> dict:
                     "WILLOW_CONFIG_MODE": "public-fallback",
                     "WILLOW_MCP_PROFILE": "standard",
                 },
-            }
+            },
+            "codebase-memory-mcp": {
+                "type": "stdio",
+                "command": "codebase-memory-mcp",
+                "args": [],
+            },
         }
     }
 
