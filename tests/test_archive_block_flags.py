@@ -27,10 +27,12 @@ def _run(store, days=7, dry_run=False):
     fake_module = types.ModuleType("core.willow_store")
     fake_module.WillowStore = lambda: store
     with patch.dict(sys.modules, {"core.willow_store": fake_module}):
-        import importlib, scripts.archive_block_flags as m
+        import importlib
+        import scripts.archive_block_flags as m
         importlib.reload(m)
         with patch("scripts.archive_block_flags._load_store", return_value=store):
-            import io, contextlib
+            import io
+            import contextlib
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
                 with patch("sys.argv", ["archive_block_flags.py"] + (["--dry-run"] if dry_run else []) + ["--days", str(days)]):
