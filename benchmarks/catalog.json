@@ -185,6 +185,34 @@
       "refresh": null,
       "related": ["locomo_path_a"],
       "notes": "Pattern-level link, not an operational dependency. KB atoms 574CD95D, 2242989F."
+    },
+    {
+      "id": "rh_apo_discernment_harness",
+      "title": "Riemann Hypothesis / APO Discernment Harness",
+      "kind": "research_benchmark",
+      "status": "draft",
+      "visibility": "tracked",
+      "summary": "Tests whether Willow can separate canon from noise in Rendereason's APO/RH mathematics corpus without manual curation: a curated (clean) and a raw (dirty) ingest must converge to the same KB synthesis.",
+      "primary_artifacts": [
+        "sandbox/rh_harness/README.md",
+        "sandbox/rh_harness/ingest.py",
+        "sandbox/rh_harness/compare.py",
+        "sandbox/rh_harness/willow_shim.py"
+      ],
+      "metrics": [
+        "dirty_clean_convergence",
+        "canon_promotion",
+        "deprecated_suppression",
+        "apo_vocab_preservation",
+        "probe_top5_overlap"
+      ],
+      "refresh": "python3 -m sandbox.rh_harness.ingest --folder <clean> --run-id clean && python3 -m sandbox.rh_harness.ingest --folder <dirty> --run-id dirty && python3 -m sandbox.rh_harness.compare",
+      "related": [
+        "fleet_retrieval_gold",
+        "larousse_path_a_ephemeris",
+        "nest_session_corpus"
+      ],
+      "notes": "Discernment probe at the mathematical-research scale: does the system promote the live proof strategy, invalidate deprecated iterations, preserve custom APO vocabulary, and suppress dead ends? Corpus is Rendereason's APO/RH mathematics (incl. Lean formalization), treated as collaborator IP -- the harness is cataloged, not the corpus content. Clean/dirty data folders are TBD (corpus not in repo; heavy corpus lives in a separate sandbox clone). Part of the discernment-under-noise research family; see SOIL research-constellation-SYNTHESIS-the-shape."
     }
   ]
 }

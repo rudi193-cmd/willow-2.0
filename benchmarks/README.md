@@ -108,6 +108,27 @@ Small latency or policy-bridge measurements.
 
 ---
 
+## Discernment Benchmarks
+
+Research artifacts that double as runnable benchmarks -- each a probe of whether the
+memory stack can separate canon from noise at a given scale. This is the shape the
+atlas orbits: a theory of memory as phase-preservation under noise, gated by
+provenance and acknowledged uncertainty.
+
+| ID | Artifact | Visibility | Summary |
+| --- | --- | --- | --- |
+| `rh_apo_discernment_harness` | [`sandbox/rh_harness/`](../sandbox/rh_harness/) | tracked | Rendereason's APO/RH math corpus -- does a dirty raw dump converge to the same canon as the curated clean run? |
+
+Refresh:
+
+```bash
+python3 -m sandbox.rh_harness.ingest --folder <clean> --run-id clean
+python3 -m sandbox.rh_harness.ingest --folder <dirty>  --run-id dirty
+python3 -m sandbox.rh_harness.compare
+```
+
+---
+
 ## Research And Pattern Notes
 
 Cross-domain pattern links and research essays — not operational benchmarks.
