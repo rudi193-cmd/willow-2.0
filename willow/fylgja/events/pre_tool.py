@@ -71,19 +71,48 @@ def _markdownai_write_block(tool_name: str, tool_input: dict) -> str | None:
     return None
 
 
+def _rule_key(tool_name: str, reason: str) -> str:
+    """Stable per-rule id. Block reasons are fixed redirect strings, so the
+    tool + reason-prefix identifies the rule across repeated hits."""
+    import hashlib
+    digest = hashlib.sha1(f"{tool_name}|{reason[:80]}".encode("utf-8")).hexdigest()[:8]
+    return f"block-{digest}"
+
+
 def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
-    """Upsert a correction atom to corpus/corrections when a tool is blocked."""
+    """Phase 4(a): hook-enforcement blocks are *telemetry*, not human feedback.
+
+    Increment a per-rule counter in corpus/block_telemetry (one row per rule:
+    hit_count, first/last_seen, runtimes) instead of writing a fresh correction
+    atom every time. This stops the ~77% block-spam from drowning the real
+    human corrections in corpus/corrections, which is now human-feedback-only.
+    """
     try:
         if _REPO_ROOT not in sys.path:
             sys.path.insert(0, _REPO_ROOT)
         from core.willow_store import WillowStore
-        from willow.fylgja.corrections import upsert_correction
-        upsert_correction(
-            WillowStore(),
-            source="pre_tool_block",
-            content=f"Blocked {tool_name}: {reason[:200]}",
-            session_id=session_id,
-        )
+        _store = WillowStore()
+        key = _rule_key(tool_name, reason)
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            runtime = AGENT
+        except Exception:
+            runtime = "unknown"
+        existing = _store.get("corpus/block_telemetry", key) or {}
+        runtimes = set(existing.get("runtimes") or [])
+        runtimes.add(runtime)
+        _store.put("corpus/block_telemetry", {
+            "id": key,
+            "type": "block_telemetry",
+            "tool": tool_name,
+            "sample_reason": reason[:200],
+            "hit_count": int(existing.get("hit_count") or 0) + 1,
+            "first_seen": existing.get("first_seen") or now,
+            "last_seen": now,
+            "last_session_id": session_id,
+            "runtimes": sorted(runtimes),
+            "b17": "BTEL0",
+        }, record_id=key)
     except Exception:
         pass
 
