@@ -46,7 +46,7 @@ from sap.handoff_index import (
     scan_markdown_handoffs,
     select_best_handoff,
 )
-from sap.handoff_paths import discover_handoff_dirs, handoff_db_path, handoffs_root
+from sap.handoff_paths import discover_handoff_dirs, handoff_db_path, handoffs_root, handoffs_roots
 from typing import AsyncIterator
 
 # ── Path setup ────────────────────────────────────────────────────────────────
@@ -2965,7 +2965,9 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
         markdown_result: dict | None = None
         if agent_filter:
             try:
-                md_candidates = scan_markdown_handoffs(agent_filter, handoffs_root())
+                md_candidates: list[dict] = []
+                for root in handoffs_roots():
+                    md_candidates.extend(scan_markdown_handoffs(agent_filter, root))
                 if md_candidates:
                     markdown_result = select_best_handoff(md_candidates)
             except Exception as _e:
