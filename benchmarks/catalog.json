@@ -188,7 +188,7 @@
     },
     {
       "id": "rh_apo_discernment_harness",
-      "title": "Riemann Hypothesis / APO Discernment Harness",
+      "title": "Rendereason RH / APO Discernment Harness",
       "kind": "research_benchmark",
       "status": "draft",
       "visibility": "tracked",
@@ -212,7 +212,7 @@
         "larousse_path_a_ephemeris",
         "nest_session_corpus"
       ],
-      "notes": "Discernment probe at the mathematical-research scale: does the system promote the live proof strategy, invalidate deprecated iterations, preserve custom APO vocabulary, and suppress dead ends? Corpus is Rendereason's APO/RH mathematics (incl. Lean formalization), treated as collaborator IP -- the harness is cataloged, not the corpus content. Clean/dirty data folders are TBD (corpus not in repo; heavy corpus lives in a separate sandbox clone). Part of the discernment-under-noise research family; see SOIL research-constellation-SYNTHESIS-the-shape."
+      "notes": "Discernment probe at the mathematical-research scale: does the system promote the live proof strategy, invalidate deprecated iterations, preserve custom APO vocabulary, and suppress dead ends? Naming: 'RH' is Rendereason's paper-series prefix (RH1..RH7, e.g. RH7 = negative-time Fisher information); it is NOT the Riemann Hypothesis. Corpus is Rendereason's APO/RH mathematics (incl. Lean formalization), treated as collaborator IP -- the harness is cataloged, not the corpus content. Clean/dirty data folders are TBD (corpus not in repo; heavy corpus lives in a separate sandbox clone). Part of the discernment-under-noise research family; see SOIL research-constellation-SYNTHESIS-the-shape."
     }
   ]
 }

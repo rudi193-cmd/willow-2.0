@@ -23,7 +23,7 @@ PROBE_QUERIES = [
     {
         "id": "rh_canon",
         "label": "Canonical RH path",
-        "query": "current canonical proof strategy Riemann Hypothesis information geometric APO",
+        "query": "current canonical proof strategy information geometric APO",
         "flag": "noise_check",  # dirty run should NOT rank deprecated iterations first
     },
     {
