@@ -154,7 +154,8 @@ def handoff_richness_score(handoff: Mapping[str, object]) -> tuple:
     # Richness only breaks ties within the exact same date+suffix.
     date, suffix, mtime, filename = sort_key
     substance = 0 if handoff_is_empty_stub(handoff) else 1
-    return (date, suffix, substance, len(open_threads), len(questions), len(summary), mtime, filename)
+    # Write freshness before payload size — same-day KB atoms lack filename suffixes.
+    return (date, suffix, substance, mtime, len(open_threads), len(questions), len(summary), filename)
 
 
 def select_best_handoff(candidates: list[dict]) -> dict | None:
