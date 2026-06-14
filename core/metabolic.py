@@ -403,6 +403,19 @@ def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> di
             report["intake_promote_error"] = str(_ipe)
 
         try:
+            import importlib.util as _ilu
+            _abf_spec = _ilu.spec_from_file_location(
+                "archive_block_flags", WILLOW_ROOT / "scripts" / "archive_block_flags.py"
+            )
+            _abf_mod = _ilu.module_from_spec(_abf_spec)
+            _abf_spec.loader.exec_module(_abf_mod)
+            report["block_flags_archived"] = _abf_mod.archive_pass(dry_run=False)
+        except Exception as _ae:
+            import sys as _sys
+            print(f"[norn] archive_block_flags pass error: {_ae}", file=_sys.stderr)
+            report["block_flags_archive_error"] = str(_ae)
+
+        try:
             from core import soil as _soil
             from core.dream_state import dream_conditions, queue_dream_task
             from core.pg_bridge import PgBridge

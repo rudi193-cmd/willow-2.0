@@ -40,33 +40,26 @@ def _parse_dt(s: str | None) -> datetime | None:
         return None
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Archive silent block telemetry flags")
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--days", type=int, default=DEFAULT_ARCHIVE_AFTER_DAYS,
-                        help=f"Archive resolved flags silent for this many days (default: {DEFAULT_ARCHIVE_AFTER_DAYS})")
-    args = parser.parse_args()
+def archive_pass(dry_run: bool = False, days: int = DEFAULT_ARCHIVE_AFTER_DAYS) -> int:
+    """Archive resolved block telemetry flags silent for >days. Returns count archived.
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=args.days)
+    Callable by norn_pass or manually. Skips flags whose rule is still firing
+    recently — part (b) will reopen them on the next threshold crossing.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    archived = 0
 
     try:
         store = _load_store()
-    except Exception as e:
-        print(f"[archive] store unavailable: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    try:
         all_flags = store.all("willow/flags") or []
     except Exception as e:
-        print(f"[archive] failed to load willow/flags: {e}", file=sys.stderr)
-        sys.exit(1)
+        print(f"[archive_block_flags] store unavailable: {e}", file=sys.stderr)
+        return 0
 
-    block_flags = [f for f in all_flags if f.get("source") == "block_telemetry"]
-    resolved = [f for f in block_flags if f.get("flag_state") == "resolved"]
-
-    print(f"[archive] {len(block_flags)} block flags total, {len(resolved)} resolved")
-
-    archived = skipped_recent = skipped_no_telemetry = 0
+    resolved = [
+        f for f in all_flags
+        if f.get("source") == "block_telemetry" and f.get("flag_state") == "resolved"
+    ]
 
     for flag in resolved:
         rule_key = flag.get("rule_key")
@@ -77,38 +70,48 @@ def main() -> None:
         telemetry = store.get("corpus/block_telemetry", rule_key) or {}
         last_seen_dt = _parse_dt(telemetry.get("last_seen"))
 
-        if telemetry and last_seen_dt is None:
-            skipped_no_telemetry += 1
-            print(f"  [skip] {flag_id} — telemetry row exists but last_seen unparseable")
-            continue
-
         if last_seen_dt and last_seen_dt > cutoff:
-            skipped_recent += 1
-            hit_count = telemetry.get("hit_count", "?")
-            print(f"  [skip] {flag_id} — rule still active (last_seen {last_seen_dt.date()}, {hit_count} hits)")
             continue
 
-        last_seen_str = last_seen_dt.date().isoformat() if last_seen_dt else "never"
-        if args.dry_run:
-            print(f"  [dry-run] would archive {flag_id} (rule={rule_key}, last_seen={last_seen_str})")
+        if dry_run:
             archived += 1
             continue
 
         try:
+            last_seen_str = last_seen_dt.date().isoformat() if last_seen_dt else "never"
             updated = dict(flag)
             updated["flag_state"] = "archived"
             updated["archived_at"] = datetime.now(timezone.utc).isoformat()
-            updated["archived_reason"] = f"rule silent for >{args.days}d (last_seen={last_seen_str})"
+            updated["archived_reason"] = f"rule silent for >{days}d (last_seen={last_seen_str})"
             store.put("willow/flags", updated, record_id=flag_id)
-            print(f"  [archived] {flag_id} (rule={rule_key}, last_seen={last_seen_str})")
             archived += 1
         except Exception as e:
-            print(f"  [error] {flag_id}: {e}", file=sys.stderr)
+            print(f"[archive_block_flags] {flag_id}: {e}", file=sys.stderr)
 
-    print(
-        f"[archive] done — archived={archived} "
-        f"skipped_recent={skipped_recent} skipped_no_telemetry={skipped_no_telemetry}"
-    )
+    return archived
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Archive silent block telemetry flags")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--days", type=int, default=DEFAULT_ARCHIVE_AFTER_DAYS,
+                        help=f"Archive resolved flags silent for this many days (default: {DEFAULT_ARCHIVE_AFTER_DAYS})")
+    args = parser.parse_args()
+
+    try:
+        store = _load_store()
+        all_flags = store.all("willow/flags") or []
+    except Exception as e:
+        print(f"[archive] store unavailable: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    block_flags = [f for f in all_flags if f.get("source") == "block_telemetry"]
+    resolved = [f for f in block_flags if f.get("flag_state") == "resolved"]
+    print(f"[archive] {len(block_flags)} block flags total, {len(resolved)} resolved")
+
+    count = archive_pass(dry_run=args.dry_run, days=args.days)
+    label = "would archive" if args.dry_run else "archived"
+    print(f"[archive] done — {label}={count}")
 
 
 if __name__ == "__main__":

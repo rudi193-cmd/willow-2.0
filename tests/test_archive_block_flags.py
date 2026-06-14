@@ -74,7 +74,6 @@ def test_skips_resolved_flag_with_recent_activity():
     out, store = _run(store, days=7)
     put_calls = [c for c in store.put.call_args_list if "flags" in str(c.args[0])]
     assert not put_calls, "Should not archive a flag whose rule is still firing"
-    assert "still active" in out
 
 
 def test_skips_open_flags():
@@ -103,4 +102,4 @@ def test_dry_run_does_not_write():
     out, store = _run(store, days=7, dry_run=True)
     put_calls = [c for c in store.put.call_args_list if "flags" in str(c.args[0])]
     assert not put_calls, "Dry run should not write anything"
-    assert "dry-run" in out
+    assert "would archive=1" in out
