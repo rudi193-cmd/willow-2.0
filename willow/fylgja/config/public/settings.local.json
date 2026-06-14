@@ -17,6 +17,7 @@
       "Task(*)",
       "mcp__willow__fleet_restart",
       "mcp__willow__*",
+      "mcp__codebase-memory-mcp__*",
       "mcp__claude_ai_Grove__*"
     ],
     "deny": [
@@ -27,5 +28,5 @@
     ]
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["willow"]
+  "enabledMcpjsonServers": ["willow", "codebase-memory-mcp"]
 }
