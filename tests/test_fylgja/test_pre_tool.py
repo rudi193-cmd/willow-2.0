@@ -200,3 +200,80 @@ def test_channel_enforce_grove_alias():
     assert warn is not None
     data = json.loads(warn)
     assert data["decision"] == "warn"
+
+
+# ── Block telemetry flag trigger (Phase 4b) ───────────────────────────────────
+
+from unittest.mock import MagicMock
+import willow.fylgja.events.pre_tool as _pt
+
+
+def _make_store(hit_count=0, flag_state=None):
+    """Return a mock WillowStore with configurable existing telemetry + flag state."""
+    store = MagicMock()
+    telemetry_row = (
+        {"hit_count": hit_count, "runtimes": [], "first_seen": "2026-01-01T00:00:00+00:00"}
+        if hit_count else {}
+    )
+    flag_row = {"flag_state": flag_state} if flag_state else {}
+
+    def _get(collection, record_id):
+        if "block_telemetry" in collection:
+            return telemetry_row or None
+        if "flags" in collection:
+            return flag_row or None
+        return None
+
+    store.get.side_effect = _get
+    return store
+
+
+def _flag_puts(store):
+    return [c for c in store.put.call_args_list if c.args and "flags" in str(c.args[0])]
+
+
+def test_flag_not_opened_below_threshold():
+    store = _make_store(hit_count=0)
+    with (
+        patch("willow.fylgja.events.pre_tool._BLOCK_FLAG_THRESHOLD", 10),
+        patch.dict("sys.modules", {"core.willow_store": MagicMock(WillowStore=lambda: store)}),
+    ):
+        _pt._corpus_log_block("Bash", "some reason", "sess1")
+    assert not _flag_puts(store), "No flag should be opened before threshold"
+
+
+def test_flag_opened_at_threshold():
+    store = _make_store(hit_count=9)  # next hit → 10 = threshold
+    with (
+        patch("willow.fylgja.events.pre_tool._BLOCK_FLAG_THRESHOLD", 10),
+        patch.dict("sys.modules", {"core.willow_store": MagicMock(WillowStore=lambda: store)}),
+    ):
+        _pt._corpus_log_block("Bash", "Use MCP instead of shell.", "sess1")
+    puts = _flag_puts(store)
+    assert puts, "A flag should be opened when hit_count reaches threshold"
+    written = puts[0].args[1]
+    assert written.get("flag_state") == "open"
+    assert "Bash" in written.get("title", "")
+    assert written.get("source") == "block_telemetry"
+
+
+def test_flag_not_duplicated_when_already_open():
+    store = _make_store(hit_count=9, flag_state="open")
+    with (
+        patch("willow.fylgja.events.pre_tool._BLOCK_FLAG_THRESHOLD", 10),
+        patch.dict("sys.modules", {"core.willow_store": MagicMock(WillowStore=lambda: store)}),
+    ):
+        _pt._corpus_log_block("Bash", "Use MCP instead of shell.", "sess1")
+    assert not _flag_puts(store), "Should not re-open a flag that is already open"
+
+
+def test_flag_reopened_after_resolution():
+    store = _make_store(hit_count=9, flag_state="resolved")
+    with (
+        patch("willow.fylgja.events.pre_tool._BLOCK_FLAG_THRESHOLD", 10),
+        patch.dict("sys.modules", {"core.willow_store": MagicMock(WillowStore=lambda: store)}),
+    ):
+        _pt._corpus_log_block("Bash", "Use MCP instead of shell.", "sess1")
+    puts = _flag_puts(store)
+    assert puts, "Should reopen a flag that was previously resolved"
+    assert puts[0].args[1].get("flag_state") == "open"
