@@ -143,6 +143,32 @@ def test_select_best_handoff_prefers_newer_same_day_kb_atom():
     assert best["filename"] == "kb_3CC79359.json"
 
 
+def test_select_best_handoff_uses_sort_timestamp_for_same_day_kb_atoms():
+    older = {
+        "filename": "kb_014B8ABB.json",
+        "date": "2026-06-14",
+        "summary": "Older same-day handoff atom with date-only valid_at.",
+        "open_threads": [],
+        "questions": [],
+        "_valid_at": "2026-06-14",
+        "_sort_at": "2026-06-14T14:57:06-06:00",
+    }
+    newer = {
+        "filename": "kb_7D81F13A.json",
+        "date": "2026-06-14",
+        "summary": "Newer carry-forward handoff atom written later the same day.",
+        "open_threads": ["share-the-stage follow-up optional"],
+        "questions": ["Q17: Draft the follow-up or lift MAP-ONLY."],
+        "_valid_at": "2026-06-14",
+        "_sort_at": "2026-06-14T16:52:00-06:00",
+    }
+
+    best = select_best_handoff([older, newer])
+
+    assert best is not None
+    assert best["filename"] == "kb_7D81F13A.json"
+
+
 def test_scan_markdown_handoffs_finds_hanuman_session_files():
     root = handoffs_root()
     if not (root / "hanuman").is_dir():
