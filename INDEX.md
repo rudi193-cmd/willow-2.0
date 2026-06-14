@@ -200,6 +200,7 @@
 | `docs/kb` |
 | `docs/model-benchmark-field-report-2026-06.md` |
 | `docs/provenance` |
+| `docs/recovery` |
 | `docs/static` |
 | `docs/upstream` |
 | `install-windows.ps1` |

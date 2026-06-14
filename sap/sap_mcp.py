@@ -2869,13 +2869,13 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                     if agent_filter:
                         cur.execute(
                             """
-                            SELECT id, title, summary, valid_at, content
+                            SELECT id, title, summary, valid_at, created_at, updated_at, content
                             FROM knowledge
                             WHERE category = 'handoff'
                               AND source_type = 'session'
                               AND invalid_at IS NULL
                               AND project = %s
-                            ORDER BY valid_at DESC
+                            ORDER BY COALESCE(updated_at, created_at, valid_at) DESC
                             LIMIT 5
                             """,
                             (agent_filter,),
@@ -2883,12 +2883,12 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                     else:
                         cur.execute(
                             """
-                            SELECT id, title, summary, valid_at, content
+                            SELECT id, title, summary, valid_at, created_at, updated_at, content
                             FROM knowledge
                             WHERE category = 'handoff'
                               AND source_type = 'session'
                               AND invalid_at IS NULL
-                            ORDER BY valid_at DESC
+                            ORDER BY COALESCE(updated_at, created_at, valid_at) DESC
                             LIMIT 5
                             """
                         )
@@ -2925,6 +2925,7 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                             "capabilities": content.get("capabilities") or [],
                             "_source": "kb",
                             "_valid_at": str(row["valid_at"]),
+                            "_sort_at": str(row.get("updated_at") or row.get("created_at") or row["valid_at"]),
                         })
                     if kb_candidates:
                         kb_result = select_best_handoff(kb_candidates)
@@ -2983,7 +2984,7 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
             result.get("questions") or [],
             str(result.get("summary") or ""),
         )
-        for key in ("_source", "_valid_at", "mtime"):
+        for key in ("_source", "_valid_at", "_sort_at", "mtime"):
             result.pop(key, None)
         return result
 

@@ -148,13 +148,13 @@ def handoff_richness_score(handoff: Mapping[str, object]) -> tuple:
     sort_key = latest_handoff_sort_key(
         str(handoff.get("filename") or ""),
         str(handoff.get("date") or handoff.get("handoff_date") or ""),
-        str(handoff.get("_valid_at") or handoff.get("mtime") or ""),
+        str(handoff.get("_sort_at") or handoff.get("_valid_at") or handoff.get("mtime") or ""),
     )
     # Date and letter suffix are primary — a newer session always beats an older one.
     # Richness only breaks ties within the exact same date+suffix.
-    date, suffix, filename, mtime = sort_key
+    date, suffix, mtime, filename = sort_key
     substance = 0 if handoff_is_empty_stub(handoff) else 1
-    return (date, suffix, substance, len(open_threads), len(questions), len(summary), filename, mtime)
+    return (date, suffix, substance, len(open_threads), len(questions), len(summary), mtime, filename)
 
 
 def select_best_handoff(candidates: list[dict]) -> dict | None:
