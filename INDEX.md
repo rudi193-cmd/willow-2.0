@@ -187,6 +187,7 @@
 | `docs/audits` |
 | `docs/corpus` |
 | `docs/dev-log-2026-05-27-fleet-github-layout.md` |
+| `docs/dev-log-2026-06-12-current-cursor-benchmark-backfill.md` |
 | `docs/handoffs` |
 | `docs/index.html` |
 | `docs/kb` |

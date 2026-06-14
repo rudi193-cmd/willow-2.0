@@ -30,6 +30,7 @@ from willow.fylgja.safety.security_scan import (
 AGENT = require_agent_name()
 MAX_DEPTH = int(os.environ.get("WILLOW_AGENT_MAX_DEPTH", "3"))
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
+_BLOCK_FLAG_THRESHOLD = int(os.environ.get("WILLOW_BLOCK_FLAG_THRESHOLD", "10"))
 
 _REPO_ROOT = str(Path(__file__).parent.parent.parent.parent)
 
@@ -80,12 +81,14 @@ def _rule_key(tool_name: str, reason: str) -> str:
 
 
 def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
-    """Phase 4(a): hook-enforcement blocks are *telemetry*, not human feedback.
+    """Phase 4(a/b): hook-enforcement blocks are *telemetry*, not human feedback.
 
-    Increment a per-rule counter in corpus/block_telemetry (one row per rule:
-    hit_count, first/last_seen, runtimes) instead of writing a fresh correction
-    atom every time. This stops the ~77% block-spam from drowning the real
-    human corrections in corpus/corrections, which is now human-feedback-only.
+    (a) Increment a per-rule counter in corpus/block_telemetry (one row per rule:
+        hit_count, first/last_seen, runtimes) instead of writing a fresh correction
+        atom every time.
+    (b) When hit_count crosses a multiple of WILLOW_BLOCK_FLAG_THRESHOLD, open a
+        SOIL flag in willow/flags so the rule gets human attention — the blessed
+        path for that tool may be broken or missing if the same block keeps firing.
     """
     try:
         if _REPO_ROOT not in sys.path:
@@ -101,18 +104,40 @@ def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
         existing = _store.get("corpus/block_telemetry", key) or {}
         runtimes = set(existing.get("runtimes") or [])
         runtimes.add(runtime)
+        new_count = int(existing.get("hit_count") or 0) + 1
         _store.put("corpus/block_telemetry", {
             "id": key,
             "type": "block_telemetry",
             "tool": tool_name,
             "sample_reason": reason[:200],
-            "hit_count": int(existing.get("hit_count") or 0) + 1,
+            "hit_count": new_count,
             "first_seen": existing.get("first_seen") or now,
             "last_seen": now,
             "last_session_id": session_id,
             "runtimes": sorted(runtimes),
             "b17": "BTEL0",
         }, record_id=key)
+        # Phase 4(b): repetition trigger — open a flag at each threshold crossing.
+        if new_count % _BLOCK_FLAG_THRESHOLD == 0:
+            flag_id = f"flag-{key}"
+            existing_flag = _store.get("willow/flags", flag_id) or {}
+            if existing_flag.get("flag_state") != "open":
+                _store.put("willow/flags", {
+                    "id": flag_id,
+                    "type": "flag",
+                    "flag_state": "open",
+                    "title": f"Blessed path for '{tool_name}' may be broken or missing",
+                    "source": "block_telemetry",
+                    "rule_key": key,
+                    "hit_count": new_count,
+                    "sample_reason": reason[:200],
+                    "fix_path": (
+                        "willow/fylgja/events/pre_tool.py — review BASH_BLOCKS / "
+                        "_MCP_BASH_TO_MCP for this rule; check that the MCP redirect exists"
+                    ),
+                    "opened_at": now,
+                    "b17": "BFLAG0",
+                }, record_id=flag_id)
     except Exception:
         pass
 
