@@ -14,3 +14,7 @@ WILLOW_AGENTS_ROOT = ".willow/generated/SAFE/Agents"
 WILLOW_ROOT = "."
 WILLOW_HOME = ".willow/generated"
 WILLOW_CONFIG_MODE = "public-fallback"
+
+[mcp_servers.codebase-memory-mcp]
+command = "codebase-memory-mcp"
+args = []

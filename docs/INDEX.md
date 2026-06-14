@@ -72,6 +72,20 @@ Start at [`templates/README.md`](templates/README.md) — canonical router for a
 
 ---
 
+## Benchmarks
+
+| Artifact | What |
+|----------|------|
+| [`../benchmarks/README.md`](../benchmarks/README.md) | Benchmark and research atlas — families, sidecars, local pointers |
+| [`../benchmarks/catalog.json`](../benchmarks/catalog.json) | Machine-readable benchmark registry |
+| [`../benchmarks/sidecars/cartographer_code_memory/`](../benchmarks/sidecars/cartographer_code_memory/) | CBM cartographer prompt sidecar: SQLite DB, JSON, Markdown, refresh script |
+| [`model-benchmark-field-report-2026-06.md`](model-benchmark-field-report-2026-06.md) | Observational Claude model field report (June 2026) |
+| [`../willow/bench/locomo/`](../willow/bench/locomo/) | LoCoMo / LongMemEval Path A external memory benchmarks |
+| [`../willow/bench/retrieval_gold.json`](../willow/bench/retrieval_gold.json) | Fleet KB retrieval gold-query regression gate |
+| [`corpus/larousse-path-a-ephemeris-pattern.md`](corpus/larousse-path-a-ephemeris-pattern.md) | Research pattern: Larousse ephemeris ↔ Path A memory |
+
+---
+
 ## Reference (deep)
 
 Moved to `archive/docs/` during the 2.0 cut — still accurate on design, stale on version strings until we refresh them:

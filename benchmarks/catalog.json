@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "description": "Benchmark and research artifact registry for Willow 2.0. Links tracked repo artifacts and repo-safe local pointers without merging incompatible schemas.",
+  "visibility_legend": {
+    "tracked": "Artifact lives in this repo and is safe to cite directly.",
+    "local_pointer": "Artifact exists locally; catalog uses symbolic paths ($NEST, etc.).",
+    "private_context": "Research context exists but exact paths or transcript IDs are not published."
+  },
+  "entries": [
+    {
+      "id": "cartographer_code_memory",
+      "title": "Cartographer Code-Memory Sidecar",
+      "kind": "controlled_prompt",
+      "status": "active",
+      "visibility": "tracked",
+      "summary": "Controlled prompt test for codebase-memory-mcp tool use across Claude models before Willow boot.",
+      "primary_artifacts": [
+        "benchmarks/sidecars/cartographer_code_memory/cartographer_code_memory_sidecar.db",
+        "benchmarks/sidecars/cartographer_code_memory/cartographer_code_memory_runs.json",
+        "benchmarks/sidecars/cartographer_code_memory/cartographer_code_memory_runs.md",
+        "benchmarks/sidecars/cartographer_code_memory/normalize_cartographer_code_memory_sessions.py"
+      ],
+      "metrics": [
+        "cbm_only_pass",
+        "field_report",
+        "ending_exact",
+        "score_10",
+        "semantic_search_calls",
+        "detect_changes_used"
+      ],
+      "refresh": "python3 benchmarks/sidecars/cartographer_code_memory/normalize_cartographer_code_memory_sessions.py",
+      "related": ["claude_field_benchmark_2026_06"],
+      "notes": "Does not mutate Nest canonical benchmark DBs."
+    },
+    {
+      "id": "claude_field_benchmark_2026_06",
+      "title": "Claude Field Benchmark Report — June 2026",
+      "kind": "live_agent_session",
+      "status": "draft",
+      "visibility": "tracked",
+      "summary": "Observational field benchmark of real Willow agent sessions across Opus 4.8, Fable 5, and Sonnet 4.6.",
+      "primary_artifacts": [
+        "docs/model-benchmark-field-report-2026-06.md",
+        "docs/dev-log-2026-06-12-current-cursor-benchmark-backfill.md"
+      ],
+      "metrics": [
+        "active_time_efficiency",
+        "output_tokens_per_tool",
+        "cache_churn",
+        "mcp_share",
+        "status_loop_share",
+        "outcome_score"
+      ],
+      "refresh": null,
+      "related": ["nest_session_corpus", "cartographer_code_memory"],
+      "notes": "Sidecar DB claude_benchmarks_recent_models_sidecar.db lives under $NEST; canonical claude_benchmarks.db was not mutated."
+    },
+    {
+      "id": "nest_session_corpus",
+      "title": "Nest Session Benchmark Corpus",
+      "kind": "live_agent_session",
+      "status": "active",
+      "visibility": "local_pointer",
+      "summary": "Scientific harness for Claude/Cursor agent session transcripts — parser, canonical DB, cross-runtime connector, and full-session reports.",
+      "primary_artifacts": [
+        "$NEST/claude_benchmarks.db",
+        "$NEST/claude_benchmarks_corpus.db",
+        "$NEST/benchmark_sessions_full.json",
+        "$NEST/benchmark_sessions_full.md",
+        "$NEST/parse_benchmark_sessions.py",
+        "$NEST/benchmark_connect.py"
+      ],
+      "metrics": [
+        "active_time_efficiency",
+        "tool_calls",
+        "output_tokens",
+        "cache_read_tokens",
+        "mcp_share",
+        "outcome_score",
+        "session_chains"
+      ],
+      "refresh": "Run parse_benchmark_sessions.py and benchmark_connect.py from $NEST",
+      "related": ["claude_field_benchmark_2026_06", "locomo_path_a"],
+      "notes": "$NEST resolves to the operator Desktop/Nest export directory. Separate from Willow Postgres KB."
+    },
+    {
+      "id": "fleet_retrieval_gold",
+      "title": "Fleet Retrieval Gold Gate",
+      "kind": "retrieval_regression",
+      "status": "active",
+      "visibility": "tracked",
+      "summary": "KB hybrid retrieval regression gate — gold queries with expected atom IDs or title fragments.",
+      "primary_artifacts": [
+        "willow/bench/retrieval_gold.json",
+        "willow/bench/retrieval_gold.py",
+        "scripts/retrieval_gold_check.py",
+        "tests/test_retrieval_gold.py"
+      ],
+      "metrics": [
+        "pass_ratio",
+        "hit_rank",
+        "semantic_hit",
+        "keyword_hit"
+      ],
+      "refresh": "python3 scripts/retrieval_gold_check.py",
+      "related": ["locomo_path_a"],
+      "notes": "min_pass_ratio default 0.71. Runs against live fleet KB via Postgres."
+    },
+    {
+      "id": "locomo_path_a",
+      "title": "LoCoMo / LongMemEval Path A",
+      "kind": "external_memory",
+      "status": "active",
+      "visibility": "tracked",
+      "summary": "External memory benchmarks with Willow Postgres KB as the memory backend — recall@k, MRR, token F1.",
+      "primary_artifacts": [
+        "willow/bench/locomo/path_a_locomo_pilot.py",
+        "willow/bench/locomo/benchmark_record_path_a_baseline.py",
+        "willow/bench/locomo/baselines.jsonl",
+        "willow/bench/locomo/external_runs/",
+        "willow/bench/locomo/data/locomo/locomo10.json"
+      ],
+      "metrics": [
+        "recall_at_10",
+        "precision_at_10",
+        "mrr",
+        "token_f1"
+      ],
+      "refresh": "python3 willow/bench/locomo/path_a_locomo_pilot.py --all --semantic",
+      "related": ["fleet_retrieval_gold", "larousse_path_a_ephemeris", "nest_session_corpus"],
+      "notes": "Hypotheses JSONL written per run. Baselines recorded via benchmark_record_path_a_baseline.py."
+    },
+    {
+      "id": "ollama_suite",
+      "title": "Ollama Full-Suite Benchmark",
+      "kind": "local_model",
+      "status": "snapshot",
+      "visibility": "tracked",
+      "summary": "Local Ollama model prompt suite — startup coherence, JSON, reasoning, code, instruction following.",
+      "primary_artifacts": [
+        "tools/ollama_suite_bench.py",
+        "tools/ollama_bench_results.json",
+        "tools/ollama_bench_results.md"
+      ],
+      "metrics": [
+        "prompt_pass_rate",
+        "tokens_per_second",
+        "elapsed_seconds"
+      ],
+      "refresh": "python3 tools/ollama_suite_bench.py",
+      "related": [],
+      "notes": "Last snapshot run 2026-05-17. Requires local Ollama."
+    },
+    {
+      "id": "node9_policy_latency",
+      "title": "Node9 Policy Bridge Latency",
+      "kind": "runtime_microbench",
+      "status": "active",
+      "visibility": "tracked",
+      "summary": "Microbenchmark for @node9/policy-engine pass latency via the Willow bridge.",
+      "primary_artifacts": [
+        "scripts/bench_node9_policy.py"
+      ],
+      "metrics": [
+        "wall_p50_ms",
+        "wall_p95_ms",
+        "engine_p50_ms",
+        "decision"
+      ],
+      "refresh": "python3 scripts/bench_node9_policy.py",
+      "related": [],
+      "notes": "Requires WILLOW_NODE9_POLICY=1 and npm install in sap/adapters/node9_policy."
+    },
+    {
+      "id": "larousse_path_a_ephemeris",
+      "title": "Larousse ↔ Path A Ephemeris Pattern",
+      "kind": "research_pattern",
+      "status": "published",
+      "visibility": "tracked",
+      "summary": "Research-pattern link between Larousse astronomy ephemeris and Path A memory phase preservation under repetition.",
+      "primary_artifacts": [
+        "docs/corpus/larousse-path-a-ephemeris-pattern.md"
+      ],
+      "metrics": [],
+      "refresh": null,
+      "related": ["locomo_path_a"],
+      "notes": "Pattern-level link, not an operational dependency. KB atoms 574CD95D, 2242989F."
+    }
+  ]
+}

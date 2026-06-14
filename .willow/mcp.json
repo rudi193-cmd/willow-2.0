@@ -12,5 +12,11 @@
         "WILLOW_AGENTS_ROOT": "/home/sean-campbell/github/SAFE/Agents"
       }
     }
+    ,
+    "codebase-memory-mcp": {
+      "type": "stdio",
+      "command": "codebase-memory-mcp",
+      "args": []
+    }
   }
 }

@@ -1,6 +1,6 @@
 # Open work (fleet backlog)
 
-*Last updated: 2026-06-12 — upstream contributions desk pass.*
+*Last updated: 2026-06-14 — upstream contributions desk pass.*
 
 **Strategy:** [`UPSTREAM_CONTRIBUTION_STRATEGY.md`](UPSTREAM_CONTRIBUTION_STRATEGY.md) · type ledger: [`upstream/type_ledger.json`](upstream/type_ledger.json)
 
@@ -10,10 +10,12 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 
 | PR | Type | Score | Lane | Next action |
 |----|------|-------|------|-------------|
+| [ctxvault #31](https://github.com/Filippo-Venturini/ctxvault/pull/31) | narrow_bugfix | 9 | green | CI pass; wait for Filippo-Venturini review |
 | [claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | narrow_bugfix | 9 | green | Wait for TerrysPOV re-review (fix pushed) |
 | [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | narrow_bugfix | 9 | green | Wait for TerrysPOV re-review (fix pushed) |
-| [claude-deep-review #5](https://github.com/liatrio-labs/claude-deep-review/pull/5) | narrow_bugfix | 7 | yellow | Wait for leehopper re-review |
-| [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | mcp_adapter | 3 | red | Blocked on maintainer labels |
+| [claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | narrow_bugfix | 8 | green | CI pass; wait for review |
+| [claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | docs_setup | 8 | green | CI pass; wait for review |
+| [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | mcp_adapter | 2 | red | Merge conflicts + missing labels — rebase or close |
 | [awesome-claude-skills #885](https://github.com/ComposioHQ/awesome-claude-skills/pull/885) | listing_awesome | 6 | yellow | Wait for maintainer merge |
 | [mengram #40](https://github.com/alibaizhanov/mengram/pull/40) | docs_setup | 7 | yellow | Maintainer review (pinged 2026-06-04) |
 | [hermes-agent #40737](https://github.com/NousResearch/hermes-agent/pull/40737) | unsolicited_large_feature | 2 | red | No maintainer signal — do not invest further |
@@ -26,10 +28,12 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 
 | PR | Status | Next step |
 |----|--------|-----------|
-| [claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | Fix pushed `0c9cfea`; `claude-review` pass; CHANGES_REQUESTED | Wait for TerrysPOV re-review |
-| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | Fix pushed `5a6e633`; `claude-review` pass; CHANGES_REQUESTED | Wait for TerrysPOV re-review |
-| [claude-deep-review #5](https://github.com/liatrio-labs/claude-deep-review/pull/5) | Scoped to `dedup_by_id`; portable test fixed; CodeRabbit pass; CHANGES_REQUESTED | Wait for leehopper re-review |
-| [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | Blocked on `needs-kind`, `needs-release-note`, `needs-triage` labels | Maintainer must apply labels (suggested `kind/api` + `release-note` in thread) |
+| [ctxvault #31](https://github.com/Filippo-Venturini/ctxvault/pull/31) | Tests pass; mergeable/clean; no review yet | Optional: gentle review ping to Filippo-Venturini |
+| [claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | Fix pushed `0c9cfea`; `claude-review` pass; CHANGES_REQUESTED | Wait for TerrysPOV re-review (optional ping) |
+| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | Fix pushed `5a6e633`; `claude-review` pass; CHANGES_REQUESTED | Wait for TerrysPOV re-review (optional ping) |
+| [claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | New; `claude-review` pass; mergeable | Wait for review |
+| [claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | New; `claude-review` pass; mergeable | Wait for review |
+| [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | `mergeable: CONFLICTING`; labels still missing | Rebase onto main or deprioritize |
 
 ## Upstream PRs — waiting on maintainers
 
@@ -47,6 +51,9 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 
 | PR | Note |
 |----|------|
+| [max-rh/sshelf #3](https://github.com/max-rh/sshelf/pull/3) | Print generated SSH command from CLI |
+| [liatrio-labs/claude-deep-review #5](https://github.com/liatrio-labs/claude-deep-review/pull/5) | Extract `dedup_by_id` into standalone module (merged 2026-06-14) |
+| [basicmachines-co/basic-memory #985](https://github.com/basicmachines-co/basic-memory/pull/985) | Promote first project when config default missing from DB |
 | [Emerging-Rule/community #11](https://github.com/Emerging-Rule/community/pull/11) | Creature Lab CS showcase + Neva and Theo science lesson |
 | [manojmallick/sigmap #216](https://github.com/manojmallick/sigmap/pull/216) | Hot-cold cold signatures in bundled MCP server |
 | [Emerging-Rule/community #10](https://github.com/Emerging-Rule/community/pull/10) | Calibration Series (6–10 + Social Studies 6–8) |
@@ -75,6 +82,8 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 
 | PR | Note |
 |----|------|
+| [basicmachines-co/basic-memory #984](https://github.com/basicmachines-co/basic-memory/pull/984) | Keep search index type in vector hydration (superseded by #985 path) |
+| [basicmachines-co/basic-memory #983](https://github.com/basicmachines-co/basic-memory/pull/983) | Keep search index type in vector hydration (duplicate attempt) |
 | [openclaw/openclaw #90165](https://github.com/openclaw/openclaw/pull/90165) | FTS keyword search should not filter by embedding model |
 | [voidcraft-labs/commcare-nova #57](https://github.com/voidcraft-labs/commcare-nova/pull/57) | Sanitize Long-like values before Firestore writes |
 | [ogham-mcp/ogham-mcp #53](https://github.com/ogham-mcp/ogham-mcp/pull/53) | Memory Tool 6-op conformance CI |

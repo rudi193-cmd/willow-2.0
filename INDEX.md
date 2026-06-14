@@ -6,6 +6,7 @@
 
 | Path | Description |
 |------|-------------|
+| `.mcp.json` | MCP server configuration (per-machine, gitignored) |
 | `AGENTS.md` | Agent registry and personas |
 | `CLAUDE.md` | Claude Code pointer → willow.md |
 | `GEMINI.md` | Gemini runtime pointer → willow.md |
@@ -96,6 +97,7 @@
 | `app.py` | Application entry point |
 | `bin/` | Executables |
 | `core/` | Shared core utilities — pg_bridge, config, helpers |
+| `gaps.db` | SQLite gaps tracking database |
 | `migrations/` | Database migrations |
 | `pyproject.toml` | Python project config |
 | `requirements.txt` | Python dependencies |
@@ -121,6 +123,7 @@
 | `README-FELIX.md` | Felix runtime notes |
 | `README.md` | Project README |
 | `SECURITY_AUDIT.md` | Security audit log |
+| `benchmarks/` | Benchmark and research atlas — sidecars, catalog, local pointers |
 | `docs/` | Documentation, ADRs, runbooks, lore, nomenclature |
 | `docs/ATOM_EXTRACTION_COMPLETE.md` | Atom extraction completion notes |
 | `docs/ATOM_EXTRACTION_DESIGN.md` | Atom extraction design spec |
@@ -164,6 +167,9 @@
 
 | Path |
 |------|
+| `${HOME}` |
+| `.kart-scripts` |
+| `.mcp.json.bak` |
 | `.pre-commit-config.yaml` |
 | `CHANGELOG.md` |
 | `CODEX.md` |
@@ -172,6 +178,7 @@
 | `agents/loki` |
 | `agents/willow` |
 | `apps/ratatosk` |
+| `apps/star` |
 | `docs/.nojekyll` |
 | `docs/AGENT_IDENTITY.md` |
 | `docs/LANDING_DESIGN.md` |
@@ -208,6 +215,7 @@
 | `setup.sh` |
 | `stubs` |
 | `uv.lock` |
+| `willow.egg-info` |
 | `willow.py` |
 | `willow/bench` |
 | `willow/hns_enforcer.py` |
