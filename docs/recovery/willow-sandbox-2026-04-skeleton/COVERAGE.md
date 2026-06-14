@@ -3,7 +3,7 @@
 Real content recovered into `recovered/<original-path>` for rebuild candidates that had a live source.
 Source priority: trash clone (`willow-2.0-trash-recovery-2026-06-14`) > willow-1.9.
 
-- **Filled:** 38
+- **Filled:** 37
 - **Held (config/secret):** 2
 - **Unfillable (no source):** 84 — the BTR workspace + corpus pipeline; structure-only, see MANIFEST.md.
 
@@ -50,7 +50,6 @@ One file (`docs/superpowers/plans/2026-04-24-willow-19-phase1-foundation.md`) tr
 | `scripts/migr1_willow17_to_19.py` | willow-1.9 | 4926 |
 | `scripts/migr2_sap_schema.py` | willow-1.9 | 2225 |
 | `scripts/migrate_willow_legacy.py` | willow-1.9 | 4576 |
-| `scripts/sean.md` | willow-1.9 | 1867 |
 
 ## Held out (config, not committed)
 
@@ -58,3 +57,4 @@ One file (`docs/superpowers/plans/2026-04-24-willow-19-phase1-foundation.md`) tr
 |---|---|
 | `.claude/settings.local.json` | trash |
 | `.mcp.json` | willow-1.9 |
+**Held by review:** `recovered/scripts/sean.md` (willow-1.9) — personal voice/persona profile; dropped at Sean's direction, not mirrored into the public repo.
