@@ -211,6 +211,52 @@ def test_rh_compare_verdict_reads_saved_report(tmp_path):
     assert status() == "witnessed"
 
 
+def test_decoder_mismatch_reads_saved_report(tmp_path):
+    import json
+
+    report = tmp_path / "recon.json"
+    cfg = {
+        "verdict_bands": {"aligned": 0.75, "partial": 0.45},
+        "domains": {"willow": {"label": "W", "invariants": ["W8"]}},
+        "metrics": [
+            {
+                "id": "w8_recon",
+                "domain": "willow",
+                "invariant": "W8",
+                "label": "Canonical reconstruction coverage",
+                "weight": 1.0,
+                "kind": "decoder_mismatch",
+                "report": str(report),
+                "max_cost": 0.5,
+            }
+        ],
+    }
+
+    def witness():
+        al = evaluate_alignment(
+            raw={}, layers=_minimal_layers(), disc={"signals": {}},
+            gov={}, prov={"classifications": []}, config=cfg,
+        )
+        return al["witnesses"][0]
+
+    # No saved report → pending (no canonical substrate), never violated.
+    assert witness()["status"] == "pending"
+
+    # High cost (1/10 reconstructable → 90% > 50%) → violated.
+    report.write_text(json.dumps({"canonical_total": 10, "supported": 1, "runs_present": True}))
+    w = witness()
+    assert w["status"] == "violated"
+    assert w["evidence"]["reconstruction_cost"] == 0.9
+
+    # Low cost (9/10 → 10% ≤ 50%) → witnessed.
+    report.write_text(json.dumps({"canonical_total": 10, "supported": 9, "runs_present": True}))
+    assert witness()["status"] == "witnessed"
+
+    # Empty canonical population → pending, never violated for absent substrate.
+    report.write_text(json.dumps({"canonical_total": 0, "supported": 0}))
+    assert witness()["status"] == "pending"
+
+
 def test_render_human_synthesis_includes_headline():
     alignment = evaluate_alignment(
         raw=_minimal_raw(),

@@ -88,6 +88,61 @@ def stage_provenance(raw: dict[str, IngredientResult]) -> dict[str, Any]:
     return {"stage": "provenance", "classifications": rows}
 
 
+def canonical_reconstruction_census(*, app_id: str = "willow") -> dict[str, Any]:
+    """W8 substrate: of canonical (non-benchmark) KB atoms, how many are
+    reconstructable — currently via FRANK ledger atom-id references.
+
+    Structure-only: ids and counts, never atom text. Handoff and source_trail
+    support legs are declared in ``by_support`` but not yet measured, so the
+    reported cost is a *ledger-only upper bound* (true coverage can only be
+    higher). Raises on DB unavailability — the evaluator maps that to pending.
+    """
+    from core.pg_bridge import PgBridge
+
+    pg = PgBridge()
+    pg._ensure_conn()
+    with pg.conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id FROM knowledge
+            WHERE invalid_at IS NULL AND tier = 'canonical'
+              AND COALESCE(source_type, '') <> 'benchmark'
+            """
+        )
+        canonical_ids = {str(r[0]) for r in cur.fetchall()}
+
+        ledger_ids: set[str] = set()
+        cur.execute("SELECT content FROM frank_ledger")
+        for (content,) in cur.fetchall():
+            try:
+                payload = content if isinstance(content, dict) else json.loads(content)
+            except (TypeError, ValueError):
+                continue
+            written = payload.get("atoms_written")
+            if isinstance(written, list):
+                ledger_ids.update(str(x) for x in written)
+
+    total = len(canonical_ids)
+    by_ledger = canonical_ids & ledger_ids
+    supported = set(by_ledger)  # union of all *measured* support legs
+    return {
+        "report": "recon-canonical",
+        "canonical_total": total,
+        "supported": len(supported),
+        "unsupported": total - len(supported),
+        "by_support": {
+            "ledger": len(by_ledger),
+            "handoff": None,       # declared, not yet measured
+            "source_trail": None,  # declared, not yet measured
+        },
+        "runs_present": True,
+        "note": (
+            "ledger-only support; handoff/source_trail legs unmeasured — "
+            "reconstruction_cost is an upper bound"
+        ),
+    }
+
+
 def stage_discernment(
     raw: dict[str, IngredientResult], config: dict[str, Any]
 ) -> dict[str, Any]:
@@ -425,6 +480,16 @@ def run_pipeline(*, limit: int, app_id: str) -> tuple[list[dict[str, Any]], dict
         }
 
     prov = stage_provenance(raw)
+    # Refresh the W8 canonical-reconstruction census so the decoder_mismatch
+    # metric reads a current saved report. Best-effort: DB down -> metric pending.
+    try:
+        recon = canonical_reconstruction_census(app_id=app_id)
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        (REPORTS_DIR / "recon-canonical.json").write_text(
+            json.dumps(recon, indent=2), encoding="utf-8"
+        )
+    except Exception as exc:  # noqa: BLE001 — any failure leaves W8 pending
+        print(f"[stone_soup] reconstruction census skipped: {exc}", file=sys.stderr)
     layers = collect_layers(config.get("willow_layers", []), limit=limit)
     disc = stage_discernment(raw, config)
     gov = stage_governance(raw)

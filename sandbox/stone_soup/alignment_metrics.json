@@ -16,7 +16,7 @@
     },
     "willow": {
       "label": "Willow reconstruction machinery",
-      "invariants": ["W1", "W2", "W3", "W4", "W5", "W6", "W7"]
+      "invariants": ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"]
     },
     "cross": {
       "label": "Cross-domain bridge",
@@ -199,6 +199,16 @@
       "weight": 1.0,
       "kind": "layer_coverage",
       "min_ratio": 0.7
+    },
+    {
+      "id": "willow_w8_decoder_mismatch",
+      "domain": "willow",
+      "invariant": "W8",
+      "label": "Canonical reconstruction coverage (decoder mismatch)",
+      "weight": 1.0,
+      "kind": "decoder_mismatch",
+      "report": "recon-canonical.json",
+      "max_cost": 0.5
     },
     {
       "id": "cross_x1_theory_bridge",
