@@ -136,7 +136,7 @@ flowchart LR
 | W5 | Synthesis anchor preservation | `existing_synthesis` anchor count ≥ threshold |
 | W6 | Governance frame | Oakenscroll posole/gaps/Dual Commit scan passes |
 | W7 | Layer coverage | Fraction of Willow layers reporting `present` |
-| W8 | Canonical reconstruction coverage | Of canonical (non-benchmark) atoms, fraction traceable to a ledger entry (handoff / source-trail legs declared, not yet measured). See §8. |
+| W8 | Canonical ledger decision-coverage (partial proxy) | Of canonical (non-benchmark) atoms, fraction carrying a FRANK ledger decision-trace. **Not** full reconstructability: the full per-leg census finds ~100% reachable (see §8). Measures decision-provenance sparsity only. |
 
 **Failure modes (Willow):**
 
@@ -200,44 +200,57 @@ not when it **produces fluent commentary about them**.
 
 ---
 
-## 8. Reconstruction cost (W8 — decoder mismatch made measurable)
+## 8. Canonical coverage (W8 — and the correction that reframed it)
 
-§6 names *reconstruction cost* but originally measured it only as probe
-divergence + missing layer witnesses. W8 gives it a second, sharper instrument:
-**of the atoms Willow promotes to `canonical`, how many can it actually
-reconstruct?**
+§6 names *reconstruction cost* as probe divergence + missing layer witnesses.
+W8 began as a second instrument: **of the atoms Willow promotes to `canonical`,
+how many can it actually reconstruct?** It first measured only the FRANK ledger
+leg and reported cost ≈ 0.93 (`violated`), concluded "canonical knowledge is
+~97% untraceable," and shipped that conclusion (PR #371, KB atom C53FEBF8).
+
+**That conclusion was wrong, and the error is instructive.** Wiring the other
+support legs produced a full per-leg census of the 269 canonical (non-benchmark)
+atoms (2026-06-14):
+
+| Support leg | Coverage |
+| --- | --- |
+| FRANK ledger (`atoms_written`) | 20 — **7%** |
+| `content.source_id` (explicit origin) | 131 — **49%** |
+| handoff files | 32 — **12%** |
+| provenance edge-graph membership | 259 — **96%** |
+| **union of all legs** | **269 — 100% (cost 0.000)** |
+
+Canonical knowledge is **~100% reconstructable** through the 42,764-edge
+provenance graph plus explicit `source_id` origins. The ledger-only figure
+measured *decision-provenance sparsity* (~7%) and mislabelled it as
+*untraceability*. The instrument built to name decoder mismatch — a syntactic
+check asserting a false semantic conclusion — **was itself a decoder mismatch.**
+The lesson is logged, not buried.
+
+**Current honest definition.**
 
 \[
-\text{cost} = \frac{|\{c \in \mathcal{C} : \neg\,\text{supported}(c)\}|}{|\mathcal{C}|},
+\text{cost} = \frac{|\{c \in \mathcal{C} : \neg\,\text{ledger\_traced}(c)\}|}{|\mathcal{C}|},
 \quad
 \mathcal{C} = \{\text{canonical, non-benchmark atoms}\}
 \]
 
-\(\text{supported}(c)\) holds when \(c\)'s id is traceable through at least one
-reconstruction path: a FRANK ledger `atoms_written` reference (measured now), a
-handoff reference, or a source trail (both **declared but not yet measured** —
-so the reported cost is a *ledger-only upper bound*; true coverage can only be
-higher).
+W8 currently measures **ledger decision-coverage only** — a *partial proxy*, not
+reconstructability. `tier == canonical` is still the right population (the
+2026-06-14 census found `confidence`/`weight`/`tier` near-constant — ≈85% at
+confidence ≥ 0.95, 94.5% `frontier` — so only canonical discriminates).
 
-**Why canonical, why not confidence.** A 2026-06-14 KB census found stored
-`confidence`, `weight`, and `tier` near-constant across real atoms (≈85% of all
-atoms at confidence ≥ 0.95; 94.5% `frontier`), so none discriminate claim
-strength. Only `tier == canonical` partitions the KB (≈268 atoms). The decoder
-mismatch is therefore framed at the population Willow *itself* marks
-load-bearing: a canonical atom with no reconstruction path is the recipe
-asserted without the grandmother.
+**Three-state** (unchanged): witnessed (cost ≤ `max_cost`) / violated (cost >
+`max_cost`, substrate present) / pending (no canonical population — never
+violated for absent substrate). Under the ledger-only proxy W8 reads `violated`
+≈ 0.93, which is *honest about decision-lineage sparsity* but must not be read
+as a reconstructability verdict.
 
-**Three-state, not re-scored** (consistent with the witness layer):
-
-- **witnessed** — cost ≤ `max_cost` (most canonical knowledge is reconstructable).
-- **violated** — cost > `max_cost` (substrate present, predicate fails).
-- **pending** — no canonical population / no census (absent substrate, never violated).
-
-**Starts red, by design.** At introduction, ledger coverage of canonical atoms
-is ≈3%, so W8 reports `violated` with cost ≈ 0.7–1.0. This is not a regression —
-it is the instrument witnessing a true gap: *Willow grants canonical status far
-faster than it records provenance.* W8 is a coverage gauge that falls as ledger
-/ handoff indexing grows; the cost dropping is the work, one traced atom at a
-time.
+**Open redesign.** The genuine support definition is undecided. "Any edge" (96%)
+is too loose — it counts temporal `precedes` / structural `implements` links,
+not just origin. The candidate is `source_id` + ledger + **provenance-typed**
+edges (derives-from / supports / source), which would keep W8 discriminating
+without the ledger-only overclaim or the any-edge collapse. Until then W8 stays
+a labelled partial proxy.
 
 *ΔΣ=42*

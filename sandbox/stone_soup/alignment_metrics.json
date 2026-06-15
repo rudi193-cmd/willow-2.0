@@ -204,7 +204,7 @@
       "id": "willow_w8_decoder_mismatch",
       "domain": "willow",
       "invariant": "W8",
-      "label": "Canonical reconstruction coverage (decoder mismatch)",
+      "label": "Canonical ledger decision-coverage (partial reconstruction proxy)",
       "weight": 1.0,
       "kind": "decoder_mismatch",
       "report": "recon-canonical.json",
