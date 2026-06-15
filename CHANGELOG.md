@@ -6,6 +6,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2026.06.7] - 2026-06-15
+
+Reliability & observability release: a per-turn clock contract that ends the recurring local↔UTC date confusion, runtime skill-surface sync plus a CI drift guard, a scheduler for the W8 trust instrument, and the embed-backfill fix that removes the single largest source of Kart failures — all since `v2026.06.6`.
+
+### Added
+
+- **W8 census scheduler** — `scripts/w8_census_witness.py` plus `systemd/willow-w8-census.{service,timer}`: a weekly canonical-reconstruction census refreshes the saved report the evaluator reads and posts a Grove `#alerts` message when reconstruction cost exceeds 0.05. `setup.sh` now links `*.timer` units (the loop previously copied only `*.service`/`*.socket`). The trust instrument finally has a heartbeat (#381).
+- **Skill-surface drift guard** — `check_surfaces()` now compares every canonical skill body to `skill_text()` output on all four runtime surfaces; a new `surface-drift` CI job runs it on every PR (#380).
+- **Per-turn clock line** — `prompt_submit` emits a `[CLOCK]` line with the local↔UTC offset and an explicit "one-day gap is correct, not drift" note when the dates straddle midnight; documented in `boot.md`, and the UTC handoff-filename convention is marked intentional in `handoff_write.py` (#378).
+
+### Fixed
+
+- **Stale runtime skill surfaces** — the worktree skill and four others (boot, shutdown, grove-quorum, persistent-memory-stack) regenerated from canonical across `.claude`/`.codex`/`.cursor`/`.agents`; the host-side worktree-teardown (S18) fallback now actually reaches the loaded skills (#379, #380).
+- **Embed-backfill false failures** — `willow_embed_backfill` now exits 0 (clean no-op skip) instead of 1 when the Ollama embedder is unreachable. Run at startup where Ollama is often not yet up, this one job failed 268/274 times and accounted for ~36% of all Kart failures (#382).
+
 ## [2026.06.6] - 2026-06-10
 
 Audit-execution release: six of the eight SYSTEM_AUDIT_2026-06-10 action-plan PRs, the boot-order contract hardening, the upstream-tracker convergence fix, and two-way handoff notes since `v2026.06.5`.
