@@ -74,6 +74,15 @@
       "query": "deprecated failed iteration non-canon discard"
     },
     {
+      "id": "render_r1r3_clean_dirty_convergence",
+      "domain": "rendereason",
+      "invariant": "R1",
+      "label": "True clean/dirty convergence (rh_harness compare)",
+      "weight": 1.0,
+      "kind": "rh_compare_verdict",
+      "report": "rh-compare.json"
+    },
+    {
       "id": "bob_b1_source_present",
       "domain": "angrybob",
       "invariant": "B1",

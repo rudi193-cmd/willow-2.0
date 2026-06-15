@@ -11,6 +11,7 @@ from sandbox.stone_soup.adapters import IngredientResult
 from sandbox.stone_soup.willow_shim import kb_search
 
 METRICS_PATH = Path(__file__).resolve().parent / "alignment_metrics.json"
+_REPORTS_DIR = Path(__file__).resolve().parent / "reports"
 
 _HOME_PATH_RE = re.compile(r"(/home/[^\s]+|~[/\\][^\s]+)")
 
@@ -321,6 +322,65 @@ def _eval_provenance_complete(ctx: _MetricContext) -> _EvalResult:
     return passed, f"{complete}/{len(rows)} ingredients witnessed", signals
 
 
+def _shape_compare(verdict: dict[str, Any], *, source: str) -> _EvalResult:
+    status = str(verdict.get("status", "pending"))
+    runs_present = bool(verdict.get("runs_present"))
+    issues = list(verdict.get("issues", []))
+    signals = {
+        "compare_status": status,
+        "runs_present": runs_present,
+        "issues": issues[:4],
+        "source": source,
+    }
+    if status == "pending":
+        detail = "clean/dirty runs absent — R1/R3 convergence pending"
+    elif status == "pass":
+        detail = f"clean/dirty noise probes converge ({source})"
+    else:
+        detail = f"divergence: {len(issues)} noise probe(s) surfaced deprecated ({source})"
+    return status == "pass", detail, signals
+
+
+def _eval_rh_compare_verdict(ctx: _MetricContext) -> _EvalResult:
+    """R1/R3 true clean-vs-dirty convergence via sandbox.rh_harness.compare.
+
+    Default reads a saved structured report (rh-compare.json); set
+    ``run_live: true`` on the metric to invoke the live compare instead. An
+    absent/unreadable report or an unavailable harness yields pending — the
+    witness layer then marks it pending, never violated (Q4/Demon's Dividend).
+    """
+    metric = ctx.metric
+    if metric.get("run_live"):
+        try:
+            from sandbox.rh_harness.compare import compare_verdict
+            verdict = compare_verdict()
+        except (Exception, SystemExit) as exc:  # noqa: BLE001 — any failure = pending
+            return (
+                False,
+                f"rh compare live run failed ({type(exc).__name__})",
+                {"compare_status": "pending", "runs_present": False},
+            )
+        return _shape_compare(verdict, source="live")
+
+    rp = metric.get("report", "rh-compare.json")
+    report_path = Path(rp) if Path(rp).is_absolute() else _REPORTS_DIR / rp
+    if not report_path.is_file():
+        return (
+            False,
+            "no saved rh-compare report — R1/R3 convergence pending",
+            {"compare_status": "pending", "runs_present": False},
+        )
+    try:
+        verdict = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return (
+            False,
+            f"rh-compare report unreadable ({type(exc).__name__})",
+            {"compare_status": "pending", "runs_present": False},
+        )
+    return _shape_compare(verdict, source="report")
+
+
 def _eval_redaction_check(ctx: _MetricContext) -> _EvalResult:
     # Scan layer/handoff signals for absolute home paths in values we emit
     leaks: list[str] = []
@@ -349,6 +409,7 @@ _METRIC_EVALUATORS: dict[str, Any] = {
     "concept_count": _eval_concept_count,
     "provenance_complete": _eval_provenance_complete,
     "redaction_check": _eval_redaction_check,
+    "rh_compare_verdict": _eval_rh_compare_verdict,
 }
 
 
@@ -392,6 +453,10 @@ def _evidence_present(kind: str, ctx: _MetricContext, signals: dict[str, Any]) -
         return bool(res and res.structure.get("private_files"))
     if kind == "provenance_complete":
         return len(ctx.prov.get("classifications", [])) > 0
+    if kind == "rh_compare_verdict":
+        # Substrate = the clean/dirty runs actually had hits; the evaluator
+        # records that in signals.runs_present. Absent -> pending, not violated.
+        return bool(signals.get("runs_present"))
     # redaction_check and any unknown kind are always testable.
     return True
 

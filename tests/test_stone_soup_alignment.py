@@ -174,6 +174,43 @@ def test_pending_when_source_absent_violated_when_present():
     assert any(w["status"] == "pending" for w in alignment["witnesses"])
 
 
+def test_rh_compare_verdict_reads_saved_report(tmp_path):
+    import json
+
+    report = tmp_path / "rh-compare.json"
+    cfg = {
+        "verdict_bands": {"aligned": 0.75, "partial": 0.45},
+        "domains": {"rendereason": {"label": "R", "invariants": ["R1"]}},
+        "metrics": [
+            {
+                "id": "r1_conv",
+                "domain": "rendereason",
+                "invariant": "R1",
+                "label": "True clean/dirty convergence",
+                "weight": 1.0,
+                "kind": "rh_compare_verdict",
+                "report": str(report),
+            }
+        ],
+    }
+
+    def status():
+        al = evaluate_alignment(
+            raw={}, layers=_minimal_layers(), disc={"signals": {}},
+            gov={}, prov={"classifications": []}, config=cfg,
+        )
+        return al["witnesses"][0]["status"]
+
+    # No saved report → pending (substrate absent), never violated.
+    assert status() == "pending"
+    # Divergence verdict (warn) → violated.
+    report.write_text(json.dumps({"status": "warn", "issues": ["dead_ends: x"], "runs_present": True}))
+    assert status() == "violated"
+    # Convergence verdict (pass) → witnessed.
+    report.write_text(json.dumps({"status": "pass", "issues": [], "runs_present": True}))
+    assert status() == "witnessed"
+
+
 def test_render_human_synthesis_includes_headline():
     alignment = evaluate_alignment(
         raw=_minimal_raw(),
