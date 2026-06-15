@@ -108,6 +108,42 @@ def test_evaluate_alignment_scores_and_verdict():
     assert "domains" in alignment
 
 
+def test_invariant_witnesses_mirror_metrics_without_changing_score():
+    inputs = dict(
+        raw=_minimal_raw(),
+        layers=_minimal_layers(),
+        disc={"signals": {"deprecated_suppression": "unknown_without_compare_run"}},
+        gov={"verdict": "frame_present", "pass_ratio": 0.75},
+        prov={
+            "classifications": [
+                {"has_kb_signal": True, "has_local_structure": True},
+                {"has_kb_signal": True, "has_local_structure": True},
+            ]
+        },
+    )
+    alignment = evaluate_alignment(**inputs)
+
+    # One witness per metric, no metric dropped.
+    assert len(alignment["witnesses"]) == len(alignment["metrics"])
+
+    # Witnessed mirrors passed exactly — witness layer is a view, not a re-score.
+    for m in alignment["metrics"]:
+        match = [w for w in alignment["witnesses"] if w["label"] == m["label"]]
+        assert match and match[0]["witnessed"] == m["passed"]
+
+    # Every witness carries a projection Φ and a valid status.
+    for w in alignment["witnesses"]:
+        assert w["projection"].startswith("Φ_")  # Φ_
+        assert w["status"] in {"witnessed", "absent"}
+
+    # Summary weight-coverage stays within bounds and sums consistently.
+    summary = alignment["witness_summary"]
+    assert summary
+    for proj, slot in summary.items():
+        assert 0.0 <= slot["coverage"] <= 1.0
+        assert slot["witnessed"] + slot["absent"] == slot["total"]
+
+
 def test_render_human_synthesis_includes_headline():
     alignment = evaluate_alignment(
         raw=_minimal_raw(),

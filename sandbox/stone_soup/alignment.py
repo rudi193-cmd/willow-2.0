@@ -390,6 +390,98 @@ def _evaluate_metric(
     )
 
 
+# Projection maps Φ (alignment_calculus.md §5) — which map carries each
+# domain's invariants into the shared claim/process graph 𝒢.
+_PROJECTION = {
+    "rendereason": "Φ_render",
+    "angrybob": "Φ_bob",
+    "willow": "Φ_willow",
+    "cross": "Φ_soup",
+}
+
+
+@dataclass
+class InvariantWitness:
+    """One metric reframed as evidence for an invariant predicate I ∈ 𝓘.
+
+    The alignment calculus (alignment_calculus.md §1) measures alignment as
+    I(v) ⇒ I(π(v)): an invariant that holds in a source domain must survive
+    its projection π into the shared graph 𝒢. Each metric is the measurable
+    proxy for one such invariant; an InvariantWitness records whether that
+    invariant was *witnessed* under its projection Φ, plus the evidence that
+    did the witnessing. Score is unaffected — this is the structured view of
+    the same pass/fail the metric already produced.
+    """
+
+    invariant: str           # R1..R5 | B1..B5 | W1..W7 | X1..X3
+    domain: str              # rendereason | angrybob | willow | cross
+    projection: str          # Φ map carrying the invariant into 𝒢
+    label: str
+    weight: float
+    witnessed: bool          # invariant holds under projection (== metric passed)
+    proxy: str               # how it was measured (metric detail)
+    evidence: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def status(self) -> str:
+        return "witnessed" if self.witnessed else "absent"
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "invariant": self.invariant,
+            "domain": self.domain,
+            "projection": self.projection,
+            "label": self.label,
+            "weight": self.weight,
+            "witnessed": self.witnessed,
+            "status": self.status,
+            "proxy": self.proxy,
+            "evidence": self.evidence,
+        }
+
+
+def _witness_from_metric(result: MetricResult) -> InvariantWitness:
+    return InvariantWitness(
+        invariant=result.invariant or result.id,
+        domain=result.domain,
+        projection=_PROJECTION.get(result.domain, "Φ_soup"),
+        label=result.label,
+        weight=result.weight,
+        witnessed=result.passed,
+        proxy=result.detail,
+        evidence=result.signals,
+    )
+
+
+def _witness_summary(witnesses: list[InvariantWitness]) -> dict[str, Any]:
+    """Aggregate witnesses by projection Φ — weight-coverage per map."""
+    by_proj: dict[str, dict[str, Any]] = {}
+    for w in witnesses:
+        slot = by_proj.setdefault(
+            w.projection,
+            {
+                "witnessed": 0,
+                "absent": 0,
+                "total": 0,
+                "weight_witnessed": 0.0,
+                "weight_total": 0.0,
+            },
+        )
+        slot["total"] += 1
+        slot["weight_total"] += w.weight
+        if w.witnessed:
+            slot["witnessed"] += 1
+            slot["weight_witnessed"] += w.weight
+        else:
+            slot["absent"] += 1
+    for slot in by_proj.values():
+        wt = slot["weight_total"] or 1.0
+        slot["coverage"] = round(slot["weight_witnessed"] / wt, 3)
+        slot["weight_witnessed"] = round(slot["weight_witnessed"], 3)
+        slot["weight_total"] = round(slot["weight_total"], 3)
+    return by_proj
+
+
 def evaluate_alignment(
     *,
     raw: dict[str, IngredientResult],
@@ -449,6 +541,8 @@ def evaluate_alignment(
         if not r.passed
     ]
 
+    witnesses = [_witness_from_metric(r) for r in results]
+
     return {
         "stage": "alignment",
         "score": score,
@@ -469,6 +563,8 @@ def evaluate_alignment(
             for r in results
         ],
         "failures": failures,
+        "witnesses": [w.as_dict() for w in witnesses],
+        "witness_summary": _witness_summary(witnesses),
     }
 
 
