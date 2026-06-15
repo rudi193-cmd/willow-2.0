@@ -190,3 +190,17 @@ def test_render_human_synthesis_includes_headline():
     assert human["headline"]
     assert human["overall_verdict"] == alignment["verdict"]
     assert any("test observation" in line for line in human["what_aligns"])
+
+    # Witness three-state surfaces in the human report.
+    assert "projection_coverage" in human
+    assert human["projection_coverage"]  # one line per Φ map
+    assert all("witnessed" in line for line in human["projection_coverage"])
+    assert human["violated_count"] == sum(
+        1 for w in alignment["witnesses"] if w["status"] == "violated"
+    )
+    assert human["pending_count"] == sum(
+        1 for w in alignment["witnesses"] if w["status"] == "pending"
+    )
+    # A violated invariant reads as 'violated' in the gaps, not lumped with pending.
+    if human["violated_count"]:
+        assert any("violated" in g for g in human["gaps"])

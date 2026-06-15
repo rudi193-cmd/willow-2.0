@@ -636,6 +636,8 @@ def render_human_synthesis(alignment: dict[str, Any], syn: dict[str, Any]) -> di
     verdict = alignment.get("verdict", "unknown")
     domains = alignment.get("domains", {})
     failures = alignment.get("failures", [])
+    witnesses = alignment.get("witnesses", [])
+    witness_summary = alignment.get("witness_summary", {})
 
     what_lines: list[str] = []
     gap_lines: list[str] = []
@@ -662,8 +664,23 @@ def render_human_synthesis(alignment: dict[str, Any], syn: dict[str, Any]) -> di
     for obs in syn.get("observations", [])[:6]:
         what_lines.append(obs)
 
-    for fail in failures[:8]:
-        gap_lines.append(f"`{fail['invariant']}` ({fail['id']}): {fail['detail']}")
+    # Gaps speak the three-state language: violated (real misalignment, fix it)
+    # vs pending (no substrate yet, supply a source). Falls back to flat
+    # failures if an older alignment dict carries no witnesses.
+    violated = [w for w in witnesses if w.get("status") == "violated"]
+    pending = [w for w in witnesses if w.get("status") == "pending"]
+    if witnesses:
+        for w in violated[:8]:
+            gap_lines.append(
+                f"`{w['invariant']}` **violated** ({w['projection']}): {w['proxy']}"
+            )
+        for w in pending[:8]:
+            gap_lines.append(
+                f"`{w['invariant']}` *pending* ({w['projection']}): no substrate yet — {w['proxy']}"
+            )
+    else:
+        for fail in failures[:8]:
+            gap_lines.append(f"`{fail['invariant']}` ({fail['id']}): {fail['detail']}")
 
     for item in syn.get("follow_ups", [])[:4]:
         next_lines.append(item)
@@ -692,6 +709,18 @@ def render_human_synthesis(alignment: dict[str, Any], syn: dict[str, Any]) -> di
             "Re-run alignment after any angrybob DB extract or rh-dirty ingest.",
         ]
     )
+    if pending:
+        next_lines.append(
+            f"{len(pending)} invariant(s) pending — supply the absent source "
+            "(rh-dirty ingest / angrybob extract) so they can be witnessed."
+        )
+
+    # Per-projection coverage, one line per Φ map (calculus §5).
+    coverage_lines = [
+        f"{proj}: {slot['coverage']:.0%} witnessed ({slot['witnessed']}/{slot['total']}; "
+        f"{slot['violated']} violated, {slot['pending']} pending)"
+        for proj, slot in witness_summary.items()
+    ]
 
     return {
         "stage": "human_synthesis",
@@ -701,8 +730,13 @@ def render_human_synthesis(alignment: dict[str, Any], syn: dict[str, Any]) -> di
         "what_aligns": what_lines,
         "gaps": gap_lines,
         "next_steps": next_lines,
+        "projection_coverage": coverage_lines,
+        "violated_count": len(violated),
+        "pending_count": len(pending),
         "framing": (
             "Alignment is invariant preservation under projection, not fluent commentary. "
+            "Gaps are split: violated = substrate present but predicate fails; "
+            "pending = no substrate yet (absence never inflates the score). "
             "See alignment_calculus.md for objects, maps, and failure modes."
         ),
     }
