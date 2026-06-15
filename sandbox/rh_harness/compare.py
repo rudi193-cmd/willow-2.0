@@ -16,8 +16,10 @@ Probe queries are chosen to exercise:
 """
 from __future__ import annotations
 
+import json
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 
 PROBE_QUERIES = [
     {
@@ -114,7 +116,51 @@ def _verdict(clean: dict, dirty: dict) -> str:
     return "**WARN** — dirty run diverges on noise probes:\n" + "\n".join(issues)
 
 
+def compare_verdict() -> dict:
+    """Structured verdict over the noise-check probes, for programmatic callers
+    (e.g. stone_soup alignment's rh_compare_verdict metric).
+
+    Returns {status, issues, runs_present, probes_checked}. status is:
+      - "pending": neither run has indexed hits (clean/dirty not ingested yet)
+      - "pass":    dirty top-3 surfaces no deprecated noise the clean run lacks
+      - "warn":    dirty run promotes deprecated material (R1/R3 divergence)
+    """
+    clean = {r.query_id: r for r in fetch_results("clean")}
+    dirty = {r.query_id: r for r in fetch_results("dirty")}
+    noise_probes = [p for p in PROBE_QUERIES if p["flag"] == "noise_check"]
+    total_hits = sum(len(r.hits) for r in clean.values()) + sum(
+        len(r.hits) for r in dirty.values()
+    )
+    if total_hits == 0:
+        return {"status": "pending", "issues": [], "runs_present": False,
+                "probes_checked": len(noise_probes)}
+
+    issues: list[str] = []
+    for probe in noise_probes:
+        c_titles = {h["title"] for h in clean[probe["id"]].hits[:3]}
+        for title in [h["title"] for h in dirty[probe["id"]].hits[:3]]:
+            if title not in c_titles and "deprecated" in title.lower():
+                issues.append(f"{probe['id']}: {title}")
+    return {"status": "pass" if not issues else "warn", "issues": issues,
+            "runs_present": True, "probes_checked": len(noise_probes)}
+
+
+def write_verdict_json(path: str) -> dict:
+    """Run compare_verdict() and persist it as JSON for later (offline) reads."""
+    verdict = compare_verdict()
+    out = Path(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(verdict, indent=2), encoding="utf-8")
+    return verdict
+
+
 def main() -> None:
+    args = sys.argv[1:]
+    if "--json" in args:
+        path = args[args.index("--json") + 1]
+        verdict = write_verdict_json(path)
+        print(f"Wrote structured verdict to {path}: {verdict['status']}", file=sys.stderr)
+        return
     print("Fetching clean run results...", file=sys.stderr)
     clean = fetch_results("clean")
     print("Fetching dirty run results...", file=sys.stderr)
