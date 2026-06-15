@@ -64,24 +64,15 @@ def _fleet_db_paths(names: list[str]) -> dict[str, Path]:
 
 def _candidate_private_roots() -> list[Path]:
     """Likely private intake roots, de-duped and kept out of tracked output."""
-    try:
-        from willow.fylgja.willow_home import willow_home, willow_home_alias
+    from willow.fylgja.willow_home import willow_home, willow_home_alias
 
-        roots = [
-            willow_home(_REPO),
-            willow_home_alias(),
-            Path.home() / "Desktop" / "Nest",
-            Path.home() / "Documents" / "rh-research",
-            Path.home() / "Downloads",
-        ]
-    except Exception:
-        roots = [
-            Path.home() / "github" / ".willow",
-            Path.home() / ".willow",
-            Path.home() / "Desktop" / "Nest",
-            Path.home() / "Documents" / "rh-research",
-            Path.home() / "Downloads",
-        ]
+    roots = [
+        willow_home(_REPO),
+        willow_home_alias(),
+        Path.home() / "Desktop" / "Nest",
+        Path.home() / "Documents" / "rh-research",
+        Path.home() / "Downloads",
+    ]
 
     out: list[Path] = []
     seen: set[Path] = set()

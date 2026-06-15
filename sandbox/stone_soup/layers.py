@@ -65,12 +65,9 @@ def _pg_rows(sql: str, params: tuple[Any, ...] = (), limit: int = 5) -> list[dic
 
 
 def _willow_home() -> Path:
-    try:
-        from willow.fylgja.willow_home import willow_home
+    from willow.fylgja.willow_home import willow_home
 
-        return willow_home(_REPO)
-    except Exception:
-        return Path.home() / "github" / ".willow"
+    return willow_home(_REPO)
 
 
 def _layer_kb(limit: int) -> dict[str, Any]:
