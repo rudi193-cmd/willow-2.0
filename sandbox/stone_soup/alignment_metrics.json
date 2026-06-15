@@ -143,7 +143,7 @@
       "id": "willow_w2_jeles_lane",
       "domain": "willow",
       "invariant": "W2",
-      "label": "Jeles pattern/instance lane",
+      "label": "Jeles substrate present (live atom count)",
       "weight": 0.9,
       "kind": "layer_signal",
       "layer": "jeles",

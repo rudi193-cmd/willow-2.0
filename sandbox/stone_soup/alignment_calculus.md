@@ -130,7 +130,7 @@ flowchart LR
 | ID | Invariant | Measurable proxy |
 | --- | --- | --- |
 | W1 | Live KB substrate | `live_atoms > 0`, top projects resolvable |
-| W2 | Jeles pattern/instance lane | `jeles_atoms` count and recent metadata |
+| W2 | Jeles substrate present (live atom count) | `jeles_atoms` live count. **Caveat:** the pattern/instance boundary is *not yet witnessable* — no `jeles_atoms` field encodes it. `depth` is a surface/considered/deep axis (uniformly 1 in practice), not a pattern/instance marker; a true boundary test needs a schema signal (a `kind` column or reserved tag). Until then W2 only witnesses that the lane is populated. |
 | W3 | Tamper-evident ledger | `frank_ledger` entries present |
 | W4 | Handoff continuity | Latest handoff files resolvable |
 | W5 | Synthesis anchor preservation | `existing_synthesis` anchor count ≥ threshold |
