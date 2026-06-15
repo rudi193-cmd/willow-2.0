@@ -24,6 +24,7 @@ root `../willow.md` as an agent.
 | CLI + provider agnostic inference | [`RUNTIME_AND_INFERENCE.md`](RUNTIME_AND_INFERENCE.md) |
 | Branding (b17, b20, voice) | [`BRANDING.md`](BRANDING.md) |
 | Beta gate / ops | [`BETA_AUDIT_REPORT.md`](BETA_AUDIT_REPORT.md) |
+| Scheduled jobs / fleet timers | [`SCHEDULED_JOBS.md`](SCHEDULED_JOBS.md) — metabolic (nightly), W8 census (weekly), repo sweep |
 | MCP tool profiles (reduce picker noise) | [`MCP_TOOL_PROFILES.md`](MCP_TOOL_PROFILES.md) |
 
 ---

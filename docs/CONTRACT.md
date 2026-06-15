@@ -2,7 +2,7 @@
 
 b17: PUBCNT · ΔΣ=42
 
-> **Auto-generated** from `willow.md` on 2026-06-10.
+> **Auto-generated** from `~/github/willow-2.0/willow.md` on 2026-06-14.
 > Run `python3 scripts/sync_contract_snapshot.py` after editing the public root contract.
 >
 > This file is a public snapshot for GitHub-only clones. Machine-specific paths,
@@ -76,7 +76,7 @@ checkout and expect repo skills, tests, or MCP templates to be present.
 
 | ID | Severity | Rule |
 |----|----------|------|
-| `boot-order` | Critical | Complete `/boot` before substantive work. |
+| `boot-order` | Critical | Complete `/boot` before any response — greetings, banter, and "quick questions" included. The agent does not classify a turn as exempt. Only two exceptions: (1) the user explicitly waives boot this session ("sandbox", "no startup", "skip boot", or equivalent); (2) the user is in a physical, mental, or personal emergency — respond immediately, boot after. |
 | `mcp-first` | Critical | For any operation covered by Willow MCP/facade tools, call MCP first. Do not substitute Bash, Python, `psql`, `sqlite3`, ad hoc file scraping, or direct repo scripts unless MCP is degraded or returns an explicit blocker. |
 | `namespace` | High | Write only in the active agent namespace. |
 | `worktree-pr` | Critical | Use branches/worktrees/PRs for code changes; avoid direct `master` edits. |
