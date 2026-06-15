@@ -672,6 +672,20 @@ def run_shell_result_for_task(cmd: str, *, timeout: int = 120, allow_net: bool =
         result["sandbox_setup"] = raw["sandbox_setup"]
     if raw.get("error"):
         result["error"] = raw["error"]
+    # Uniform error capture: every failed task carries a non-empty, human-readable
+    # `error`. A command that fails by exit code with empty stderr (e.g. grep
+    # no-match, a silent non-zero step in an `&&` chain) would otherwise leave the
+    # failure causeless and untriageable. Full stdout/stderr stay in their fields.
+    if status == "failed" and not result.get("error"):
+        rc = result["returncode"]
+        last_err = result["stderr"].splitlines()[-1].strip() if result["stderr"] else ""
+        last_out = result["stdout"].splitlines()[-1].strip() if result["stdout"] else ""
+        if last_err:
+            result["error"] = last_err[:200]
+        elif last_out:
+            result["error"] = f"exited {rc}: {last_out[:180]}"
+        else:
+            result["error"] = f"exited {rc} with no output"
     # KP7/S10: unclipped output rides along under private keys so the task-level
     # caller (which knows the task_id) can write a durable log artifact. Popped
     # by execute_task_row before the result reaches task_complete.
