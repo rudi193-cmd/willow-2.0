@@ -298,6 +298,11 @@ print(json.dumps({
         WILLOW_PG_DB="${WILLOW_PG_DB}" exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/core/metabolic.py"
         ;;
 
+    w8-census)
+        echo "Willow 2.0 — W8 canonical reconstruction census witness"
+        WILLOW_PG_DB="${WILLOW_PG_DB}" exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/scripts/w8_census_witness.py"
+        ;;
+
     kart-worker)
         echo "Willow 2.0 — starting Kart worker"
         exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/scripts/run_kart.py"
@@ -967,7 +972,7 @@ else:
         ;;
 
     *)
-        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|agents [list|active <id>|install <id>|check]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
+        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|agents [list|active <id>|install <id>|check]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|w8-census|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
         exit 1
         ;;
 esac
