@@ -384,16 +384,15 @@ def _eval_rh_compare_verdict(ctx: _MetricContext) -> _EvalResult:
 def _shape_reconstruction(
     recon: dict[str, Any] | None, metric: dict[str, Any]
 ) -> _EvalResult:
-    """Turn a canonical-coverage census into a pass/detail/signals triple.
+    """Turn a canonical-reconstruction census into a pass/detail/signals triple.
 
-    cost = uncovered / total over the canonical population, where "covered"
-    currently means **ledger decision-trace only** — NOT full reconstructability.
-    A 2026-06-14 per-leg census found canonical atoms ~96% reachable via the
-    provenance edge graph and ~100% via the union of all legs; ledger coverage
-    alone is ~7%. So this metric measures decision-provenance sparsity, a
-    *partial proxy*. The "any edge" signal (96%) is too loose to discriminate;
-    the genuine support definition is still under redesign (see §8). An absent
-    or empty population yields pending (never violated for a missing substrate).
+    cost = unreconstructable / total over the canonical population. "Supported"
+    means traceable to origin via any of three genuine provenance legs —
+    ledger ∪ source_id ∪ provenance-typed edges (see run.canonical_reconstruction_
+    census / §8). Loose relates_to/part_of/precedes links are excluded: a
+    2026-06-14 census showed "any edge" covers ~96% (too loose), while genuine
+    provenance lands at ~81% union (cost ≈ 0.19) — discriminating. An absent or
+    empty population yields pending (never violated for a missing substrate).
     """
     total = int((recon or {}).get("canonical_total", 0) or 0)
     if not recon or total <= 0:
@@ -418,22 +417,25 @@ def _shape_reconstruction(
         "by_support": recon.get("by_support", {}),
     }
     detail = (
-        f"{supported}/{total} canonical atoms ledger-traced "
-        f"(decision-coverage cost {cost:.0%}, need ≤{max_cost:.0%}; "
-        f"NOT full reconstructability — see §8)"
+        f"{supported}/{total} canonical atoms reconstructable via "
+        f"ledger ∪ source_id ∪ provenance edges "
+        f"(cost {cost:.0%}, need ≤{max_cost:.0%})"
     )
     return passed, detail, signals
 
 
 def _eval_decoder_mismatch(ctx: _MetricContext) -> _EvalResult:
-    """W8 canonical decision-coverage (partial reconstruction proxy): of the
-    atoms Willow promotes to *canonical*, how many carry a FRANK ledger
-    decision-trace? Originally framed as full reconstructability — corrected:
-    a per-leg census (2026-06-14) showed canonical atoms are ~96% reachable via
-    the provenance edge graph and ~100% via the union of legs, so ledger
-    coverage (~7%) measures decision-provenance sparsity, not "untraceable."
-    The genuine support definition (which legs / edge relations count) is under
-    redesign; "any edge" at 96% is too loose to discriminate.
+    """W8 canonical reconstruction coverage: of the atoms Willow promotes to
+    *canonical*, how many are traceable to origin via a genuine provenance leg —
+    FRANK ledger ∪ explicit content.source_id ∪ provenance-typed edges
+    (references/summarizes/documents/derives_from/…)? An atom with none is a
+    decoder mismatch: asserted as load-bearing, yet its origin can't be
+    recovered.
+
+    History (logged, not buried): the first cut measured ledger-only and wrongly
+    reported ~97% untraceable; the next over-corrected via "any edge" (~96%,
+    non-discriminating). The genuine three-leg definition lands at ~81% union
+    (cost ≈ 0.19) — a real, discriminating gauge. See §8.
 
     Source of the census mirrors rh_compare_verdict: live (``run_live: true``)
     or a saved structured report (``report``). Absent report / unavailable
