@@ -27,6 +27,13 @@ INGREDIENTS_PATH = Path(__file__).resolve().parent / "ingredients.json"
 REPORTS_DIR = Path(__file__).resolve().parent / "reports"
 
 
+def _json_default(value: Any) -> str:
+    """Serialize live DB values that can appear in --json output."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value)
+
+
 def _noise_suppression_signal() -> str | bool:
     """Live rh-dirty noise probe — no clean/dirty tag ingest required."""
     try:
@@ -506,6 +513,18 @@ def run_pipeline(*, limit: int, app_id: str) -> tuple[list[dict[str, Any]], dict
     config = load_config()
     ingredients = config["ingredients"]
 
+    # Refresh W8 before ingredient retrieval. Retrieval can degrade the shared
+    # PgBridge circuit; W8 should still evaluate from the freshest report the
+    # run can obtain, not become pending because an earlier ingredient was noisy.
+    try:
+        recon = canonical_reconstruction_census(app_id=app_id)
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        (REPORTS_DIR / "recon-canonical.json").write_text(
+            json.dumps(recon, indent=2), encoding="utf-8"
+        )
+    except Exception as exc:  # noqa: BLE001 — any failure leaves W8 pending
+        print(f"[stone_soup] reconstruction census skipped: {exc}", file=sys.stderr)
+
     kb_stage = stage_kb_retrieval(ingredients, limit=limit)
     raw: dict[str, IngredientResult] = kb_stage.pop("_raw")
 
@@ -528,16 +547,6 @@ def run_pipeline(*, limit: int, app_id: str) -> tuple[list[dict[str, Any]], dict
         }
 
     prov = stage_provenance(raw)
-    # Refresh the W8 canonical-reconstruction census so the decoder_mismatch
-    # metric reads a current saved report. Best-effort: DB down -> metric pending.
-    try:
-        recon = canonical_reconstruction_census(app_id=app_id)
-        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-        (REPORTS_DIR / "recon-canonical.json").write_text(
-            json.dumps(recon, indent=2), encoding="utf-8"
-        )
-    except Exception as exc:  # noqa: BLE001 — any failure leaves W8 pending
-        print(f"[stone_soup] reconstruction census skipped: {exc}", file=sys.stderr)
     layers = collect_layers(config.get("willow_layers", []), limit=limit)
     disc = stage_discernment(raw, config)
     gov = stage_governance(raw)
@@ -574,7 +583,7 @@ def main() -> int:
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
 
     if args.json:
-        print(json.dumps({"generated_at": ts, "stages": stages}, indent=2))
+        print(json.dumps({"generated_at": ts, "stages": stages}, indent=2, default=_json_default))
         return 0
 
     md = render_markdown(stages, generated_at=ts)

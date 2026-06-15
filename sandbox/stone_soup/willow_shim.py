@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,17 @@ if str(_REPO) not in sys.path:
 APP_ID = "willow"
 
 
+def _semantic_allowed(semantic: bool) -> bool:
+    if not semantic:
+        return False
+    # Kart's default sandbox intentionally has no network; localhost Ollama
+    # embedding cannot work there. Use keyword search instead of producing
+    # repeated connection/circuit-breaker noise.
+    if os.environ.get("WILLOW_IN_KART") == "1" and os.environ.get("WILLOW_KART_ALLOW_NET") != "1":
+        return False
+    return True
+
+
 def kb_search(
     query: str,
     *,
@@ -22,11 +34,12 @@ def kb_search(
     project: str = "",
 ) -> list[dict[str, Any]]:
     """Hybrid KB search via Willow MCP, with PgBridge fallback."""
+    use_semantic = _semantic_allowed(semantic)
     args: dict[str, Any] = {
         "app_id": app_id,
         "query": query,
         "limit": limit,
-        "semantic": semantic,
+        "semantic": use_semantic,
     }
     hits: list[dict[str, Any]] = []
     try:
@@ -41,7 +54,7 @@ def kb_search(
         print(f"[stone_soup] kb_search MCP unavailable: {exc}", file=sys.stderr)
 
     if not hits:
-        hits = _kb_search_pg(query, limit=limit, semantic=semantic, project=project)
+        hits = _kb_search_pg(query, limit=limit, semantic=use_semantic, project=project)
     elif project:
         filtered = [h for h in hits if h.get("project") == project]
         if filtered:
@@ -60,12 +73,20 @@ def _kb_search_pg(
         from core.pg_bridge import PgBridge
 
         pg = PgBridge()
-        if semantic:
-            rows = pg.knowledge_search_semantic(
-                query, limit=limit, project=project or None
-            )
-        else:
-            rows = pg.knowledge_search(query, limit=limit, project=project or None)
+        try:
+            if semantic:
+                rows = pg.knowledge_search_semantic(
+                    query, limit=limit, project=project or None
+                )
+            else:
+                rows = pg.knowledge_search(query, limit=limit, project=project or None)
+        except Exception as exc:
+            from core.pg_bridge import EmbedDegradedError
+
+            if semantic and isinstance(exc, EmbedDegradedError):
+                rows = pg.knowledge_search(query, limit=limit, project=project or None)
+            else:
+                raise
         return rows if isinstance(rows, list) else []
     except Exception as exc:
         print(f"[stone_soup] kb_search PgBridge fallback failed: {exc}", file=sys.stderr)

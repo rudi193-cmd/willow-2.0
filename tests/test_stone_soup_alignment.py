@@ -1,12 +1,17 @@
 """Tests for stone_soup alignment calculus (no live DB required)."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
+import json
+
 from sandbox.stone_soup.adapters import IngredientResult
 from sandbox.stone_soup.alignment import (
     evaluate_alignment,
     load_metrics_config,
     render_human_synthesis,
 )
+from sandbox.stone_soup.run import _json_default
+from sandbox.stone_soup.willow_shim import _semantic_allowed
 
 
 def _minimal_raw() -> dict[str, IngredientResult]:
@@ -87,6 +92,42 @@ def test_load_metrics_config_has_domains():
     assert "rendereason" in cfg["domains"]
     assert "angrybob" in cfg["domains"]
     assert "willow" in cfg["domains"]
+
+
+def test_stone_soup_json_output_serializes_live_datetimes():
+    payload = {
+        "stages": [
+            {
+                "stage": "willow_layers",
+                "layers": [
+                    {
+                        "id": "ledger",
+                        "signals": {
+                            "recent": [
+                                {
+                                    "id": "entry",
+                                    "created_at": datetime(2026, 6, 14, tzinfo=timezone.utc),
+                                }
+                            ]
+                        },
+                    }
+                ],
+            }
+        ]
+    }
+
+    rendered = json.dumps(payload, default=_json_default)
+    assert "2026-06-14T00:00:00+00:00" in rendered
+
+
+def test_stone_soup_disables_semantic_search_in_no_net_kart(monkeypatch):
+    monkeypatch.setenv("WILLOW_IN_KART", "1")
+    monkeypatch.setenv("WILLOW_KART_ALLOW_NET", "0")
+    assert _semantic_allowed(True) is False
+
+    monkeypatch.setenv("WILLOW_KART_ALLOW_NET", "1")
+    assert _semantic_allowed(True) is True
+    assert _semantic_allowed(False) is False
 
 
 def test_evaluate_alignment_scores_and_verdict():
