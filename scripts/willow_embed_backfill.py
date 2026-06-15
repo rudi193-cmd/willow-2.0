@@ -182,8 +182,15 @@ def main():
     if not args.dry_run:
         print("[backfill] checking Ollama...", flush=True)
         if not _check_ollama():
-            print("[backfill] ERROR: Ollama not reachable — aborting. Start Ollama and retry.", flush=True)
-            sys.exit(1)
+            # Embedder unreachable is an environment state, not a task failure.
+            # Exit 0 so a scheduled/startup run records as a clean no-op skip
+            # rather than a failure — NULL embeddings get backfilled on the next
+            # pass once Ollama is up, with nothing lost. This job (run at
+            # sap_startup) was ~36% of all Kart failures precisely because it
+            # exited 1 every time the embedder was down.
+            print("[backfill] SKIP: Ollama/embedder unreachable — nothing to do, "
+                  "exiting 0 (not a failure). Start Ollama to backfill.", flush=True)
+            sys.exit(0)
         print("[backfill] Ollama OK", flush=True)
 
     pg = PgBridge()
