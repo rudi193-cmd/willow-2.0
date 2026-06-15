@@ -381,6 +381,87 @@ def _eval_rh_compare_verdict(ctx: _MetricContext) -> _EvalResult:
     return _shape_compare(verdict, source="report")
 
 
+def _shape_reconstruction(
+    recon: dict[str, Any] | None, metric: dict[str, Any]
+) -> _EvalResult:
+    """Turn a canonical-reconstruction census into a pass/detail/signals triple.
+
+    cost = unsupported / total over the canonical population. An absent or
+    empty population yields pending (the witness layer never marks it violated
+    for a missing substrate — Q4/Demon's Dividend).
+    """
+    total = int((recon or {}).get("canonical_total", 0) or 0)
+    if not recon or total <= 0:
+        return (
+            False,
+            "no canonical atoms to test — reconstruction pending",
+            {"recon_status": "pending", "canonical_total": 0, "runs_present": False},
+        )
+    supported = int(recon.get("supported", 0) or 0)
+    unsupported = max(total - supported, 0)
+    cost = round(unsupported / total, 3)
+    max_cost = float(metric.get("max_cost", 0.5))
+    passed = cost <= max_cost
+    signals = {
+        "recon_status": "measured",
+        "runs_present": True,
+        "canonical_total": total,
+        "supported": supported,
+        "unsupported": unsupported,
+        "reconstruction_cost": cost,
+        "max_cost": max_cost,
+        "by_support": recon.get("by_support", {}),
+    }
+    detail = (
+        f"{supported}/{total} canonical atoms reconstructable "
+        f"(cost {cost:.0%}, need ≤{max_cost:.0%})"
+    )
+    return passed, detail, signals
+
+
+def _eval_decoder_mismatch(ctx: _MetricContext) -> _EvalResult:
+    """W8 reconstruction cost: of the atoms Willow promotes to *canonical*, how
+    many can it actually reconstruct — trace to a ledger entry (and, in future,
+    a handoff or source trail)? A canonical atom with no trace is a decoder
+    mismatch: the recipe (atom) is asserted as load-bearing, but its generative
+    provenance cannot be recovered.
+
+    Source of the census mirrors rh_compare_verdict: live (``run_live: true``)
+    or a saved structured report (``report``). Absent report / unavailable
+    census / empty canonical population all yield pending, never violated.
+    """
+    metric = ctx.metric
+    if metric.get("run_live"):
+        try:
+            from sandbox.stone_soup.run import canonical_reconstruction_census
+            recon = canonical_reconstruction_census()
+        except (Exception, SystemExit) as exc:  # noqa: BLE001 — any failure = pending
+            return (
+                False,
+                f"reconstruction census live run failed ({type(exc).__name__})",
+                {"recon_status": "pending", "canonical_total": 0, "runs_present": False},
+            )
+        return _shape_reconstruction(recon, metric)
+
+    rp = metric.get("report", "recon-canonical.json")
+    report_path = Path(rp) if Path(rp).is_absolute() else _REPORTS_DIR / rp
+    if not report_path.is_file():
+        return (
+            False,
+            "no saved reconstruction census — canonical coverage pending",
+            {"recon_status": "pending", "canonical_total": 0, "runs_present": False},
+        )
+    try:
+        recon = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return (
+            False,
+            f"reconstruction report unreadable ({type(exc).__name__})",
+            {"recon_status": "pending", "canonical_total": 0, "runs_present": False},
+        )
+    return _shape_reconstruction(recon, metric)
+
+
 def _eval_redaction_check(ctx: _MetricContext) -> _EvalResult:
     # Scan layer/handoff signals for absolute home paths in values we emit
     leaks: list[str] = []
@@ -410,6 +491,7 @@ _METRIC_EVALUATORS: dict[str, Any] = {
     "provenance_complete": _eval_provenance_complete,
     "redaction_check": _eval_redaction_check,
     "rh_compare_verdict": _eval_rh_compare_verdict,
+    "decoder_mismatch": _eval_decoder_mismatch,
 }
 
 
@@ -457,6 +539,10 @@ def _evidence_present(kind: str, ctx: _MetricContext, signals: dict[str, Any]) -
         # Substrate = the clean/dirty runs actually had hits; the evaluator
         # records that in signals.runs_present. Absent -> pending, not violated.
         return bool(signals.get("runs_present"))
+    if kind == "decoder_mismatch":
+        # Substrate = a non-empty canonical population existed to measure.
+        # Absent (no canonical atoms / no census) -> pending, not violated.
+        return int(signals.get("canonical_total", 0) or 0) > 0
     # redaction_check and any unknown kind are always testable.
     return True
 

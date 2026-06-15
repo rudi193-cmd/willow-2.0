@@ -136,6 +136,7 @@ flowchart LR
 | W5 | Synthesis anchor preservation | `existing_synthesis` anchor count ≥ threshold |
 | W6 | Governance frame | Oakenscroll posole/gaps/Dual Commit scan passes |
 | W7 | Layer coverage | Fraction of Willow layers reporting `present` |
+| W8 | Canonical reconstruction coverage | Of canonical (non-benchmark) atoms, fraction traceable to a ledger entry (handoff / source-trail legs declared, not yet measured). See §8. |
 
 **Failure modes (Willow):**
 
@@ -196,5 +197,47 @@ not when it **produces fluent commentary about them**.
 2. Probe Willow layers (read-only).
 3. Evaluate metrics in [`alignment.py`](alignment.py) against [`alignment_metrics.json`](alignment_metrics.json).
 4. Emit redacted alignment stage + human synthesis section in local report.
+
+---
+
+## 8. Reconstruction cost (W8 — decoder mismatch made measurable)
+
+§6 names *reconstruction cost* but originally measured it only as probe
+divergence + missing layer witnesses. W8 gives it a second, sharper instrument:
+**of the atoms Willow promotes to `canonical`, how many can it actually
+reconstruct?**
+
+\[
+\text{cost} = \frac{|\{c \in \mathcal{C} : \neg\,\text{supported}(c)\}|}{|\mathcal{C}|},
+\quad
+\mathcal{C} = \{\text{canonical, non-benchmark atoms}\}
+\]
+
+\(\text{supported}(c)\) holds when \(c\)'s id is traceable through at least one
+reconstruction path: a FRANK ledger `atoms_written` reference (measured now), a
+handoff reference, or a source trail (both **declared but not yet measured** —
+so the reported cost is a *ledger-only upper bound*; true coverage can only be
+higher).
+
+**Why canonical, why not confidence.** A 2026-06-14 KB census found stored
+`confidence`, `weight`, and `tier` near-constant across real atoms (≈85% of all
+atoms at confidence ≥ 0.95; 94.5% `frontier`), so none discriminate claim
+strength. Only `tier == canonical` partitions the KB (≈268 atoms). The decoder
+mismatch is therefore framed at the population Willow *itself* marks
+load-bearing: a canonical atom with no reconstruction path is the recipe
+asserted without the grandmother.
+
+**Three-state, not re-scored** (consistent with the witness layer):
+
+- **witnessed** — cost ≤ `max_cost` (most canonical knowledge is reconstructable).
+- **violated** — cost > `max_cost` (substrate present, predicate fails).
+- **pending** — no canonical population / no census (absent substrate, never violated).
+
+**Starts red, by design.** At introduction, ledger coverage of canonical atoms
+is ≈3%, so W8 reports `violated` with cost ≈ 0.7–1.0. This is not a regression —
+it is the instrument witnessing a true gap: *Willow grants canonical status far
+faster than it records provenance.* W8 is a coverage gauge that falls as ledger
+/ handoff indexing grows; the cost dropping is the work, one traced atom at a
+time.
 
 *ΔΣ=42*
