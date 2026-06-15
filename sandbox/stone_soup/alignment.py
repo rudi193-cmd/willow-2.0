@@ -391,7 +391,8 @@ def _shape_reconstruction(
     ledger ∪ source_id ∪ provenance-typed edges (see run.canonical_reconstruction_
     census / §8). Loose relates_to/part_of/precedes links are excluded: a
     2026-06-14 census showed "any edge" covers ~96% (too loose), while genuine
-    provenance lands at ~81% union (cost ≈ 0.19) — discriminating. An absent or
+    provenance lands at discriminating union coverage (post-backfill: 271/271,
+    cost 0.0). An absent or
     empty population yields pending (never violated for a missing substrate).
     """
     total = int((recon or {}).get("canonical_total", 0) or 0)
@@ -404,7 +405,7 @@ def _shape_reconstruction(
     supported = int(recon.get("supported", 0) or 0)
     unsupported = max(total - supported, 0)
     cost = round(unsupported / total, 3)
-    max_cost = float(metric.get("max_cost", 0.5))
+    max_cost = float(metric.get("max_cost", 0.05))
     passed = cost <= max_cost
     signals = {
         "recon_status": "measured",
@@ -434,8 +435,8 @@ def _eval_decoder_mismatch(ctx: _MetricContext) -> _EvalResult:
 
     History (logged, not buried): the first cut measured ledger-only and wrongly
     reported ~97% untraceable; the next over-corrected via "any edge" (~96%,
-    non-discriminating). The genuine three-leg definition lands at ~81% union
-    (cost ≈ 0.19) — a real, discriminating gauge. See §8.
+    non-discriminating).     The genuine three-leg definition is discriminating; after PR #374 backfill
+  and pipeline wiring (PR #375), live census is 271/271 (cost 0.0). See §8.
 
     Source of the census mirrors rh_compare_verdict: live (``run_live: true``)
     or a saved structured report (``report``). Absent report / unavailable
