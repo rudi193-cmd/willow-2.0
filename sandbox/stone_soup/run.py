@@ -27,6 +27,13 @@ INGREDIENTS_PATH = Path(__file__).resolve().parent / "ingredients.json"
 REPORTS_DIR = Path(__file__).resolve().parent / "reports"
 
 
+def _json_default(value: Any) -> str:
+    """Serialize live DB values that can appear in --json output."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value)
+
+
 def _noise_suppression_signal() -> str | bool:
     """Live rh-dirty noise probe — no clean/dirty tag ingest required."""
     try:
@@ -576,7 +583,7 @@ def main() -> int:
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
 
     if args.json:
-        print(json.dumps({"generated_at": ts, "stages": stages}, indent=2))
+        print(json.dumps({"generated_at": ts, "stages": stages}, indent=2, default=_json_default))
         return 0
 
     md = render_markdown(stages, generated_at=ts)

@@ -392,6 +392,7 @@ def kart_env(root: Path | None = None, *, allow_net: bool = False) -> dict[str, 
         "PYTHONUNBUFFERED": "1",
         # Marker so code inside bwrap tasks can detect the Kart sandbox context.
         "WILLOW_IN_KART": "1",
+        "WILLOW_KART_ALLOW_NET": "1" if allow_net else "0",
     }
     for key, val in os.environ.items():
         if key.startswith(prefixes):
