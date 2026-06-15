@@ -1,0 +1,162 @@
+{
+  "version": 1,
+  "description": "Declarative ingredients for the stone-soup experiment. Private collaborator material stays behind adapters; tracked outputs are redacted.",
+  "ingredients": [
+    {
+      "id": "rendereason",
+      "label": "Rendereason (APO/RH mathematics)",
+      "visibility": "private_context",
+      "access_mode": "kb_and_harness",
+      "archives": [
+        "NS1-7.zip",
+        "RH solution.zip",
+        "RH7.zip",
+        "rh7_fisher_decomposition_2026-06-10.zip"
+      ],
+      "kb_queries": [
+        "Rendereason APO RH discernment harness",
+        "rh-dirty corpus canon noise",
+        "rh-research Permanent Storage Layout Rendereason"
+      ],
+      "kb_project": "rh-dirty",
+      "harness_path": "sandbox/rh_harness",
+      "catalog_entry": "rh_apo_discernment_harness",
+      "notes": "Collaborator IP. Reports record atom IDs, titles, and truncated summaries only."
+    },
+    {
+      "id": "angrybob",
+      "label": "angrybob (admissibility / calculus)",
+      "visibility": "private_context",
+      "access_mode": "local_db_structure_only",
+      "local_dbs": [
+        "angrybob-admissibility.db",
+        "angrybob-calculus.db"
+      ],
+      "archives": [
+        "admissibility-calculus-2026-06-14.zip"
+      ],
+      "kb_queries": [
+        "angrybob admissibility LLM physics",
+        "angrybob calculus MAP-ONLY census"
+      ],
+      "notes": "Archive and SQLite structure introspection only — member names, table names, and row counts; never file contents or DB cell values."
+    },
+    {
+      "id": "stone_soup_papers",
+      "label": "Stone Soup Papers (Oakenscroll theory source)",
+      "visibility": "private_context",
+      "access_mode": "private_markdown_structure",
+      "private_files": [
+        "$NEST/Stone Soup Papers.md"
+      ],
+      "kb_queries": [
+        "stone soup grandmother encoding decoder mismatch Oakenscroll",
+        "recipe priors compliance comprehension stone soup"
+      ],
+      "notes": "Protected theory text. Reports extract only section labels, theorem labels, and short concept names."
+    },
+    {
+      "id": "oakenscroll",
+      "label": "Oakenscroll (governance / pedagogy frame)",
+      "visibility": "tracked",
+      "access_mode": "persona_and_kb",
+      "persona_files": [
+        "willow/fylgja/skills/oakenscroll-boot.md",
+        "willow/fylgja/personas/oakenscroll.md"
+      ],
+      "kb_queries": [
+        "Oakenscroll posole criterion gaps table",
+        "UTETY Emerging Rule Dual Commit governance"
+      ],
+      "governance_checks": [
+        "posole_criterion",
+        "gaps_table_checksum",
+        "dual_commit",
+        "door_never_closed"
+      ],
+      "notes": "Repo-safe persona overlay and KB atoms; no private Seed JSON required for dry run."
+    }
+  ],
+  "stages": [
+    {"id": "kb_retrieval", "order": 1, "label": "KB retrieval"},
+    {"id": "provenance", "order": 2, "label": "Corpus provenance"},
+    {"id": "willow_layers", "order": 3, "label": "Willow layer probes"},
+    {"id": "discernment", "order": 4, "label": "Discernment pass"},
+    {"id": "governance", "order": 5, "label": "Pedagogy / governance"},
+    {"id": "alignment", "order": 6, "label": "Alignment calculus metrics"},
+    {"id": "synthesis", "order": 7, "label": "Stone soup synthesis"},
+    {"id": "human_synthesis", "order": 8, "label": "Human-facing alignment synthesis"}
+  ],
+  "alignment": {
+    "metrics_file": "alignment_metrics.json",
+    "note_file": "alignment_calculus.md"
+  },
+  "discernment_metrics": [
+    "canon_promotion",
+    "deprecated_suppression",
+    "apo_vocab_preservation",
+    "probe_top5_overlap"
+  ],
+  "willow_layers": [
+    {
+      "id": "kb",
+      "label": "Postgres KB",
+      "question": "What long-term atoms are already alive around the ingredients?"
+    },
+    {
+      "id": "soil",
+      "label": "SOIL local store",
+      "question": "What structured local state is present without reading private values?"
+    },
+    {
+      "id": "jeles",
+      "label": "Jeles corpus",
+      "question": "What high-confidence extracted corpus signals are nearby?"
+    },
+    {
+      "id": "grove",
+      "label": "Grove message bus",
+      "question": "What recent fleet messages frame the pot?"
+    },
+    {
+      "id": "ledger",
+      "label": "FRANK ledger",
+      "question": "What tamper-evident decisions constrain the boil?"
+    },
+    {
+      "id": "handoff",
+      "label": "Session handoffs",
+      "question": "What continuity thread says what to carry forward?"
+    },
+    {
+      "id": "benchmarks",
+      "label": "Benchmark atlas",
+      "question": "Which existing harnesses can this extend instead of duplicating?"
+    },
+    {
+      "id": "kart",
+      "label": "Kart task plane",
+      "question": "Is there execution residue that changes the session state?"
+    },
+    {
+      "id": "governance",
+      "label": "Policy and human gates",
+      "question": "What requires ratification, consent, or explicit gaps?"
+    },
+    {
+      "id": "code",
+      "label": "Code context",
+      "question": "Which repo files are now part of the pot?"
+    },
+    {
+      "id": "persona",
+      "label": "Oakenscroll governance overlay",
+      "question": "What epistemic discipline should judge the result?"
+    },
+    {
+      "id": "existing_synthesis",
+      "label": "Existing synthesis anchors",
+      "question": "Which prior syntheses does this pot have to preserve and connect?"
+    }
+  ]
+}
