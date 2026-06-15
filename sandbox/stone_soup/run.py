@@ -88,14 +88,31 @@ def stage_provenance(raw: dict[str, IngredientResult]) -> dict[str, Any]:
     return {"stage": "provenance", "classifications": rows}
 
 
+# Edge relations that constitute a genuine provenance/derivation trail — an atom
+# touched by one of these is traceable to where it came from. Deliberately
+# EXCLUDES association/structure/time relations (relates_to, part_of, precedes)
+# and entity-graph noise: a 2026-06-14 census found those carry ~96% of canonical
+# atoms ("any edge" is too loose) while genuine provenance lands at ~62%.
+_PROVENANCE_RELATIONS = (
+    "references", "summarizes", "documents", "documented_by", "derives_from",
+    "supersedes", "superseded_by", "synthesizes", "extends", "expands",
+    "implements_resolution_from", "supersedes_context_from",
+    "resolves_divergence_for", "informs", "cites", "sourced_from",
+)
+
+
 def canonical_reconstruction_census(*, app_id: str = "willow") -> dict[str, Any]:
     """W8 substrate: of canonical (non-benchmark) KB atoms, how many are
-    reconstructable — currently via FRANK ledger atom-id references.
+    *reconstructable* — traceable to where they came from via any of three
+    genuine provenance legs:
 
-    Structure-only: ids and counts, never atom text. Handoff and source_trail
-    support legs are declared in ``by_support`` but not yet measured, so the
-    reported cost is a *ledger-only upper bound* (true coverage can only be
-    higher). Raises on DB unavailability — the evaluator maps that to pending.
+      - ledger:    FRANK ``atoms_written`` decision-trace
+      - source_id: explicit origin in the atom's ``content.source_id``
+      - edges:     a provenance-typed edge (see ``_PROVENANCE_RELATIONS``) —
+                   NOT loose relates_to/part_of/precedes links
+
+    Structure-only: ids and counts, never atom text. Raises on DB unavailability
+    — the evaluator maps that to pending.
     """
     from core.pg_bridge import PgBridge
 
@@ -111,6 +128,7 @@ def canonical_reconstruction_census(*, app_id: str = "willow") -> dict[str, Any]
         )
         canonical_ids = {str(r[0]) for r in cur.fetchall()}
 
+        # leg 1: ledger decision-trace
         ledger_ids: set[str] = set()
         cur.execute("SELECT content FROM frank_ledger")
         for (content,) in cur.fetchall():
@@ -122,9 +140,39 @@ def canonical_reconstruction_census(*, app_id: str = "willow") -> dict[str, Any]
             if isinstance(written, list):
                 ledger_ids.update(str(x) for x in written)
 
+        # leg 2: explicit content.source_id on the canonical atom
+        source_id_ids: set[str] = set()
+        cur.execute(
+            """
+            SELECT id, content FROM knowledge
+            WHERE invalid_at IS NULL AND tier = 'canonical'
+              AND COALESCE(source_type, '') <> 'benchmark' AND content IS NOT NULL
+            """
+        )
+        for (aid, content) in cur.fetchall():
+            try:
+                payload = content if isinstance(content, dict) else json.loads(content)
+            except (TypeError, ValueError):
+                continue
+            if isinstance(payload, dict) and payload.get("source_id"):
+                source_id_ids.add(str(aid))
+
+        # leg 3: provenance-typed edges (atom is either endpoint)
+        edge_ids: set[str] = set()
+        cur.execute(
+            "SELECT from_id, to_id FROM edges "
+            "WHERE invalid_at IS NULL AND relation = ANY(%s)",
+            (list(_PROVENANCE_RELATIONS),),
+        )
+        for (from_id, to_id) in cur.fetchall():
+            edge_ids.add(str(from_id))
+            edge_ids.add(str(to_id))
+
     total = len(canonical_ids)
     by_ledger = canonical_ids & ledger_ids
-    supported = set(by_ledger)  # union of all *measured* support legs
+    by_source_id = canonical_ids & source_id_ids
+    by_edges = canonical_ids & edge_ids
+    supported = by_ledger | by_source_id | by_edges
     return {
         "report": "recon-canonical",
         "canonical_total": total,
@@ -132,13 +180,13 @@ def canonical_reconstruction_census(*, app_id: str = "willow") -> dict[str, Any]
         "unsupported": total - len(supported),
         "by_support": {
             "ledger": len(by_ledger),
-            "handoff": None,       # declared, not yet measured
-            "source_trail": None,  # declared, not yet measured
+            "source_id": len(by_source_id),
+            "provenance_edges": len(by_edges),
         },
         "runs_present": True,
         "note": (
-            "ledger-only support; handoff/source_trail legs unmeasured — "
-            "reconstruction_cost is an upper bound"
+            "reconstructable = ledger ∪ source_id ∪ provenance-typed edges; "
+            "loose relates_to/part_of/precedes deliberately excluded"
         ),
     }
 

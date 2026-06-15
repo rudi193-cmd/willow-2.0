@@ -248,9 +248,14 @@ def test_decoder_mismatch_reads_saved_report(tmp_path):
     assert w["status"] == "violated"
     assert w["evidence"]["reconstruction_cost"] == 0.9
 
-    # Low cost (9/10 → 10% ≤ 50%) → witnessed.
-    report.write_text(json.dumps({"canonical_total": 10, "supported": 9, "runs_present": True}))
-    assert witness()["status"] == "witnessed"
+    # Low cost (9/10 → 10% ≤ 50%) → witnessed; per-leg by_support flows through.
+    report.write_text(json.dumps({
+        "canonical_total": 10, "supported": 9, "runs_present": True,
+        "by_support": {"ledger": 1, "source_id": 5, "provenance_edges": 7},
+    }))
+    w = witness()
+    assert w["status"] == "witnessed"
+    assert w["evidence"]["by_support"]["provenance_edges"] == 7
 
     # Empty canonical population → pending, never violated for absent substrate.
     report.write_text(json.dumps({"canonical_total": 0, "supported": 0}))

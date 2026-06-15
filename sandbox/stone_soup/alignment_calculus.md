@@ -136,7 +136,7 @@ flowchart LR
 | W5 | Synthesis anchor preservation | `existing_synthesis` anchor count ≥ threshold |
 | W6 | Governance frame | Oakenscroll posole/gaps/Dual Commit scan passes |
 | W7 | Layer coverage | Fraction of Willow layers reporting `present` |
-| W8 | Canonical ledger decision-coverage (partial proxy) | Of canonical (non-benchmark) atoms, fraction carrying a FRANK ledger decision-trace. **Not** full reconstructability: the full per-leg census finds ~100% reachable (see §8). Measures decision-provenance sparsity only. |
+| W8 | Canonical reconstruction coverage | Of canonical (non-benchmark) atoms, fraction traceable to origin via ledger ∪ `content.source_id` ∪ provenance-typed edges (references/summarizes/documents/derives_from/…). Loose relates_to/part_of/precedes excluded. ~81% covered, cost ≈ 0.19 (see §8). |
 
 **Failure modes (Willow):**
 
@@ -227,30 +227,42 @@ measured *decision-provenance sparsity* (~7%) and mislabelled it as
 check asserting a false semantic conclusion — **was itself a decoder mismatch.**
 The lesson is logged, not buried.
 
-**Current honest definition.**
+**Genuine definition (current).** An atom is *reconstructable* if it is
+traceable to origin through at least one of three provenance legs:
 
 \[
-\text{cost} = \frac{|\{c \in \mathcal{C} : \neg\,\text{ledger\_traced}(c)\}|}{|\mathcal{C}|},
-\quad
-\mathcal{C} = \{\text{canonical, non-benchmark atoms}\}
+\text{supported}(c) = \text{ledger}(c) \;\lor\; \text{source\_id}(c) \;\lor\; \text{prov\_edge}(c),
+\qquad
+\text{cost} = \frac{|\{c \in \mathcal{C} : \neg\,\text{supported}(c)\}|}{|\mathcal{C}|}
 \]
 
-W8 currently measures **ledger decision-coverage only** — a *partial proxy*, not
-reconstructability. `tier == canonical` is still the right population (the
-2026-06-14 census found `confidence`/`weight`/`tier` near-constant — ≈85% at
-confidence ≥ 0.95, 94.5% `frontier` — so only canonical discriminates).
+over \(\mathcal{C} = \{\text{canonical, non-benchmark atoms}\}\), where:
+
+- **ledger** — atom id in a FRANK `atoms_written` decision-trace;
+- **source\_id** — explicit origin in the atom's `content.source_id`;
+- **prov\_edge** — atom is an endpoint of a *provenance-typed* edge:
+  `references`, `summarizes`, `documents`, `documented_by`, `derives_from`,
+  `supersedes`, `superseded_by`, `synthesizes`, `extends`, `expands`, … —
+  deliberately **excluding** the association/structure/time relations
+  (`relates_to`, `part_of`, `precedes`) that made "any edge" non-discriminating.
+
+**Measured (2026-06-14):** ledger 7%, source_id 49%, provenance-edges 62% →
+**union 81%, cost ≈ 0.19.** Not the ledger-only false crisis (7%), not the
+any-edge collapse (100%). The 51 uncovered canonical atoms (~19%) are the real,
+actionable gap: load-bearing knowledge with no origin trail.
+
+`tier == canonical` remains the right population (the census found
+`confidence`/`weight`/`tier` near-constant — ≈85% at confidence ≥ 0.95, 94.5%
+`frontier` — so only canonical discriminates).
 
 **Three-state** (unchanged): witnessed (cost ≤ `max_cost`) / violated (cost >
 `max_cost`, substrate present) / pending (no canonical population — never
-violated for absent substrate). Under the ledger-only proxy W8 reads `violated`
-≈ 0.93, which is *honest about decision-lineage sparsity* but must not be read
-as a reconstructability verdict.
+violated for absent substrate). At cost ≈ 0.19 with `max_cost = 0.5`, W8 now
+reads **witnessed** — and the number is a live gauge: it falls further as the
+51 untraced atoms gain provenance, rises if canonical status outruns origin.
 
-**Open redesign.** The genuine support definition is undecided. "Any edge" (96%)
-is too loose — it counts temporal `precedes` / structural `implements` links,
-not just origin. The candidate is `source_id` + ledger + **provenance-typed**
-edges (derives-from / supports / source), which would keep W8 discriminating
-without the ledger-only overclaim or the any-edge collapse. Until then W8 stays
-a labelled partial proxy.
+**Why this definition, in one line:** it counts being able to *say where a claim
+came from*, not merely being *connected to something* — the same distinction the
+whole calculus turns on.
 
 *ΔΣ=42*
