@@ -291,6 +291,21 @@ def check_surfaces() -> list[str]:
             if not skill.is_file():
                 errors.append(f"missing skill: {surface}/skills/{name}/SKILL.md")
 
+    # Content drift: every canonical skill body must match skill_text() output on
+    # every surface. This catches the failure mode where the file exists and the
+    # count is fine, but the committed body lags a canonical edit that was never
+    # re-synced (observed: boot/shutdown surfaces stale by an entire section).
+    for src in sorted(SKILLS.glob("*.md")):
+        name = src.stem
+        expected = skill_text(src, name)
+        for surface in REMOTE_SURFACES:
+            dst = ROOT / surface / "skills" / name / "SKILL.md"
+            if dst.is_file() and dst.read_text(encoding="utf-8") != expected:
+                errors.append(
+                    f"stale content: {surface}/skills/{name}/SKILL.md "
+                    f"— run: python3 scripts/sync_remote_cursor_surface.py"
+                )
+
     return errors
 
 
