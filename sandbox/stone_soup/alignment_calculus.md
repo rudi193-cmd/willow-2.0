@@ -136,7 +136,7 @@ flowchart LR
 | W5 | Synthesis anchor preservation | `existing_synthesis` anchor count ≥ threshold |
 | W6 | Governance frame | Oakenscroll posole/gaps/Dual Commit scan passes |
 | W7 | Layer coverage | Fraction of Willow layers reporting `present` |
-| W8 | Canonical reconstruction coverage | Of canonical (non-benchmark) atoms, fraction traceable to origin via ledger ∪ `content.source_id` ∪ provenance-typed edges (references/summarizes/documents/derives_from/…). Loose relates_to/part_of/precedes excluded. ~81% covered, cost ≈ 0.19 (see §8). |
+| W8 | Canonical reconstruction coverage | Of canonical (non-benchmark) atoms, fraction traceable to origin via ledger ∪ `content.source_id` ∪ provenance-typed edges (references/summarizes/documents/derives_from/…). Loose relates_to/part_of/precedes excluded. Live (2026-06-15): 271/271, cost 0.0 (see §8). |
 
 **Failure modes (Willow):**
 
@@ -246,10 +246,13 @@ over \(\mathcal{C} = \{\text{canonical, non-benchmark atoms}\}\), where:
   deliberately **excluding** the association/structure/time relations
   (`relates_to`, `part_of`, `precedes`) that made "any edge" non-discriminating.
 
-**Measured (2026-06-14):** ledger 7%, source_id 49%, provenance-edges 62% →
-**union 81%, cost ≈ 0.19.** Not the ledger-only false crisis (7%), not the
-any-edge collapse (100%). The 51 uncovered canonical atoms (~19%) are the real,
-actionable gap: load-bearing knowledge with no origin trail.
+**Measured (2026-06-14 design census):** ledger 7%, source_id 49%, provenance-edges 62% →
+**union 81%, cost ≈ 0.19** — 51 atoms lacked origin trails.
+
+**Measured (2026-06-15 post-backfill):** **271/271 supported, cost 0.0** (PR #374
+`scripts/w8_backfill_source_id.py`; pipeline census ordering + Kart no-net fix in
+PR #375). The 51-atom gap is closed; W8 now guards against *regression*, not
+initial repair.
 
 `tier == canonical` remains the right population (the census found
 `confidence`/`weight`/`tier` near-constant — ≈85% at confidence ≥ 0.95, 94.5%
@@ -257,9 +260,10 @@ actionable gap: load-bearing knowledge with no origin trail.
 
 **Three-state** (unchanged): witnessed (cost ≤ `max_cost`) / violated (cost >
 `max_cost`, substrate present) / pending (no canonical population — never
-violated for absent substrate). At cost ≈ 0.19 with `max_cost = 0.5`, W8 now
-reads **witnessed** — and the number is a live gauge: it falls further as the
-51 untraced atoms gain provenance, rises if canonical status outruns origin.
+violated for absent substrate). `max_cost` tightened from 0.5 → **0.05** so a
+handful of untraced canonical atoms trips the gauge instead of hiding behind a
+lenient band. At cost 0.0 with `max_cost = 0.05`, W8 reads **witnessed** — and
+stays a live regression gauge if canonical status outruns origin.
 
 **Why this definition, in one line:** it counts being able to *say where a claim
 came from*, not merely being *connected to something* — the same distinction the

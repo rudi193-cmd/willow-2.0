@@ -268,7 +268,7 @@ def test_decoder_mismatch_reads_saved_report(tmp_path):
                 "weight": 1.0,
                 "kind": "decoder_mismatch",
                 "report": str(report),
-                "max_cost": 0.5,
+                "max_cost": 0.05,
             }
         ],
     }
@@ -283,15 +283,15 @@ def test_decoder_mismatch_reads_saved_report(tmp_path):
     # No saved report → pending (no canonical substrate), never violated.
     assert witness()["status"] == "pending"
 
-    # High cost (1/10 reconstructable → 90% > 50%) → violated.
+    # High cost (1/10 reconstructable → 90% > 5%) → violated.
     report.write_text(json.dumps({"canonical_total": 10, "supported": 1, "runs_present": True}))
     w = witness()
     assert w["status"] == "violated"
     assert w["evidence"]["reconstruction_cost"] == 0.9
 
-    # Low cost (9/10 → 10% ≤ 50%) → witnessed; per-leg by_support flows through.
+    # Low cost (19/20 → 5% ≤ 5%) → witnessed; per-leg by_support flows through.
     report.write_text(json.dumps({
-        "canonical_total": 10, "supported": 9, "runs_present": True,
+        "canonical_total": 20, "supported": 19, "runs_present": True,
         "by_support": {"ledger": 1, "source_id": 5, "provenance_edges": 7},
     }))
     w = witness()
