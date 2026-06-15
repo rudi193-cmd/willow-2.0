@@ -234,3 +234,46 @@ def test_kp5_local_bin_on_path(repo_root):
     env = kart_env(repo_root)
     path_parts = env["PATH"].split(":")
     assert str(Path.home() / ".local" / "bin") in path_parts
+
+
+# ── Uniform error capture — every failure carries a readable `error` ──────────
+
+def test_uniform_error_on_exit_code_with_no_output(monkeypatch):
+    """A command that fails by exit code with no stderr/stdout still records a
+    non-empty `error` instead of a causeless failure."""
+    monkeypatch.setenv("WILLOW_KART_NO_BWRAP", "1")
+    status, result = run_shell_result_for_task(
+        "python3 -c 'import sys; sys.exit(3)'", timeout=10
+    )
+    assert status == "failed"
+    assert result["stderr"] == ""
+    assert result["error"] == "exited 3 with no output"
+
+
+def test_uniform_error_falls_back_to_stdout_tail(monkeypatch):
+    """When a failing command wrote only to stdout, `error` summarizes it."""
+    monkeypatch.setenv("WILLOW_KART_NO_BWRAP", "1")
+    status, result = run_shell_result_for_task(
+        "python3 -c 'print(\"boom\"); import sys; sys.exit(2)'", timeout=10
+    )
+    assert status == "failed"
+    assert result["error"] == "exited 2: boom"
+
+
+def test_uniform_error_prefers_real_stderr(monkeypatch):
+    """A genuine stderr message wins over the synthesized exit-code summary."""
+    monkeypatch.setenv("WILLOW_KART_NO_BWRAP", "1")
+    status, result = run_shell_result_for_task(
+        "python3 -c 'import sys; sys.stderr.write(\"kaboom\\n\"); sys.exit(1)'",
+        timeout=10,
+    )
+    assert status == "failed"
+    assert result["error"] == "kaboom"
+
+
+def test_uniform_error_absent_on_success(monkeypatch):
+    """Successful tasks carry no error field."""
+    monkeypatch.setenv("WILLOW_KART_NO_BWRAP", "1")
+    status, result = run_shell_result_for_task("echo ok", timeout=10)
+    assert status == "completed"
+    assert "error" not in result
