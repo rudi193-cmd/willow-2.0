@@ -213,6 +213,34 @@
         "nest_session_corpus"
       ],
       "notes": "Discernment probe at the mathematical-research scale: does the system promote the live proof strategy, invalidate deprecated iterations, preserve custom APO vocabulary, and suppress dead ends? Naming: 'RH' is Rendereason's paper-series prefix (RH1..RH7, e.g. RH7 = negative-time Fisher information); it is NOT the Riemann Hypothesis. Corpus is Rendereason's APO/RH mathematics (incl. Lean formalization), treated as collaborator IP -- the harness is cataloged, not the corpus content. Clean/dirty data folders are TBD (corpus not in repo; heavy corpus lives in a separate sandbox clone). Part of the discernment-under-noise research family; see SOIL research-constellation-SYNTHESIS-the-shape."
+    },
+    {
+      "id": "stone_soup_alignment",
+      "title": "Stone Soup Alignment Calculus",
+      "kind": "research_benchmark",
+      "status": "draft",
+      "visibility": "tracked",
+      "summary": "Measures whether Willow preserves shared invariants across Rendereason (canon/noise), angrybob (admissibility/calculus), and Willow reconstruction layers — structure-only, redacted reports.",
+      "primary_artifacts": [
+        "sandbox/stone_soup/README.md",
+        "sandbox/stone_soup/alignment_calculus.md",
+        "sandbox/stone_soup/alignment_metrics.json",
+        "sandbox/stone_soup/alignment.py",
+        "sandbox/stone_soup/run.py"
+      ],
+      "metrics": [
+        "alignment_score",
+        "render_invariants_r1_r5",
+        "bob_invariants_b1_b5",
+        "willow_invariants_w1_w7",
+        "cross_bridge_x1_x3"
+      ],
+      "refresh": "python3 -m sandbox.stone_soup.run --output sandbox/stone_soup/reports/latest.md",
+      "related": [
+        "rh_apo_discernment_harness",
+        "nest_session_corpus"
+      ],
+      "notes": "Sidecar to rh_apo_discernment_harness. Reports live under sandbox/stone_soup/reports/ (gitignored). angrybob DBs extracted to $WILLOW_HOME; Rendereason archives remain private ($NEST, $RH_RESEARCH). Verdict bands: aligned ≥0.75, partial ≥0.45."
     }
   ]
 }
