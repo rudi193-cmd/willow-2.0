@@ -131,17 +131,47 @@ def test_invariant_witnesses_mirror_metrics_without_changing_score():
         match = [w for w in alignment["witnesses"] if w["label"] == m["label"]]
         assert match and match[0]["witnessed"] == m["passed"]
 
-    # Every witness carries a projection Φ and a valid status.
+    # Every witness carries a projection Φ and a valid three-state status.
     for w in alignment["witnesses"]:
         assert w["projection"].startswith("Φ_")  # Φ_
-        assert w["status"] in {"witnessed", "absent"}
+        assert w["status"] in {"witnessed", "violated", "pending"}
+        # Only a witnessed invariant is passed; violated/pending are not.
+        assert w["witnessed"] == (w["status"] == "witnessed")
 
-    # Summary weight-coverage stays within bounds and sums consistently.
+    # Summary weight-coverage stays within bounds and the three states sum.
     summary = alignment["witness_summary"]
     assert summary
     for proj, slot in summary.items():
         assert 0.0 <= slot["coverage"] <= 1.0
-        assert slot["witnessed"] + slot["absent"] == slot["total"]
+        assert slot["witnessed"] + slot["violated"] + slot["pending"] == slot["total"]
+
+
+def test_pending_when_source_absent_violated_when_present():
+    # No angrybob/rendereason ingredients at all → bob source invariants pending.
+    raw = {
+        "rendereason": IngredientResult(
+            ingredient_id="rendereason", label="R", visibility="private_context"
+        ),
+        "angrybob": IngredientResult(
+            ingredient_id="angrybob", label="B", visibility="private_context"
+        ),
+    }
+    alignment = evaluate_alignment(
+        raw=raw,
+        layers=_minimal_layers(),
+        disc={"signals": {}},
+        gov={"verdict": "frame_present"},
+        prov={"classifications": []},
+    )
+    # source_present has no db/archive substrate → pending, not violated.
+    bob_source = [
+        w for w in alignment["witnesses"]
+        if w["domain"] == "angrybob" and "source" in w["proxy"].lower()
+    ]
+    assert bob_source and all(w["status"] == "pending" for w in bob_source)
+    # With angrybob/rendereason empty, several invariants are pending (no substrate),
+    # and none are spuriously marked violated for a missing source.
+    assert any(w["status"] == "pending" for w in alignment["witnesses"])
 
 
 def test_render_human_synthesis_includes_headline():

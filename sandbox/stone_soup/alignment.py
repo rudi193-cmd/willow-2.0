@@ -25,6 +25,9 @@ class MetricResult:
     passed: bool
     detail: str
     signals: dict[str, Any] = field(default_factory=dict)
+    # Was there a source/substrate to test this invariant against? Drives the
+    # violated-vs-pending split in the witness layer; does not affect score.
+    evidence_present: bool = True
 
 
 def load_metrics_config() -> dict[str, Any]:
@@ -349,6 +352,50 @@ _METRIC_EVALUATORS: dict[str, Any] = {
 }
 
 
+def _evidence_present(kind: str, ctx: _MetricContext, signals: dict[str, Any]) -> bool:
+    """Was there a source/substrate to test this invariant against?
+
+    A not-witnessed invariant splits into *violated* (substrate present, the
+    predicate fails) vs *pending* (no substrate to test). This probe reads the
+    same context the evaluator saw — for kb-search kinds it reads back the
+    already-captured signals rather than re-querying. Default True: if a kind
+    is always testable, a failure is a real violation, never pending.
+    """
+    ab, rr = ctx.ab_structure, ctx.rr_structure
+    if kind == "boolean_and":
+        return bool(rr)
+    if kind == "kb_keyword":
+        iid = ctx.metric.get("ingredient", "")
+        scoped = bool(ctx.raw[iid].kb_hits) if iid and iid in ctx.raw else bool(ctx.kb_blob.strip())
+        fallback = iid == "angrybob" and _table_row_total(ab) > 0
+        return scoped or fallback
+    if kind == "archive_present":
+        return bool(rr.get("archives"))
+    if kind == "probe_diversity":
+        return int(signals.get("unique_titles", 0)) > 0
+    if kind == "rh_noise_probe":
+        return len(signals.get("top_titles", [])) > 0
+    if kind == "discernment_flag":
+        return ctx.disc.get("signals", {}).get(ctx.metric.get("flag", "")) is not None
+    if kind == "source_present":
+        return bool(ab.get("local_dbs")) or bool(ab.get("archives"))
+    if kind in ("table_pattern", "table_row_count"):
+        return bool(_table_names(ab)) or bool(_archive_member_names(ab)) or _sources_present(ab)
+    if kind in ("layer_signal", "layer_status"):
+        return _layer_map(ctx.layers).get(ctx.metric.get("layer", "")) is not None
+    if kind == "layer_coverage":
+        return bool(ctx.layers.get("layers"))
+    if kind == "governance_verdict":
+        return bool(ctx.gov.get("verdict"))
+    if kind == "concept_count":
+        res = ctx.raw.get(ctx.metric.get("ingredient", ""))
+        return bool(res and res.structure.get("private_files"))
+    if kind == "provenance_complete":
+        return len(ctx.prov.get("classifications", [])) > 0
+    # redaction_check and any unknown kind are always testable.
+    return True
+
+
 def _evaluate_metric(
     metric: dict[str, Any],
     *,
@@ -372,7 +419,8 @@ def _evaluate_metric(
         kb_blob=_kb_text_blob(raw),
     )
 
-    evaluator = _METRIC_EVALUATORS.get(metric.get("kind", ""))
+    kind = metric.get("kind", "")
+    evaluator = _METRIC_EVALUATORS.get(kind)
     if evaluator is None:
         passed, detail, signals = False, "unimplemented", {}
     else:
@@ -387,6 +435,7 @@ def _evaluate_metric(
         passed=passed,
         detail=detail,
         signals=signals,
+        evidence_present=_evidence_present(kind, ctx, signals),
     )
 
 
@@ -419,12 +468,21 @@ class InvariantWitness:
     label: str
     weight: float
     witnessed: bool          # invariant holds under projection (== metric passed)
+    evidence_present: bool   # was there a substrate to test? splits violated/pending
     proxy: str               # how it was measured (metric detail)
     evidence: dict[str, Any] = field(default_factory=dict)
 
     @property
     def status(self) -> str:
-        return "witnessed" if self.witnessed else "absent"
+        """Three-state view (does not affect score):
+
+        - witnessed: invariant holds under projection
+        - violated:  substrate present, predicate fails (a real misalignment)
+        - pending:   no substrate to test yet (absent source/ingest)
+        """
+        if self.witnessed:
+            return "witnessed"
+        return "violated" if self.evidence_present else "pending"
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -448,20 +506,26 @@ def _witness_from_metric(result: MetricResult) -> InvariantWitness:
         label=result.label,
         weight=result.weight,
         witnessed=result.passed,
+        evidence_present=result.evidence_present,
         proxy=result.detail,
         evidence=result.signals,
     )
 
 
 def _witness_summary(witnesses: list[InvariantWitness]) -> dict[str, Any]:
-    """Aggregate witnesses by projection Φ — weight-coverage per map."""
+    """Aggregate witnesses by projection Φ — three-state counts + weight-coverage.
+
+    coverage is witnessed-weight over total-weight: pending and violated both
+    count against it (classify, don't rescore — absent sources never inflate).
+    """
     by_proj: dict[str, dict[str, Any]] = {}
     for w in witnesses:
         slot = by_proj.setdefault(
             w.projection,
             {
                 "witnessed": 0,
-                "absent": 0,
+                "violated": 0,
+                "pending": 0,
                 "total": 0,
                 "weight_witnessed": 0.0,
                 "weight_total": 0.0,
@@ -469,11 +533,9 @@ def _witness_summary(witnesses: list[InvariantWitness]) -> dict[str, Any]:
         )
         slot["total"] += 1
         slot["weight_total"] += w.weight
+        slot[w.status] += 1
         if w.witnessed:
-            slot["witnessed"] += 1
             slot["weight_witnessed"] += w.weight
-        else:
-            slot["absent"] += 1
     for slot in by_proj.values():
         wt = slot["weight_total"] or 1.0
         slot["coverage"] = round(slot["weight_witnessed"] / wt, 3)
