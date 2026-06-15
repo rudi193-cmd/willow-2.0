@@ -1,0 +1,11 @@
+[Unit]
+Description=Willow W8 Census Witness — weekly canonical reconstruction heartbeat
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+
+[Timer]
+OnCalendar=Mon *-*-* 04:00:00
+Persistent=true
+Unit=willow-w8-census.service
+
+[Install]
+WantedBy=timers.target

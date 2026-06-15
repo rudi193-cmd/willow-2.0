@@ -136,7 +136,7 @@ ok "install_project ${AGENT} (active-agent=${ACTIVE_FILE})"
 hdr "Systemd fleet units"
 SYSTEMD_USER="${HOME}/.config/systemd/user"
 mkdir -p "${SYSTEMD_USER}"
-for unit in "${REPO_ROOT}"/systemd/*.service "${REPO_ROOT}"/systemd/*.socket; do
+for unit in "${REPO_ROOT}"/systemd/*.service "${REPO_ROOT}"/systemd/*.socket "${REPO_ROOT}"/systemd/*.timer; do
     [[ -f "${unit}" ]] || continue
     cp -f "${unit}" "${SYSTEMD_USER}/$(basename "${unit}")"
 done
@@ -150,7 +150,7 @@ if command -v systemctl >/dev/null 2>&1; then
     systemctl --user daemon-reload
     systemctl --user enable --now willow-metabolic.socket grove-mcp.service \
         willow-grove-listen.service drop-server.service nest-watcher.service \
-        journal-watcher.service 2>/dev/null \
+        journal-watcher.service willow-w8-census.timer 2>/dev/null \
         && ok "Fleet units enabled" || warn "Some systemd units failed to enable"
 else
     warn "systemctl not available"
