@@ -369,6 +369,39 @@ def _inject_mcp_routing() -> None:
         )
 
 
+def _inject_clock() -> None:
+    """Every turn: surface the local↔UTC relationship.
+
+    Willow artifacts (handoff filenames, DB ts) are UTC-stamped, but the harness
+    injects "today" in local time. Between ~18:00 local and midnight the two
+    calendar dates legitimately differ by one day. Without this line agents
+    re-derive that gap as clock drift — observed twice. State the rule instead.
+    """
+    try:
+        now_local = datetime.now().astimezone()
+        now_utc = now_local.astimezone(timezone.utc)
+        tzname = now_local.tzname() or "local"
+        offset = now_local.utcoffset()
+        total_min = int(offset.total_seconds() // 60) if offset else 0
+        sign = "+" if total_min >= 0 else "-"
+        oh, om = divmod(abs(total_min), 60)
+        off_str = f"UTC{sign}{oh}" + (f":{om:02d}" if om else "")
+        same_day = now_local.date() == now_utc.date()
+        line = (
+            f"[CLOCK] {now_local.strftime('%Y-%m-%d %H:%M')} {tzname} ({off_str}) "
+            f"= {now_utc.strftime('%Y-%m-%d %H:%M')} UTC · "
+            "Willow artifacts are UTC-stamped; \"today\" in context is local."
+        )
+        if not same_day:
+            line += (
+                " The one-day gap (handoff filenames, DB ts vs local date) is "
+                "correct, not drift."
+            )
+        print(line)
+    except Exception:
+        pass
+
+
 def _inject_stabilization_brief() -> None:
     """First turn only: if a post-push stabilization brief exists, inject it."""
     if not is_first_turn():
@@ -476,6 +509,7 @@ def main():
     _run_persona(prompt)
     increment_turn_count()
     _inject_mcp_routing()
+    _inject_clock()
     _inject_stabilization_brief()
     _run_source_ring(session_id)
     _run_route(prompt, session_id)
