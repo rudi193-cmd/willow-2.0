@@ -5,7 +5,7 @@ import importlib
 import os
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -162,3 +162,31 @@ def test_alias_regex_cached():
     r1 = gl._alias_regex("@hanuman")
     r2 = gl._alias_regex("@hanuman")
     assert r1 is r2  # same object from cache
+
+
+def test_reconnect_closes_stale_connection():
+    gl = _load(agent="hanuman")
+    stale = MagicMock(name="stale_conn")
+    fresh = MagicMock(name="fresh_conn")
+    cur = MagicMock()
+    fresh.cursor.return_value = cur
+    stale.cursor.return_value = cur
+
+    gl.connect = MagicMock(side_effect=[stale, fresh])
+    gl.load_channels = MagicMock(return_value={1: "general"})
+
+    calls = {"n": 0}
+
+    def select_side_effect(*_args, **_kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("link down")
+        raise KeyboardInterrupt()
+
+    gl.select.select = select_side_effect
+    gl.time.sleep = MagicMock()
+
+    with pytest.raises(KeyboardInterrupt):
+        gl._run()
+
+    stale.close.assert_called_once()
