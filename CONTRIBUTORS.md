@@ -35,6 +35,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [wanxingai/LightAgent](https://github.com/wanxingai/LightAgent) | wanxingai | docs: add vector memory adapter example | [PR #60](https://github.com/wanxingai/LightAgent/pull/60) merged |
 | [shinpr/mcp-local-rag](https://github.com/shinpr/mcp-local-rag) | shinpr | fix: report removedChunks and existed from delete_file | [PR #152](https://github.com/shinpr/mcp-local-rag/pull/152) merged |
 | [max-rh/sshelf](https://github.com/max-rh/sshelf) | max-rh | feat: print generated SSH command from CLI | [PR #3](https://github.com/max-rh/sshelf/pull/3) merged |
 | [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix: promote first project when config default missing from DB (#974) | [PR #985](https://github.com/basicmachines-co/basic-memory/pull/985) merged |
@@ -62,8 +63,11 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: Willow adapter for Postgres-backed knowledge store | [PR #145](https://github.com/manojmallick/sigmap/pull/145) merged |
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: native Python AST extractor for accurate signature extraction | [PR #144](https://github.com/manojmallick/sigmap/pull/144) merged |
 | [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #401](https://github.com/TensorBlock/awesome-mcp-servers/pull/401) merged |
+| [PDFMathTranslate/PDFMathTranslate](https://github.com/PDFMathTranslate/PDFMathTranslate) | PDFMathTranslate | feat: mirror source directory tree in batch translation output | [PR #1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) open |
+| [zeroc00I/DontFeedTheAI](https://github.com/zeroc00I/DontFeedTheAI) | zeroc00I | ci: add GitHub Actions workflow to publish Docker image to ghcr.io | [PR #8](https://github.com/zeroc00I/DontFeedTheAI/pull/8) open |
+| [openedx/codejail](https://github.com/openedx/codejail) | openedx | feat: introduce CodeJailConfig class; keep module-level backward compat | [PR #309](https://github.com/openedx/codejail/pull/309) open |
+| [stevesolun/ctx](https://github.com/stevesolun/ctx) | stevesolun | fix: support networkx < 3.4 in node_link_data/node_link_graph calls | [PR #120](https://github.com/stevesolun/ctx/pull/120) open |
 | [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | DeusData | fix: skip Antigravity IDE install roots during discovery | [PR #468](https://github.com/DeusData/codebase-memory-mcp/pull/468) open |
-| [wanxingai/LightAgent](https://github.com/wanxingai/LightAgent) | wanxingai | docs: add vector memory adapter example | [PR #60](https://github.com/wanxingai/LightAgent/pull/60) open |
 | [coleam00/mcp-mem0](https://github.com/coleam00/mcp-mem0) | coleam00 | fix: disable Mem0 telemetry via env (Fixes #3) | [PR #18](https://github.com/coleam00/mcp-mem0/pull/18) open |
 | [moazbuilds/claudeclaw](https://github.com/moazbuilds/claudeclaw) | moazbuilds | docs: add heartbeat example (partial #179) | [PR #240](https://github.com/moazbuilds/claudeclaw/pull/240) open |
 | [moazbuilds/claudeclaw](https://github.com/moazbuilds/claudeclaw) | moazbuilds | fix(discord): ignore thread recap system messages (#230) | [PR #239](https://github.com/moazbuilds/claudeclaw/pull/239) open |
