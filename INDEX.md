@@ -201,6 +201,7 @@
 | `install-windows.ps1` |
 | `sap/MCP_SPEC.lock.json` |
 | `sap/adapters` |
+| `sap/cbm_facade.py` |
 | `sap/handoff_paths.py` |
 | `sap/mcp_enrich.py` |
 | `sap/mcp_guide.py` |
