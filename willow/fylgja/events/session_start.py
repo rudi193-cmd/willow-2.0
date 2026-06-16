@@ -436,8 +436,8 @@ def _run_silent_startup(session_id: str = "") -> dict:
 
     # 6. Corpus identity — seed + corrections + preferences (direct SOIL read)
     try:
-        from core.willow_store import WillowStore as _WS
-        _store = _WS()
+        from core.store_port import get_store_port
+        _store = get_store_port()
         _seed_rec = _store.get("corpus/seed", "seed") or {}
         _corrs = _store.all("corpus/corrections") or []
         _prefs = _store.all("corpus/preferences") or []
@@ -550,8 +550,8 @@ def _seed_corpus_corrections() -> None:
         return
 
     try:
-        from core.willow_store import WillowStore as _WS
-        store = _WS()
+        from core.store_port import get_store_port
+        store = get_store_port()
     except Exception:
         return
 

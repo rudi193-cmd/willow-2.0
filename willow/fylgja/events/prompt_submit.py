@@ -325,10 +325,10 @@ def _run_corpus_capture(prompt: str, session_id: str) -> None:
         _repo_root = str(Path(__file__).parent.parent.parent.parent)
         if _repo_root not in _sys.path:
             _sys.path.insert(0, _repo_root)
-        from core.willow_store import WillowStore
+        from core.store_port import get_store_port
         from willow.fylgja.corrections import upsert_correction
         upsert_correction(
-            WillowStore(),
+            get_store_port(),
             source="prompt_submit_hook",
             content=prompt,
             session_id=session_id,

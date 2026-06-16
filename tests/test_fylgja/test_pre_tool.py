@@ -236,7 +236,7 @@ def test_flag_not_opened_below_threshold():
     store = _make_store(hit_count=0)
     with (
         patch("willow.fylgja.events.pre_tool._BLOCK_FLAG_THRESHOLD", 10),
-        patch.dict("sys.modules", {"core.willow_store": MagicMock(WillowStore=lambda: store)}),
+        patch("core.store_port.get_store_port", return_value=store),
     ):
         _pt._corpus_log_block("Bash", "some reason", "sess1")
     assert not _flag_puts(store), "No flag should be opened before threshold"
@@ -246,7 +246,7 @@ def test_flag_opened_at_threshold():
     store = _make_store(hit_count=9)  # next hit → 10 = threshold
     with (
         patch("willow.fylgja.events.pre_tool._BLOCK_FLAG_THRESHOLD", 10),
-        patch.dict("sys.modules", {"core.willow_store": MagicMock(WillowStore=lambda: store)}),
+        patch("core.store_port.get_store_port", return_value=store),
     ):
         _pt._corpus_log_block("Bash", "Use MCP instead of shell.", "sess1")
     puts = _flag_puts(store)
@@ -261,7 +261,7 @@ def test_flag_not_duplicated_when_already_open():
     store = _make_store(hit_count=9, flag_state="open")
     with (
         patch("willow.fylgja.events.pre_tool._BLOCK_FLAG_THRESHOLD", 10),
-        patch.dict("sys.modules", {"core.willow_store": MagicMock(WillowStore=lambda: store)}),
+        patch("core.store_port.get_store_port", return_value=store),
     ):
         _pt._corpus_log_block("Bash", "Use MCP instead of shell.", "sess1")
     assert not _flag_puts(store), "Should not re-open a flag that is already open"
@@ -271,7 +271,7 @@ def test_flag_reopened_after_resolution():
     store = _make_store(hit_count=9, flag_state="resolved")
     with (
         patch("willow.fylgja.events.pre_tool._BLOCK_FLAG_THRESHOLD", 10),
-        patch.dict("sys.modules", {"core.willow_store": MagicMock(WillowStore=lambda: store)}),
+        patch("core.store_port.get_store_port", return_value=store),
     ):
         _pt._corpus_log_block("Bash", "Use MCP instead of shell.", "sess1")
     puts = _flag_puts(store)
