@@ -1,11 +1,8 @@
 """tests/test_grove_p2p.py — unit tests for grove-p2p/1 chunk protocol."""
-import base64
 import hashlib
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 # Patch grove_db before importing grove_p2p so no real DB connection is made
 import sys

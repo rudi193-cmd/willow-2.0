@@ -26,7 +26,7 @@ from pathlib import Path
 REPO = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO))
 
-from core import grove_db as db
+from core import grove_db as db  # noqa: E402
 
 CHUNK_SIZE    = 64 * 1024   # 64 KB — fits comfortably in Postgres TEXT
 CHANNEL_NAME  = "grove-p2p"
@@ -227,7 +227,7 @@ def _reassemble(conn, ch_id: int, agent: str, file_id: str,
         dest.write_bytes(data)
         print(f"[grove-p2p] ✓ {filename} → {dest}")
     else:
-        print(f"[grove-p2p] ✗ hash mismatch on reassembly — discarding", file=sys.stderr)
+        print("[grove-p2p] ✗ hash mismatch on reassembly — discarding", file=sys.stderr)
 
     db.bus_send(conn, channel_id=ch_id, sender=agent,
                 content=_envelope("COMPLETE", file_id,
