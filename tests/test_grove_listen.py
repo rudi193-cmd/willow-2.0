@@ -190,3 +190,19 @@ def test_reconnect_closes_stale_connection():
         gl._run()
 
     stale.close.assert_called_once()
+
+
+def test_pidlock_exits_on_unexpected_lock_failure():
+    gl = _load(agent="hanuman")
+    lock_path = MagicMock()
+    pid_path = MagicMock()
+    lock = gl._PidLock(lock_path, pid_path)
+    lock.lock_path.parent.mkdir = MagicMock()
+    pid_path.parent.mkdir = MagicMock()
+    lock._fh = MagicMock()
+    lock._fh.fileno.return_value = 3
+
+    with patch("willow.grove_listen.portalocker.lock", side_effect=OSError("perm")):
+        with pytest.raises(SystemExit) as exc:
+            lock.__enter__()
+    assert exc.value.code == 1

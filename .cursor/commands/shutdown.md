@@ -1,12 +1,12 @@
 ---
 name: shutdown
-description: Graceful Willow 2.0 session close — audit KB, write handoff, run full pipeline
+description: Graceful Willow 2.0 session close — resolve flags, write handoff, audit KB, run full pipeline
 ---
 @markdownai
 
 # /shutdown — Willow 2.0 Graceful Close
 
-Stack position: this skill completes the **end-of-session persistence** layer. See the Persistent memory section in `willow.md` for the full 4-layer stack.
+Stack position: this skill is the **end-of-session persistence** layer — it absorbed the former `/handoff` skill, so the handoff write is step 2 of this sequence, not a separate skill. See the Persistent memory section in `willow.md` for the full 4-layer stack.
 
 ## Sequence
 
@@ -20,7 +20,99 @@ Stack position: this skill completes the **end-of-session persistence** layer. S
    the state from when the flag was first opened. A handoff with a stale open process flag is a
    lie to the next session.
 
-2. **KB close audit** — for every task completed or closed this session, verify its KB atom
+2. **Write the handoff** — this runs early by design: it is the one artifact that must survive
+   even if the session dies partway through the steps below.
+
+   a. **Load current state** — call `handoff_latest` to see prior open threads. The flag state
+      from step 1 must appear in the handoff. Do not rely on memory; read SOIL.
+
+   b. **Draft** — copy [`docs/templates/HANDOFF.template.md`](../../docs/templates/HANDOFF.template.md)
+      as the canonical v2 structure:
+
+```
+# HANDOFF: <title>
+From: {AGENT} (Claude Code, Sonnet 4.6)
+Session: {YYYY-MM-DDx} | Resume: claude --resume {UUID}
+
+## What I Now Understand
+<2-3 sentences of architectural truth, not task summary>
+
+## What We Agreed On
+<decisions USER ratified this session — include what was ruled out and why>
+<format: "Decision: X. Ruled out: Y because Z.">
+<omit if session was pure execution with no design conversation>
+
+## Capabilities (persistent — carry forward, update don't rewrite)
+| Capability | Location | Status |
+|------------|----------|--------|
+<what has been built and is available>
+
+## What Was Done
+<bullet list — high level, no code details>
+
+## Open Threads
+<anything unfinished, blocked, or requiring a decision next session>
+<do NOT include things already captured in "What We Agreed On">
+
+## 17 Questions
+Q1–Q16: sequential, specific, bite-sized
+Q17: "What is the next single bite?"
+
+## Risks / Open Gates
+<anything that could break the next session>
+
+## Agent Notes for Human
+<the agent's reflections to the operator — reminders, to-dos, unfinished tasks, patterns
+ surfaced this session. Max 17 lines.>
+
+## Human Notes to Agent
+<leave EMPTY at close. The operator writes here after the session; handoff_latest reads it
+ live from the file at next boot.>
+
+## Machine block for handoff_rebuild / kb_ingest
+<the content JSONB from step 2c, fenced as ```json — required for handoff_rebuild to parse>
+```
+
+   c. **Write to KB** — call `kb_ingest` with `category="handoff"`, `source_type="session"`,
+      `title="Session handoff {YYYY-MM-DD} — {one-line summary}"`, `summary` = the prose
+      narrative (~500 chars), and `content` JSONB:
+      ```json
+      {
+        "summary": "<prose narrative>",
+        "open_threads": ["<thread 1>", "..."],
+        "agreements": ["<decision + ruling>", "..."],
+        "key_actions": ["<action 1>", "..."],
+        "next_steps": ["<Q17>", "<Q16>", "..."],
+        "tools_used": ["kb_ingest", "fleet_status", "..."],
+        "signals": {"health": "ok|degraded", "grove": "up|down"},
+        "compact_receipt": null
+      }
+      ```
+      Set `compact_receipt` to `{"tokens_before": N, "tokens_after": M, "turns_dropped": K}` if
+      context was compacted this session, otherwise `null`.
+
+   d. **Write markdown file** — submit a Kart task using `script_body` to call
+      `willow.fylgja.handoff_write.write_session_handoff(agent, body)`. This writes the
+      canonical v2 YAML frontmatter and body to
+      `$WILLOW_HOME/handoffs/{agent}/session_handoff-{date}{letter}_{agent}.md`
+      (`~/github/.willow`; `~/.willow` alias OK). Do NOT write manually to `docs/handoffs/` —
+      deprecated, not indexed. Example script_body:
+      ```python
+      from willow.fylgja.handoff_write import write_session_handoff
+      path = write_session_handoff("willow", """# HANDOFF: ...\n...""")
+      print(path)
+      ```
+
+   e. **Write FRANK ledger entry** — call `ledger_write` with `event_type="check_in"`,
+      `summary`, `shipped` (list), `open_decisions` (list), `atoms_written` (every `kb_ingest`
+      ID this session — required if any), `gaps_flagged`, `next_bite` (Q17 verbatim).
+
+   f. **Rebuild DB** — call `handoff_rebuild` so the next session's `handoff_latest` returns
+      current state.
+
+   g. **Confirm** — report the KB atom ID, markdown file path, and Q17.
+
+3. **KB close audit** — for every task completed or closed this session, verify its KB atom
    reflects the resolution. Search with `kb_search` for each task name. If the atom says the
    task is open or unsolved, update it with `kb_ingest` (new atom) marking it resolved and
    citing the commit or output. This step exists because atoms written at task-open never get
@@ -33,12 +125,20 @@ Stack position: this skill completes the **end-of-session persistence** layer. S
    3. A KB atom ingested via `kb_ingest`
 
    A Grove post is communication, not memory. Scan MEMORY.md entries added this session — any
-   entry missing a KB atom ID is incomplete. Fix before handoff. If patterns were extracted but
+   entry missing a KB atom ID is incomplete. Fix before closing. If patterns were extracted but
    edges are missing, add them now with `soil_add_edge`.
 
-3. **Memory audit** — run `/health memory` to check for STALE/DEAD/REDUNDANT/DARK records. Archive or fix before handing off.
+   If this audit changes open threads or agreements materially, amend the handoff (re-run 2c–2f
+   for the delta) — cheap compared to a wrong handoff.
 
-4. **Write final handoff** — invoke `/handoff` skill. This produces the session summary and Q17.
+3b. **Handoff gate** — verify the file written in step 2 passes the v2 completeness check:
+   ```
+   python3 scripts/session_close.py --check-handoff ${WILLOW_AGENT_NAME}
+   ```
+   On REJECT, fix the handoff (missing sections, empty Open Threads, no Q17) before continuing.
+   A handoff that fails the gate will not surface via `handoff_latest`.
+
+4. **Memory audit** — run `/health memory` to check for STALE/DEAD/REDUNDANT/DARK records. Archive or fix before closing.
 
 5. **Run the close pipeline** — the Stop hook is now cleanup-only. Run the full pipeline explicitly:
    ```
@@ -55,12 +155,67 @@ Stack position: this skill completes the **end-of-session persistence** layer. S
    - `close_session` — mark session complete in SAFE
    - `run_ingot` — cat observation from local model
 
+5b. **Norn pass (the pump)** — promote pending intake records so nothing buffers unpumped:
+   `intake_schedule(app_id=<agent>, days=1)` then `kart_task_run(app_id=<agent>)`.
+   Weekly or after heavy sessions, run the fleet variant: `intake_schedule_fleet(app_id=<agent>)`.
+
 6. **State the next bite** from Q17. One sentence.
+
+7. **Session Close Report** — the final user-facing output. Render the session's data as
+   compact visual **tables** (not prose) so the close is legible at a glance. Pull values from
+   the steps above; do not recompute. Omit any table whose data is empty. Keep ~5 rows max per
+   table; make IDs/paths/PRs clickable. This is the user's receipt — the last thing they see.
+
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     SESSION CLOSE — {agent} · {session}
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+   **Shipped** — PRs, commits, releases
+   | What | Where | State |
+   |------|-------|-------|
+
+   **Memory written** — the session's durable trace
+   | Kind | ID / path | Title |
+   |------|-----------|-------|
+   (KB atoms via `kb_ingest`, the handoff file, the FRANK ledger `check_in`)
+
+   **Flags resolved** — from step 1
+   | Flag | Resolution |
+   |------|-----------|
+
+   **Open threads** ({N}) — carried to next session
+   | Thread | Next action |
+   |--------|-------------|
+
+   **Pipeline** — step 5, one line: stages passed / failed.
+
+   **Next bite (Q17):** {one sentence}
+
+## Context-critical mode
+
+When invoked by `/context-sentinel` (HANDOFF_NOW) or when remaining context is plainly too small
+for the full sequence: run **steps 1–2 only**, then attempt step 5, then stop. Skip steps 3–4 —
+a finished handoff beats a half-finished audit. Never start step 3 or 4 if doing so risks dying
+before the pipeline runs.
 
 ## Rules
 
 - Never exit without writing the handoff. The next session reads from it.
-- Never skip the KB close audit (step 1). An unclosed atom is a future rediscovery loop.
+- The handoff write (step 2) comes before the audits by design — it is the artifact that must
+  survive a dying session. Amend it after the audits if they change the picture.
+- Never skip the KB close audit (step 3) in a normal close. An unclosed atom is a future rediscovery loop.
+- Never skip `handoff_rebuild` or `ledger_write` — the next session boots from both; a missing
+  ledger entry means the next session starts blind.
+- "What I Now Understand" = architectural truth, not a task list.
+- "What We Agreed On" = ratified decisions only — include ruled-out options to prevent
+  re-litigation. This section is what makes CC CLI sessions legible to the next agent.
+- `open_threads` in the content JSONB is what `handoff_latest` returns. Keep them precise.
+- Q17 must be a single concrete next bite, not a project description.
 - Phases 3+4 (atom synthesis + edge linking) only run if `WILLOW_ATOM_EXTRACTION=1`.
 - Stop hook is cleanup-only (depth stack + thread file). Pipeline only runs on explicit /shutdown.
 - Step 1 (process flag resolution) is not optional. A handoff written over a stale running flag is incorrect state — the next session will surface it as an open problem that is already solved.
+- The draft template must keep **## Agent Notes for Human** and **## Human Notes to Agent** (matching `docs/templates/HANDOFF.template.md` and the v2 parser). Agent Notes = the agent's reflections to the operator; Human Notes = left empty at close for the operator to fill after, read live at next boot. Dropping either breaks parity with `handoff_latest`.
+- Step 7 (Session Close Report) is the final user-facing output — always render it. The user should never have to open the handoff file to see what the session did. In context-critical mode the floor is a minimal version: **Shipped** + **Next bite**.
+- Do NOT write to `docs/handoffs/` (deprecated, unindexed) or `~/Ashokoa/` (does not exist).

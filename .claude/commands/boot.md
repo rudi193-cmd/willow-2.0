@@ -50,6 +50,12 @@ Fallback: Read the raw file.
 Agent name · repo root · current branch · staged/unstaged/untracked counts · one-line diff note.
 No full patch. No full diffs.
 
+> **Clocks.** All Willow artifacts (handoff filenames, DB timestamps) are **UTC**;
+> the harness reports "today" in **local** time. Between ~18:00 local and midnight
+> the two calendar dates differ by one day — this is correct, not drift. The
+> per-turn `[CLOCK]` line (prompt_submit hook) states the exact offset. Do not
+> "correct" a UTC-dated handoff to match local "today."
+
 **3. Fleet health** *(parallel with 4–6)*
 `willow_status(app_id=<agent>)` — Postgres, SOIL, Ollama, manifests (`level=quick` by default).
 `postgres` is a dict → up. Non-dict or timeout → probe directly.

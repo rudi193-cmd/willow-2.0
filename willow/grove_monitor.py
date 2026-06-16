@@ -99,6 +99,9 @@ def extract_messages(result) -> dict:
 
 
 def main():
+    from core.grove_gate import assert_grove as _assert_grove
+
+    _assert_grove("grove_monitor")
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", default=None, help="Defaults to WILLOW_AGENT_NAME")
     parser.add_argument("--cursors", default="")

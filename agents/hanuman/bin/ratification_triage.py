@@ -29,6 +29,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from core import soil
+from core.grove_gate import assert_grove as _assert_grove
 from core.pg_bridge import PgBridge
 from core.kb_read_log import read_atoms_set, record_read
 
@@ -242,6 +243,7 @@ def _send_grove(message: str) -> bool:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def run(dry_run: bool = False) -> int:
+    _assert_grove("ratification_triage")
     pg = PgBridge()
 
     drift_items    = _read_drift_items()
