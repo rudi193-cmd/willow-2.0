@@ -119,7 +119,7 @@ The hook injects picker + `[PERSONA-IDENTITY]` lines into system context only �
 If active: load context per the persona registry (source defined in `willow.md` — the fleet contract, not any runtime-specific path). The optional `{persona}-boot.md` overlay supplements that registry context; it never changes fleet identity.
 
 **8. Corrections + Preferences**
-Read `corpus/corrections` and `corpus/preferences` — already seeded from memory feedback files by SessionStart hook.
+`soil_list(collection="corpus/corrections")` and `soil_list(collection="corpus/preferences")` — seeded from memory feedback files by SessionStart hook. These live in SOIL, not as flat files; `Read corpus/corrections` will 404.
 Surface count and top items. These are behavioral rails for this session.
 
 **9. Stack snapshot**
