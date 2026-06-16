@@ -5038,6 +5038,130 @@ async def code_graph_impact(
     return await loop.run_in_executor(_executor, _run)
 
 
+# ── Tools — cbm domain (codebase-memory-mcp bounded facade) ─────────────────
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cbm_status(app_id: str) -> dict:
+    """Resolve indexed CBM project for this repo and surface F-001..F-008 guardrails."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.cbm_facade import LIMITATIONS, resolve_project
+        resolved = resolve_project()
+        return {
+            "resolved": resolved,
+            "limitations": LIMITATIONS,
+            "usage": "Prefer cbm_* over raw codebase-memory-mcp; cross-check with cbm_verify_callers",
+        }
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cbm_search(
+    app_id: str,
+    query: str,
+    limit: int = 10,
+    exclude_tests: bool = True,
+    project: str = "",
+) -> dict:
+    """Bounded search_graph via codebase-memory-mcp CLI (F-003 LIMIT enforced)."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.cbm_facade import search
+        return search(query, limit=limit, project=project, exclude_tests=exclude_tests)
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cbm_trace(
+    app_id: str,
+    function_name: str,
+    direction: str = "both",
+    depth: int = 3,
+    include_tests: bool = False,
+    project: str = "",
+) -> dict:
+    """Bounded trace_path — caps caller/callee lists (F-004/F-007 verify note attached)."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.cbm_facade import trace
+        return trace(
+            function_name,
+            direction=direction,
+            depth=depth,
+            project=project,
+            include_tests=include_tests,
+        )
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cbm_query(
+    app_id: str,
+    query: str,
+    max_rows: int = 25,
+    project: str = "",
+) -> dict:
+    """Bounded query_graph — auto-appends LIMIT when missing (F-001/F-003)."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.cbm_facade import query as cbm_query_fn
+        return cbm_query_fn(query, project=project, max_rows=max_rows)
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cbm_verify_callers(
+    app_id: str,
+    function_name: str,
+    file_path: str = "",
+    include_tests: bool = False,
+    project: str = "",
+) -> dict:
+    """Graph inbound callers + ripgrep cross-check (F-004/F-007 dead-code guard)."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.cbm_facade import verify_callers
+        return verify_callers(
+            function_name,
+            file_path=file_path,
+            project=project,
+            include_tests=include_tests,
+        )
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cbm_reconcile(
+    app_id: str,
+    symbol: str,
+    max_results: int = 5,
+) -> dict:
+    """Side-by-side CBM search + native code_graph explain for one symbol."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.cbm_facade import reconcile_symbol
+        return reconcile_symbol(symbol, max_results=max_results)
+
+    return await loop.run_in_executor(_executor, _run)
+
+
 # ── Tools — session_query (S11) ──────────────────────────────────────────────
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -5680,6 +5804,15 @@ async def willow_code(
     if mode == "suggest":
         result = await code_graph_suggest(app_id=app_id, task=query, max_results=max_results)
         backend = "code_graph_suggest"
+    elif mode in ("cbm", "graph"):
+        result = await cbm_search(app_id=app_id, query=query, limit=max_results)
+        backend = "cbm_search"
+    elif mode == "reconcile":
+        result = await cbm_reconcile(app_id=app_id, symbol=query, max_results=max_results)
+        backend = "cbm_reconcile"
+    elif mode == "verify":
+        result = await cbm_verify_callers(app_id=app_id, function_name=query)
+        backend = "cbm_verify_callers"
     else:
         result = await code_graph_search(app_id=app_id, query=query, max_results=max_results)
         backend = "code_graph_search"
