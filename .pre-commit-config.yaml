@@ -29,6 +29,13 @@ repos:
         pass_filenames: false
         always_run: true
 
+      - id: store-import-guard
+        name: store import guard (ADR StorePort allowlist)
+        entry: bash scripts/store_import_guard.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
       - id: mypy-report
         name: mypy (report-only)
         entry: bash scripts/mypy_report.sh

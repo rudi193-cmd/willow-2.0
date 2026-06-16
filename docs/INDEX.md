@@ -95,7 +95,7 @@ Moved to `archive/docs/` during the 2.0 cut — still accurate on design, stale 
 - [`../archive/docs/TECHNICAL_SPEC.md`](../archive/docs/TECHNICAL_SPEC.md)
 - [`../archive/docs/superpowers/README.md`](../archive/docs/superpowers/README.md) — historical plans/specs (1.9 era; do not execute blindly)
 
-Schema: [`db/WILLOW_SCHEMA.md`](db/WILLOW_SCHEMA.md) · ADRs: [`adrs/README.md`](adrs/README.md)
+Schema: [`db/WILLOW_SCHEMA.md`](db/WILLOW_SCHEMA.md) · Memory: [`MEMORY_STACK.md`](MEMORY_STACK.md) · ADRs: [`adrs/README.md`](adrs/README.md)
 
 ---
 

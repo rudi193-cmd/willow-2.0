@@ -57,6 +57,10 @@ _path_guard() {
   bash scripts/path_guard.sh
 }
 
+_store_import_guard() {
+  bash scripts/store_import_guard.sh
+}
+
 _mcp_registry() {
   "${PYTHON}" scripts/check_mcp_registry.py --strict
 }
@@ -208,6 +212,7 @@ if [[ "${MODE}" == "ci" ]]; then
 fi
 
 _run "path-guard" _path_guard
+_run "store-import-guard" _store_import_guard
 _run "mcp-registry-strict" _mcp_registry
 _run "verify-layout" _layout
 _run "remote-surface-check" _remote_surface_check
