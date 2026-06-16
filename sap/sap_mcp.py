@@ -1482,6 +1482,12 @@ async def agent_task_submit(
 
     task_text = cmd if not allow_net else cmd + "\n# allow_net"
 
+    from core.kart_task_scan import check_kart_task
+
+    blocked = check_kart_task(task_text, script_body=script_body)
+    if blocked:
+        return blocked
+
     def _submit():
         task_id = pg.submit_task(task_text, submitted_by=submitted_by or app_id, agent=agent)
         if not task_id:

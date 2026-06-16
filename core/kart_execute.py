@@ -120,6 +120,12 @@ def run_shell_task(
     context: str = "poll",
 ) -> tuple[str, dict]:
     """Execute a shell-class task string. Returns (status, result)."""
+    from core.kart_task_scan import check_kart_task
+
+    blocked = check_kart_task(task_text)
+    if blocked:
+        return "failed", blocked
+
     timeout = timeout if timeout is not None else kart_timeout(context)
     cmd_body, allow_net = _strip_allow_net_directive(task_text)
     blocks = _iter_fenced_blocks(cmd_body)
