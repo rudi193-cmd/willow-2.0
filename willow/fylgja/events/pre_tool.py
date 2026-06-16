@@ -93,8 +93,8 @@ def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
     try:
         if _REPO_ROOT not in sys.path:
             sys.path.insert(0, _REPO_ROOT)
-        from core.willow_store import WillowStore
-        _store = WillowStore()
+        from core.store_port import get_store_port
+        _store = get_store_port()
         key = _rule_key(tool_name, reason)
         now = datetime.now(timezone.utc).isoformat()
         try:

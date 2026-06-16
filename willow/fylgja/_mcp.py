@@ -6,7 +6,7 @@ Dispatches hook→MCP calls directly to Python implementations.
 No subprocess. No stale binary. No init handshake. No auth gap.
 
 Tool groups:
-  store_*                → core.willow_store.WillowStore
+  store_*                → core.store_port.StorePort (WillowStoreAdapter)
   grove_*                → core.grove_client
   willow_knowledge_*     → core.pg_bridge + core.embedder
   willow_handoff_*       → sap.sap_mcp (via subprocess fallback)
@@ -37,8 +37,8 @@ def _get_store():
         import sys
         if str(_REPO_ROOT) not in sys.path:
             sys.path.insert(0, str(_REPO_ROOT))
-        from core.willow_store import WillowStore
-        _store = WillowStore()
+        from core.store_port import get_store_port
+        _store = get_store_port()
     return _store
 
 

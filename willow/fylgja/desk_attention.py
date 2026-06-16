@@ -92,14 +92,14 @@ def _human_required(limit: int = 5) -> tuple[int, list[dict], dict]:
 
 def _dream_due(agent: str = "") -> bool:
     try:
-        from willow_store import WillowStore
+        from core.store_port import get_store_port
         from willow.fylgja.willow_home import resolve_store_root
 
         root = os.environ.get(
             "WILLOW_STORE_ROOT",
             str(resolve_store_root(Path(__file__).resolve().parents[2])),
         )
-        store = WillowStore(root)
+        store = get_store_port(root=root)
         who = (agent or os.environ.get("WILLOW_AGENT") or "willow").strip()
         dream_state = store.get(f"{who}/dream", "state") or {}
         if dream_state.get("locked"):
