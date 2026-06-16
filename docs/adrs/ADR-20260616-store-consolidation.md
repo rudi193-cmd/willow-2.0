@@ -4,8 +4,9 @@
 
 **b17:** STCAD · ΔΣ=42
 
-**Status:** proposed  
+**Status:** accepted  
 **Date:** 2026-06-16  
+**Accepted:** 2026-06-15 (Sean Campbell, Vishwakarma)  
 **Deciders:** Sean Campbell, Vishwakarma (review), willow (draft)
 
 ## Context
@@ -125,17 +126,17 @@ Enforcement: extend `scripts/path_guard.sh` or a dedicated `scripts/store_import
 | Allow direct `WillowStore` everywhere | Produced dual-layout bug; bypasses deviation rubric and MCP audit trail |
 | SoilClient inside fleet hooks | Subprocess overhead on every hook fire; in-process StorePort is correct for in-repo code |
 
-## Open questions (for deciders)
+## Decisions (resolved 2026-06-15)
 
-1. **Postgres vs SOIL boundary** — Should session-scoped flags ever promote to KB atoms automatically, or always explicit `kb_ingest`?
-2. **Script grandfathering** — Migrate all `scripts/*.py` to `core.soil` in one PR or incremental?
-3. **`audit_verify` SOIL1 gate** — Re-run after any StorePort landing; confirm no `/store` twins reappear.
+1. **Postgres vs SOIL boundary** — Always explicit `kb_ingest`. No auto-promotion from SOIL to KB; promotion preserves `mem_check` gates and keeps tiers auditable.
+2. **Script grandfathering** — Incremental migration. Phase 3 CI guard blocks **new** direct `WillowStore` imports; existing `scripts/**` migrate when touched or in small batches.
+3. **`audit_verify` SOIL1 gate** — Mandatory re-run after StorePort Phase 1 lands; Phase 2 merge blocked without green SOIL1.
 
-## Implementation plan (phased — no code until ADR accepted)
+## Implementation plan (phased)
 
 | Phase | Deliverable | Owner |
 |-------|-------------|-------|
-| **0** | This ADR accepted | Sean + Vishwakarma |
+| **0** | This ADR accepted | Sean + Vishwakarma ✓ |
 | **1** | `core/store_port.py` + `WillowStoreAdapter`; `sap_mcp` uses adapter | hanuman |
 | **2** | Migrate hook imports (`pre_tool`, `session_start`, `prompt_submit`, `_mcp`) to adapter | hanuman |
 | **3** | `store_import_guard.sh` in CI; fix violations | hanuman |
@@ -150,7 +151,7 @@ Enforcement: extend `scripts/path_guard.sh` or a dedicated `scripts/store_import
 | Audit | `docs/audits/WILLOW_FLEET_STRUCTURAL_AUDIT_2026-06-15.md` (Finding 6) |
 | Git | merge `457c8d0c` (SOIL unify PR #336); merge `32a53320` (master at ADR draft) |
 | SOIL | `willow/audit/store_consolidation_design_2026-06-15`, `willow/audit/remediation_2026-06-15` item `P2-store-consolidation` |
-| Fork | `FORK-E9E16DF5` |
+| Fork | `FORK-E9E16DF5`, acceptance `FORK-B6F2BDD3` |
 
 ## Supersedes
 
