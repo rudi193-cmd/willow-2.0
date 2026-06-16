@@ -8,7 +8,7 @@ description: Willow 2.0 primary boot gate — reads contract, establishes contex
 
 > **Primary boot gate.** Run before producing any response to the user. A greeting, short message, or casual opening is not an exception — boot first.
 >
-> **Exceptions (narrow):**
+> **Exceptions (narrow — only these two; the agent does not classify a turn as exempt on its own judgment):**
 > - User is in a physical, mental, or personal emergency — respond immediately, boot after.
 > - User explicitly says to skip it ("sandbox", "load without context", "no startup", or equivalent) — acknowledge and proceed without boot.
 
@@ -49,6 +49,12 @@ Fallback: Read the raw file.
 **2. Local context** *(compact)*
 Agent name · repo root · current branch · staged/unstaged/untracked counts · one-line diff note.
 No full patch. No full diffs.
+
+> **Clocks.** All Willow artifacts (handoff filenames, DB timestamps) are **UTC**;
+> the harness reports "today" in **local** time. Between ~18:00 local and midnight
+> the two calendar dates differ by one day — this is correct, not drift. The
+> per-turn `[CLOCK]` line (prompt_submit hook) states the exact offset. Do not
+> "correct" a UTC-dated handoff to match local "today."
 
 **3. Fleet health** *(parallel with 4–6)*
 `willow_status(app_id=<agent>)` — Postgres, SOIL, Ollama, manifests (`level=quick` by default).
@@ -226,10 +232,24 @@ Q2: {open question}
 ...
 Q16: {open question}
 Q17: {next single bite — one sentence, no preamble}
+
+## Agent Notes for Human
+
+- {reminders, to-do's, stated unfinished tasks, patterns surfaced — max 17 lines}
+
+## Human Notes to Agent
+
+- {leave empty at close; the operator writes here afterward — handoff_latest reads it live from the file at next boot}
+
+## Machine block for handoff_rebuild / kb_ingest
+
+```json
+{"summary": "", "open_threads": [], "agreements": [], "key_actions": [], "next_steps": [], "tools_used": [], "signals": {}}
+```
 ```
 
 **Required:** `format: v2` and `session:` in frontmatter. Without them `handoff_latest` will not surface this file.
-**Required:** Section headers must match exactly — `## What I Now Understand`, `## Open Threads`, `## What We Agreed On`, `## 17 Questions`.
+**Required:** Section headers must match exactly — `## What I Now Understand`, `## Open Threads`, `## What We Agreed On`, `## 17 Questions`, `## Agent Notes for Human`, `## Human Notes to Agent`, `## Machine block …`.
 **Required:** Q17 line must be `Q17: <text>` — no question mark in the key, colon-delimited, no preamble. Q17 is always "What is the next single bite?" answered.
 **Convention:** Q1-Q16 are open questions for the next session — things unresolved, decisions pending, gates not yet crossed. Write as many as are genuinely open (pad to 17 only if needed). Q17 is always the next action.
 

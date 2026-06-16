@@ -67,19 +67,15 @@ When Grove is not running and a script calls `assert_grove()`, users and agents 
 
 ## Fleet scripts that are Grove-gated
 
-All of these import from `core/grove_gate.py`:
-- `scripts/kart_poll.py`
-- `scripts/grove_msg.py`
-- `tools/jukebox.py`
-- `tools/nest_watcher.py`
-- `agents/hanuman/bin/journal_watcher.py`
-- `agents/hanuman/bin/journal_responder.py`
-- `agents/hanuman/bin/auto_dream.py`
-- `agents/hanuman/bin/dead_reckoning.py`
-- `agents/hanuman/bin/kb_truth_drift.py`
-- `agents/hanuman/bin/think_map.py`
-- `agents/hanuman/bin/upstream_watcher.py`
-- `agents/hanuman/bin/upstream_responder.py`
+Authoritative list: `FLEET_GROVE_GATED` in `core/grove_gate.py` (enforced by `audit_verify` **FCAT5**).
+
+All fleet runners import `assert_grove` from `core/grove_gate.py` before doing work, including:
+- `willow/grove_listen.py`, `willow/grove_monitor.py`, `core/kart_worker.py`
+- `scripts/kart_poll.py`, `scripts/grove_msg.py`
+- `tools/jukebox.py`, `tools/nest_watcher.py`
+- `agents/hanuman/bin/*` — journal/upstream watchers & responders, auto_dream, dead_reckoning, kb_truth_drift, think_map, stabilization_worker, skill_steward (run-once), kb_briefer, ratification_triage, upstream_scout (run-once)
+
+**grove_listen** also uses fail-closed `_PidLock` (**FCAT6**) — unexpected lock errors exit 1; only `BlockingIOError` exits 0 (already running).
 
 ## Environment override
 

@@ -1,9 +1,9 @@
+@markdownai v1.0
+
 ---
 name: startup
 description: Willow 2.0 boot — anchor, inbox, ledger, KB continuity (config-driven), flags, report
 ---
-
-@markdownai v1.0
 
 # /startup
 
