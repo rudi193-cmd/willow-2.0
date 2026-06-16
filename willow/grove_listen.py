@@ -256,7 +256,12 @@ def _run():
         except Exception as e:
             print(f"[grove-listen-error] {e}", flush=True)
             try:
+                stale = conn
                 conn = connect()
+                try:
+                    stale.close()
+                except Exception:
+                    pass
                 cur = conn.cursor()
                 ch_map = load_channels(cur)
                 # Re-seed cursors so we don't replay or miss messages after reconnect
