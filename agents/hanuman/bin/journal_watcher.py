@@ -38,7 +38,14 @@ def _pending_entries(pg: PgBridge) -> list[str]:
             """,
             (f"%{SAGA_TAG}%",),
         )
-        return [row[0] for row in cur.fetchall()]
+        ids = [row[0] for row in cur.fetchall()]
+    # Poll-only read: release the implicit transaction so the long-lived
+    # PgBridge connection does not sit idle-in-transaction on the pool slot.
+    try:
+        pg.conn.rollback()
+    except Exception:
+        pass
+    return ids
 
 
 def _fire(entry_id: str) -> None:
