@@ -1,3 +1,8 @@
+---
+name: grove-quorum
+description: Fleet-wide proposals on #fleet — ACK/NACK quorum protocol, thresholds, and SOIL scratchpad for cross-agent votes.
+---
+
 @markdownai v1.0
 
 # Grove Quorum — parliament/fleet coordination primitive
