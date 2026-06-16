@@ -44,18 +44,14 @@ _notify_thread_lock = threading.Lock()
 
 def _pg_notify_thread() -> None:
     """Dedicated Postgres LISTEN thread. Broadcasts to subscriber queues on NOTIFY."""
-    import psycopg2
-
-    dsn = os.getenv("WILLOW_DB_URL", "")
-    if not dsn:
-        pg_db   = os.getenv("WILLOW_PG_DB", "willow_20")
-        pg_user = os.getenv("WILLOW_PG_USER", os.environ.get("USER", ""))
-        dsn = f"dbname={pg_db} user={pg_user}"
+    import time
 
     while True:
+        conn = None
         try:
-            conn = psycopg2.connect(dsn)
-            conn.autocommit = True
+            # Dedicated autocommit connection for LISTEN — owned by this thread,
+            # closed in the finally below so a reconnect never leaks the old one.
+            conn = db.listen_connection()
             cur = conn.cursor()
             cur.execute("SET search_path = grove, public")
             cur.execute("LISTEN grove_channel")
@@ -77,8 +73,16 @@ def _pg_notify_thread() -> None:
                         for q in queues:
                             asyncio.run_coroutine_threadsafe(q.put(channel_id), _main_loop)
         except Exception:
-            import time
             time.sleep(3)
+        finally:
+            # Always release the connection before the next reconnect attempt.
+            # Without this, every dropped LISTEN (e.g. a Postgres restart) leaked
+            # an idle backend until the 100-connection cap was exhausted.
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
 
 def _ensure_pg_notify_thread() -> None:
