@@ -1,10 +1,7 @@
 """Tests for sap.cbm_facade bounded CBM wrapper."""
 from __future__ import annotations
 
-import json
 from unittest.mock import patch
-
-import pytest
 
 from sap.cbm_facade import (
     _prepare_cypher,
@@ -89,7 +86,7 @@ def test_verify_callers_merges_graph_and_grep(mock_trace, mock_grep):
 def test_query_passes_bounded_cypher(mock_cli):
     mock_cli.return_value = {"rows": []}
     with patch("sap.cbm_facade.project_name", return_value="proj"):
-        out = query("MATCH (n) RETURN n.name", max_rows=12)
+        query("MATCH (n) RETURN n.name", max_rows=12)
     args = mock_cli.call_args[0]
     assert args[0] == "query_graph"
     payload = args[1]
