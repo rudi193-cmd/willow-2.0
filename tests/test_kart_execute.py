@@ -76,3 +76,13 @@ def test_execute_task_row_workflow_bad_json():
     status, result = execute_task_row(row, pg)
     assert status == "failed"
     assert "bad workflow payload" in result.get("error", "")
+
+
+def test_run_one_shell_fails_when_bwrap_required_but_missing(monkeypatch):
+    monkeypatch.delenv("WILLOW_KART_NO_BWRAP", raising=False)
+    monkeypatch.setattr("core.kart_sandbox.bwrap_available", lambda: False)
+    from core.kart_execute import _run_one_shell
+
+    status, result = _run_one_shell("echo hi", timeout=5, allow_net=False)
+    assert status == "failed"
+    assert "bwrap" in result.get("error", "").lower()
