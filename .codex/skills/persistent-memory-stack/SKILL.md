@@ -1,6 +1,6 @@
 ---
 name: persistent-memory-stack
-description: Willow Fylgja skill: Persistent Memory Stack.
+description: Five-layer Willow memory model — flat-file boot, intake, KB, SOIL, handoff — with write rules and promotion paths.
 ---
 
 @markdownai v1.0
