@@ -249,6 +249,47 @@ def chk_s8():
     return CLOSED, f"{len(links)} config symlink(s) auto re-emitted in argv"
 
 
+# ── Felis-catus P0 (EA422361) — shipped #398–#403, gated 2026-06-16 ───────────
+
+def chk_fcat1():
+    """journal_watcher poll must rollback so PgBridge does not idle-in-txn."""
+    jw = _source("agents/hanuman/bin/journal_watcher.py")
+    if "pg.conn.rollback()" not in jw:
+        return OPEN, "journal_watcher missing post-poll rollback"
+    return CLOSED, "journal_watcher rolls back after poll read"
+
+
+def chk_fcat2():
+    """grove_listen reconnect must close the stale connection."""
+    gl = _source("willow/grove_listen.py")
+    if "stale.close()" not in gl:
+        return OPEN, "grove_listen reconnect does not close stale connection"
+    return CLOSED, "grove_listen closes stale connection on reconnect"
+
+
+def chk_fcat3():
+    """Kart must fail closed when bwrap is intended but absent."""
+    ks_src = _source("core/kart_sandbox.py")
+    use_fn = ks_src.split("def use_bwrap", 1)[-1].split("\ndef ", 1)[0]
+    if "return bwrap_available()" in use_fn:
+        return OPEN, "use_bwrap still conflates intent with bwrap_available()"
+    ke = _source("core/kart_execute.py")
+    if "bwrap not found" not in ke:
+        return OPEN, "kart_execute missing fail-closed bwrap guard"
+    return CLOSED, "use_bwrap expresses intent; kart_execute fails closed"
+
+
+def chk_fcat4():
+    """Kart hybrid security scan wired at queue + execute."""
+    ke = _source("core/kart_execute.py")
+    if "check_kart_task" not in ke:
+        return OPEN, "kart_execute does not call check_kart_task"
+    kts = _source("core/kart_task_scan.py")
+    if "security_scan" not in kts:
+        return OPEN, "kart_task_scan missing security_scan import"
+    return CLOSED, "hybrid Kart security scan wired (kart_task_scan + execute)"
+
+
 # ── V-series (verification class — file state) ─────────────────────────────────
 
 def chk_v1():
@@ -316,6 +357,11 @@ CHECKS = [
     {"id": "S5",  "axis": "visibility",    "gate": True,  "fn": chk_s5,   "title": "transcript stores ro (KP4)"},
     # SOIL layout unification (gated; operator decisions 2026-06-12)
     {"id": "SOIL1", "axis": "maintainability", "gate": True, "fn": chk_soil1, "title": "SOIL dual-layout unified (shim + /store reject)"},
+    # Felis-catus P0 remediation (gated; shipped #398–#403, EA422361)
+    {"id": "FCAT1", "axis": "reliability",   "gate": True, "fn": chk_fcat1, "title": "journal_watcher idle-in-txn rollback"},
+    {"id": "FCAT2", "axis": "reliability",   "gate": True, "fn": chk_fcat2, "title": "grove_listen reconnect closes stale conn"},
+    {"id": "FCAT3", "axis": "security",      "gate": True, "fn": chk_fcat3, "title": "Kart bwrap fail-closed guard"},
+    {"id": "FCAT4", "axis": "security",      "gate": True, "fn": chk_fcat4, "title": "Kart hybrid security scan wired"},
     # Phase 2 — KP7 durable failure artifacts (gated)
     {"id": "S10", "axis": "observability", "gate": True,  "fn": chk_s10,  "title": "durable .kart-logs/<id>/ artifacts (KP7)"},
     # Phase 2 — KP6b symlink-bind generalization (gated)
