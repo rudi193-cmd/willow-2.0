@@ -70,8 +70,11 @@ def _kart_run_close(task_id: str, status: str) -> None:
 
 def kart_loop(interval: int = 5) -> None:
     """Daemon loop — claim and execute one kart task at a time."""
+    from core.grove_gate import assert_grove
     from core.kart_execute import execute_task_row, kart_timeout
     from core.pg_bridge import PgBridge
+
+    assert_grove("kart_worker")
 
     _self_path = Path(__file__)
     _self_mtime = _self_path.stat().st_mtime

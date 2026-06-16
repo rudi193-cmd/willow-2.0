@@ -26,10 +26,11 @@ def test_reports_full_finding_set():
     ids = {r["id"] for r in av.run_all()}
     assert {"S1", "S2", "S4", "GAP-A", "GAP-B", "S11", "S3", "S15", "V1", "V2", "V3"} <= ids
     assert {"FCAT1", "FCAT2", "FCAT3", "FCAT4"} <= ids
+    assert {"FCAT5", "FCAT6"} <= ids
 
 
 def test_felis_catus_p0_checks_closed():
-    for chk_id in ("FCAT1", "FCAT2", "FCAT3", "FCAT4"):
+    for chk_id in ("FCAT1", "FCAT2", "FCAT3", "FCAT4", "FCAT5", "FCAT6"):
         row = next(r for r in av.run_all() if r["id"] == chk_id)
         assert row["state"] == av.CLOSED, f"{chk_id}: {row['evidence']}"
 

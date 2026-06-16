@@ -24,6 +24,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from core import soil
+from core.grove_gate import assert_grove as _assert_grove
 from core.kb_read_log import record_read
 
 _BRIEF_COLLECTION = "hanuman/kb_brief"
@@ -154,6 +155,7 @@ def brief_pending_tasks(pg=None, dry_run: bool = False) -> int:
 
 
 if __name__ == "__main__":
+    _assert_grove("kb_briefer")
     dry = "--dry-run" in sys.argv
     count = brief_pending_tasks(dry_run=dry)
     print(f"\nkb_briefer: {'would brief' if dry else 'briefed'} {count} task(s)")

@@ -27,6 +27,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from core import soil
+from core.grove_gate import assert_grove as _assert_grove
 from core.pg_bridge import PgBridge
 from willow.fylgja.willow_home import willow_home
 
@@ -245,6 +246,7 @@ def run(
     sha: str | None = None,
     dry_run: bool = False,
 ) -> int:
+    _assert_grove("stabilization_worker")
     print(f"\n[STABILIZATION] Starting reconciliation "
           f"(push_id={push_id or 'auto'} sha={sha or 'auto'} dry_run={dry_run})")
 

@@ -290,6 +290,36 @@ def chk_fcat4():
     return CLOSED, "hybrid Kart security scan wired (kart_task_scan + execute)"
 
 
+def chk_fcat5():
+    """Fleet runners must import assert_grove (EA422361 P2 — fleet-wide chokepoint)."""
+    from core.grove_gate import FLEET_GROVE_GATED
+
+    missing: list[str] = []
+    for rel in FLEET_GROVE_GATED:
+        text = _source(rel)
+        if not text.strip():
+            missing.append(f"{rel} (file missing)")
+            continue
+        if "assert_grove" not in text and "_assert_grove" not in text:
+            missing.append(rel)
+    if missing:
+        return OPEN, f"fleet scripts without assert_grove: {', '.join(missing)}"
+    return CLOSED, f"{len(FLEET_GROVE_GATED)} fleet scripts Grove-gated"
+
+
+def chk_fcat6():
+    """grove_listen _PidLock must fail closed — no duplicate listeners on lock error."""
+    gl = _source("willow/grove_listen.py")
+    if "class _PidLock" not in gl:
+        return OPEN, "_PidLock class missing"
+    block = gl.split("class _PidLock", 1)[1].split("\ndef ", 1)[0]
+    if "better to have monitoring than silence" in block:
+        return OPEN, "_PidLock still proceeds on lock failure"
+    if "lock failed" in block and "SystemExit(1)" in block:
+        return CLOSED, "_PidLock fails closed on unexpected lock errors"
+    return OPEN, "_PidLock missing fail-closed exit"
+
+
 # ── V-series (verification class — file state) ─────────────────────────────────
 
 def chk_v1():
@@ -362,6 +392,8 @@ CHECKS = [
     {"id": "FCAT2", "axis": "reliability",   "gate": True, "fn": chk_fcat2, "title": "grove_listen reconnect closes stale conn"},
     {"id": "FCAT3", "axis": "security",      "gate": True, "fn": chk_fcat3, "title": "Kart bwrap fail-closed guard"},
     {"id": "FCAT4", "axis": "security",      "gate": True, "fn": chk_fcat4, "title": "Kart hybrid security scan wired"},
+    {"id": "FCAT5", "axis": "reliability",   "gate": True, "fn": chk_fcat5, "title": "fleet scripts Grove-gated (FLEET_GROVE_GATED)"},
+    {"id": "FCAT6", "axis": "reliability",   "gate": True, "fn": chk_fcat6, "title": "grove_listen PidLock fail-closed"},
     # Phase 2 — KP7 durable failure artifacts (gated)
     {"id": "S10", "axis": "observability", "gate": True,  "fn": chk_s10,  "title": "durable .kart-logs/<id>/ artifacts (KP7)"},
     # Phase 2 — KP6b symlink-bind generalization (gated)
