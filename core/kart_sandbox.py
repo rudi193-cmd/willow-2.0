@@ -39,9 +39,10 @@ def bwrap_available() -> bool:
 
 
 def use_bwrap() -> bool:
+    """Whether Kart intends bubblewrap sandboxing (not whether bwrap is installed)."""
     if os.environ.get("WILLOW_KART_NO_BWRAP", "").strip().lower() in ("1", "true", "yes"):
         return False
-    return bwrap_available()
+    return True
 
 
 @functools.lru_cache(maxsize=1)
