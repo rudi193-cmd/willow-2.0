@@ -164,6 +164,17 @@ jobs:
       - name: Reject legacy home paths in tracked code
         run: bash scripts/path_guard.sh
 
+  store-import-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install ripgrep
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep
+
+      - name: Reject direct WillowStore imports outside allowlist
+        run: bash scripts/store_import_guard.sh
+
   surface-drift:
     runs-on: ubuntu-latest
     steps:
