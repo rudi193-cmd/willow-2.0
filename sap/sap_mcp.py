@@ -8,7 +8,7 @@ FastMCP rebuild of sap_mcp.py.
 
 Tool prefixes (14 domains):
   kb_        knowledge base
-  soil_      store (WillowStore)
+  soil_      store (StorePort → WillowStore)
   fleet_     server status, health, reload, restart
   agent_     dispatch, route, task submission
   fork_      session forks
@@ -115,7 +115,7 @@ except Exception as _pg_import_err:
     init_schema = None  # type: ignore[assignment]
     logger.warning("pg_bridge import failed: %s", _pg_import_err)
 
-from willow_store import WillowStore
+from core.store_port import StorePort, get_store_port
 
 try:
     from willow.grove_coordination import node_announce as _node_announce
@@ -139,7 +139,7 @@ _MCP_INSTRUCTIONS = (Path(__file__).parent / "MCP_INSTRUCTIONS.md").read_text(en
 
 # ── Global state (initialized in lifespan) ────────────────────────────────────
 pg:    "PgBridge | None" = None  # type: ignore[type-arg]
-store: WillowStore       = None  # type: ignore[assignment]
+store: StorePort = None  # type: ignore[assignment]
 
 # ── Module-level constants ────────────────────────────────────────────────────
 _ENV_SNAPSHOT_PREFIXES = ("WILLOW_", "GROVE_", "HOME", "USER", "PATH", "PGUSER", "PGHOST", "PGPORT")
@@ -243,7 +243,7 @@ def _init_pg():
             return None
 
 
-def _startup_node_announce(s: "WillowStore") -> None:
+def _startup_node_announce(s: StorePort) -> None:
     """Register this node in the grove registry with live hardware + Ollama models."""
     if _node_announce is None:
         return
@@ -298,7 +298,7 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[None]:
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(_executor, _kill_stale_instances)
     pg    = await loop.run_in_executor(_executor, _init_pg)
-    store = WillowStore(STORE_ROOT)
+    store = get_store_port(STORE_ROOT)
 
     await loop.run_in_executor(_executor, _startup_node_announce, store)
     await loop.run_in_executor(_executor, _startup_backfill_check)
@@ -426,7 +426,7 @@ def _hot_reload(target: str = "all") -> dict:
 
     if target in ("all", "store"):
         try:
-            store = WillowStore(STORE_ROOT)
+            store = get_store_port(STORE_ROOT)
             reloaded.append(f"store: reloaded ({STORE_ROOT})")
         except Exception as e:
             errors.append(f"store: {e}")

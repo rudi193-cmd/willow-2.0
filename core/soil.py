@@ -13,14 +13,14 @@ and the `<name>/store` addressing is hard-rejected by WillowStore.
 import sqlite3
 from pathlib import Path
 
-from core.willow_store import WillowStore
+from core.store_port import get_store_port
 
 
-def _get_store() -> WillowStore:
-    # A fresh instance per call: WillowStore.__init__ is cheap, and caching one
+def _get_store():
+    # A fresh adapter per call: WillowStore.__init__ is cheap, and caching one
     # here would freeze the store root past a WILLOW_STORE_ROOT change
     # (test isolation, fork sandboxes).
-    return WillowStore()
+    return get_store_port()
 
 
 def _root() -> Path:
@@ -29,7 +29,7 @@ def _root() -> Path:
 
 def _db(collection: str) -> Path:
     """Canonical sqlite file for a collection ({collection}.db)."""
-    return _get_store()._db_path(collection)
+    return _get_store().backend._db_path(collection)
 
 
 def put(collection: str, record_id: str, record: dict) -> None:
