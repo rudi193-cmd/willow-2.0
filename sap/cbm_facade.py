@@ -339,11 +339,23 @@ def verify_callers(
     }
 
 
+def _code_graph_db() -> Path:
+    from willow.fylgja.willow_home import willow_home
+
+    repo_root = Path(__file__).resolve().parent.parent
+    return Path(
+        os.environ.get(
+            "WILLOW_CODE_GRAPH_DB",
+            str(willow_home(repo_root) / "code_graph.db"),
+        )
+    )
+
+
 def reconcile_symbol(symbol: str, *, max_results: int = 5) -> dict:
     """Return both CBM search hits and native code_graph guidance."""
     from sap.code_graph.fuzzy import explain_symbol, search_symbols
 
-    db = Path(os.environ.get("WILLOW_CODE_GRAPH_DB", Path.home() / ".willow" / "code_graph.db"))
+    db = _code_graph_db()
     native: dict[str, Any] = {"available": db.is_file()}
     if native["available"]:
         native["search"] = search_symbols(db, symbol, max_results=max_results)
