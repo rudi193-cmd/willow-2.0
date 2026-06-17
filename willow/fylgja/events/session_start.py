@@ -209,13 +209,14 @@ def _check_willow_status() -> str:
 
 def _register_jeles(session_id: str) -> None:
     try:
-        projects_dir = Path.home() / ".claude" / "projects"
-        jsonl_files = list(projects_dir.rglob(f"{session_id}.jsonl"))
-        if jsonl_files:
+        from willow.fylgja.claude_projects import find_claude_jsonl
+
+        jsonl = find_claude_jsonl(session_id)
+        if jsonl:
             call("willow_jeles_register", {
                 "app_id": AGENT,
                 "agent": AGENT,
-                "jsonl_path": str(jsonl_files[0]),
+                "jsonl_path": str(jsonl),
                 "session_id": session_id,
             }, timeout=10)
     except Exception:
@@ -343,6 +344,11 @@ def _open_attention_items(agent: str) -> tuple[int, list[str]]:
     return len(ranked), titles
 
 
+def _is_generic_next_bite(text: str) -> bool:
+    t = (text or "").strip().lower()
+    return t in ("", "what is the next single bite?", "what is the next single bite")
+
+
 def _run_silent_startup(session_id: str = "") -> dict:
     """
     Silent startup — 5 targeted MCP calls, writes session_anchor.json.
@@ -374,6 +380,21 @@ def _run_silent_startup(session_id: str = "") -> dict:
                 result["next_bite"] = result["handoff_next_bite"]
     except Exception as e:
         result["mcp_errors"].append({"step": "handoff", "error": str(e)[:80]})
+
+    # 1b. Cross-runtime bridge — handoff-aligned threads + next bite (all IDEs)
+    try:
+        from willow.fylgja.cross_runtime import read_bridge
+
+        bridge = read_bridge()
+        if isinstance(bridge, dict):
+            bridge_threads = bridge.get("open_threads") or []
+            if bridge_threads:
+                result["handoff_threads"] = bridge_threads
+            bridge_bite = str(bridge.get("next_bite") or "").strip()
+            if bridge_bite and not _is_generic_next_bite(bridge_bite):
+                result["next_bite"] = bridge_bite
+    except Exception as e:
+        result["mcp_errors"].append({"step": "cross_runtime", "error": str(e)[:80]})
 
     # 2. Postgres health — MCP first, shell fallback
     try:
@@ -417,7 +438,11 @@ def _run_silent_startup(session_id: str = "") -> dict:
             except Exception:
                 continue
         if session:
-            result["next_bite"] = session.get("next_bite", "")
+            composite_bite = (session.get("next_bite") or "").strip()
+            # Session composite is often stale (prior session close). Do not override
+            # handoff/cross-runtime next bite — only fill when nothing better exists.
+            if composite_bite and not result["next_bite"]:
+                result["next_bite"] = composite_bite
     except Exception as e:
         result["mcp_errors"].append({"step": "session", "error": str(e)[:80]})
 

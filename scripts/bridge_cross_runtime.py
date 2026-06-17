@@ -32,7 +32,15 @@ from sap.handoff_index import _parse_json_list
 from willow.fylgja.willow_home import willow_home
 from session_indexer import parse_session
 
-CLAUDE_ROOT = Path.home() / ".claude" / "projects" / "-home-sean-campbell-willow-2-0"
+from willow.fylgja.claude_projects import (
+    CLAUDE_PROJECT_ROOTS,
+    claude_jsonl_paths,
+    find_claude_jsonl,
+    latest_claude_session_id,
+)
+
+# Back-compat for tests that monkeypatch a single root.
+CLAUDE_ROOT = CLAUDE_PROJECT_ROOTS[0]
 CURSOR_ROOT = (
     Path.home()
     / ".cursor"
@@ -59,10 +67,13 @@ _RESOLVED_THREAD_MARKERS = (
 )
 
 
+def _claude_jsonl_paths() -> list[Path]:
+    return claude_jsonl_paths()
+
+
 def _find_jsonl(session_id: str, runtime: str) -> Path | None:
     if runtime == "claude":
-        p = CLAUDE_ROOT / f"{session_id}.jsonl"
-        return p if p.is_file() else None
+        return find_claude_jsonl(session_id)
     if runtime == "cursor":
         folder = CURSOR_ROOT / session_id
         p = folder / f"{session_id}.jsonl"
@@ -73,12 +84,7 @@ def _find_jsonl(session_id: str, runtime: str) -> Path | None:
 def latest_session_id(runtime: str) -> str:
     """Most recently modified session id for claude or cursor, or '' if none."""
     if runtime == "claude":
-        if not CLAUDE_ROOT.is_dir():
-            return ""
-        jsonls = list(CLAUDE_ROOT.glob("*.jsonl"))
-        if not jsonls:
-            return ""
-        return max(jsonls, key=lambda p: p.stat().st_mtime).stem
+        return latest_claude_session_id()
     if runtime == "cursor":
         if not CURSOR_ROOT.is_dir():
             return ""

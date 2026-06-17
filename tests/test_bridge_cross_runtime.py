@@ -68,5 +68,7 @@ def test_latest_session_id_claude_picks_newest(tmp_path, monkeypatch):
     os.utime(old, (1, 1))
     time.sleep(0.01)
     new.touch()
-    monkeypatch.setattr(bridge, "CLAUDE_ROOT", root)
+    import willow.fylgja.claude_projects as claude_projects
+
+    monkeypatch.setattr(claude_projects, "CLAUDE_PROJECT_ROOTS", (root,))
     assert bridge.latest_session_id("claude") == "bbbb"
