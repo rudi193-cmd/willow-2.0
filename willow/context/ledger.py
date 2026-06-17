@@ -42,9 +42,9 @@ _AGENT = require_agent_name()
 _WILLOW_HOME = willow_home()
 
 # How many recent entries to surface on context resume
-_RESUME_ENTRY_LIMIT = 40
+_RESUME_ENTRY_LIMIT = 10
 # Max chars of content per entry when building resume context
-_CONTENT_TRUNCATE = 400
+_CONTENT_TRUNCATE = 200
 # Entry types
 DECISION = "decision"
 ACTION = "action"

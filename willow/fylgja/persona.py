@@ -469,7 +469,7 @@ def prompt_submit_block(*, is_first: bool, prompt: str) -> str:
         parts.append(render_status(active))
         parts.append(persona_identity_banner(active, switched=False))
 
-    if active and active != "none":
+    if is_first and active and active != "none":
         context = load_persona(active)
         if context:
             parts.append(context)
