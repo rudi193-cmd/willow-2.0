@@ -1,9 +1,6 @@
 """bridge_cross_runtime.py — auto-discover sessions + handoff-driven threads."""
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import scripts.bridge_cross_runtime as bridge
 
 
