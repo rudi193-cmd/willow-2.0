@@ -18,7 +18,6 @@ from willow.fylgja.anchor_state import (
     bump_prompt_count,
     context_advisory,
     prompt_count as get_prompt_count,
-    read_state as _read_anchor_state,
 )
 from willow.fylgja.willow_home import willow_home
 

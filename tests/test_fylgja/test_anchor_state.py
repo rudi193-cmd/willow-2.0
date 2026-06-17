@@ -1,5 +1,4 @@
 import json
-from unittest.mock import patch
 
 from willow.fylgja import anchor_state as anchor
 from willow.fylgja import session_inject as inject
