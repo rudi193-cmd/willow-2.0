@@ -416,6 +416,32 @@ def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> di
             report["block_flags_archive_error"] = str(_ae)
 
         try:
+            import importlib.util as _ilu
+            _ps_spec = _ilu.spec_from_file_location(
+                "promote_signals", WILLOW_ROOT / "scripts" / "promote_signals.py"
+            )
+            _ps_mod = _ilu.module_from_spec(_ps_spec)
+            _ps_spec.loader.exec_module(_ps_mod)
+            report["signal_promote"] = _ps_mod.promote_pass(dry_run=False)
+        except Exception as _spe:
+            import sys as _sys
+            print(f"[norn] signal promote pass error: {_spe}", file=_sys.stderr)
+            report["signal_promote_error"] = str(_spe)
+
+        try:
+            import importlib.util as _ilu
+            _sw_spec = _ilu.spec_from_file_location(
+                "signal_weight_updater", WILLOW_ROOT / "scripts" / "signal_weight_updater.py"
+            )
+            _sw_mod = _ilu.module_from_spec(_sw_spec)
+            _sw_spec.loader.exec_module(_sw_mod)
+            report["signal_weight"] = _sw_mod.run(dry_run=False)
+        except Exception as _swe:
+            import sys as _sys
+            print(f"[norn] signal weight pass error: {_swe}", file=_sys.stderr)
+            report["signal_weight_error"] = str(_swe)
+
+        try:
             from core import soil as _soil
             from core.dream_state import dream_conditions, queue_dream_task
             from core.pg_bridge import PgBridge

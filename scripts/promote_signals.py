@@ -239,6 +239,19 @@ def promote_signal_type(
     return promoted, skipped
 
 
+def promote_pass(min_count: int = 0, dry_run: bool = False) -> dict:
+    """Promote all signal types. Returns summary dict for norn_pass report."""
+    total_promoted = total_skipped = 0
+    by_type: dict[str, dict[str, int]] = {}
+    for sig_type, cfg in SIGNAL_CONFIGS.items():
+        effective_min = min_count if min_count > 0 else cfg.default_min_count
+        p, s = promote_signal_type(sig_type, cfg, effective_min, dry_run)
+        by_type[sig_type] = {"promoted": p, "skipped": s}
+        total_promoted += p
+        total_skipped += s
+    return {"total_promoted": total_promoted, "total_skipped": total_skipped, "by_type": by_type}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Promote recurring behavioral signals to KB")
     parser.add_argument("--dry-run", action="store_true")

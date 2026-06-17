@@ -77,7 +77,7 @@ def _target_weight(confidence: float, created_at: datetime, category: str) -> fl
     return round(max(WEIGHT_MIN, raw), 4)
 
 
-def run(dry_run: bool = False, category_filter: str | None = None) -> None:
+def run(dry_run: bool = False, category_filter: str | None = None) -> dict:
     from core.pg_bridge import PgBridge
 
     categories = (category_filter,) if category_filter else SIGNAL_CATEGORIES
@@ -100,7 +100,7 @@ def run(dry_run: bool = False, category_filter: str | None = None) -> None:
 
         if not rows:
             print(f"[weight-updater] no signal atoms found for {categories}")
-            return
+            return {"updated": 0, "skipped": 0}
 
         print(f"[weight-updater] {len(rows)} signal atoms found")
 
@@ -135,6 +135,7 @@ def run(dry_run: bool = False, category_filter: str | None = None) -> None:
             updated += 1
 
     print(f"[weight-updater] done — updated={updated} skipped={skipped} (delta<0.001)")
+    return {"updated": updated, "skipped": skipped}
 
 
 def main() -> None:
