@@ -13,13 +13,19 @@ from willow.fylgja._mcp import call
 from willow.fylgja._state import (
     AGENT, is_first_turn, increment_turn_count, get_trust_state, save_trust_state,
 )
+from willow.fylgja.anchor_state import (
+    ANCHOR_INTERVAL as _ANCHOR_INTERVAL,
+    bump_prompt_count,
+    context_advisory,
+    prompt_count as get_prompt_count,
+    read_state as _read_anchor_state,
+)
 from willow.fylgja.willow_home import willow_home
 
 _HOME = willow_home()
-ANCHOR_INTERVAL = 25
+ANCHOR_INTERVAL = _ANCHOR_INTERVAL
 FLAT_HANDOFF_INTERVAL = 10  # write flat handoff every N prompts
 ANCHOR_CACHE = _HOME / f"session_anchor_{AGENT}.json"
-STATE_FILE = _HOME / f"anchor_state_{AGENT}.json"
 TURNS_FILE = Path.home() / "agents" / AGENT / "cache" / "turns.txt"
 ACTIVE_BUILD_FILE = Path(f"/tmp/{AGENT}-active-build.json")
 DISPATCH_INBOX = Path(f"/tmp/willow-dispatch-inbox-{AGENT}.json")
@@ -178,46 +184,18 @@ def detect_feedback(prompt: str) -> list[dict]:
     return found
 
 
-def _read_anchor_state() -> dict:
+def should_anchor(count: int | None = None) -> bool:
     try:
-        import sys as _sys
-        import os as _os
-        _root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "../../../.."))
-        if _root not in _sys.path:
-            _sys.path.insert(0, _root)
-        from core import soil
-        record = soil.get("agent/anchor", AGENT)
-        if record:
-            return record
-    except Exception:
-        pass
-    return json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {"prompt_count": 0}
-
-
-def _write_anchor_state(state: dict) -> None:
-    try:
-        import sys as _sys
-        import os as _os
-        _root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "../../../.."))
-        if _root not in _sys.path:
-            _sys.path.insert(0, _root)
-        from core import soil
-        soil.put("agent/anchor", AGENT, state)
-        return
-    except Exception:
-        pass
-    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STATE_FILE.write_text(json.dumps(state))
-
-
-def should_anchor() -> bool:
-    try:
-        state = _read_anchor_state()
-        count = state.get("prompt_count", 0) + 1
-        _write_anchor_state({"prompt_count": count})
-        return count % ANCHOR_INTERVAL == 0
+        n = get_prompt_count(AGENT) if count is None else count
+        return n > 0 and n % ANCHOR_INTERVAL == 0
     except Exception:
         return False
+
+
+def _inject_context_sentinel(count: int) -> None:
+    advisory = context_advisory(count)
+    if advisory:
+        print(advisory)
 
 
 def get_active_task() -> str | None:
@@ -259,8 +237,8 @@ def _run_source_ring(session_id: str) -> None:
     save_trust_state(state)
 
 
-def _run_anchor() -> None:
-    if not should_anchor():
+def _run_anchor(count: int) -> None:
+    if not should_anchor(count):
         return
     try:
         anchor = json.loads(ANCHOR_CACHE.read_text()) if ANCHOR_CACHE.exists() else {}
@@ -385,11 +363,9 @@ def _inject_dispatch_inbox() -> None:
         pass
 
 
-def _run_flat_handoff_checkpoint(session_id: str) -> None:
+def _run_flat_handoff_checkpoint(session_id: str, count: int) -> None:
     """Write flat handoff every FLAT_HANDOFF_INTERVAL prompts — crash-safe checkpoint."""
     try:
-        state = _read_anchor_state()
-        count = state.get("prompt_count", 0)
         if count % FLAT_HANDOFF_INTERVAL != 0:
             return
         from willow.fylgja.handoff_flat import write_flat_handoff
@@ -600,13 +576,15 @@ def main():
     _boot_guard()
     _run_persona(prompt)
     increment_turn_count()
+    prompt_count = bump_prompt_count(AGENT)
+    _inject_context_sentinel(prompt_count)
     _inject_mcp_routing()
     _inject_clock()
     _inject_stabilization_brief()
     _run_source_ring(session_id)
     _run_route(prompt, session_id)
-    _run_anchor()
-    _run_flat_handoff_checkpoint(session_id)
+    _run_anchor(prompt_count)
+    _run_flat_handoff_checkpoint(session_id, prompt_count)
     _inject_dispatch_inbox()
     _run_corpus_capture(prompt, session_id)
     _run_feedback(prompt, session_id)
