@@ -32,6 +32,8 @@ MAX_DEPTH = int(os.environ.get("WILLOW_AGENT_MAX_DEPTH", "3"))
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
 _BLOCK_FLAG_THRESHOLD = int(os.environ.get("WILLOW_BLOCK_FLAG_THRESHOLD", "10"))
 _BASH_SESSION_THRESHOLD = int(os.environ.get("WILLOW_BASH_SESSION_THRESHOLD", "5"))
+_WARN_ESCALATE_STRIKES = int(os.environ.get("WILLOW_WARN_ESCALATE_STRIKES", "2"))
+_SESSION_BAN_STRIKES = int(os.environ.get("WILLOW_SESSION_BAN_STRIKES", "3"))
 
 _REPO_ROOT = str(Path(__file__).parent.parent.parent.parent)
 
@@ -88,8 +90,8 @@ def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
         hit_count, first/last_seen, runtimes) instead of writing a fresh correction
         atom every time.
     (b) When hit_count crosses a multiple of WILLOW_BLOCK_FLAG_THRESHOLD, open a
-        SOIL flag in willow/flags so the rule gets human attention — the blessed
-        path for that tool may be broken or missing if the same block keeps firing.
+        SOIL flag in willow/flags so operators see repeated enforcement — agents
+        keep attempting a blocked pattern despite redirects.
     """
     try:
         if _REPO_ROOT not in sys.path:
@@ -127,14 +129,17 @@ def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
                     "id": flag_id,
                     "type": "flag",
                     "flag_state": "open",
-                    "title": f"Blessed path for '{tool_name}' may be broken or missing",
+                    "title": (
+                        f"Repeated enforcement: '{tool_name}' blocked {new_count}× fleet-wide"
+                    ),
                     "source": "block_telemetry",
                     "rule_key": key,
                     "hit_count": new_count,
                     "sample_reason": reason[:200],
                     "fix_path": (
-                        "willow/fylgja/events/pre_tool.py — review BASH_BLOCKS / "
-                        "_MCP_BASH_TO_MCP for this rule; check that the MCP redirect exists"
+                        "Agents still attempting this pattern — check boot tool_denial "
+                        "injection and pre_tool warn escalation; review BASH_BLOCKS / "
+                        "_MCP_BASH_TO_MCP redirects"
                     ),
                     "opened_at": now,
                     "b17": "BFLAG0",
@@ -352,6 +357,68 @@ def _bash_counter_path(session_id: str) -> Path:
     return Path(f"/tmp/willow-bash-count-{safe}.txt")
 
 
+def _session_rule_strikes_path(session_id: str) -> Path:
+    safe = (session_id or "unknown")[:16].replace("/", "_")
+    return Path(f"/tmp/willow-rule-strikes-{safe}.json")
+
+
+def _read_session_rule_strikes(session_id: str) -> dict[str, int]:
+    p = _session_rule_strikes_path(session_id)
+    try:
+        if p.exists():
+            data = json.loads(p.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return {str(k): int(v) for k, v in data.items()}
+    except Exception:
+        pass
+    return {}
+
+
+def _increment_session_rule_strike(session_id: str, rule_key: str) -> int:
+    """Per-session strikes for a rule_key (warn/block attempts). Returns new count."""
+    strikes = _read_session_rule_strikes(session_id)
+    count = int(strikes.get(rule_key, 0)) + 1
+    strikes[rule_key] = count
+    try:
+        _session_rule_strikes_path(session_id).write_text(
+            json.dumps(strikes), encoding="utf-8"
+        )
+    except Exception:
+        pass
+    return count
+
+
+def _apply_bash_escalation(
+    session_id: str,
+    decision: str,
+    reason: str,
+) -> tuple[str, str]:
+    """Escalate warn→block on repeat; session-ban after N strikes on same rule."""
+    rule_key = _rule_key("Bash", reason)
+    current = _read_session_rule_strikes(session_id).get(rule_key, 0)
+    ban_msg = (
+        f"[SESSION-BAN] This Bash pattern is blocked for the rest of this session "
+        f"(rule {rule_key}, {_SESSION_BAN_STRIKES}+ attempts). "
+        f"Use willow_run / Kart or the MCP redirect.\n\n"
+    )
+    if current >= _SESSION_BAN_STRIKES:
+        return "block", ban_msg + reason
+    strike = _increment_session_rule_strike(session_id, rule_key)
+    if strike >= _SESSION_BAN_STRIKES:
+        return "block", ban_msg + reason
+    if decision == "warn" and strike >= _WARN_ESCALATE_STRIKES:
+        return (
+            "block",
+            (
+                f"[ESCALATED] Repeated Bash attempt ({strike}× this session) — "
+                f"now blocked. Use willow_run / Kart or MCP.\n\n{reason}"
+            ),
+        )
+    if decision == "block" and strike >= 2:
+        return "block", f"[REPEAT {strike}×] {reason}"
+    return decision, reason
+
+
 def _increment_bash_count(session_id: str) -> int:
     """Increment per-session direct Bash call counter. Returns new count."""
     p = _bash_counter_path(session_id)
@@ -511,16 +578,21 @@ def main():
         command = tool_input.get("command", "")
         # Willow workflow guard first
         block_result = check_bash_block(command) if command else None
-        if block_result and block_result[0] == "block":
-            decision, reason = block_result
-            if _LEDGER_AVAILABLE:
-                try:
-                    _ledger_block("Bash", reason[:300], session_id=session_id)
-                except Exception:
-                    pass
-            _corpus_log_block("Bash", reason, session_id)
-            print(json.dumps({"decision": "block", "reason": reason}))
-            sys.exit(0)
+        escalated: tuple[str, str] | None = None
+        if block_result:
+            escalated = _apply_bash_escalation(
+                session_id, block_result[0], block_result[1]
+            )
+            decision, reason = escalated
+            if decision == "block":
+                if _LEDGER_AVAILABLE:
+                    try:
+                        _ledger_block("Bash", reason[:300], session_id=session_id)
+                    except Exception:
+                        pass
+                _corpus_log_block("Bash", reason, session_id)
+                print(json.dumps({"decision": "block", "reason": reason}))
+                sys.exit(0)
 
         # Increment per-session counter for all non-blocked Bash calls.
         bash_count = _increment_bash_count(session_id) if command else 0
@@ -533,8 +605,8 @@ def main():
             )
 
         # Emit a single warn combining tool-redirect and count milestone if both apply.
-        if block_result:
-            _, reason = block_result
+        if escalated:
+            _, reason = escalated
             full_reason = f"{reason}\n\n{count_warn}" if count_warn else reason
             print(json.dumps({"decision": "warn", "reason": full_reason}))
         elif count_warn:
