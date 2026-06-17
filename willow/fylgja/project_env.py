@@ -185,6 +185,34 @@ def merge_hook_env(repo: Path | None = None, agent: str = "") -> dict[str, str]:
     return merged
 
 
+def sync_fleet_env_agent(agent: str, repo: Path | None = None) -> bool:
+    """Keep $WILLOW_HOME/env WILLOW_AGENT_NAME aligned with active-agent."""
+    name = agent.strip()
+    if not name:
+        return False
+    from willow.fylgja.willow_home import fleet_home
+
+    env_path = fleet_home(repo) / "env"
+    if not env_path.is_file():
+        return False
+    key = "WILLOW_AGENT_NAME="
+    lines = env_path.read_text(encoding="utf-8").splitlines()
+    found = False
+    out: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith(key) or stripped.startswith(f"export {key}"):
+            prefix = "export " if stripped.startswith("export ") else ""
+            out.append(f"{prefix}{key}{name}")
+            found = True
+        else:
+            out.append(line)
+    if not found:
+        out.append(f"{key}{name}")
+    env_path.write_text("\n".join(out).rstrip() + "\n", encoding="utf-8")
+    return True
+
+
 def hook_python(repo: Path) -> Path:
     from willow.fylgja.python_env import willow_python
 

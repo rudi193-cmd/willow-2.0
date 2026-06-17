@@ -49,10 +49,16 @@ export WILLOW_ROOT="${REPO_ROOT}"
 export WILLOW_HOME="${WILLOW_HOME}"
 export WILLOW_PYTHON
 ACTIVE_FILE="${REPO_ROOT}/.willow/active-agent"
-if [[ -z "${WILLOW_AGENT_NAME:-}" && -f "${ACTIVE_FILE}" ]]; then
-    WILLOW_AGENT_NAME="$(tr -d '[:space:]' < "${ACTIVE_FILE}")"
+ACTIVE_AGENT=""
+if [[ -f "${ACTIVE_FILE}" ]]; then
+    ACTIVE_AGENT="$(tr -d '[:space:]' < "${ACTIVE_FILE}")"
 fi
-export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
+if [[ -n "${ACTIVE_AGENT}" ]]; then
+    WILLOW_AGENT_NAME="${ACTIVE_AGENT}"
+elif [[ -z "${WILLOW_AGENT_NAME:-}" ]]; then
+    WILLOW_AGENT_NAME="hanuman"
+fi
+export WILLOW_AGENT_NAME
 export GROVE_SENDER="${WILLOW_AGENT_NAME}"
 export GROVE_NAME="${WILLOW_AGENT_NAME}"
 export WILLOW_PG_DB="${WILLOW_PG_DB:-willow_20}"

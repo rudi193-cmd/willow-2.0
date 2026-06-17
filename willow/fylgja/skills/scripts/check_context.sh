@@ -17,9 +17,16 @@ set -euo pipefail
 WILLOW_HOME="${WILLOW_HOME:-${HOME}/github/.willow}"
 REPO_ROOT="${WILLOW_ROOT:-${HOME}/github/willow-2.0}"
 ACTIVE_AGENT_FILE="${REPO_ROOT}/.willow/active-agent"
-AGENT="${WILLOW_AGENT_NAME:-hanuman}"
-if [[ -z "${WILLOW_AGENT_NAME:-}" && -f "$ACTIVE_AGENT_FILE" ]]; then
-  AGENT="$(tr -d '[:space:]' < "$ACTIVE_AGENT_FILE")"
+ACTIVE_AGENT=""
+if [[ -f "$ACTIVE_AGENT_FILE" ]]; then
+  ACTIVE_AGENT="$(tr -d '[:space:]' < "$ACTIVE_AGENT_FILE")"
+fi
+if [[ -n "$ACTIVE_AGENT" ]]; then
+  AGENT="$ACTIVE_AGENT"
+elif [[ -n "${WILLOW_AGENT_NAME:-}" ]]; then
+  AGENT="${WILLOW_AGENT_NAME}"
+else
+  AGENT="hanuman"
 fi
 SESSION_ANCHOR="${WILLOW_HOME}/session_anchor_${AGENT}.json"
 

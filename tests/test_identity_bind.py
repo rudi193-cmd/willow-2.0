@@ -45,6 +45,44 @@ def test_identity_bind_mode_default_warn():
         assert identity_bind_mode() == "warn"
 
 
+def test_collect_identity_matrix_stale_shell_agent_when_active_matches_disk(tmp_path, monkeypatch):
+    """Profile env can lag active-agent; coherence follows disk + active-agent."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".willow").mkdir()
+    (repo / ".willow" / "active-agent").write_text("willow\n")
+    agent_cfg = repo / "agents" / "willow" / "config"
+    agent_cfg.mkdir(parents=True)
+    mcp = render_mcp_config("willow", PACKAGE_ROOT)
+    (agent_cfg / "mcp.json").write_text(json.dumps(mcp) + "\n")
+
+    monkeypatch.chdir(repo)
+    monkeypatch.setenv("WILLOW_AGENT_NAME", "hanuman")
+
+    matrix = collect_identity_matrix(repo)
+    assert matrix["coherent"] is True
+    assert matrix.get("drift") == []
+    assert matrix.get("shell_agent_stale")
+
+
+def test_sync_fleet_env_agent_updates_env(tmp_path, monkeypatch):
+    from willow.fylgja.project_env import sync_fleet_env_agent
+
+    home = tmp_path / "willow-home"
+    home.mkdir()
+    env_path = home / "env"
+    env_path.write_text(
+        "WILLOW_ROOT=/tmp/willow-2.0\nWILLOW_AGENT_NAME=hanuman\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("WILLOW_HOME", str(home))
+
+    assert sync_fleet_env_agent("willow") is True
+    text = env_path.read_text(encoding="utf-8")
+    assert "WILLOW_AGENT_NAME=willow" in text
+    assert "WILLOW_AGENT_NAME=hanuman" not in text
+
+
 def test_collect_identity_matrix_ignores_stale_shell_grove(tmp_path, monkeypatch):
     """Disk MCP is authoritative; profile GROVE_SENDER must not fail coherence."""
     repo = tmp_path / "repo"
