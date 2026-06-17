@@ -455,6 +455,19 @@ def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> di
             report["signal_recurrence_error"] = str(_sre)
 
         try:
+            import importlib.util as _ilu
+            _sa_spec = _ilu.spec_from_file_location(
+                "signal_archive_pass", WILLOW_ROOT / "scripts" / "signal_archive_pass.py"
+            )
+            _sa_mod = _ilu.module_from_spec(_sa_spec)
+            _sa_spec.loader.exec_module(_sa_mod)
+            report["signal_archive"] = _sa_mod.archive_pass(dry_run=False)
+        except Exception as _sae:
+            import sys as _sys
+            print(f"[norn] signal archive pass error: {_sae}", file=_sys.stderr)
+            report["signal_archive_error"] = str(_sae)
+
+        try:
             from core import soil as _soil
             from core.dream_state import dream_conditions, queue_dream_task
             from core.pg_bridge import PgBridge
