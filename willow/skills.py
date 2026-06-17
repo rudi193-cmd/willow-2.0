@@ -1,12 +1,12 @@
 # willow/skills.py — Willow Skills registry. b17: SKLS1  ΔΣ=42
 from __future__ import annotations
-from core.willow_store import WillowStore
+from core.store_port import StorePort
 
 _COLLECTION = "willow/skills"
 
 
 def skill_put(
-    store: WillowStore,
+    store: StorePort,
     name: str,
     domain: str,
     content: str,
@@ -30,7 +30,7 @@ def skill_put(
 
 
 def skill_load(
-    store: WillowStore,
+    store: StorePort,
     context: str,
     max_skills: int = 3,
     *,
@@ -82,7 +82,7 @@ def skill_load(
 
 
 def skill_list(
-    store: WillowStore,
+    store: StorePort,
     domain: str | None = None,
 ) -> list[dict]:
     """List all skills, optionally filtered by domain."""
