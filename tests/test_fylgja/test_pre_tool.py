@@ -296,8 +296,6 @@ def test_flag_reopened_after_resolution():
 
 # ── Per-session Bash counter ──────────────────────────────────────────────────
 
-import tempfile
-
 
 def test_bash_counter_increments(tmp_path, monkeypatch):
     monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
