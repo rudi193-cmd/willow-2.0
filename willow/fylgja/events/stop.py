@@ -35,6 +35,25 @@ _AGENT = require_agent_name()
 BOOT_DONE = Path(f"/tmp/willow-boot-done-{_AGENT}.flag")
 
 
+def _log_hook_error(where: str, detail: dict) -> None:
+    """Append a hook error to logs/hook_errors.jsonl so a silently-failing
+    background step (e.g. a SOIL write that returns an error dict) leaves a
+    durable trace instead of vanishing under except: pass."""
+    try:
+        from willow.fylgja.willow_home import willow_home
+
+        _log_dir = willow_home() / "logs"
+        _log_dir.mkdir(parents=True, exist_ok=True)
+        with open(_log_dir / "hook_errors.jsonl", "a") as _f:
+            _f.write(json.dumps({
+                "where": where,
+                "ts": datetime.now(timezone.utc).isoformat(),
+                **detail,
+            }) + "\n")
+    except Exception:
+        pass
+
+
 def read_turns_since(cursor: str, turns_file: Path) -> list[str]:
     """Return lines from turns_file whose timestamp is after cursor."""
     if not turns_file.exists():
@@ -525,14 +544,19 @@ def _write_stack_snapshot(session_id: str) -> None:
             "handoff_title": handoff_title,
             "agent": _AGENT,
         }
-        call("soil_put", {
+        resp = call("soil_put", {
             "app_id": _AGENT,
             "collection": f"{_AGENT}/stack",
             "record_id": "current",
             "record": record,
         }, timeout=8)
-    except Exception:
-        pass
+        # soil_put returns {id, action} on success. A returned error dict (or a
+        # missing id) means the write never landed — surface it instead of
+        # silently passing, so the snapshot can't freeze unnoticed again.
+        if not isinstance(resp, dict) or "error" in resp or not resp.get("id"):
+            _log_hook_error("stack_snapshot", {"agent": _AGENT, "response": resp})
+    except Exception as e:
+        _log_hook_error("stack_snapshot", {"agent": _AGENT, "exception": repr(e)})
 
 
 def _is_isolated_directory() -> bool:
