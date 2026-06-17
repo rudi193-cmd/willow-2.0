@@ -139,6 +139,9 @@ def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
                     "opened_at": now,
                     "b17": "BFLAG0",
                 }, record_id=flag_id)
+        # Signal taxonomy: also write a tool_denial preference signal.
+        from willow.fylgja.tool_denials import upsert_tool_denial
+        upsert_tool_denial(_store, tool_name=tool_name, reason=reason, session_id=session_id)
     except Exception:
         pass
 
