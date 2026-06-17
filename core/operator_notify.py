@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 from typing import Any, Optional
 
@@ -30,6 +31,8 @@ KIND_LABEL: dict[str, str] = {
 
 
 def _desktop(title: str, body: str, urgency: str) -> None:
+    if os.environ.get("WILLOW_SUPPRESS_NOTIFY"):
+        return
     try:
         subprocess.run(
             ["notify-send", "-u", urgency, "-a", "Willow", "-t", "8000", title, body],
