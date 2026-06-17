@@ -15,8 +15,20 @@ from core.agent_identity import require_agent_name
 from willow.fylgja._mcp import call
 from willow.fylgja._grove import call as _grove_call
 from willow.fylgja._state import reset_turn_count
+from willow.fylgja.anchor_state import reset_prompt_count
 from willow.fylgja.events._stack_snapshot import normalize_stack_record
 from willow.fylgja.project_env import repo_root
+from willow.fylgja.session_inject import (
+    MAX_CORRECTIONS,
+    MAX_CROSS_RUNTIME_OPEN,
+    MAX_PREFERENCES,
+    dedup_fingerprint,
+    is_continuation_source,
+    is_fresh_source,
+    minimal_continuation_block,
+    record_injection,
+    should_skip_duplicate,
+)
 from willow.fylgja.willow_home import willow_home
 
 try:
@@ -295,7 +307,6 @@ def _run_silent_startup(session_id: str = "") -> dict:
     """
     anchor_dir = willow_home()
     anchor_file = anchor_dir / f"session_anchor_{AGENT}.json"
-    state_file = anchor_dir / f"anchor_state_{AGENT}.json"
 
     result = {
         "handoff_title": "", "handoff_summary": "",
@@ -445,8 +456,8 @@ def _run_silent_startup(session_id: str = "") -> dict:
         _prefs.sort(key=lambda r: r.get("created_at", ""), reverse=True)
         result["corpus"] = {
             "seed": _seed_rec.get("content", ""),
-            "corrections": [r.get("content", "") for r in _corrs[:10] if r.get("content")],
-            "preferences": [r.get("content", "") for r in _prefs[:10] if r.get("content")],
+            "corrections": [r.get("content", "") for r in _corrs[:MAX_CORRECTIONS] if r.get("content")],
+            "preferences": [r.get("content", "") for r in _prefs[:MAX_PREFERENCES] if r.get("content")],
         }
     except Exception:
         result["corpus"] = {"seed": "", "preferences": [], "corrections": []}
@@ -487,7 +498,6 @@ def _run_silent_startup(session_id: str = "") -> dict:
             "run_id": run_id,
             "flat_handoff_verified": flat.get("verified", False),
         }, indent=2))
-        state_file.write_text(json.dumps({"prompt_count": 0}))
     except Exception:
         pass
 
@@ -607,6 +617,10 @@ def main():
 
     session_id = data.get("session_id", "")
     session_source = data.get("source", "startup")  # startup | resume | clear | compact
+    lite_inject = is_continuation_source(session_source)
+
+    if is_fresh_source(session_source):
+        reset_prompt_count(AGENT)
 
     # Reset dedup tracker for the new session
     if _CONTEXT_AVAILABLE:
@@ -616,8 +630,9 @@ def main():
             pass
 
     _clear_stale_thread()
-    reset_turn_count()  # fresh session — boot guard must fire exactly once
-    BOOT_DONE.unlink(missing_ok=True)  # clear previous session's sentinel — boot must run once per session
+    if is_fresh_source(session_source):
+        reset_turn_count()  # fresh session — boot guard must fire exactly once
+        BOOT_DONE.unlink(missing_ok=True)
     grove_status = _ensure_grove_mcp()  # instant local file check
     if session_id:
         _register_jeles(session_id)
@@ -679,16 +694,18 @@ def main():
     try:
         from willow.fylgja.persona import anchor_lines as _persona_lines
 
-        lines.append(_persona_lines())
+        if not lite_inject:
+            lines.append(_persona_lines())
     except Exception:
         pass
 
-    try:
-        from willow.fylgja.cross_runtime import anchor_lines as _cross_runtime_lines
+    if not lite_inject:
+        try:
+            from willow.fylgja.cross_runtime import anchor_lines as _cross_runtime_lines
 
-        lines.extend(_cross_runtime_lines())
-    except Exception:
-        pass
+            lines.extend(_cross_runtime_lines(max_open=MAX_CROSS_RUNTIME_OPEN))
+        except Exception:
+            pass
 
     # Flat handoff — verified ground truth takes priority over MCP handoff prose
     flat = startup.get("flat_handoff", {})
@@ -726,13 +743,19 @@ def main():
     if corpus.get("seed"):
         lines.append(f"why: {corpus['seed'][:120]}")
     if corpus.get("corrections"):
-        lines.append(f"corrections ({len(corpus['corrections'])}):")
-        for c in corpus["corrections"]:
-            lines.append(f"  · {c[:100]}")
+        cap = MAX_CORRECTIONS if not lite_inject else 0
+        shown = corpus["corrections"][:cap]
+        if shown:
+            lines.append(f"corrections ({len(corpus['corrections'])}):")
+            for c in shown:
+                lines.append(f"  · {c[:100]}")
     if corpus.get("preferences"):
-        lines.append(f"preferences ({len(corpus['preferences'])}):")
-        for p in corpus["preferences"]:
-            lines.append(f"  · {p[:100]}")
+        cap = MAX_PREFERENCES if not lite_inject else 1
+        shown = corpus["preferences"][:cap]
+        if shown:
+            lines.append(f"preferences ({len(corpus['preferences'])}):")
+            for p in shown:
+                lines.append(f"  · {p[:100]}")
 
     # Stack snapshot — inject open tasks + open decisions from last stop hook write
     snap = startup.get("stack_snapshot", {})
@@ -755,26 +778,27 @@ def main():
     elif startup["handoff_summary"]:
         lines.append(startup["handoff_summary"])
 
-    if projects_summary:
+    if not lite_inject and projects_summary:
         lines.append("")
         lines.append("[PROJECTS]")
         lines.append(projects_summary)
-    grove_pid_file = Path("/tmp/grove-monitor.pid")
-    grove_log_file = Path("/tmp/grove-monitor.log")
-    # The LISTEN/NOTIFY monitor is considered active when its pidfile exists.
-    # Logs are expected at /tmp/grove-monitor.log (typically via systemd redirect),
-    # but we key off pid to avoid a chicken/egg with file creation timing.
-    if grove_pid_file.exists() and grove_log_file.exists():
-        lines.append(
-            "GROVE MONITOR: active — "
-            "Monitor(description='Grove mentions', persistent=True, "
-            "command='tail -n +1 -f /tmp/grove-monitor.log | grep --line-buffered \"\\[MENTION\\]\"')"
-        )
-    elif grove_pid_file.exists():
-        lines.append(
-            "GROVE MONITOR: pid active but log missing at /tmp/grove-monitor.log "
-            "(check systemd unit StandardOutput= path)"
-        )
+    if not lite_inject:
+        grove_pid_file = Path("/tmp/grove-monitor.pid")
+        grove_log_file = Path("/tmp/grove-monitor.log")
+        # The LISTEN/NOTIFY monitor is considered active when its pidfile exists.
+        # Logs are expected at /tmp/grove-monitor.log (typically via systemd redirect),
+        # but we key off pid to avoid a chicken/egg with file creation timing.
+        if grove_pid_file.exists() and grove_log_file.exists():
+            lines.append(
+                "GROVE MONITOR: active — "
+                "Monitor(description='Grove mentions', persistent=True, "
+                "command='tail -n +1 -f /tmp/grove-monitor.log | grep --line-buffered \"\\[MENTION\\]\"')"
+            )
+        elif grove_pid_file.exists():
+            lines.append(
+                "GROVE MONITOR: pid active but log missing at /tmp/grove-monitor.log "
+                "(check systemd unit StandardOutput= path)"
+            )
     if startup["postgres"] == "unknown":
         lines.append("BOOT DEGRADED — invoke /startup before responding to anything.")
 
@@ -787,6 +811,20 @@ def main():
                 lines.append(ledger_ctx)
         except Exception:
             pass
+
+    if lite_inject:
+        lines.append("[SESSION] compact/resume — trimmed boot injection.")
+
+    fingerprint = dedup_fingerprint(session_id, lines)
+    if should_skip_duplicate(session_id, fingerprint):
+        lines = minimal_continuation_block(
+            AGENT,
+            startup["postgres"],
+            startup.get("next_bite") or startup.get("handoff_next_bite", ""),
+        )
+        record_injection(session_id, fingerprint, lite=True)
+    else:
+        record_injection(session_id, fingerprint, lite=lite_inject)
 
     print(json.dumps({
         "hookSpecificOutput": {

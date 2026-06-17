@@ -7,7 +7,9 @@ import willow.fylgja.events.session_start as m
 def _run_handler(stdin_data: dict) -> str:
     inp = StringIO(json.dumps(stdin_data))
     out = StringIO()
-    with patch("sys.stdin", inp), patch("sys.stdout", out):
+    with patch("sys.stdin", inp), patch("sys.stdout", out), patch(
+        "willow.fylgja.events.session_start.should_skip_duplicate", return_value=False
+    ):
         try:
             m.main()
         except SystemExit:

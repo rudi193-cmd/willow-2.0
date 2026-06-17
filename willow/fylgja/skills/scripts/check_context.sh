@@ -2,7 +2,7 @@
 # check_context.sh — Willow Context Sentinel
 # Part of the willow-context-sentinel OpenClaw skill.
 #
-# Reads ~/.willow/anchor_state.json and ~/.willow/session_anchor.json,
+# Reads anchor_state_{agent}.json (canonical; mirrored from SOIL by hooks),
 # then outputs one of:
 #   STATUS_OK      — prompt_count < 15, postgres up
 #   COMPACT_NOW    — prompt_count 15–25
@@ -15,23 +15,25 @@
 set -euo pipefail
 
 WILLOW_HOME="${WILLOW_HOME:-${HOME}/github/.willow}"
+REPO_ROOT="${WILLOW_ROOT:-${HOME}/github/willow-2.0}"
+ACTIVE_AGENT_FILE="${REPO_ROOT}/.willow/active-agent"
 AGENT="${WILLOW_AGENT_NAME:-hanuman}"
-ANCHOR_STATE="${WILLOW_HOME}/anchor_state_${AGENT}.json"
+if [[ -z "${WILLOW_AGENT_NAME:-}" && -f "$ACTIVE_AGENT_FILE" ]]; then
+  AGENT="$(tr -d '[:space:]' < "$ACTIVE_AGENT_FILE")"
+fi
 SESSION_ANCHOR="${WILLOW_HOME}/session_anchor_${AGENT}.json"
 
 # ---------------------------------------------------------------------------
 # Postgres check — takes priority over all context checks
 # ---------------------------------------------------------------------------
 if [[ -f "$SESSION_ANCHOR" ]]; then
-    # Extract the postgres field; accept "down", "DOWN", or "false"
     pg_status=$(python3 -c "
 import json, sys
 try:
     data = json.load(open('$SESSION_ANCHOR'))
     val = str(data.get('postgres', '')).lower()
     print(val)
-except Exception as e:
-    print('unknown', file=sys.stderr)
+except Exception:
     print('')
 " 2>/dev/null || true)
 
@@ -44,36 +46,19 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Context check via prompt_count
+# Context check via shared anchor_state module
 # ---------------------------------------------------------------------------
-if [[ ! -f "$ANCHOR_STATE" ]]; then
-    echo "WARNING: $ANCHOR_STATE not found — cannot read prompt_count, defaulting to STATUS_OK" >&2
-    echo "STATUS_OK"
-    exit 0
-fi
-
-prompt_count=$(python3 -c "
-import json, sys
-try:
-    data = json.load(open('$ANCHOR_STATE'))
-    val = data.get('prompt_count', 0)
-    print(int(val))
-except Exception as e:
-    print('ERROR reading prompt_count: ' + str(e), file=sys.stderr)
-    sys.exit(1)
+export WILLOW_AGENT_NAME="$AGENT"
+export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
+context_status=$(python3 -c "
+from willow.fylgja.anchor_state import context_status, prompt_count
+agent = '$AGENT'
+count = prompt_count(agent)
+print(context_status(count))
 " 2>/dev/null) || {
-    echo "WARNING: failed to parse $ANCHOR_STATE — defaulting to STATUS_OK" >&2
+    echo "WARNING: anchor_state read failed — defaulting to STATUS_OK" >&2
     echo "STATUS_OK"
     exit 0
 }
 
-# ---------------------------------------------------------------------------
-# Threshold routing
-# ---------------------------------------------------------------------------
-if (( prompt_count > 25 )); then
-    echo "HANDOFF_NOW"
-elif (( prompt_count >= 15 )); then
-    echo "COMPACT_NOW"
-else
-    echo "STATUS_OK"
-fi
+echo "$context_status"
