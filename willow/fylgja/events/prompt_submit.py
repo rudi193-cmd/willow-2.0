@@ -111,6 +111,62 @@ def detect_preference(prompt: str) -> bool:
     return False
 
 
+# Patterns that signal a positive confirmation (user approving agent behavior).
+# Corrections take precedence — detect_confirmation() checks detect_correction() first.
+# Lower minimum length (4) because confirmations are naturally brief.
+_CONFIRMATION_PATTERNS = [
+    r"\byes.{0,20}exactly\b",
+    r"\b(yes|yeah).{0,10}(that'?s|that is).{0,20}(right|it|correct|perfect)\b",
+    r"\bperfect\b",
+    r"\bgood call\b",
+    r"\bright approach\b",
+    r"\bthat works\b",
+    r"\bkeep (doing|that|it|going).{0,10}(up|that way|like that|going)\b",
+    r"\bexactly (right|that|what i wanted|what i needed)\b",
+    r"\bthat'?s (exactly|perfect|great|what i wanted)\b",
+    r"\byes,? (do|keep|go|continue|proceed)\b",
+]
+
+
+def detect_confirmation(prompt: str) -> bool:
+    """Return True if prompt looks like a positive confirmation of agent behavior."""
+    if len(prompt.strip()) < 4:
+        return False
+    if detect_correction(prompt):
+        return False
+    for pattern in _CONFIRMATION_PATTERNS:
+        if re.search(pattern, prompt, re.IGNORECASE):
+            return True
+    return False
+
+
+# Patterns that signal a scope redirect (user changing direction mid-task).
+# Distinct from corrections (wrong action taken) and preferences (standing rule).
+_SCOPE_REDIRECT_PATTERNS = [
+    r"\bactually.{0,10}(don'?t|let'?s not|skip|ignore|forget)\b",
+    r"\blet'?s not.{0,20}(do|take|focus|look|go|work)\b",
+    r"\blet'?s (skip|move on|focus on something else|change direction|leave that)\b",
+    r"\bnot right now\b",
+    r"\bskip that for now\b",
+    r"\bthat'?s not the direction\b",
+    r"\b(forget|ignore|drop) that\b",
+    r"\blet'?s (look at|work on|focus on) something else\b",
+    r"\b(set that aside|table that|park that)\b",
+]
+
+
+def detect_scope_redirect(prompt: str) -> bool:
+    """Return True if prompt is a mid-task direction change (not a correction or preference)."""
+    if len(prompt.strip()) < 12:
+        return False
+    if detect_correction(prompt):
+        return False
+    for pattern in _SCOPE_REDIRECT_PATTERNS:
+        if re.search(pattern, prompt, re.IGNORECASE):
+            return True
+    return False
+
+
 def detect_feedback(prompt: str) -> list[dict]:
     found, seen = [], set()
     for pattern, fb_type, rule in FEEDBACK_PATTERNS:
@@ -343,10 +399,12 @@ def _run_flat_handoff_checkpoint(session_id: str) -> None:
 
 
 def _run_corpus_capture(prompt: str, session_id: str) -> None:
-    """Stage corpus atoms when a correction or preference is detected."""
+    """Stage corpus atoms when a signal is detected in the prompt."""
     is_correction = detect_correction(prompt)
     is_preference = detect_preference(prompt)
-    if not is_correction and not is_preference:
+    is_confirmation = detect_confirmation(prompt)
+    is_scope_redirect = detect_scope_redirect(prompt)
+    if not any([is_correction, is_preference, is_confirmation, is_scope_redirect]):
         return
     try:
         import sys as _sys
@@ -361,6 +419,12 @@ def _run_corpus_capture(prompt: str, session_id: str) -> None:
         if is_preference:
             from willow.fylgja.preferences import upsert_preference
             upsert_preference(store, content=prompt, session_id=session_id)
+        if is_confirmation:
+            from willow.fylgja.confirmations import upsert_confirmation
+            upsert_confirmation(store, content=prompt, session_id=session_id)
+        if is_scope_redirect:
+            from willow.fylgja.scope_redirects import upsert_scope_redirect
+            upsert_scope_redirect(store, content=prompt, session_id=session_id)
     except Exception:
         pass
 
