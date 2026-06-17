@@ -165,6 +165,7 @@
 
 | Path |
 |------|
+| `.kart-scripts` |
 | `.pre-commit-config.yaml` |
 | `CHANGELOG.md` |
 | `CODEX.md` |
