@@ -35,7 +35,6 @@ if rg -n "${_pattern}" \
     --glob '!willow/grove_coordination.py' \
     --glob '!willow/hns_enforcer.py' \
     --glob '!willow/hns_scheduler.py' \
-    --glob '!willow/flags.py' \
     --glob '!core/metabolic.py' \
     --glob '!core/inference_router.py' \
     --glob '!core/graceful.py' \
