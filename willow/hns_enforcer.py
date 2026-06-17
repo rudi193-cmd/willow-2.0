@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import uuid
 
-from core.willow_store import WillowStore
+from core.store_port import StorePort
 from willow.grove_coordination import node_list
 from willow.hns_scheduler import _estimate_vram_gb
 
@@ -25,13 +25,13 @@ def _inflight_col(node_addr: str) -> str:
     return f"{_INFLIGHT_COL}/{node_addr}"
 
 
-def _sum_inflight(store: WillowStore, node_addr: str) -> float:
+def _sum_inflight(store: StorePort, node_addr: str) -> float:
     """Sum VRAM (GB) of all active in-flight jobs on a node."""
     records = store.list(_inflight_col(node_addr))
     return sum(r.get("vram_gb", 0.0) for r in records if r.get("active", False))
 
 
-def _node_quota(store: WillowStore, node_addr: str) -> float | None:
+def _node_quota(store: StorePort, node_addr: str) -> float | None:
     """Return hns_quota_gb for a node, or None if uncapped."""
     for node in node_list(store):
         if node.get("addr") == node_addr:
@@ -39,7 +39,7 @@ def _node_quota(store: WillowStore, node_addr: str) -> float | None:
     return None
 
 
-def acquire(store: WillowStore, node_addr: str, model_name: str) -> tuple[bool, str]:
+def acquire(store: StorePort, node_addr: str, model_name: str) -> tuple[bool, str]:
     """Reserve VRAM for model_name on node_addr.
 
     Returns (allowed, job_id). If not allowed, job_id is empty.
@@ -63,7 +63,7 @@ def acquire(store: WillowStore, node_addr: str, model_name: str) -> tuple[bool, 
     return True, job_id
 
 
-def release(store: WillowStore, node_addr: str, job_id: str) -> None:
+def release(store: StorePort, node_addr: str, job_id: str) -> None:
     """Mark a job complete, freeing its VRAM quota slot."""
     records = store.list(_inflight_col(node_addr))
     for r in records:

@@ -21,8 +21,8 @@ class DegradedBridge:
 
     def __init__(self, store=None):
         if store is None:
-            from core.willow_store import WillowStore
-            store = WillowStore()
+            from core.store_port import get_store_port
+            store = get_store_port()
         self._store = store
 
     def knowledge_put(self, record: dict) -> str:
