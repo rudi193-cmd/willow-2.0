@@ -16,6 +16,22 @@ MAX_TOOL_DENIALS = 2
 MAX_HUMAN_CONFIRMATIONS = 2
 MAX_CROSS_RUNTIME_OPEN = 3
 
+# Excerpt length for boot INDEX injection (context burn — fix #3 after #432/#436).
+CORRECTION_EXCERPT_CHARS = 100
+PREFERENCE_EXCERPT_CHARS = 100
+CONFIRMATION_EXCERPT_CHARS = 100
+DENIAL_EXCERPT_CHARS = 120
+
+
+def excerpt_corpus(text: str, max_chars: int) -> str:
+    """Collapse whitespace and cap length for session_start INDEX lines."""
+    s = " ".join(str(text).split())
+    if len(s) <= max_chars:
+        return s
+    if max_chars <= 1:
+        return s[:max_chars]
+    return s[: max_chars - 1].rstrip() + "…"
+
 
 def is_continuation_source(source: str) -> bool:
     return source in ("compact", "resume")

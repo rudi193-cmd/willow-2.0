@@ -19,12 +19,17 @@ from willow.fylgja.anchor_state import reset_prompt_count
 from willow.fylgja.events._stack_snapshot import normalize_stack_record
 from willow.fylgja.project_env import repo_root
 from willow.fylgja.session_inject import (
+    CONFIRMATION_EXCERPT_CHARS,
+    CORRECTION_EXCERPT_CHARS,
+    DENIAL_EXCERPT_CHARS,
     MAX_CORRECTIONS,
     MAX_CROSS_RUNTIME_OPEN,
+    MAX_HUMAN_CONFIRMATIONS,
     MAX_PREFERENCES,
     MAX_TOOL_DENIALS,
-    MAX_HUMAN_CONFIRMATIONS,
+    PREFERENCE_EXCERPT_CHARS,
     dedup_fingerprint,
+    excerpt_corpus,
     is_continuation_source,
     is_fresh_source,
     minimal_continuation_block,
@@ -489,10 +494,27 @@ def _run_silent_startup(session_id: str = "") -> dict:
         from willow.fylgja.tool_denials import top_denial_lessons
         result["corpus"] = {
             "seed": _seed_rec.get("content", ""),
-            "corrections": [r.get("content", "") for r in _corrs[:MAX_CORRECTIONS] if r.get("content")],
-            "preferences": [r.get("content", "") for r in _prefs[:MAX_PREFERENCES] if r.get("content")],
-            "confirmations": human_confs[:MAX_HUMAN_CONFIRMATIONS],
-            "tool_denials": top_denial_lessons(_store, limit=MAX_TOOL_DENIALS),
+            "corrections": [
+                excerpt_corpus(r.get("content", ""), CORRECTION_EXCERPT_CHARS)
+                for r in _corrs[:MAX_CORRECTIONS]
+                if r.get("content")
+            ],
+            "correction_total": len(_corrs),
+            "preferences": [
+                excerpt_corpus(r.get("content", ""), PREFERENCE_EXCERPT_CHARS)
+                for r in _prefs[:MAX_PREFERENCES]
+                if r.get("content")
+            ],
+            "preference_total": len(_prefs),
+            "confirmations": [
+                excerpt_corpus(c, CONFIRMATION_EXCERPT_CHARS)
+                for c in human_confs[:MAX_HUMAN_CONFIRMATIONS]
+            ],
+            "confirmation_total": len(human_confs),
+            "tool_denials": [
+                excerpt_corpus(lesson, DENIAL_EXCERPT_CHARS)
+                for lesson in top_denial_lessons(_store, limit=MAX_TOOL_DENIALS)
+            ],
         }
     except Exception:
         result["corpus"] = {
@@ -787,23 +809,38 @@ def main():
         cap = MAX_CORRECTIONS if not lite_inject else min(2, MAX_CORRECTIONS)
         shown = corpus["corrections"][:cap]
         if shown:
-            lines.append(f"corrections — operator ({len(corpus['corrections'])}):")
+            total = int(corpus.get("correction_total") or len(corpus["corrections"]))
+            head = f"corrections — operator ({len(shown)}"
+            if total > len(shown):
+                head += f"/{total}"
+            head += "):"
+            lines.append(head)
             for c in shown:
-                lines.append(f"  · {c[:100]}")
+                lines.append(f"  · {c}")
     if corpus.get("preferences"):
         cap = MAX_PREFERENCES if not lite_inject else min(2, MAX_PREFERENCES)
         shown = corpus["preferences"][:cap]
         if shown:
-            lines.append(f"preferences — operator ({len(corpus['preferences'])}):")
+            total = int(corpus.get("preference_total") or len(corpus["preferences"]))
+            head = f"preferences — operator ({len(shown)}"
+            if total > len(shown):
+                head += f"/{total}"
+            head += "):"
+            lines.append(head)
             for p in shown:
-                lines.append(f"  · {p[:100]}")
+                lines.append(f"  · {p}")
     if corpus.get("confirmations"):
         cap = MAX_HUMAN_CONFIRMATIONS if not lite_inject else 1
         shown = corpus["confirmations"][:cap]
         if shown:
-            lines.append(f"confirmations — operator ({len(corpus['confirmations'])}):")
+            total = int(corpus.get("confirmation_total") or len(corpus["confirmations"]))
+            head = f"confirmations — operator ({len(shown)}"
+            if total > len(shown):
+                head += f"/{total}"
+            head += "):"
+            lines.append(head)
             for c in shown:
-                lines.append(f"  · {c[:100]}")
+                lines.append(f"  · {c}")
     if corpus.get("tool_denials"):
         # Automated lane — fewer slots; never crowd out human corrections above.
         cap = MAX_TOOL_DENIALS if not lite_inject else 0
@@ -814,7 +851,7 @@ def main():
                 "defer to operator corrections when they conflict:"
             )
             for lesson in shown:
-                lines.append(f"  · {lesson[:120]}")
+                lines.append(f"  · {lesson}")
 
     # Stack snapshot — inject open tasks + open decisions from last stop hook write
     snap = startup.get("stack_snapshot", {})
