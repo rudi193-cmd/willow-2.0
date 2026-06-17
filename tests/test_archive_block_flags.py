@@ -103,3 +103,45 @@ def test_dry_run_does_not_write():
     put_calls = [c for c in store.put.call_args_list if "flags" in str(c.args[0])]
     assert not put_calls, "Dry run should not write anything"
     assert "would archive=1" in out
+
+
+def _legacy_flag(flag_id):
+    return {
+        "id": flag_id,
+        "source": "block_telemetry",
+        "flag_state": "open",
+        "title": "Blessed path for 'Bash' may be broken or missing",
+        "rule_key": f"block-{flag_id}",
+    }
+
+
+def test_retire_legacy_archives_open_blessed_path_flags():
+    store = _make_store([_legacy_flag("flag-old")], {})
+    fake_module = types.ModuleType("core.willow_store")
+    fake_module.WillowStore = lambda: store
+    with patch.dict(sys.modules, {"core.willow_store": fake_module}):
+        import importlib
+        import scripts.archive_block_flags as m
+        importlib.reload(m)
+        with patch("scripts.archive_block_flags._load_store", return_value=store):
+            count = m.retire_legacy_block_flags(dry_run=False)
+    assert count == 1
+    written = store.put.call_args.args[1]
+    assert written["flag_state"] == "archived"
+    assert "pre-#436" in written["archived_reason"]
+
+
+def test_retire_legacy_skips_repeated_enforcement_titles():
+    flag = {
+        "id": "flag-new",
+        "source": "block_telemetry",
+        "flag_state": "open",
+        "title": "Repeated enforcement: 'Bash' blocked 50× fleet-wide",
+        "rule_key": "block-new",
+    }
+    store = _make_store([flag], {})
+    import scripts.archive_block_flags as m
+    with patch("scripts.archive_block_flags._load_store", return_value=store):
+        assert m.retire_legacy_block_flags(dry_run=False) == 0
+    put_calls = [c for c in store.put.call_args_list if "flags" in str(c.args[0])]
+    assert not put_calls
