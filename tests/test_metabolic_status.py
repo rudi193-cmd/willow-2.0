@@ -1,4 +1,5 @@
 """Tests for core/metabolic_status.py"""
+
 import sqlite3
 import sys
 from pathlib import Path
@@ -20,7 +21,9 @@ def test_check_metabolic_status_no_briefing(monkeypatch, tmp_path):
     assert status["consecrated"] is False
 
 
-def test_check_metabolic_status_consecrated_when_timer_and_briefing(monkeypatch, tmp_path):
+def test_check_metabolic_status_consecrated_when_timer_and_briefing(
+    monkeypatch, tmp_path
+):
     from core import metabolic_status as ms
 
     briefings = tmp_path / "briefings"
@@ -37,7 +40,9 @@ def test_check_metabolic_status_consecrated_when_timer_and_briefing(monkeypatch,
 
     monkeypatch.setattr(ms, "resolve_store_root", lambda: tmp_path)
     monkeypatch.setattr(ms, "fleet_home", lambda: tmp_path)
-    monkeypatch.setattr(ms, "_systemd_user_state", lambda u: "enabled" if "timer" in u else "active")
+    monkeypatch.setattr(
+        ms, "_systemd_user_state", lambda u: "enabled" if "timer" in u else "active"
+    )
 
     status = ms.check_metabolic_status()
     assert status["last_briefing"] == "2026-06-17T12:00:00+00:00"

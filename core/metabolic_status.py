@@ -1,9 +1,9 @@
 """Fleet metabolic consecration probe — socket, timer, last briefing."""
+
 from __future__ import annotations
 
 import sqlite3
 import subprocess
-from pathlib import Path
 
 from willow.fylgja.willow_home import fleet_home, resolve_store_root
 
@@ -75,7 +75,6 @@ def check_metabolic_status() -> dict:
     result["timer"] = timer_state
 
     result["consecrated"] = (
-        result["timer"] in ("active", "enabled")
-        and result["last_briefing"] is not None
+        result["timer"] in ("active", "enabled") and result["last_briefing"] is not None
     )
     return result
