@@ -300,6 +300,39 @@ def _ensure_grove_mcp() -> str:
 
 
 
+def _open_attention_items(agent: str) -> tuple[int, list[str]]:
+    """Merge open human gaps ({agent}/gaps) and open SOIL flags ({agent}/flags).
+
+    Previously only {agent}/gaps was queried; block-telemetry flags live in
+    {agent}/flags, so startup reported open_flags=0 while flat handoff showed 10+.
+    """
+    ranked: list[tuple[int, str]] = []
+
+    try:
+        gaps = call("store_list", {"app_id": agent, "collection": f"{agent}/gaps"}, timeout=5)
+        for gap in gaps or []:
+            if gap.get("status") != "open":
+                continue
+            title = str(gap.get("title") or gap.get("id") or "?")[:60]
+            ranked.append((int(gap.get("severity") or 0), title))
+    except Exception:
+        pass
+
+    try:
+        flags = call("store_list", {"app_id": agent, "collection": f"{agent}/flags"}, timeout=5)
+        for flag in flags or []:
+            if flag.get("flag_state") != "open":
+                continue
+            title = str(flag.get("title") or flag.get("id") or "?")[:60]
+            ranked.append((int(flag.get("severity") or flag.get("hit_count") or 0), title))
+    except Exception:
+        pass
+
+    ranked.sort(key=lambda pair: pair[0], reverse=True)
+    titles = [title for _, title in ranked[:3]]
+    return len(ranked), titles
+
+
 def _run_silent_startup(session_id: str = "") -> dict:
     """
     Silent startup — 5 targeted MCP calls, writes session_anchor.json.
@@ -378,24 +411,13 @@ def _run_silent_startup(session_id: str = "") -> dict:
     except Exception as e:
         result["mcp_errors"].append({"step": "session", "error": str(e)[:80]})
 
-    # 4. Open flags
+    # 4. Open gaps + flags (both collections — see _open_attention_items)
     try:
-        gaps = call("store_list", {"app_id": AGENT, "collection": f"{AGENT}/gaps"}, timeout=5)
-        open_gaps = sorted(
-            [g for g in (gaps or []) if g.get("status") == "open"],
-            key=lambda g: g.get("severity", 0), reverse=True,
-        )
-        result["open_flags"] = len(open_gaps)
-        result["top_flags"] = [g.get("title", "")[:60] for g in open_gaps[:3]]
+        count, titles = _open_attention_items(AGENT)
+        result["open_flags"] = count
+        result["top_flags"] = titles
     except Exception as e:
         result["mcp_errors"].append({"step": "flags", "error": str(e)[:80]})
-        try:
-            flags = call("store_list", {"app_id": AGENT, "collection": f"{AGENT}/flags"}, timeout=5)
-            open_flags = [f for f in (flags or []) if f.get("flag_state") == "open"]
-            result["open_flags"] = len(open_flags)
-            result["top_flags"] = [f.get("title", "")[:60] for f in open_flags[:3]]
-        except Exception:
-            pass
 
     # 5. Recent traces since last handoff
     try:
