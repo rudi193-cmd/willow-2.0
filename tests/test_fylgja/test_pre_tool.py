@@ -32,9 +32,25 @@ def test_blocks_ls():
     assert "MCP" in reason or "kart" in reason.lower()
 
 
-def test_allows_git():
-    reason = check_bash_block("git log --oneline -10")
-    assert reason is None
+def test_warns_git():
+    result = check_bash_block("git log --oneline -10")
+    assert result is not None
+    decision, reason = result
+    assert decision == "warn"
+    assert "agent_task_submit" in reason or "kart" in reason.lower()
+
+
+def test_warns_gh():
+    result = check_bash_block("gh pr list --limit 5")
+    assert result is not None
+    decision, reason = result
+    assert decision == "warn"
+    assert "allow_net" in reason.lower()
+
+
+def test_allows_worktree_cleanup_git():
+    """S18: host-side worktree husk removal stays unguarded."""
+    assert check_bash_block("git -C ~/github/willow-2.0 worktree prune") is None
 
 
 def test_allows_pytest():
@@ -368,6 +384,27 @@ def test_warn_escalates_to_block_on_second_strike(tmp_path, monkeypatch):
         "session_id": "esc-s1",
     })
     assert out2.strip()
+    data2 = json.loads(out2)
+    assert data2["decision"] == "block"
+    assert "ESCALATED" in data2["reason"]
+
+
+def test_git_warn_escalates_on_second_strike(tmp_path, monkeypatch):
+    monkeypatch.setattr(_pt, "_session_rule_strikes_path", lambda sid: tmp_path / f"strikes-{sid}.json")
+    monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
+    cmd = "git status -sb"
+    out1 = _run_pre_tool({
+        "tool_name": "Bash",
+        "tool_input": {"command": cmd},
+        "session_id": "esc-git",
+    })
+    assert out1.strip()
+    assert json.loads(out1)["decision"] == "warn"
+    out2 = _run_pre_tool({
+        "tool_name": "Bash",
+        "tool_input": {"command": cmd},
+        "session_id": "esc-git",
+    })
     data2 = json.loads(out2)
     assert data2["decision"] == "block"
     assert "ESCALATED" in data2["reason"]

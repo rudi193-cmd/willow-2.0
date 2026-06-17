@@ -27,6 +27,8 @@ BASH_TO_MCP: list[tuple[str, str, str]] = [
     (r"^\s*pwd\s*$", "warn", "cwd is in context; fleet_status for roots"),
     (r"^\s*tree(\s|$)", "warn", f"Glob · {_KART}"),
     (r"^\s*du(\s|$)", "warn", f"fleet_system_status · {_KART}"),
+    (r"^\s*git\s", "warn", f"{_KART} · allow_net=True for push/fetch"),
+    (r"^\s*gh\s", "warn", f"{_KART} · allow_net=True"),
     (r"\bgrep\b", "warn", f"kb_search/soil_search for Willow data; raw repo grep → {_KART}"),
     (r"\bfind\s", "warn", f"Glob · code_graph_search; raw find → {_KART}"),
     (r"(?i)python3?\s+-m\s+(willow|sap|core)\.", "block", "Matching MCP tool — sap/mcp_registry.json"),
