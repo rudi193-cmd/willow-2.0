@@ -135,7 +135,16 @@ def collect_identity_matrix(repo: Path | None = None) -> dict:
         and process_agent != disk_agent
         and os.environ.get("WILLOW_AGENT_NAME", "").strip()
     ):
-        drift.append(f"shell WILLOW_AGENT_NAME ({process_agent}) != MCP on disk ({disk_agent})")
+        if active and active == disk_agent:
+            signals["shell_agent_stale"] = (
+                f"shell WILLOW_AGENT_NAME ({process_agent}) != active-agent ({active}) "
+                f"— update $WILLOW_HOME/env or run: "
+                f"./willow.sh agents active {active} --install"
+            )
+        else:
+            drift.append(
+                f"shell WILLOW_AGENT_NAME ({process_agent}) != MCP on disk ({disk_agent})"
+            )
 
     signals["coherent"] = len(drift) == 0
     signals["drift"] = drift

@@ -66,10 +66,16 @@ unset WILLOW_PG_HOST WILLOW_PG_PORT WILLOW_PG_PASS
 export WILLOW_PG_DB="${WILLOW_PG_DB:-willow_20}"
 export WILLOW_PG_USER="${WILLOW_PG_USER:-$(whoami)}"
 ACTIVE_AGENT_FILE="${WILLOW_ROOT}/.willow/active-agent"
-if [[ -z "${WILLOW_AGENT_NAME:-}" && -f "${ACTIVE_AGENT_FILE}" ]]; then
-    WILLOW_AGENT_NAME="$(tr -d '[:space:]' < "${ACTIVE_AGENT_FILE}")"
+ACTIVE_AGENT=""
+if [[ -f "${ACTIVE_AGENT_FILE}" ]]; then
+    ACTIVE_AGENT="$(tr -d '[:space:]' < "${ACTIVE_AGENT_FILE}")"
 fi
-export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
+if [[ -n "${ACTIVE_AGENT}" ]]; then
+    WILLOW_AGENT_NAME="${ACTIVE_AGENT}"
+elif [[ -z "${WILLOW_AGENT_NAME:-}" ]]; then
+    WILLOW_AGENT_NAME="hanuman"
+fi
+export WILLOW_AGENT_NAME
 # Fleet launcher follows active agent — do not inherit stale human Grove handles from profile.
 export GROVE_SENDER="${WILLOW_AGENT_NAME}"
 export GROVE_NAME="${WILLOW_AGENT_NAME}"
