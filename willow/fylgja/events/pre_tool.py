@@ -31,6 +31,7 @@ AGENT = require_agent_name()
 MAX_DEPTH = int(os.environ.get("WILLOW_AGENT_MAX_DEPTH", "3"))
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
 _BLOCK_FLAG_THRESHOLD = int(os.environ.get("WILLOW_BLOCK_FLAG_THRESHOLD", "10"))
+_BASH_SESSION_THRESHOLD = int(os.environ.get("WILLOW_BASH_SESSION_THRESHOLD", "5"))
 
 _REPO_ROOT = str(Path(__file__).parent.parent.parent.parent)
 
@@ -186,6 +187,9 @@ BASH_BLOCKS = [
     (r"\bfind\s", "warn",
      "find detected. Prefer MCP: code_graph_search or Glob for file discovery. "
      "→ Glob({pattern: '<dir>/**/*.py'}) · code_graph_search({query: '<symbol>'})"),
+    (r"^\s*bash\s+", "warn",
+     "bash <script> detected. Prefer Kart for script execution. "
+     "→ agent_task_submit(app_id, task='bash scripts/foo.sh') + kart_task_run(app_id)"),
 ]
 
 # Loki runs disk audits. These read-only patterns bypass the builder guards above.
@@ -340,6 +344,23 @@ def _write_depth(n: int) -> None:
         pass
 
 
+def _bash_counter_path(session_id: str) -> Path:
+    safe = (session_id or "unknown")[:16].replace("/", "_")
+    return Path(f"/tmp/willow-bash-count-{safe}.txt")
+
+
+def _increment_bash_count(session_id: str) -> int:
+    """Increment per-session direct Bash call counter. Returns new count."""
+    p = _bash_counter_path(session_id)
+    try:
+        count = int(p.read_text().strip()) if p.exists() else 0
+        count += 1
+        p.write_text(str(count))
+        return count
+    except Exception:
+        return 0
+
+
 _F5_DOC_FIELDS = {"content", "body", "raw_content"}
 
 
@@ -486,21 +507,36 @@ def main():
     if tool_name == "Bash":
         command = tool_input.get("command", "")
         # Willow workflow guard first
-        result = check_bash_block(command) if command else None
-        if result:
-            decision, reason = result
-            if decision == "block":
-                if _LEDGER_AVAILABLE:
-                    try:
-                        _ledger_block("Bash", reason[:300], session_id=session_id)
-                    except Exception:
-                        pass
-                _corpus_log_block("Bash", reason, session_id)
-                print(json.dumps({"decision": "block", "reason": reason}))
-                sys.exit(0)
-            else:
-                # warn — let the command through but surface the redirect
-                print(json.dumps({"decision": "warn", "reason": reason}))
+        block_result = check_bash_block(command) if command else None
+        if block_result and block_result[0] == "block":
+            decision, reason = block_result
+            if _LEDGER_AVAILABLE:
+                try:
+                    _ledger_block("Bash", reason[:300], session_id=session_id)
+                except Exception:
+                    pass
+            _corpus_log_block("Bash", reason, session_id)
+            print(json.dumps({"decision": "block", "reason": reason}))
+            sys.exit(0)
+
+        # Increment per-session counter for all non-blocked Bash calls.
+        bash_count = _increment_bash_count(session_id) if command else 0
+        count_warn: str | None = None
+        if _BASH_SESSION_THRESHOLD > 0 and bash_count % _BASH_SESSION_THRESHOLD == 0:
+            count_warn = (
+                f"[BASH-COUNT] {bash_count} direct Bash calls this session. "
+                "Prefer Kart for shell work: "
+                "agent_task_submit(app_id, task=...) → kart_task_run(app_id)."
+            )
+
+        # Emit a single warn combining tool-redirect and count milestone if both apply.
+        if block_result:
+            _, reason = block_result
+            full_reason = f"{reason}\n\n{count_warn}" if count_warn else reason
+            print(json.dumps({"decision": "warn", "reason": full_reason}))
+        elif count_warn:
+            print(json.dumps({"decision": "warn", "reason": count_warn}))
+
         # Security scan — exfiltration, credential theft, destructive, obfuscation.
         # Skip for user-owned SQLite databases (DROP TABLE etc. on personal data is fine)
         # and for worktree-cleanup (a /worktrees/ path matches the destructive-path
@@ -520,6 +556,7 @@ def main():
                         f"(category: {bad.category}, severity: {bad.severity})"
                     ),
                 }))
+                sys.exit(0)
         sys.exit(0)
 
     # Write/Edit tools — MarkdownAI routing, security path check, F5 canon guard
