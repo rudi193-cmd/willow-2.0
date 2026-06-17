@@ -39,6 +39,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [shinpr/mcp-local-rag](https://github.com/shinpr/mcp-local-rag) | shinpr | fix: report removedChunks and existed from delete_file | [PR #152](https://github.com/shinpr/mcp-local-rag/pull/152) merged |
 | [max-rh/sshelf](https://github.com/max-rh/sshelf) | max-rh | feat: print generated SSH command from CLI | [PR #3](https://github.com/max-rh/sshelf/pull/3) merged |
 | [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix: promote first project when config default missing from DB (#974) | [PR #985](https://github.com/basicmachines-co/basic-memory/pull/985) merged |
+| [Filippo-Venturini/ctxvault](https://github.com/Filippo-Venturini/ctxvault) | Filippo-Venturini | fix: remove stale reindex vault_config kwarg | [PR #31](https://github.com/Filippo-Venturini/ctxvault/pull/31) merged |
 | [Emerging-Rule/community](https://github.com/Emerging-Rule/community) | Emerging-Rule | Add: Creature Lab CS showcase + Neva and Theo science lesson (grades 3–8) | [PR #11](https://github.com/Emerging-Rule/community/pull/11) merged |
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | fix(mcp): include hot-cold cold signatures in bundled server (#201) | [PR #216](https://github.com/manojmallick/sigmap/pull/216) merged |
 | [Emerging-Rule/community](https://github.com/Emerging-Rule/community) | Emerging-Rule | Example: Calibration Series (6–10 + Social Studies 6–8) | [PR #10](https://github.com/Emerging-Rule/community/pull/10) merged |
@@ -71,7 +72,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [coleam00/mcp-mem0](https://github.com/coleam00/mcp-mem0) | coleam00 | fix: disable Mem0 telemetry via env (Fixes #3) | [PR #18](https://github.com/coleam00/mcp-mem0/pull/18) open |
 | [moazbuilds/claudeclaw](https://github.com/moazbuilds/claudeclaw) | moazbuilds | docs: add heartbeat example (partial #179) | [PR #240](https://github.com/moazbuilds/claudeclaw/pull/240) open |
 | [moazbuilds/claudeclaw](https://github.com/moazbuilds/claudeclaw) | moazbuilds | fix(discord): ignore thread recap system messages (#230) | [PR #239](https://github.com/moazbuilds/claudeclaw/pull/239) open |
-| [Filippo-Venturini/ctxvault](https://github.com/Filippo-Venturini/ctxvault) | Filippo-Venturini | fix: remove stale reindex vault_config kwarg | [PR #31](https://github.com/Filippo-Venturini/ctxvault/pull/31) open |
 | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat(plugins): dreaming — automatic background memory consolidation | [PR #40737](https://github.com/NousResearch/hermes-agent/pull/40737) open |
 | [kelos-dev/kanon](https://github.com/kelos-dev/kanon) | kelos-dev | Add repo-local project overlays (#33) | [PR #34](https://github.com/kelos-dev/kanon/pull/34) open |
 | [moazbuilds/claudeclaw](https://github.com/moazbuilds/claudeclaw) | moazbuilds | fix(sessions): treat session.json without sessionId as absent (#228) | [PR #234](https://github.com/moazbuilds/claudeclaw/pull/234) open |
