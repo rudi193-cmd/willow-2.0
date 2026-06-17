@@ -42,6 +42,13 @@ In **private-config**: Postgres down remains a hard stop (step 3).
 
 ## Steps
 
+> **`{agent}` throughout this file = the fleet identity**, read from
+> `WILLOW_AGENT_NAME` / `.willow/active-agent` — **never the persona**. The
+> persona (step 7) is a voice overlay; it does not own a SOIL/KB namespace.
+> Stack, overseer, flags, ledger, handoffs, and the boot sentinel all key off
+> the fleet id. Reading `{persona}/stack` instead of `{fleet}/stack` is the
+> classic mismatch: it surfaces a stale namespace the Stop hook never writes.
+
 **1. Contract**
 `mai_read_file("willow.md")` — load the fleet contract.
 Fallback: Read the raw file.
@@ -119,12 +126,14 @@ The hook injects picker + `[PERSONA-IDENTITY]` lines into system context only �
 If active: load context per the persona registry (source defined in `willow.md` — the fleet contract, not any runtime-specific path). The optional `{persona}-boot.md` overlay supplements that registry context; it never changes fleet identity.
 
 **8. Corrections + Preferences**
-Read `corpus/corrections` and `corpus/preferences` — already seeded from memory feedback files by SessionStart hook.
+`soil_list(collection="corpus/corrections")` and `soil_list(collection="corpus/preferences")` — seeded from memory feedback files by SessionStart hook. These live in SOIL, not as flat files; `Read corpus/corrections` will 404.
 Surface count and top items. These are behavioral rails for this session.
 
 **9. Stack snapshot**
 Read SOIL `{agent}/stack/current` — open tasks, open threads, open decisions written by last stop hook.
+`{agent}` here is the **fleet id** (`WILLOW_AGENT_NAME` / `active-agent`), not the active persona — the Stop hook writes `{fleet}/stack`, so reading `{persona}/stack` returns a frozen record that never updates.
 Prefer this over handoff title when richer. This is the authoritative "what was open."
+If `written_at` is older than the latest handoff/ledger entry, the snapshot froze — note it and fall back to the handoff; do not trust stale `open_*` lists.
 
 **10. Open initiatives**
 `soil_list({agent}/overseer)` → filter `status != "closed"`. One line per hit: `[branch] goal`.
