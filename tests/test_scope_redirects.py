@@ -72,7 +72,7 @@ def test_same_redirect_reuses_one_record():
     store = FakeStore()
     content = "let's skip this for now"
     for n in range(3):
-        rid = upsert_scope_redirect(store, content=content, session_id=f"s{n}")
+        upsert_scope_redirect(store, content=content, session_id=f"s{n}")
     rows = store.all(COLLECTION)
     assert len(rows) == 1
     assert rows[0]["count"] == 3

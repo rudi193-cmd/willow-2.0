@@ -6,7 +6,6 @@ Verifies:
 - Different tool or different reason → separate records
 - Record fields are correct
 """
-import pytest
 from willow.fylgja.tool_denials import COLLECTION, tool_denial_record_id, upsert_tool_denial
 
 
@@ -27,7 +26,7 @@ class FakeStore:
 def test_same_tool_same_reason_deduplicates():
     store = FakeStore()
     for n in range(4):
-        rid = upsert_tool_denial(
+        upsert_tool_denial(
             store, tool_name="Bash", reason="Use MCP instead of shell.", session_id=f"s{n}"
         )
     rows = store.all(COLLECTION)
