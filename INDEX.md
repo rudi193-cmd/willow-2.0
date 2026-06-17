@@ -216,6 +216,7 @@
 | `sap/mcp_profiles.py` |
 | `sap/mcp_registry.json` |
 | `sap/spec` |
+| `sap/willow_run_compact.py` |
 | `seed-windows.py` |
 | `setup.sh` |
 | `stubs` |

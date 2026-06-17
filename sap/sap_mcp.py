@@ -5670,15 +5670,20 @@ async def willow_run(
         submitted_by=app_id,
         allow_net=allow_net,
     )
-    out = {"facade": "willow_run", "backend": "agent_task_submit", "submitted": submitted}
     if run_now and not submitted.get("error"):
+        from sap.willow_run_compact import compact_willow_run_outcome
+
         # kart_task_run drains the whole pending backlog, not just this task —
-        # label the drain stats and return THIS task's own result explicitly.
-        out["run"] = await kart_task_run(app_id=app_id, agent=agent)
+        # compact to one stdout copy (no submitted + run.results + status triple).
+        run_payload = await kart_task_run(app_id=app_id, agent=agent)
         tid = submitted.get("task_id")
-        if tid:
-            out["result"] = await agent_task_status(app_id=app_id, task_id=tid)
-    return out
+        status_row = None
+        if tid and not any(
+            r.get("task_id") == tid for r in (run_payload.get("results") or [])
+        ):
+            status_row = await agent_task_status(app_id=app_id, task_id=tid)
+        return compact_willow_run_outcome(submitted, run_payload, status_row)
+    return {"facade": "willow_run", "backend": "agent_task_submit", "submitted": submitted}
 
 
 @mcp.tool()
