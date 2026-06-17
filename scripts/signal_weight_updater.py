@@ -63,6 +63,12 @@ WEIGHT_HALF_LIFE_DAYS: float = 14.0  # faster decay than signal promotion (30d)
 WEIGHT_MIN: float = 0.3              # floor — signal atoms never fully disappear
 
 
+def _float_or(value, default: float) -> float:
+    if value is None:
+        return default
+    return float(value)
+
+
 def _time_decay(created_at: datetime) -> float:
     """Exponential decay from atom creation. 14-day half-life."""
     if created_at.tzinfo is None:
@@ -106,18 +112,20 @@ def run(dry_run: bool = False, category_filter: str | None = None) -> dict:
 
         updated = skipped = 0
         for atom_id, cat, confidence, created_at, current_weight in rows:
-            new_weight = _target_weight(float(confidence or 0.5), created_at, cat)
-            delta = abs(new_weight - float(current_weight or 1.0))
+            conf_f = _float_or(confidence, 0.5)
+            cur_w = _float_or(current_weight, 1.0)
+            new_weight = _target_weight(conf_f, created_at, cat)
+            delta = abs(new_weight - cur_w)
 
             if delta < 0.001:
                 skipped += 1
                 continue
 
-            direction = "↑" if new_weight > float(current_weight or 1.0) else "↓"
+            direction = "↑" if new_weight > cur_w else "↓"
             if dry_run:
                 print(
                     f"  [dry-run] {atom_id[:12]} {cat:15s} "
-                    f"conf={confidence:.3f} {current_weight:.3f} → {new_weight:.3f} {direction}"
+                    f"conf={conf_f:.3f} {cur_w:.3f} → {new_weight:.3f} {direction}"
                 )
                 updated += 1
                 continue
@@ -130,7 +138,7 @@ def run(dry_run: bool = False, category_filter: str | None = None) -> dict:
             pg.conn.commit()
             print(
                 f"  [updated] {atom_id[:12]} {cat:15s} "
-                f"conf={confidence:.3f} {current_weight:.3f} → {new_weight:.3f} {direction}"
+                f"conf={conf_f:.3f} {cur_w:.3f} → {new_weight:.3f} {direction}"
             )
             updated += 1
 

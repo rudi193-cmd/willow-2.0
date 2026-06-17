@@ -19,8 +19,10 @@ from scripts.signal_weight_updater import (
     SIGNAL_CATEGORIES,
     WEIGHT_HALF_LIFE_DAYS,
     WEIGHT_MIN,
+    _float_or,
     _target_weight,
     _time_decay,
+    run,
 )
 
 
@@ -106,3 +108,42 @@ def test_high_confidence_fresh_beats_high_confidence_stale():
 def test_low_confidence_stale_at_floor():
     w = _target_weight(0.3, _ago(WEIGHT_HALF_LIFE_DAYS * 4), "scope_redirect")
     assert w == pytest.approx(WEIGHT_MIN, abs=0.001)
+
+
+def test_float_or_none_uses_default():
+    assert _float_or(None, 0.5) == 0.5
+    assert _float_or(0.8, 0.5) == 0.8
+
+
+def test_run_handles_null_confidence_and_weight(monkeypatch, capsys):
+    """Regression: NULL confidence/weight from Postgres must not break :.3f formatting."""
+    row = ("atom-001", "correction", None, _ago(0), None)
+
+    class _Cursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, *args, **kwargs):
+            pass
+
+        def fetchall(self):
+            return [row]
+
+    class _Pg:
+        conn = type("Conn", (), {"cursor": lambda self: _Cursor(), "commit": lambda self: None})()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr("core.pg_bridge.PgBridge", _Pg)
+    result = run(dry_run=True)
+    assert result["updated"] == 1
+    out = capsys.readouterr().out
+    assert "conf=0.500" in out
+    assert "1.000 →" in out
