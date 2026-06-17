@@ -192,6 +192,17 @@ if pg: pg.close()
         systemctl --user is-active willow-metabolic.socket 2>/dev/null \
             && echo "  Metabolic socket: active" \
             || echo "  Metabolic socket: inactive"
+        systemctl --user is-active willow-metabolic.timer 2>/dev/null \
+            && echo "  Metabolic timer:  active" \
+            || echo "  Metabolic timer:  inactive"
+        "${WILLOW_PYTHON}" -c "
+import json, sys
+sys.path.insert(0, '${WILLOW_ROOT}')
+from core.metabolic_status import check_metabolic_status
+m = check_metabolic_status()
+print('  Last briefing:', m.get('last_briefing') or 'none')
+print('  Consecrated:', m.get('consecrated'))
+" 2>/dev/null || true
         ;;
 
     fleet_status)

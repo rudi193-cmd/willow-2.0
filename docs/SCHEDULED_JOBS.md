@@ -15,8 +15,10 @@ enables the fleet units with `systemctl --user`. All timers set
 | `willow-w8-census.timer` | weekly `Mon 04:00` | `willow.sh w8-census` | W8 canonical-reconstruction census — the trust instrument's heartbeat |
 | `repo-fleet-sweep.timer` | weekly `Mon 04:00` | `repo-fleet-sweep.service` | Repo hygiene sweep (diverged/unpushed repos, branch litter) |
 
-**Enablement:** `setup.sh` enables `willow-metabolic.socket` (socket-activated
-metabolic MCP) and `willow-w8-census.timer`. Other units, including
+**Enablement:** `setup.sh` enables `willow-metabolic.socket` (on-demand Norn pass),
+`willow-metabolic.timer` (nightly `03:00`), and `willow-w8-census.timer`. One-shot
+consecration on an existing install: `scripts/consecrate_metabolic.sh` (copies units,
+enables socket+timer, runs first Norn pass). Other units, including
 `repo-fleet-sweep.timer`, are linked and can be enabled on demand with
 `systemctl --user enable --now <unit>`. Inspect live schedules with
 `systemctl --user list-timers`.
