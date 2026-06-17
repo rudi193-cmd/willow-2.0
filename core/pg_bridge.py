@@ -1599,7 +1599,9 @@ class PgBridge:
         where = " AND ".join(filters)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                f"SELECT *, embedding <=> %s::vector AS distance"
+                f"SELECT id, jsonl_id, agent, content, domain, depth, confidence,"
+                f" title, created_at, valid_at, invalid_at, summary,"
+                f" embedding <=> %s::vector AS distance"
                 f" FROM jeles_atoms WHERE {where}"
                 f" ORDER BY distance ASC LIMIT %s",
                 params,

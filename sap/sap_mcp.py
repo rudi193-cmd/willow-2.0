@@ -735,12 +735,16 @@ async def soil_search_all(app_id: str, query: str) -> dict:
 
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
-async def soil_list(app_id: str, collection: str) -> list:
-    """Return every record in a SOIL collection.
-    Use soil_search for large collections — soil_list returns everything."""
-    logger.info("[w2] soil_list app_id=%s col=%s", app_id, collection)
+async def soil_list(app_id: str, collection: str, filter: dict = None) -> list:
+    """Return records in a SOIL collection.
+    filter: optional dict of {field: value} to match — e.g. {"flag_state": "open"}.
+    Use soil_search for large collections — soil_list returns everything unless filtered."""
+    logger.info("[w2] soil_list app_id=%s col=%s filter=%s", app_id, collection, filter)
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(_executor, store.all, collection)
+    records = await loop.run_in_executor(_executor, store.all, collection)
+    if filter:
+        records = [r for r in records if all(r.get(k) == v for k, v in filter.items())]
+    return records
 
 
 @mcp.tool(annotations={"readOnlyHint": True})

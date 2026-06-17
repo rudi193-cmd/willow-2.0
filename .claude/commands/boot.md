@@ -159,7 +159,7 @@ Also orient against these registries if not already loaded this session:
 Paths are relative to repo root. All six are dark by default — they do not self-announce. For session artifacts, copy from `docs/templates/` — do not improvise structure.
 
 **13. Flag triage**
-`soil_list({agent}/flags)` — close duplicates, surface open ones (max 5, one-line fix_path ≤150 chars).
+`soil_list({agent}/flags, filter={"flag_state": "open"})` — surface open ones (max 5, one-line fix_path ≤150 chars).
 Empty → skip.
 
 **14. Boot report + sentinel**
