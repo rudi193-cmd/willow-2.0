@@ -5,12 +5,9 @@ and dry-run output without hitting the real store or KB.
 """
 from __future__ import annotations
 
-import math
 import sys
-from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -21,7 +18,6 @@ from scripts.promote_signals import (
     HALF_LIFE_DAYS,
     SIGNAL_CONFIGS,
     _content_key,
-    _normalize,
     _time_decay,
     _weighted_count,
 )
