@@ -383,8 +383,8 @@ def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> di
     reflections_written = 0
     if collections:
         try:
-            from core.willow_store import WillowStore
-            store = WillowStore()
+            from core.store_port import get_store_port
+            store = get_store_port()
             reflections_written = soil_reflection_pass(store, collections, dry_run=dry_run)
         except Exception as _re:
             import sys as _sys

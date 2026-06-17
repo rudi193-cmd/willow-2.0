@@ -32,12 +32,6 @@ if rg -n "${_pattern}" \
     --glob '!archive/**' \
     --glob '!worktrees/**' \
     --glob '!willow/fylgja/**' \
-    --glob '!willow/grove_coordination.py' \
-    --glob '!willow/hns_enforcer.py' \
-    --glob '!willow/hns_scheduler.py' \
-    --glob '!core/metabolic.py' \
-    --glob '!core/inference_router.py' \
-    --glob '!core/graceful.py' \
     . 2>/dev/null; then
   echo "::error::Direct WillowStore import outside allowlist — use StorePort, core.soil, or SoilClient"
   fail=1

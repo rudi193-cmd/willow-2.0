@@ -58,6 +58,8 @@ class StorePort(Protocol):
         context: str = "",
     ) -> tuple: ...
 
+    def collections(self) -> list: ...
+
     def audit_log(self, collection: str, limit: int = 20) -> list: ...
 
 
@@ -129,6 +131,9 @@ class WillowStoreAdapter:
         context: str = "",
     ) -> tuple:
         return self._store.add_edge(from_id, to_id, relation, context=context)
+
+    def collections(self) -> list:
+        return self._store.collections()
 
     def audit_log(self, collection: str, limit: int = 20) -> list:
         return self._store.audit_log(collection, limit=limit)
