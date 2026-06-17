@@ -16,6 +16,8 @@
     {"query": "recent session topics decisions open flags", "limit": 5, "semantic": true, "project": "sessions"},
     {"query": "active tasks pending gates outstanding work next bite kart", "limit": 4, "intent": "task"},
     {"query": "design preference approved pattern sovereignty static local-first", "limit": 4, "intent": "preference"},
-    {"query": "system status infrastructure deployed running live fleet willow", "limit": 4, "intent": "world-state"}
+    {"query": "system status infrastructure deployed running live fleet willow", "limit": 4, "intent": "world-state"},
+    {"query": "user correction don't stop wrong approach never behavioral rail signal", "limit": 5, "semantic": true, "intent": "preference"},
+    {"query": "user confirmation preference keep doing good call positive reinforcement", "limit": 4, "semantic": true, "intent": "preference"}
   ]
 }
