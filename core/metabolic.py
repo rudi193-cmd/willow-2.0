@@ -442,6 +442,19 @@ def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> di
             report["signal_weight_error"] = str(_swe)
 
         try:
+            import importlib.util as _ilu
+            _sr_spec = _ilu.spec_from_file_location(
+                "signal_recurrence_tracker", WILLOW_ROOT / "scripts" / "signal_recurrence_tracker.py"
+            )
+            _sr_mod = _ilu.module_from_spec(_sr_spec)
+            _sr_spec.loader.exec_module(_sr_mod)
+            report["signal_recurrence"] = _sr_mod.track_recurrence(dry_run=False)
+        except Exception as _sre:
+            import sys as _sys
+            print(f"[norn] signal recurrence pass error: {_sre}", file=_sys.stderr)
+            report["signal_recurrence_error"] = str(_sre)
+
+        try:
             from core import soil as _soil
             from core.dream_state import dream_conditions, queue_dream_task
             from core.pg_bridge import PgBridge
