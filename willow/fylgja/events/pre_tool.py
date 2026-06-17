@@ -520,7 +520,7 @@ def main():
             sys.exit(0)
 
         # Increment per-session counter for all non-blocked Bash calls.
-        bash_count = _increment_bash_count(session_id)
+        bash_count = _increment_bash_count(session_id) if command else 0
         count_warn: str | None = None
         if _BASH_SESSION_THRESHOLD > 0 and bash_count % _BASH_SESSION_THRESHOLD == 0:
             count_warn = (
@@ -556,6 +556,7 @@ def main():
                         f"(category: {bad.category}, severity: {bad.severity})"
                     ),
                 }))
+                sys.exit(0)
         sys.exit(0)
 
     # Write/Edit tools — MarkdownAI routing, security path check, F5 canon guard
