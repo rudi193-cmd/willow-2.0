@@ -231,6 +231,37 @@ def main():
             "Do not re-run the same command in Bash. "
             "Nested Python → agent_task_submit(script_body=...)."
         )
+        if tid:
+            try:
+                from core.store_port import get_store_port
+                from willow.fylgja.confirmations import upsert_confirmation
+                store = get_store_port()
+                upsert_confirmation(
+                    store,
+                    content="Used Kart (agent_task_submit) for shell work — keep routing exec here.",
+                    session_id=session_id,
+                    source="post_tool_hook",
+                )
+                from core import skill_mastery as _sm
+                _sm.record("kart", correct=True)
+            except Exception:
+                pass
+
+    if tool_name == "mcp__willow__willow_run":
+        try:
+            from core.store_port import get_store_port
+            from willow.fylgja.confirmations import upsert_confirmation
+            store = get_store_port()
+            upsert_confirmation(
+                store,
+                content="Used willow_run facade for shell work — keep routing exec here.",
+                session_id=session_id,
+                source="post_tool_hook",
+            )
+            from core import skill_mastery as _sm
+            _sm.record("kart", correct=True)
+        except Exception:
+            pass
 
     if tool_name in _SIGNIFICANT:
         _write_trace(session_id, tool_name, tool_input)

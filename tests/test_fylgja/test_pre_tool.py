@@ -269,6 +269,7 @@ def test_flag_opened_at_threshold():
     written = puts[0].args[1]
     assert written.get("flag_state") == "open"
     assert "Bash" in written.get("title", "")
+    assert "Repeated enforcement" in written.get("title", "")
     assert written.get("source") == "block_telemetry"
 
 
@@ -344,3 +345,52 @@ def test_count_warn_not_emitted_below_threshold(tmp_path, monkeypatch):
         data = json.loads(out)
         assert data.get("decision") != "block"
         assert "BASH-COUNT" not in data.get("reason", "")
+
+
+# ── Bash warn escalation (behavioral feedback loop) ─────────────────────────────
+
+
+def test_warn_escalates_to_block_on_second_strike(tmp_path, monkeypatch):
+    monkeypatch.setattr(_pt, "_session_rule_strikes_path", lambda sid: tmp_path / f"strikes-{sid}.json")
+    monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
+    cmd = "grep -r foo ."
+    out1 = _run_pre_tool({
+        "tool_name": "Bash",
+        "tool_input": {"command": cmd},
+        "session_id": "esc-s1",
+    })
+    assert out1.strip()
+    data1 = json.loads(out1)
+    assert data1["decision"] == "warn"
+    out2 = _run_pre_tool({
+        "tool_name": "Bash",
+        "tool_input": {"command": cmd},
+        "session_id": "esc-s1",
+    })
+    assert out2.strip()
+    data2 = json.loads(out2)
+    assert data2["decision"] == "block"
+    assert "ESCALATED" in data2["reason"]
+
+
+def test_session_ban_after_third_strike_on_block_pattern(tmp_path, monkeypatch):
+    monkeypatch.setattr(_pt, "_session_rule_strikes_path", lambda sid: tmp_path / f"strikes-{sid}.json")
+    monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
+    cmd = "cat /etc/hosts"
+    for i in range(3):
+        out = _run_pre_tool({
+            "tool_name": "Bash",
+            "tool_input": {"command": cmd},
+            "session_id": "ban-s1",
+        })
+        assert out.strip()
+        data = json.loads(out)
+        assert data["decision"] == "block"
+    out4 = _run_pre_tool({
+        "tool_name": "Bash",
+        "tool_input": {"command": cmd},
+        "session_id": "ban-s1",
+    })
+    data4 = json.loads(out4)
+    assert data4["decision"] == "block"
+    assert "SESSION-BAN" in data4["reason"]

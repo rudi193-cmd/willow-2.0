@@ -6,7 +6,7 @@ Verifies:
 - Different tool or different reason → separate records
 - Record fields are correct
 """
-from willow.fylgja.tool_denials import COLLECTION, tool_denial_record_id, upsert_tool_denial
+from willow.fylgja.tool_denials import COLLECTION, tool_denial_record_id, top_denial_lessons, upsert_tool_denial
 
 
 class FakeStore:
@@ -73,3 +73,13 @@ def test_record_fields():
     assert r["b17"] == "CRPS0"
     assert r["count"] == 1
     assert "Bash" in r["content"]
+
+
+def test_top_denial_lessons_sorted_by_count():
+    store = FakeStore()
+    upsert_tool_denial(store, tool_name="Bash", reason="Use Read → foo", session_id="s")
+    for _ in range(4):
+        upsert_tool_denial(store, tool_name="Bash", reason="soil_get · soil_list", session_id="s")
+    lessons = top_denial_lessons(store, limit=2)
+    assert len(lessons) == 2
+    assert lessons[0].startswith("Bash: blocked 4×")

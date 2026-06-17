@@ -22,6 +22,8 @@ from willow.fylgja.session_inject import (
     MAX_CORRECTIONS,
     MAX_CROSS_RUNTIME_OPEN,
     MAX_PREFERENCES,
+    MAX_TOOL_DENIALS,
+    MAX_HUMAN_CONFIRMATIONS,
     dedup_fingerprint,
     is_continuation_source,
     is_fresh_source,
@@ -474,15 +476,32 @@ def _run_silent_startup(session_id: str = "") -> dict:
         _seed_rec = _store.get("corpus/seed", "seed") or {}
         _corrs = _store.all("corpus/corrections") or []
         _prefs = _store.all("corpus/preferences") or []
+        _confs = _store.all("corpus/confirmations") or []
         _corrs.sort(key=lambda r: r.get("created_at", ""), reverse=True)
         _prefs.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+        _confs.sort(key=lambda r: r.get("last_seen", r.get("created_at", "")), reverse=True)
+        human_confs = [
+            r.get("content", "")
+            for r in _confs
+            if r.get("content")
+            and str(r.get("source", "")).startswith("prompt_submit")
+        ]
+        from willow.fylgja.tool_denials import top_denial_lessons
         result["corpus"] = {
             "seed": _seed_rec.get("content", ""),
             "corrections": [r.get("content", "") for r in _corrs[:MAX_CORRECTIONS] if r.get("content")],
             "preferences": [r.get("content", "") for r in _prefs[:MAX_PREFERENCES] if r.get("content")],
+            "confirmations": human_confs[:MAX_HUMAN_CONFIRMATIONS],
+            "tool_denials": top_denial_lessons(_store, limit=MAX_TOOL_DENIALS),
         }
     except Exception:
-        result["corpus"] = {"seed": "", "preferences": [], "corrections": []}
+        result["corpus"] = {
+            "seed": "",
+            "preferences": [],
+            "corrections": [],
+            "confirmations": [],
+            "tool_denials": [],
+        }
 
     # Flat handoff — read most recent file and verify anchor against JSONL
     flat: dict = {}
@@ -765,19 +784,37 @@ def main():
     if corpus.get("seed"):
         lines.append(f"why: {corpus['seed'][:120]}")
     if corpus.get("corrections"):
-        cap = MAX_CORRECTIONS if not lite_inject else 0
+        cap = MAX_CORRECTIONS if not lite_inject else min(2, MAX_CORRECTIONS)
         shown = corpus["corrections"][:cap]
         if shown:
-            lines.append(f"corrections ({len(corpus['corrections'])}):")
+            lines.append(f"corrections — operator ({len(corpus['corrections'])}):")
             for c in shown:
                 lines.append(f"  · {c[:100]}")
     if corpus.get("preferences"):
-        cap = MAX_PREFERENCES if not lite_inject else 1
+        cap = MAX_PREFERENCES if not lite_inject else min(2, MAX_PREFERENCES)
         shown = corpus["preferences"][:cap]
         if shown:
-            lines.append(f"preferences ({len(corpus['preferences'])}):")
+            lines.append(f"preferences — operator ({len(corpus['preferences'])}):")
             for p in shown:
                 lines.append(f"  · {p[:100]}")
+    if corpus.get("confirmations"):
+        cap = MAX_HUMAN_CONFIRMATIONS if not lite_inject else 1
+        shown = corpus["confirmations"][:cap]
+        if shown:
+            lines.append(f"confirmations — operator ({len(corpus['confirmations'])}):")
+            for c in shown:
+                lines.append(f"  · {c[:100]}")
+    if corpus.get("tool_denials"):
+        # Automated lane — fewer slots; never crowd out human corrections above.
+        cap = MAX_TOOL_DENIALS if not lite_inject else 0
+        shown = corpus["tool_denials"][:cap]
+        if shown:
+            lines.append(
+                f"learned denials — automated ({len(corpus['tool_denials'])}); "
+                "defer to operator corrections when they conflict:"
+            )
+            for lesson in shown:
+                lines.append(f"  · {lesson[:120]}")
 
     # Stack snapshot — inject open tasks + open decisions from last stop hook write
     snap = startup.get("stack_snapshot", {})

@@ -9,9 +9,11 @@ from pathlib import Path
 _DEDUP_TTL_SEC = 300
 _MARKER = Path("/tmp/willow-session-inject-marker.json")
 
-# Caps for full boot injection (token budget)
-MAX_CORRECTIONS = 3
-MAX_PREFERENCES = 2
+# Caps for full boot injection (token budget). Human-sourced lanes get more slots.
+MAX_CORRECTIONS = 4
+MAX_PREFERENCES = 3
+MAX_TOOL_DENIALS = 2
+MAX_HUMAN_CONFIRMATIONS = 2
 MAX_CROSS_RUNTIME_OPEN = 3
 
 
