@@ -85,6 +85,32 @@ def detect_correction(prompt: str) -> bool:
     return False
 
 
+# Patterns that signal a user preference (positive direction, not a correction).
+# Corrections take precedence — detect_preference() checks detect_correction() first.
+_PREFERENCE_PATTERNS = [
+    r"\bi (prefer|like|want|love)\b.{0,60}(you|to|when)\b",
+    r"\bi'?d (prefer|like|rather|love)\b",
+    r"\bplease (always|from now on|going forward)\b",
+    r"\b(from now on|going forward|in the future).{0,40}(please|always|can you|could you)\b",
+    r"\bcan you (always|please)\b.{0,60}",
+    r"\bwould (prefer|rather)\b",
+    r"\b(keep|continue).{0,20}(doing|using|that way|like that)\b",
+    r"\bi'?d appreciate\b",
+]
+
+
+def detect_preference(prompt: str) -> bool:
+    """Return True if prompt looks like a user preference statement (not a correction)."""
+    if len(prompt.strip()) < 20:
+        return False
+    if detect_correction(prompt):
+        return False
+    for pattern in _PREFERENCE_PATTERNS:
+        if re.search(pattern, prompt, re.IGNORECASE):
+            return True
+    return False
+
+
 def detect_feedback(prompt: str) -> list[dict]:
     found, seen = [], set()
     for pattern, fb_type, rule in FEEDBACK_PATTERNS:
@@ -317,8 +343,10 @@ def _run_flat_handoff_checkpoint(session_id: str) -> None:
 
 
 def _run_corpus_capture(prompt: str, session_id: str) -> None:
-    """Stage correction atoms to corpus/corrections when a correction is detected."""
-    if not detect_correction(prompt):
+    """Stage corpus atoms when a correction or preference is detected."""
+    is_correction = detect_correction(prompt)
+    is_preference = detect_preference(prompt)
+    if not is_correction and not is_preference:
         return
     try:
         import sys as _sys
@@ -326,13 +354,13 @@ def _run_corpus_capture(prompt: str, session_id: str) -> None:
         if _repo_root not in _sys.path:
             _sys.path.insert(0, _repo_root)
         from core.store_port import get_store_port
-        from willow.fylgja.corrections import upsert_correction
-        upsert_correction(
-            get_store_port(),
-            source="prompt_submit_hook",
-            content=prompt,
-            session_id=session_id,
-        )
+        store = get_store_port()
+        if is_correction:
+            from willow.fylgja.corrections import upsert_correction
+            upsert_correction(store, source="prompt_submit_hook", content=prompt, session_id=session_id)
+        if is_preference:
+            from willow.fylgja.preferences import upsert_preference
+            upsert_preference(store, content=prompt, session_id=session_id)
     except Exception:
         pass
 
