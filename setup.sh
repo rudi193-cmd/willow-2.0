@@ -148,7 +148,7 @@ for unit in willow-metabolic.socket willow-metabolic.service grove-mcp.service \
 done
 if command -v systemctl >/dev/null 2>&1; then
     systemctl --user daemon-reload
-    systemctl --user enable --now willow-metabolic.socket grove-mcp.service \
+    systemctl --user enable --now willow-metabolic.socket willow-metabolic.timer grove-mcp.service \
         willow-grove-listen.service drop-server.service nest-watcher.service \
         journal-watcher.service willow-w8-census.timer 2>/dev/null \
         && ok "Fleet units enabled" || warn "Some systemd units failed to enable"

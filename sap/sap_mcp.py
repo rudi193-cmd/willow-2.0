@@ -344,23 +344,8 @@ def _check_ollama() -> dict:
 
 
 def _check_metabolic() -> dict:
-    import sqlite3 as _sqlite3
-    result: dict = {"last_briefing": None, "socket": "unknown"}
-    briefings_db = _store_root() / "briefings" / "daily.db"
-    if briefings_db.exists():
-        try:
-            conn = _sqlite3.connect(str(briefings_db))
-            row = conn.execute(
-                "SELECT id, created FROM records ORDER BY created DESC LIMIT 1"
-            ).fetchone()
-            conn.close()
-            if row:
-                result["last_briefing"] = row[1]
-        except Exception:
-            pass
-    socket_path = _fleet_home() / "metabolic.sock"
-    result["socket"] = "active" if socket_path.exists() else "inactive"
-    return result
+    from core.metabolic_status import check_metabolic_status
+    return check_metabolic_status()
 
 
 def _normalize_local_paths(text: str) -> str:
