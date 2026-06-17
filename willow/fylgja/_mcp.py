@@ -105,6 +105,92 @@ def _dispatch_store(tool_name: str, arguments: dict):
 
 
 # ---------------------------------------------------------------------------
+# Direct soil dispatch — same StorePort backend as the MCP server's soil_ tools
+# (sap/sap_mcp.py: soil_ → store → WillowStore). Mirrors that module's
+# semantics so a hook write lands exactly where soil_get/soil_list will read it,
+# without the subprocess willow-mcp spawn + init handshake the fallback requires.
+# ---------------------------------------------------------------------------
+
+def _qualifies_as_flag(record: dict, deviation: float) -> bool:
+    # Mirror of sap.sap_mcp._qualifies_as_flag — keep in sync.
+    return (
+        record.get("type") in ("failure-log",) or
+        record.get("domain") == "governance" or
+        deviation > 0.6 or
+        (record.get("type") == "gap" and record.get("severity") in ("high", "critical"))
+    )
+
+
+def _dispatch_soil(tool_name: str, arguments: dict):
+    store = _get_store()
+    col = arguments.get("collection", "")
+
+    if tool_name == "soil_put":
+        record = arguments.get("record", {})
+        record_id = arguments.get("record_id") or record.get("id")
+        deviation = arguments.get("deviation", 0.0) or 0.0
+        result = store.put(col, record, record_id=record_id or None, deviation=deviation)
+        # StorePort.put returns (id, action) or (id, action, proposals)
+        if isinstance(result, tuple):
+            rid = result[0]
+            action = result[1] if len(result) > 1 else "written"
+            proposals = result[2] if len(result) > 2 else None
+        else:
+            rid, action, proposals = (record_id or ""), "written", None
+        out: dict = {"id": rid, "action": action}
+        if proposals:
+            out["proposals"] = [p.to_dict() for p in proposals]
+        # Auto-flag qualifying records into {namespace}/flags — mirrors soil_put
+        if not col.endswith("/flags") and _qualifies_as_flag(record, deviation):
+            from datetime import datetime, timezone
+            namespace = col.split("/")[0]
+            store.put(f"{namespace}/flags", {
+                "atom_id": rid,
+                "collection": col,
+                "deviation": deviation,
+                "ts": datetime.now(timezone.utc).isoformat(),
+            })
+        return out
+
+    if tool_name == "soil_get":
+        record_id = arguments.get("record_id") or arguments.get("id", "")
+        result = store.get(col, record_id)
+        return result if result is not None else {"error": "not_found"}
+
+    if tool_name == "soil_list":
+        return store.all(col) or []
+
+    if tool_name == "soil_search":
+        query = arguments.get("query", "")
+        after = arguments.get("after") or None
+        if arguments.get("semantic"):
+            return store.search_semantic(col, query) or []
+        return store.search(col, query, after=after) or []
+
+    if tool_name == "soil_search_all":
+        return store.search_all(arguments.get("query", "")) or []
+
+    if tool_name == "soil_delete":
+        return store.delete(col, arguments.get("record_id", ""))
+
+    if tool_name == "soil_update":
+        record_id = arguments.get("record_id", "")
+        record = arguments.get("record", {})
+        result = store.update(col, record_id, record)
+        if isinstance(result, tuple):
+            return {"id": result[0], "action": result[1]}
+        return {"id": record_id, "action": "updated"}
+
+    if tool_name == "soil_edges_for":
+        return store.edges_for(arguments.get("record_id", "")) or []
+
+    if tool_name == "soil_stats":
+        return store.stats() or {}
+
+    return {"error": f"unknown soil tool: {tool_name}"}
+
+
+# ---------------------------------------------------------------------------
 # Direct grove dispatch — raw psycopg2 to grove.* schema
 # ---------------------------------------------------------------------------
 
@@ -313,5 +399,11 @@ def call(tool_name: str, arguments: dict, timeout: int = 10) -> dict:
             return _dispatch_grove(tool_name, arguments)
         except Exception as e:
             return {"error": f"grove dispatch error: {e}", "tool": tool_name}
+
+    if tool_name.startswith("soil_"):
+        try:
+            return _dispatch_soil(tool_name, arguments)
+        except Exception as e:
+            return {"error": f"soil dispatch error: {e}", "tool": tool_name}
 
     return _subprocess_call(tool_name, timeout=timeout, arguments=arguments)
