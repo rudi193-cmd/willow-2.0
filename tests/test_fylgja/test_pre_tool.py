@@ -42,6 +42,21 @@ def test_allows_pytest():
     assert reason is None
 
 
+def test_warns_bash_script():
+    result = check_bash_block("bash scripts/store_import_guard.sh")
+    assert result is not None
+    decision, reason = result
+    assert decision == "warn"
+    assert "Kart" in reason or "kart" in reason.lower()
+
+
+def test_warns_bash_script_with_path():
+    result = check_bash_block("bash /tmp/my_job.sh")
+    assert result is not None
+    decision, _ = result
+    assert decision == "warn"
+
+
 def test_blocks_pythonpath_bypass():
     result = check_bash_block('PYTHONPATH=/home/sean/willow-2.0 python3 -c "from core.pg_bridge import try_connect"')
     assert result is not None
@@ -277,3 +292,57 @@ def test_flag_reopened_after_resolution():
     puts = _flag_puts(store)
     assert puts, "Should reopen a flag that was previously resolved"
     assert puts[0].args[1].get("flag_state") == "open"
+
+
+# ── Per-session Bash counter ──────────────────────────────────────────────────
+
+import tempfile
+
+
+def test_bash_counter_increments(tmp_path, monkeypatch):
+    monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
+    assert _pt._increment_bash_count("s1") == 1
+    assert _pt._increment_bash_count("s1") == 2
+    assert _pt._increment_bash_count("s1") == 3
+
+
+def test_bash_counter_isolated_per_session(tmp_path, monkeypatch):
+    monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
+    _pt._increment_bash_count("sess-a")
+    _pt._increment_bash_count("sess-a")
+    assert _pt._increment_bash_count("sess-b") == 1
+
+
+def test_count_warn_emitted_at_threshold(tmp_path, monkeypatch):
+    monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
+    # Drive count to threshold - 1
+    for _ in range(4):
+        _pt._increment_bash_count("s-thresh")
+    # Fifth call crosses threshold=5
+    out = _run_pre_tool({
+        "tool_name": "Bash",
+        "tool_input": {"command": "git log --oneline -5"},
+        "session_id": "s-thresh",
+    })
+    assert out.strip(), "Expected a warn at threshold crossing"
+    data = json.loads(out)
+    assert data["decision"] == "warn"
+    assert "BASH-COUNT" in data["reason"]
+    assert "5" in data["reason"]
+
+
+def test_count_warn_not_emitted_below_threshold(tmp_path, monkeypatch):
+    monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
+    # Only 3 calls — threshold=5 not reached
+    for _ in range(3):
+        _pt._increment_bash_count("s-low")
+    out = _run_pre_tool({
+        "tool_name": "Bash",
+        "tool_input": {"command": "git log --oneline -5"},
+        "session_id": "s-low",
+    })
+    # No output expected (git is allowed, count=4 < threshold=5)
+    if out.strip():
+        data = json.loads(out)
+        assert data.get("decision") != "block"
+        assert "BASH-COUNT" not in data.get("reason", "")
