@@ -330,7 +330,10 @@ def _open_attention_items(agent: str) -> tuple[int, list[str]]:
         for flag in flags or []:
             if flag.get("flag_state") != "open":
                 continue
-            title = str(flag.get("title") or flag.get("id") or "?")[:60]
+            title = str(flag.get("title") or flag.get("id") or "?")
+            if title.startswith("Blessed path"):
+                continue
+            title = title[:60]
             ranked.append((int(flag.get("severity") or flag.get("hit_count") or 0), title))
     except Exception:
         pass

@@ -19,7 +19,16 @@ def test_open_attention_items_merges_gaps_and_flags():
             ]
         if coll == "willow/flags":
             return [
-                {"flag_state": "open", "title": "Blessed path for Bash", "hit_count": 20},
+                {
+                    "flag_state": "open",
+                    "title": "Repeated enforcement: 'Bash' blocked 50× fleet-wide",
+                    "hit_count": 50,
+                },
+                {
+                    "flag_state": "open",
+                    "title": "Blessed path for Bash",
+                    "hit_count": 20,
+                },
                 {"flag_state": "resolved", "title": "Old flag"},
             ]
         return []
@@ -28,8 +37,9 @@ def test_open_attention_items_merges_gaps_and_flags():
         count, titles = ss._open_attention_items("willow")
 
     assert count == 2
-    assert titles[0] == "Blessed path for Bash"
+    assert titles[0] == "Repeated enforcement: 'Bash' blocked 50× fleet-wide"
     assert "Human gap A" in titles
+    assert not any("Blessed path" in t for t in titles)
 
 
 def test_open_attention_items_flags_only_when_gaps_empty():

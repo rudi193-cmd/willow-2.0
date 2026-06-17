@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 """
-archive_block_flags.py — corrections lifecycle part (c): archive silent block flags.
+archive_block_flags.py — block-telemetry flag lifecycle in willow/flags.
 
-A block telemetry flag (source=block_telemetry in willow/flags) that has been
-resolved AND whose rule hasn't fired in ARCHIVE_AFTER_DAYS is archived by setting
-flag_state="archived". This prevents resolved flags from cluttering the active
-flag list indefinitely.
-
-A flag is NOT archived if its rule is still firing recently — part (b) will
-reopen it on the next threshold crossing anyway, so it should stay visible.
+(c) Archive resolved flags silent for >N days (flag_state=archived).
+(d) Retire pre-#436 open flags whose titles claimed "Blessed path … broken"
+    — superseded by "Repeated enforcement" telemetry (#436).
 
 Usage:
     python3 scripts/archive_block_flags.py [--dry-run] [--days N]
+    python3 scripts/archive_block_flags.py --retire-legacy [--dry-run]
 """
 from __future__ import annotations
 
@@ -24,6 +21,54 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 
 DEFAULT_ARCHIVE_AFTER_DAYS = 7
+LEGACY_BLOCK_TITLE_PREFIX = "Blessed path"
+LEGACY_ARCHIVE_REASON = (
+    "pre-#436 taxonomy ('Blessed path') superseded by repeated-enforcement flags"
+)
+
+
+def _flag_id(flag: dict) -> str | None:
+    return flag.get("id") or flag.get("_soil_id")
+
+
+def is_legacy_block_flag(flag: dict) -> bool:
+    """Pre-#436 block_telemetry titles implied routing was broken, not repetitive."""
+    if flag.get("source") != "block_telemetry":
+        return False
+    title = str(flag.get("title") or "")
+    return title.startswith(LEGACY_BLOCK_TITLE_PREFIX)
+
+
+def retire_legacy_block_flags(dry_run: bool = False) -> int:
+    """Archive open legacy block_telemetry flags. Returns count retired."""
+    try:
+        store = _load_store()
+        all_flags = store.all("willow/flags") or []
+    except Exception as e:
+        print(f"[archive_block_flags] store unavailable: {e}", file=sys.stderr)
+        return 0
+
+    retired = 0
+    now = datetime.now(timezone.utc).isoformat()
+    for flag in all_flags:
+        if flag.get("flag_state") != "open" or not is_legacy_block_flag(flag):
+            continue
+        flag_id = _flag_id(flag)
+        if not flag_id:
+            continue
+        if dry_run:
+            retired += 1
+            continue
+        try:
+            updated = dict(flag)
+            updated["flag_state"] = "archived"
+            updated["archived_at"] = now
+            updated["archived_reason"] = LEGACY_ARCHIVE_REASON
+            store.put("willow/flags", updated, record_id=flag_id)
+            retired += 1
+        except Exception as e:
+            print(f"[archive_block_flags] {flag_id}: {e}", file=sys.stderr)
+    return retired
 
 
 def _load_store():
@@ -63,7 +108,7 @@ def archive_pass(dry_run: bool = False, days: int = DEFAULT_ARCHIVE_AFTER_DAYS) 
 
     for flag in resolved:
         rule_key = flag.get("rule_key")
-        flag_id = flag.get("id") or flag.get("_soil_id")
+        flag_id = _flag_id(flag)
         if not rule_key or not flag_id:
             continue
 
@@ -92,11 +137,22 @@ def archive_pass(dry_run: bool = False, days: int = DEFAULT_ARCHIVE_AFTER_DAYS) 
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Archive silent block telemetry flags")
+    parser = argparse.ArgumentParser(description="Archive block telemetry flags in willow/flags")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--retire-legacy",
+        action="store_true",
+        help="Archive open pre-#436 'Blessed path' block_telemetry flags",
+    )
     parser.add_argument("--days", type=int, default=DEFAULT_ARCHIVE_AFTER_DAYS,
                         help=f"Archive resolved flags silent for this many days (default: {DEFAULT_ARCHIVE_AFTER_DAYS})")
     args = parser.parse_args()
+
+    if args.retire_legacy:
+        count = retire_legacy_block_flags(dry_run=args.dry_run)
+        label = "would retire" if args.dry_run else "retired"
+        print(f"[archive] legacy block flags — {label}={count}")
+        return
 
     try:
         store = _load_store()
@@ -107,7 +163,11 @@ def main() -> None:
 
     block_flags = [f for f in all_flags if f.get("source") == "block_telemetry"]
     resolved = [f for f in block_flags if f.get("flag_state") == "resolved"]
-    print(f"[archive] {len(block_flags)} block flags total, {len(resolved)} resolved")
+    legacy_open = [f for f in block_flags if f.get("flag_state") == "open" and is_legacy_block_flag(f)]
+    print(
+        f"[archive] {len(block_flags)} block flags total, "
+        f"{len(resolved)} resolved, {len(legacy_open)} legacy open"
+    )
 
     count = archive_pass(dry_run=args.dry_run, days=args.days)
     label = "would archive" if args.dry_run else "archived"
