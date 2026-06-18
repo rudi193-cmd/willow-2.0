@@ -1,6 +1,6 @@
 """willow_run(run_now=True) must not echo Kart stdout three times."""
 
-from sap.willow_run_compact import compact_willow_run_outcome
+from sap.willow_run_compact import _strip_result, compact_willow_run_outcome
 
 _MARKER = "UNIQUE_STDOUT_MARKER"
 _HEAVY = {
@@ -93,3 +93,64 @@ def test_reaped_stale_preserved_in_run_meta():
     run_payload = {"executed": 0, "reaped_stale": 2, "results": []}
     out = compact_willow_run_outcome(submitted, run_payload)
     assert out["run"] == {"executed": 0, "reaped_stale": 2}
+
+
+# --- _strip_result unit tests ---
+
+
+def test_strip_result_removes_response_dup():
+    r = {"stdout": "hi", "stderr": "", "returncode": 0, "response": "hi"}
+    stripped = _strip_result(r)
+    assert "response" not in stripped
+    assert stripped["stdout"] == "hi"
+
+
+def test_strip_result_removes_sandbox_manifest():
+    manifest = {"engine": "bwrap", "bound_ro": ["/etc"], "bound_rw": ["/tmp"]}
+    r = {"stdout": "ok", "returncode": 0, "sandbox_manifest": manifest}
+    stripped = _strip_result(r)
+    assert "sandbox_manifest" not in stripped
+    assert stripped["stdout"] == "ok"
+
+
+def test_strip_result_leaves_other_fields_intact():
+    r = {
+        "stdout": "x",
+        "stderr": "y",
+        "returncode": 1,
+        "elapsed_s": 0.5,
+        "sandbox": "bwrap",
+        "sandbox_setup": "ok",
+        "provider": "shell",
+        "steps": 1,
+    }
+    assert _strip_result(r) == r
+
+
+def test_compact_strips_response_from_run_results():
+    submitted = {"task_id": "T", "status": "pending", "agent": "kart"}
+    kart_result = {
+        "stdout": _MARKER,
+        "stderr": "",
+        "returncode": 0,
+        "response": _MARKER,
+        "sandbox_manifest": {"engine": "bwrap"},
+    }
+    run_payload = {
+        "executed": 1,
+        "results": [{"task_id": "T", "status": "completed", "result": kart_result}],
+    }
+    out = compact_willow_run_outcome(submitted, run_payload)
+    assert "response" not in out["result"]
+    assert "sandbox_manifest" not in out["result"]
+    assert out["result"]["stdout"] == _MARKER
+    assert _count_marker(out) == 1
+
+
+def test_compact_strips_response_from_status_row_fallback():
+    submitted = {"task_id": "T", "status": "pending", "agent": "kart"}
+    kart_result = {"stdout": _MARKER, "response": _MARKER, "returncode": 0}
+    status_row = {"status": "completed", "result": kart_result}
+    out = compact_willow_run_outcome(submitted, {"executed": 0, "results": []}, status_row)
+    assert "response" not in out["result"]
+    assert _count_marker(out) == 1
