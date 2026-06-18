@@ -107,3 +107,4 @@ docs/api/
 # LoCoMo benchmark — run artifacts and downloaded dataset files
 willow/bench/locomo/external_runs/
 willow/bench/locomo/data/
+handoffs/
