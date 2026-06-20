@@ -15,7 +15,14 @@
       "profile": "core",
       "servers": ["willow", "law-gazelle"],
       "ides": ["cursor", "claude"],
-      "note": "Writing portfolio — Jeles via willow_external; law-gazelle for coparent/legal reads."
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Writing portfolio — full fleet wiring via willow project sync."
     }
   }
 }

@@ -12,9 +12,12 @@ from typing import Any
 
 from willow.fylgja.install_project import render_mcp_config
 from willow.fylgja.project_env import repo_root
+from willow.fylgja.project_wiring import (
+    expand_home,
+    normalize_wiring,
+    render_claude_permissions,
+)
 from willow.fylgja.willow_home import fleet_home
-
-_HOME_VAR = "{{HOME}}"
 
 # Static MCP server blocks (non-willow). Paths use ${HOME} for IDE expansion.
 _STATIC_SERVERS: dict[str, dict[str, Any]] = {
@@ -35,14 +38,6 @@ _STATIC_SERVERS: dict[str, dict[str, Any]] = {
     },
 }
 
-_DESTRUCTIVE_WILLOW_DENY = [
-    "mcp__willow__app_uninstall",
-    "mcp__willow__policy_put",
-    "mcp__willow__policy_delete",
-    "mcp__willow__routine_register",
-]
-
-
 def _package_root() -> Path:
     return repo_root()
 
@@ -54,11 +49,6 @@ def seed_path(package_root: Path | None = None) -> Path:
 
 def registry_path(package_root: Path | None = None) -> Path:
     return fleet_home(package_root) / "mcp" / "projects.json"
-
-
-def expand_home(text: str) -> str:
-    home = str(Path.home())
-    return text.replace(_HOME_VAR, home).replace("${HOME}", home).replace("$HOME", home)
 
 
 def expand_home_in_obj(obj: Any) -> Any:
@@ -125,6 +115,7 @@ def list_projects(*, package_root: Path | None = None) -> list[dict[str, Any]]:
                 "servers": list(entry.get("servers") or []),
                 "ides": list(entry.get("ides") or []),
                 "note": entry.get("note", ""),
+                "wiring": normalize_wiring(entry),
             }
         )
     return rows
@@ -178,38 +169,6 @@ def render_project_mcp(
     return {"mcpServers": mcp_servers}
 
 
-def render_claude_permissions(servers: list[str]) -> dict[str, Any]:
-    allow = [
-        "Read(*)",
-        "Edit(*)",
-        "Write(*)",
-        "Glob(*)",
-        "Grep(*)",
-        "Skill(*)",
-        "Task(*)",
-    ]
-    for name in servers:
-        if isinstance(name, str) and name:
-            allow.append(f"mcp__{name}__*")
-    allow.append("mcp__claude_ai_Grove__*")
-    # dedupe preserve order
-    seen: set[str] = set()
-    deduped: list[str] = []
-    for item in allow:
-        if item in seen:
-            continue
-        seen.add(item)
-        deduped.append(item)
-
-    deny = list(_DESTRUCTIVE_WILLOW_DENY) if "willow" in servers else []
-    enabled = [s for s in servers if isinstance(s, str)]
-    return {
-        "permissions": {"allow": deduped, "deny": deny},
-        "enableAllProjectMcpServers": True,
-        "enabledMcpjsonServers": enabled,
-    }
-
-
 def project_paths(project_id: str, entry: dict[str, Any]) -> dict[str, Path]:
     raw = str(entry.get("path") or "").strip()
     if not raw:
@@ -258,7 +217,8 @@ def audit_project(
             issues.append(f"{project_id}: drift {label} → {path}")
 
     ides = entry.get("ides") or []
-    if "claude" in ides:
+    wiring = normalize_wiring(entry)
+    if "claude" in ides and not wiring.get("claude_settings"):
         settings = paths["claude_settings"]
         expected_settings = render_claude_permissions(list(entry.get("servers") or []))
         if not settings.is_file():
@@ -275,6 +235,11 @@ def audit_project(
                             f"{project_id}: claude settings drift ({key}) → {settings}"
                         )
                         break
+
+    issues.extend(
+        __import__("willow.fylgja.project_wiring", fromlist=["audit_project_wiring"])
+        .audit_project_wiring(project_id, entry, package_root=package_root)
+    )
 
     proj_path = paths["root"]
     if not proj_path.is_dir():
@@ -304,9 +269,13 @@ def sync_project(
             continue
         _write_json(path, payload, dry_run=dry_run)
 
-    if claude_settings and "claude" in ides:
+    if claude_settings and "claude" in ides and not normalize_wiring(entry).get("claude_settings"):
         settings = render_claude_permissions(list(entry.get("servers") or []))
         _write_json(paths["claude_settings"], settings, dry_run=dry_run)
+
+    __import__("willow.fylgja.project_wiring", fromlist=["sync_project_wiring"]).sync_project_wiring(
+        project_id, entry, package_root=package_root, dry_run=dry_run
+    )
 
     return paths
 

@@ -4,12 +4,11 @@ from pathlib import Path
 from willow.fylgja.mcp_projects import (
     audit_project,
     ensure_registry,
-    expand_home,
     load_registry,
-    render_claude_permissions,
     render_project_mcp,
     sync_project,
 )
+from willow.fylgja.project_wiring import expand_home, render_claude_permissions
 
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
 
