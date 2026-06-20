@@ -108,7 +108,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [aviv4339/claude-guard](https://github.com/aviv4339/claude-guard) | aviv4339 | feat: richer hook template with agent identity, depth guard, reflection detection | [PR #1](https://github.com/aviv4339/claude-guard/pull/1) closed |
 | [cneiman/moonshine](https://github.com/cneiman/moonshine) | cneiman | feat(adapters): Postgres backend for warm/cold memory tiers | [PR #2](https://github.com/cneiman/moonshine/pull/2) closed |
 | [m4cd4r4/claude-echoes](https://github.com/m4cd4r4/claude-echoes) | m4cd4r4 | feat(server): wire GIN index for hybrid BM25+pgvector RRF search | [PR #1](https://github.com/m4cd4r4/claude-echoes/pull/1) closed |
-| [brainqub3/claude_code_RLM](https://github.com/brainqub3/claude_code_RLM) | brainqub3 | docs: KB-first MCP integration pattern as RLM variant | [PR #3](https://github.com/brainqub3/claude_code_RLM/pull/3) closed |
+| [brainqub3/RLM](https://github.com/brainqub3/RLM) | brainqub3 | docs: KB-first MCP integration pattern as RLM variant | [PR #3](https://github.com/brainqub3/RLM/pull/3) closed |
 | [Textualize/rich](https://github.com/Textualize/rich) | Textualize | feat(examples): safe_markup — escaping external content before Rich rendering | [PR #4092](https://github.com/Textualize/rich/pull/4092) closed |
 | [BerriAI/litellm](https://github.com/BerriAI/litellm) | BerriAI | cookbook: routing to a custom fine-tuned GGUF model via Ollama | [PR #26307](https://github.com/BerriAI/litellm/pull/26307) closed |
 | [Kludex/starlette](https://github.com/Kludex/starlette) | Kludex | docs: add FilesystemAuthBackend example to authentication guide | [PR #3249](https://github.com/Kludex/starlette/pull/3249) closed |
