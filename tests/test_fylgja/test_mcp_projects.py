@@ -1,8 +1,6 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from willow.fylgja.mcp_projects import (
     audit_project,
     ensure_registry,

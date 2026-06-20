@@ -14,7 +14,6 @@ from willow.fylgja.mcp_projects import (
     audit_all,
     ensure_registry,
     list_projects,
-    load_registry,
     registry_path,
     sync_all,
     unregistered_mcp_files,
