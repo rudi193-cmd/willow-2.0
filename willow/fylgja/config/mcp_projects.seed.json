@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "projects": {
+    "willow-2.0": {
+      "path": "{{HOME}}/github/willow-2.0",
+      "agent": "willow",
+      "profile": "standard",
+      "servers": ["willow", "codebase-memory-mcp"],
+      "ides": ["cursor", "claude", "codex"],
+      "note": "Primary fleet dev repo — install_project still wires hooks; mcp sync owns MCP JSON."
+    },
+    "DispatchesFromReality": {
+      "path": "{{HOME}}/github/DispatchesFromReality",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow", "law-gazelle"],
+      "ides": ["cursor", "claude"],
+      "note": "Writing portfolio — Jeles via willow_external; law-gazelle for coparent/legal reads."
+    }
+  }
+}
