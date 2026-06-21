@@ -24,7 +24,7 @@ _STATIC_SERVERS: dict[str, dict[str, Any]] = {
     "law-gazelle": {
         "type": "stdio",
         "command": "python3",
-        "args": ["${HOME}/github/safe-app-store/apps/law-gazelle/gazelle_mcp.py"],
+        "args": ["${HOME}/github/safe-app-store-public/apps/law-gazelle/gazelle_mcp.py"],
     },
     "codebase-memory-mcp": {
         "type": "stdio",
@@ -45,6 +45,11 @@ def _package_root() -> Path:
 def seed_path(package_root: Path | None = None) -> Path:
     root = package_root or _package_root()
     return root / "willow" / "fylgja" / "config" / "mcp_projects.seed.json"
+
+
+def app_stub_template_path(package_root: Path | None = None) -> Path:
+    root = package_root or _package_root()
+    return root / "willow" / "fylgja" / "config" / "mcp_app.stub.json"
 
 
 def registry_path(package_root: Path | None = None) -> Path:
@@ -209,7 +214,71 @@ def project_paths(project_id: str, entry: dict[str, Any]) -> dict[str, Path]:
 
 
 def _normalize_mcp_json(data: dict) -> str:
-    return json.dumps(data, sort_keys=True, indent=2) + "\n"
+    canonical = expand_home_in_obj(data)
+    return json.dumps(canonical, sort_keys=True, indent=2) + "\n"
+
+
+def render_app_mcp_stub(
+    app_id: str,
+    entry: dict[str, Any],
+    *,
+    package_root: Path | None = None,
+) -> dict[str, Any]:
+    """Minimal Willow-only MCP config for SAFE app subfolders (tier-2 dev)."""
+    root = package_root or _package_root()
+    template = app_stub_template_path(root).read_text(encoding="utf-8")
+    monorepo_root = Path(expand_home(str(entry.get("path") or ""))).resolve()
+    profile = str(entry.get("profile") or "core").strip().lower()
+    rendered = (
+        template.replace("{{APP_ID}}", app_id)
+        .replace("{{MCP_PROFILE}}", profile)
+        .replace("{{MONOREPO_ROOT}}", str(monorepo_root))
+        .replace("{{HOME}}", str(Path.home()))
+    )
+    return json.loads(rendered)
+
+
+def sync_app_stubs(
+    project_id: str,
+    entry: dict[str, Any],
+    *,
+    package_root: Path | None = None,
+    dry_run: bool = False,
+) -> list[Path]:
+    """Materialize apps/*/.mcp.json from mcp_app.stub.json when app_stubs is set."""
+    if not entry.get("app_stubs"):
+        return []
+    monorepo_root = Path(expand_home(str(entry.get("path") or ""))).resolve()
+    apps_dir = monorepo_root / "apps"
+    if not apps_dir.is_dir():
+        return []
+    written: list[Path] = []
+    for app_dir in sorted(apps_dir.iterdir()):
+        if not app_dir.is_dir():
+            continue
+        stub_path = app_dir / ".mcp.json"
+        payload = render_app_mcp_stub(app_dir.name, entry, package_root=package_root)
+        _write_json(stub_path, payload, dry_run=dry_run)
+        written.append(stub_path)
+    return written
+
+
+def _skip_scan_path(path: Path) -> bool:
+    """Paths excluded from unregistered MCP discovery (worktrees, archives, aliases)."""
+    parts = set(path.parts)
+    skip_markers = {
+        "worktrees",
+        "archive",
+        "node_modules",
+        ".git",
+        ".pytest_cache",
+        "safe-app-store.old",
+    }
+    if parts & skip_markers:
+        return True
+    if any(part.endswith(".old") for part in path.parts):
+        return True
+    return False
 
 
 def audit_project(
@@ -301,6 +370,8 @@ def sync_project(
         project_id, entry, package_root=package_root, dry_run=dry_run
     )
 
+    sync_app_stubs(project_id, entry, package_root=package_root, dry_run=dry_run)
+
     return paths
 
 
@@ -332,11 +403,19 @@ def audit_all(
     projects: dict[str, Any] = reg.get("projects", {})
     selected = project_ids or sorted(projects.keys())
     issues: list[str] = []
+    seen_roots: dict[Path, str] = {}
     for pid in selected:
         entry = projects.get(pid)
         if not isinstance(entry, dict):
             issues.append(f"Unknown project {pid!r}")
             continue
+        raw = str(entry.get("path") or "").strip()
+        if raw:
+            resolved = Path(expand_home(raw)).resolve()
+            prior = seen_roots.get(resolved)
+            if prior is not None:
+                continue
+            seen_roots[resolved] = pid
         issues.extend(audit_project(pid, entry, package_root=package_root))
     return issues
 
@@ -349,8 +428,7 @@ def discover_mcp_json_files(search_root: Path | None = None) -> list[Path]:
     found: list[Path] = []
     for pattern in ("mcp.json", ".mcp.json"):
         for path in root.rglob(pattern):
-            parts = set(path.parts)
-            if "node_modules" in parts or ".git" in parts:
+            if _skip_scan_path(path):
                 continue
             found.append(path.resolve())
     return sorted(found)
@@ -366,6 +444,13 @@ def _managed_mcp_paths(*, package_root: Path | None = None) -> set[Path]:
             paths = project_paths(pid, entry)
             for key in ("canonical", "cursor", "claude_mcp"):
                 managed.add(paths[key].resolve())
+            if entry.get("app_stubs"):
+                monorepo_root = Path(expand_home(str(entry.get("path") or ""))).resolve()
+                apps_dir = monorepo_root / "apps"
+                if apps_dir.is_dir():
+                    for app_dir in apps_dir.iterdir():
+                        if app_dir.is_dir():
+                            managed.add((app_dir / ".mcp.json").resolve())
         except Exception:
             continue
     return managed
