@@ -2189,9 +2189,10 @@ async def mem_jeles_ask(
     sources:  list = [],
     limit:    int  = 2,
 ) -> dict:
-    """Jeles: Answer a natural language question from trusted sources.
-    Auto-routes to relevant source groups (music→MusicBrainz, medicine→PubMed, etc.).
-    Synthesizes a cited answer via Groq→Ollama. Pass sources=[] to auto-route,
+    """Jeles: Answer a natural language question. Checks local corpus first (jeles_atoms);
+    falls back to trusted institutional sources (LOC, arXiv, PubMed, etc.) on a corpus miss.
+    Live-source results are auto-promoted into the corpus through the gate check.
+    Auto-routes to relevant source groups. Pass sources=[] to auto-route,
     or name specific source IDs to override. limit=results per source (default 2)."""
     logger.info("[w2] mem_jeles_ask app_id=%s question=%r sources=%s", app_id, question[:80], sources or "auto")
     from core.jeles_sources import (
@@ -2201,6 +2202,55 @@ async def mem_jeles_ask(
     from core.llm_edge import respond as llm_respond
 
     loop = asyncio.get_running_loop()
+
+    # Step 0: corpus-first lookup — return early if local jeles_atoms cover the question
+    _CORPUS_THRESHOLD = 0.42
+    _CORPUS_MIN_HITS  = 2
+    if pg:
+        try:
+            corpus_hits = await loop.run_in_executor(
+                _executor, pg.search_jeles_semantic, question, 5,
+            )
+            strong = [h for h in corpus_hits if h.get("distance", 1.0) < _CORPUS_THRESHOLD]
+            if len(strong) >= _CORPUS_MIN_HITS:
+                logger.info("[w2] mem_jeles_ask corpus HIT (%d strong) — skipping live sources", len(strong))
+                c_citations: list = []
+                c_snippets:  list = []
+                c_budget = 1500
+                for i, h in enumerate(strong, 1):
+                    t = (h.get("title")   or "").strip()
+                    c = (h.get("content") or "").strip()
+                    d = h.get("domain", "corpus")
+                    c_citations.append({"n": i, "title": t, "source": d, "date": ""})
+                    line = f"[{i}] {t}" + (f": {c[:300]}" if c else "")
+                    c_snippets.append(line[:400])
+                    c_budget -= len(line)
+                    if c_budget <= 0:
+                        break
+                c_system = (
+                    "You are Jeles, a trusted librarian. Answer using ONLY the numbered source "
+                    "excerpts below. Cite each fact with its number in brackets, e.g. [1]. "
+                    "2-6 sentences or a short bulleted list. "
+                    "NEVER use outside knowledge — if the excerpts do not contain the answer, say "
+                    "exactly: 'The trusted sources do not contain this answer.'"
+                )
+                try:
+                    c_answer = await loop.run_in_executor(
+                        _executor, llm_respond,
+                        c_system, [], f"Question: {question}\n\nSources:\n" + "\n\n".join(c_snippets),
+                    )
+                except Exception as e:
+                    c_answer = f"(synthesis unavailable: {e})"
+                return {
+                    "answer":        c_answer,
+                    "citations":     c_citations,
+                    "sources_used":  ["corpus"],
+                    "question":      question,
+                    "total_results": len(strong),
+                    "corpus_hit":    True,
+                }
+        except Exception as _corpus_err:
+            logger.warning("[w2] mem_jeles_ask corpus lookup failed (%s) — falling through to live sources", _corpus_err)
 
     # Step 1: extract factual intent (handles trivia framing)
     intent = await loop.run_in_executor(_executor, question_to_intent, question)
@@ -2229,8 +2279,9 @@ async def mem_jeles_ask(
         }
 
     # Build citation list + snippet block within token budget
-    citations: list = []
+    citations:     list = []
     snippet_lines: list = []
+    promote_queue: list = []
     budget = 1500
     idx = 1
     for source_id, hits in results_by_source.items():
@@ -2244,6 +2295,12 @@ async def mem_jeles_ask(
             line = f"[{idx}] {title}" + (f": {snippet}" if snippet else "")
             snippet_lines.append(line[:400])
             budget -= len(line)
+            if title or snippet:
+                promote_queue.append({
+                    "title":   title,
+                    "content": f"Source: {inst}\nDate: {date}\nURL: {url}\n\n{snippet}",
+                    "domain":  source_id,
+                })
             idx += 1
             if budget <= 0:
                 break
@@ -2267,12 +2324,39 @@ async def mem_jeles_ask(
     except Exception as e:
         answer = f"(synthesis unavailable: {e})"
 
+    # Promote live-source results into corpus through gate check
+    promoted = 0
+    if pg and promote_queue:
+        def _promote_all():
+            count = 0
+            for item in promote_queue:
+                try:
+                    result = pg.jeles_extract_atom(
+                        agent=app_id,
+                        jsonl_id=f"live-promote-{app_id}",
+                        content=item["content"],
+                        domain=item["domain"],
+                        title=item["title"],
+                    )
+                    if result.get("id"):
+                        count += 1
+                except Exception:
+                    pass
+            return count
+        try:
+            promoted = await loop.run_in_executor(_executor, _promote_all)
+            logger.info("[w2] mem_jeles_ask promoted %d atoms to corpus", promoted)
+        except Exception as _promo_err:
+            logger.warning("[w2] mem_jeles_ask promotion failed: %s", _promo_err)
+
     return {
-        "answer": answer,
-        "citations": citations,
-        "sources_used": active_sources,
-        "question": question,
+        "answer":        answer,
+        "citations":     citations,
+        "sources_used":  active_sources,
+        "question":      question,
         "total_results": total,
+        "corpus_hit":    False,
+        "promoted":      promoted,
     }
 
 

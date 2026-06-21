@@ -58,6 +58,11 @@ _SOURCE_CONFIDENCE: dict[str, float] = {
     "pubchem": 0.92,
     "wikipedia": 0.60,
     "psychiatric_times": 0.75,  # trade press, not peer-reviewed
+    "inspirehep":     0.92,   # CERN/SLAC-backed HEP literature
+    "worldbank":      0.92,   # World Bank development indicators (official)
+    "openfoodfacts":  0.82,   # community-maintained, well-curated food DB
+    "carbon_intensity": 0.92, # official National Grid ESO (UK government)
+    "nws":            0.92,   # official US National Weather Service (NOAA)
 }
 
 
@@ -1790,6 +1795,202 @@ def search_psychiatric_times(query: str, limit: int = 5) -> list[dict]:
     return results
 
 
+# ── HIGH-ENERGY PHYSICS ───────────────────────────────────────────────────────
+
+def search_inspirehep(query: str, limit: int = 5) -> list[dict]:
+    """InspireHEP — CERN/SLAC high-energy physics literature. No key required."""
+    url = (
+        "https://inspirehep.net/api/literature?q="
+        + urllib.parse.quote(query)
+        + f"&sort=mostrecent&size={limit}"
+        + "&fields=titles,abstracts,dois,arxiv_eprints,publication_info,authors"
+    )
+    data = _get(url)
+    if not data:
+        return []
+    hits = (data.get("hits") or {}).get("hits") or []
+    results = []
+    for item in hits[:limit]:
+        meta = item.get("metadata") or {}
+        title = ((meta.get("titles") or [{}])[0]).get("title", "")
+        abstract = ((meta.get("abstracts") or [{}])[0]).get("value", "")
+        doi = ((meta.get("dois") or [{}])[0]).get("value", "")
+        arxiv = ((meta.get("arxiv_eprints") or [{}])[0]).get("value", "")
+        pub = (meta.get("publication_info") or [{}])[0]
+        journal = pub.get("journal_title", "")
+        year = str(pub.get("year", ""))
+        link = f"https://doi.org/{doi}" if doi else (f"https://arxiv.org/abs/{arxiv}" if arxiv else "")
+        results.append(_result(
+            title=title,
+            url=link,
+            source="inspirehep",
+            institution="INSPIRE-HEP (CERN)",
+            snippet=abstract,
+            date=year,
+            rid=doi or arxiv,
+        ))
+    return results
+
+
+# ── ECONOMICS ─────────────────────────────────────────────────────────────────
+
+def search_worldbank(query: str, limit: int = 5) -> list[dict]:
+    """World Bank Open Data — global development indicators. No key required."""
+    # Search indicators by name
+    url = (
+        "https://api.worldbank.org/v2/indicator?format=json&per_page="
+        + str(limit)
+        + "&source=2&q="
+        + urllib.parse.quote(query)
+    )
+    data = _get(url)
+    if not data or not isinstance(data, list) or len(data) < 2:
+        return []
+    indicators = data[1] or []
+    results = []
+    for item in indicators[:limit]:
+        iid = item.get("id", "")
+        name = item.get("name", "")
+        source = (item.get("sourceNote") or "")[:300]
+        topic = ", ".join(t.get("value", "") for t in (item.get("topics") or []) if t.get("value"))
+        results.append(_result(
+            title=name,
+            url=f"https://data.worldbank.org/indicator/{iid}" if iid else "https://data.worldbank.org",
+            source="worldbank",
+            institution="World Bank Open Data",
+            snippet=source or topic,
+            date="",
+            rid=iid,
+        ))
+    return results
+
+
+# ── FOOD & NUTRITION ──────────────────────────────────────────────────────────
+
+def search_openfoodfacts(query: str, limit: int = 5) -> list[dict]:
+    """Open Food Facts — global food product & nutrient database. No key required."""
+    url = (
+        "https://world.openfoodfacts.org/cgi/search.pl?search_terms="
+        + urllib.parse.quote(query)
+        + f"&search_simple=1&action=process&json=1&page_size={limit}"
+    )
+    data = _get(url)
+    if not data:
+        return []
+    products = (data.get("products") or [])[:limit]
+    results = []
+    for p in products:
+        name = p.get("product_name", "").strip()
+        if not name:
+            continue
+        categories = (p.get("categories") or "").split(",")[0].strip()
+        brand = p.get("brands", "").split(",")[0].strip()
+        quantity = p.get("quantity", "")
+        nut = p.get("nutriments") or {}
+        kcal = nut.get("energy-kcal_100g", "")
+        snippet_parts = [x for x in [brand, categories, (f"{kcal} kcal/100g" if kcal else "")] if x]
+        pid = p.get("_id") or p.get("id", "")
+        results.append(_result(
+            title=f"{name}{' (' + quantity + ')' if quantity else ''}",
+            url=p.get("url") or (f"https://world.openfoodfacts.org/product/{pid}" if pid else "https://world.openfoodfacts.org"),
+            source="openfoodfacts",
+            institution="Open Food Facts",
+            snippet=", ".join(snippet_parts),
+            date="",
+            rid=pid,
+        ))
+    return results
+
+
+# ── ENVIRONMENT ───────────────────────────────────────────────────────────────
+
+def search_carbon_intensity(query: str, limit: int = 5) -> list[dict]:
+    """UK Carbon Intensity API — official National Grid ESO data. No key required.
+    Returns current carbon intensity and generation fuel mix regardless of query."""
+    import re as _re
+    intensity_data = _get("https://api.carbonintensity.org.uk/intensity")
+    generation_data = _get("https://api.carbonintensity.org.uk/generation")
+    results = []
+    if intensity_data:
+        entry = ((intensity_data.get("data") or [{}])[0])
+        intensity = entry.get("intensity") or {}
+        actual   = intensity.get("actual")
+        forecast = intensity.get("forecast")
+        index    = intensity.get("index", "")
+        from_ts  = entry.get("from", "")[:10]
+        snippet = (
+            f"Actual: {actual} gCO₂/kWh · Forecast: {forecast} gCO₂/kWh · Index: {index}"
+        ).strip(" ·")
+        results.append(_result(
+            title="UK Grid Carbon Intensity — current",
+            url="https://carbonintensity.org.uk",
+            source="carbon_intensity",
+            institution="National Grid ESO (UK Government)",
+            snippet=snippet,
+            date=from_ts,
+            rid="intensity-current",
+        ))
+    if generation_data:
+        gen_entry = generation_data.get("data") or {}
+        gen_mix = gen_entry.get("generationmix") or []
+        fuels = ", ".join(
+            f"{g['fuel']} {g['perc']:.1f}%" for g in gen_mix if g.get("perc", 0) > 1
+        )
+        from_ts = gen_entry.get("from", "")[:10]
+        results.append(_result(
+            title="UK Grid Generation Mix — current",
+            url="https://carbonintensity.org.uk",
+            source="carbon_intensity",
+            institution="National Grid ESO (UK Government)",
+            snippet=fuels,
+            date=from_ts,
+            rid="generation-current",
+        ))
+    return results[:limit]
+
+
+# ── WEATHER ───────────────────────────────────────────────────────────────────
+
+def search_nws(query: str, limit: int = 5) -> list[dict]:
+    """US National Weather Service — active alerts and official forecasts. No key required."""
+    url = "https://api.weather.gov/alerts/active?status=actual&message_type=alert"
+    data = _get(url)
+    if not data:
+        return []
+    features = data.get("features") or []
+    query_lower = query.lower()
+    query_words = [w for w in query_lower.split() if len(w) > 3]
+    scored = []
+    for f in features:
+        props = f.get("properties") or {}
+        event    = props.get("event", "") or ""
+        headline = props.get("headline", "") or ""
+        area     = props.get("areaDesc", "") or ""
+        combined = f"{event} {headline} {area}".lower()
+        score = sum(1 for w in query_words if w in combined)
+        scored.append((score, f))
+    scored.sort(key=lambda x: -x[0])
+    results = []
+    for _, f in scored[:limit]:
+        props = f.get("properties") or {}
+        event    = props.get("event", "")
+        headline = props.get("headline", "")
+        area     = props.get("areaDesc", "")
+        effective = (props.get("effective") or "")[:10]
+        fid  = props.get("id", "")
+        url_link = f"https://www.weather.gov"
+        results.append(_result(
+            title=f"{event} — {area}" if area else event,
+            url=url_link,
+            source="nws",
+            institution="U.S. National Weather Service (NOAA)",
+            snippet=headline,
+            date=effective,
+            rid=fid,
+        ))
+    return results
+
+
 # ── Source registry ────────────────────────────────────────────────────────────
 
 SOURCES: dict[str, dict] = {
@@ -1859,6 +2060,16 @@ SOURCES: dict[str, dict] = {
     "eu_data":          {"name": "data.europa.eu",          "domain": ["government", "data", "europe"],      "key_required": False},
     # Clinical trade press
     "psychiatric_times": {"name": "Psychiatric Times",      "domain": ["psychiatry", "mental_health", "medicine"], "key_required": False},
+    # High-energy physics
+    "inspirehep":       {"name": "INSPIRE-HEP",             "domain": ["physics", "high_energy_physics", "science"], "key_required": False},
+    # Economics / macroeconomics
+    "worldbank":        {"name": "World Bank Open Data",    "domain": ["economics", "finance", "government"],  "key_required": False},
+    # Food & nutrition
+    "openfoodfacts":    {"name": "Open Food Facts",         "domain": ["food", "nutrition", "science"],        "key_required": False},
+    # Environment / energy
+    "carbon_intensity": {"name": "UK Carbon Intensity",     "domain": ["environment", "energy", "climate"],    "key_required": False},
+    # Weather
+    "nws":              {"name": "National Weather Service", "domain": ["weather", "government", "science"],    "key_required": False},
     # Opt-in only — general reference, not suitable for academic citation
     "wikipedia":        {"name": "Wikipedia",               "domain": ["general", "reference"],              "fn_name": "search_wikipedia",        "key_required": False, "opt_in": True},
 }
@@ -2245,6 +2456,41 @@ _DOMAIN_SEEDS: dict[str, list[str]] = {
         "What are the works of Shakespeare available in full text?",
         "Which Dickens novels are available as free ebooks?",
     ],
+    "high_energy_physics": [
+        "What is the Standard Model of particle physics?",
+        "How does the Higgs boson give particles mass?",
+        "What are the results of the LHC experiment on dark matter?",
+        "What is supersymmetry in theoretical physics?",
+        "What papers describe the discovery of the top quark?",
+    ],
+    "economics": [
+        "What is the current inflation rate?",
+        "How does GDP growth compare across countries?",
+        "What is the unemployment rate in this country?",
+        "How have interest rates changed over the past decade?",
+        "What is the trade balance for this economy?",
+    ],
+    "food": [
+        "What are the nutritional facts for this food product?",
+        "How many calories are in this product?",
+        "What ingredients are in this packaged food?",
+        "What are the allergens in this product?",
+        "What is the nutritional profile of this food?",
+    ],
+    "environment": [
+        "What is the current carbon intensity of the UK electricity grid?",
+        "What percentage of UK electricity comes from renewables?",
+        "What is the carbon footprint of electricity generation?",
+        "How clean is the UK power grid right now?",
+        "What is the generation fuel mix for UK electricity?",
+    ],
+    "weather": [
+        "What are the active weather warnings in the US?",
+        "Is there a tornado warning in effect?",
+        "What hurricane advisories are currently active?",
+        "What severe weather alerts are issued today?",
+        "Are there any flood warnings currently active?",
+    ],
 }
 
 # Domain → source IDs (mirrors _DOMAIN_ROUTES structure)
@@ -2266,9 +2512,14 @@ _DOMAIN_SOURCES: dict[str, list[str]] = {
     "natural_history":  ["bhl", "openalex", "crossref"],
     "literature_texts": ["gutenberg", "openlibrary", "loc"],
     "law":              ["courtlistener", "federal_register", "openalex"],
-    "government":       ["federal_register", "datagov", "uk_legislation", "eu_data"],
-    "species":          ["inaturalist", "gbif", "eol", "bhl"],
-    "geography":        ["nominatim", "wikidata", "openalex"],
+    "government":          ["federal_register", "datagov", "uk_legislation", "eu_data", "nws"],
+    "species":             ["inaturalist", "gbif", "eol", "bhl"],
+    "geography":           ["nominatim", "wikidata", "openalex"],
+    "high_energy_physics": ["inspirehep", "arxiv", "openalex"],
+    "economics":           ["worldbank", "federal_register", "datagov", "openalex"],
+    "food":                ["openfoodfacts", "wikidata"],
+    "environment":         ["carbon_intensity", "usgs", "openalex"],
+    "weather":             ["nws", "wikidata"],
 }
 
 _SEMANTIC_THRESHOLD = 0.30  # min cosine similarity to trust a domain match
