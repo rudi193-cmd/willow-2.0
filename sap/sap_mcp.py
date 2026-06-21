@@ -2189,6 +2189,7 @@ async def mem_jeles_ask(
     sources:  list = [],
     limit:    int  = 2,
     perspectives: int = 0,
+    verify: bool = False,
 ) -> dict:
     """Jeles: Answer a natural language question. Checks local corpus first (jeles_atoms);
     falls back to trusted institutional sources (LOC, arXiv, PubMed, etc.) on a corpus miss.
@@ -2197,13 +2198,17 @@ async def mem_jeles_ask(
     or name specific source IDs to override. limit=results per source (default 2).
     perspectives>=2 enables multi-perspective mode: routes to that many deliberately
     diverse domain lenses (e.g. scientific + philosophical) and synthesises an answer
-    that contrasts what they agree and disagree on. Default 0 = single-answer mode."""
-    logger.info("[w2] mem_jeles_ask app_id=%s question=%r sources=%s perspectives=%s",
-                app_id, question[:80], sources or "auto", perspectives)
+    that contrasts what they agree and disagree on. Default 0 = single-answer mode.
+    verify=true adds a per-claim cross-source check: each atomic claim in the answer is
+    tagged corroborated (>=2 distinct institutions), single_source, or unsupported,
+    returned under a 'verification' key with a summary count."""
+    logger.info("[w2] mem_jeles_ask app_id=%s question=%r sources=%s perspectives=%s verify=%s",
+                app_id, question[:80], sources or "auto", perspectives, verify)
     from core.jeles_sources import (
         search as jeles_search, route_sources_semantic, route_perspectives_semantic,
         question_to_query, question_to_intent,
     )
+    from core.jeles_verify import verify_claims
     from core.llm_edge import respond as llm_respond
 
     loop = asyncio.get_running_loop()
@@ -2304,7 +2309,7 @@ async def mem_jeles_ask(
             except Exception:
                 promoted = 0
 
-        return {
+        p_result = {
             "answer":            p_answer,
             "citations":         p_citations,
             "perspectives_used": p_used,
@@ -2314,6 +2319,11 @@ async def mem_jeles_ask(
             "multi_perspective": True,
             "promoted":          promoted,
         }
+        if verify:
+            p_result["verification"] = await loop.run_in_executor(
+                _executor, verify_claims, p_answer, "\n\n".join(p_blocks), p_citations, llm_respond,
+            )
+        return p_result
 
     # Step 0: corpus-first lookup — return early if local jeles_atoms cover the question
     _CORPUS_THRESHOLD = 0.42
@@ -2353,7 +2363,7 @@ async def mem_jeles_ask(
                     )
                 except Exception as e:
                     c_answer = f"(synthesis unavailable: {e})"
-                return {
+                c_result = {
                     "answer":        c_answer,
                     "citations":     c_citations,
                     "sources_used":  ["corpus"],
@@ -2361,6 +2371,11 @@ async def mem_jeles_ask(
                     "total_results": len(strong),
                     "corpus_hit":    True,
                 }
+                if verify:
+                    c_result["verification"] = await loop.run_in_executor(
+                        _executor, verify_claims, c_answer, "\n\n".join(c_snippets), c_citations, llm_respond,
+                    )
+                return c_result
         except Exception as _corpus_err:
             logger.warning("[w2] mem_jeles_ask corpus lookup failed (%s) — falling through to live sources", _corpus_err)
 
@@ -2461,7 +2476,7 @@ async def mem_jeles_ask(
         except Exception as _promo_err:
             logger.warning("[w2] mem_jeles_ask promotion failed: %s", _promo_err)
 
-    return {
+    result = {
         "answer":        answer,
         "citations":     citations,
         "sources_used":  active_sources,
@@ -2470,6 +2485,11 @@ async def mem_jeles_ask(
         "corpus_hit":    False,
         "promoted":      promoted,
     }
+    if verify:
+        result["verification"] = await loop.run_in_executor(
+            _executor, verify_claims, answer, snippet_block, citations, llm_respond,
+        )
+    return result
 
 
 @mcp.tool()
