@@ -869,6 +869,11 @@ print(f'  Disabled: ${PROVIDER}')
         exec "${WILLOW_PYTHON}" -m willow.fylgja.mcp_cli "$@"
         ;;
 
+    project)
+        shift
+        exec "${WILLOW_PYTHON}" -m willow.fylgja.project_cli "$@"
+        ;;
+
     upstream)
         _WATCHER="${WILLOW_ROOT}/agents/hanuman/bin/upstream_watcher.py"
         _RESPONDER="${WILLOW_ROOT}/agents/hanuman/bin/upstream_responder.py"
@@ -994,7 +999,7 @@ else:
         ;;
 
     *)
-        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|agents [list|active <id>|install <id>|check]|mcp [list|init|sync|check|audit]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|w8-census|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
+        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|agents [list|active <id>|install <id>|check]|mcp [list|init|sync|check|audit]|project [list|sync|check]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|w8-census|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
         exit 1
         ;;
 esac

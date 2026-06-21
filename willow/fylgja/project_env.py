@@ -16,6 +16,19 @@ FYLGJA_BIN = Path("willow") / "fylgja" / "bin" / "fylgja-hook"
 ACTIVE_AGENT_FILE = Path(".willow") / "active-agent"
 
 
+def workspace_root(repo: Path | None = None) -> Path | None:
+    """Project workspace when hooks run from an out-of-tree fleet repo."""
+    raw = os.environ.get("WILLOW_PROJECT_ROOT", "").strip()
+    if raw:
+        return Path(raw).expanduser().resolve()
+    return None
+
+
+def resolve_workspace_root(repo: Path | None = None) -> Path:
+    """Willow package root (willow-2.0) — code + hook runner anchor."""
+    return repo or repo_root()
+
+
 def repo_root(start: Path | None = None) -> Path:
     """Resolve willow-2.0 repo root from cwd, explicit path, or this file."""
     if start is not None:
@@ -96,6 +109,12 @@ def resolve_agent_name(repo: Path | None = None, hint: str = "") -> str:
     if hint.strip():
         return hint.strip()
 
+    ws = workspace_root()
+    if ws is not None:
+        active = read_active_agent(ws)
+        if active:
+            return active
+
     active = read_active_agent(root)
     if active:
         return active
@@ -149,17 +168,23 @@ def load_mcp_env(repo: Path | None = None, agent: str = "") -> dict[str, str]:
             agent = ""
 
     out: dict[str, str] = {}
-    for path in mcp_config_paths(root, agent):
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        willow = data.get("mcpServers", {}).get("willow", {})
-        env = willow.get("env") or {}
-        if isinstance(env, dict):
-            for k, v in env.items():
-                if isinstance(v, str):
-                    out.setdefault(k, v)
+    ws = workspace_root()
+    path_roots: list[Path] = []
+    if ws is not None:
+        path_roots.append(ws)
+    path_roots.append(root)
+    for path_root in path_roots:
+        for path in mcp_config_paths(path_root, agent):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            willow = data.get("mcpServers", {}).get("willow", {})
+            env = willow.get("env") or {}
+            if isinstance(env, dict):
+                for k, v in env.items():
+                    if isinstance(v, str):
+                        out.setdefault(k, v)
     return out
 
 
@@ -182,6 +207,11 @@ def merge_hook_env(repo: Path | None = None, agent: str = "") -> dict[str, str]:
     merged.setdefault("GROVE_NAME", resolved)
     merged["WILLOW_ROOT"] = str(root)
     merged["PYTHONPATH"] = str(root)
+    ws = workspace_root()
+    if ws is not None:
+        merged["WILLOW_PROJECT_ROOT"] = str(ws)
+    py = hook_python(root)
+    merged["WILLOW_PYTHON"] = str(py)
     return merged
 
 
