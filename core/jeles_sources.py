@@ -63,6 +63,14 @@ _SOURCE_CONFIDENCE: dict[str, float] = {
     "openfoodfacts":  0.82,   # community-maintained, well-curated food DB
     "carbon_intensity": 0.92, # official National Grid ESO (UK government)
     "nws":            0.92,   # official US National Weather Service (NOAA)
+    "gdelt":          0.65,   # global news index — high recall, lower precision
+    "who_gho":        0.95,   # WHO official global health statistics
+    "open_meteo":     0.90,   # ECMWF-backed global weather data
+    "patentsview":    0.92,   # USPTO full patent database
+    "imf":            0.95,   # IMF official macroeconomic indicators
+    "osf":            0.80,   # OSF open preprints (social science, psych, medicine)
+    "thesportsdb":    0.78,   # TheSportsDB community sports database
+    "frankfurter":    0.95,   # ECB official exchange rates
 }
 
 
@@ -74,23 +82,38 @@ def _load_creds() -> dict:
 
 
 def _get(url: str, headers: dict | None = None) -> Optional[dict | list]:
+    h = {"User-Agent": _UA, **(headers or {})}
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": _UA, **(headers or {})})
-        with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
-            return json.loads(r.read())
-    except Exception as e:
-        log.warning("GET %s failed: %s", url[:80], e)
-        return None
+        import requests as _req
+        r = _req.get(url, headers=h, timeout=_TIMEOUT)
+        r.raise_for_status()
+        return r.json()
+    except Exception as _re:
+        # urllib fallback
+        try:
+            req = urllib.request.Request(url, headers=h)
+            with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
+                return json.loads(r.read())
+        except Exception as e:
+            log.warning("GET %s failed: %s", url[:80], e)
+            return None
 
 
 def _get_html(url: str, headers: dict | None = None) -> Optional[str]:
+    h = {"User-Agent": _UA, **(headers or {})}
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": _UA, **(headers or {})})
-        with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
-            return r.read().decode("utf-8", errors="replace")
-    except Exception as e:
-        log.warning("GET html %s failed: %s", url[:80], e)
-        return None
+        import requests as _req
+        r = _req.get(url, headers=h, timeout=_TIMEOUT)
+        r.raise_for_status()
+        return r.text
+    except Exception:
+        try:
+            req = urllib.request.Request(url, headers=h)
+            with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
+                return r.read().decode("utf-8", errors="replace")
+        except Exception as e:
+            log.warning("GET html %s failed: %s", url[:80], e)
+            return None
 
 
 def _write_cache(query: str, results: dict[str, list]) -> None:
@@ -1991,6 +2014,291 @@ def search_nws(query: str, limit: int = 5) -> list[dict]:
     return results
 
 
+# ── NEWS ──────────────────────────────────────────────────────────────────────
+
+def search_gdelt(query: str, limit: int = 5) -> list[dict]:
+    """GDELT — global news event stream, 100+ languages indexed. No key required."""
+    url = (
+        "https://api.gdeltproject.org/api/v2/doc/doc?query="
+        + urllib.parse.quote(query)
+        + f"&mode=artlist&maxrecords={limit}&format=json&sourcelang=english"
+    )
+    data = _get(url)
+    if not data:
+        return []
+    articles = (data.get("articles") or [])[:limit]
+    results = []
+    for a in articles:
+        title = (a.get("title") or "").strip()
+        url_ = a.get("url", "")
+        domain = a.get("domain", "")
+        raw_date = (a.get("seendate") or "")[:8]
+        date = f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:8]}" if len(raw_date) == 8 else ""
+        results.append(_result(
+            title=title or domain,
+            url=url_,
+            source="gdelt",
+            institution=f"GDELT ({domain})",
+            snippet=domain,
+            date=date,
+            rid=url_,
+        ))
+    return results
+
+
+# ── PUBLIC HEALTH ──────────────────────────────────────────────────────────────
+
+def search_who_gho(query: str, limit: int = 5) -> list[dict]:
+    """WHO Global Health Observatory — official global health statistics. No key required."""
+    url = (
+        "https://ghoapi.azureedge.net/api/Indicator?$filter=contains(IndicatorName,"
+        + f"'{urllib.parse.quote(query)}')"
+        + f"&$top={limit}"
+    )
+    data = _get(url)
+    if not data:
+        return []
+    indicators = (data.get("value") or [])[:limit]
+    results = []
+    for ind in indicators:
+        code = ind.get("IndicatorCode", "")
+        name = ind.get("IndicatorName", "")
+        results.append(_result(
+            title=name,
+            url=f"https://www.who.int/data/gho/data/indicators/indicator-details/GHO/{code}",
+            source="who_gho",
+            institution="World Health Organization (WHO)",
+            snippet=code,
+            date="",
+            rid=code,
+        ))
+    return results
+
+
+# ── CLIMATE / WEATHER (global) ─────────────────────────────────────────────────
+
+def search_open_meteo(query: str, limit: int = 5) -> list[dict]:
+    """Open-Meteo — global weather and climate data via ECMWF. No key required.
+    Geocodes the location in the query then returns current conditions + 3-day forecast."""
+    _WEATHER_STOP = {"weather","forecast","climate","temperature","rain","snow","wind","humidity","today","now","current"}
+    geo_term = " ".join(w for w in query.split() if w.lower() not in _WEATHER_STOP) or query
+    geo_url = (
+        "https://geocoding-api.open-meteo.com/v1/search?name="
+        + urllib.parse.quote(geo_term)
+        + "&count=1&language=en&format=json"
+    )
+    geo = _get(geo_url)
+    if not geo or not geo.get("results"):
+        return []
+    loc = geo["results"][0]
+    lat, lon = loc["latitude"], loc["longitude"]
+    name = loc.get("name", query)
+    country = loc.get("country", "")
+    tz = loc.get("timezone", "UTC")
+    wx_url = (
+        f"https://api.open-meteo.com/v1/forecast?"
+        f"latitude={lat}&longitude={lon}"
+        f"&current=temperature_2m,relative_humidity_2m,wind_speed_10m"
+        f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum"
+        f"&timezone={urllib.parse.quote(tz)}&forecast_days=3"
+    )
+    wx = _get(wx_url)
+    if not wx:
+        return []
+    current = wx.get("current") or {}
+    daily = wx.get("daily") or {}
+    temp = current.get("temperature_2m", "")
+    humid = current.get("relative_humidity_2m", "")
+    wind = current.get("wind_speed_10m", "")
+    days = list(zip(
+        (daily.get("time") or [])[:3],
+        (daily.get("temperature_2m_max") or [])[:3],
+        (daily.get("temperature_2m_min") or [])[:3],
+    ))
+    forecast = " | ".join(f"{d}: {hi}/{lo}°C" for d, hi, lo in days)
+    snippet = f"Current: {temp}°C, humidity {humid}%, wind {wind} km/h | Forecast: {forecast}"
+    return [_result(
+        title=f"{name}, {country} — weather",
+        url="https://open-meteo.com",
+        source="open_meteo",
+        institution="Open-Meteo (ECMWF data)",
+        snippet=snippet,
+        date=(current.get("time") or "")[:10],
+        rid=f"{lat},{lon}",
+    )]
+
+
+# ── PATENTS ───────────────────────────────────────────────────────────────────
+
+def search_patentsview(query: str, limit: int = 5) -> list[dict]:
+    """USPTO PatentsView — full US patent database. No key required."""
+    import json as _json
+    q = _json.dumps({"_text_any": {"patent_title": query, "patent_abstract": query}})
+    f = _json.dumps(["patent_id", "patent_title", "patent_abstract", "patent_date"])
+    o = _json.dumps({"per_page": limit, "sort": {"patent_date": "desc"}})
+    url = (
+        "https://search.patentsview.org/api/v1/patent?q="
+        + urllib.parse.quote(q)
+        + "&f=" + urllib.parse.quote(f)
+        + "&o=" + urllib.parse.quote(o)
+    )
+    data = _get(url)
+    if not data:
+        return []
+    patents = (data.get("patents") or [])[:limit]
+    results = []
+    for p in patents:
+        pid = p.get("patent_id", "")
+        title = p.get("patent_title", "")
+        abstract = (p.get("patent_abstract") or "")[:300]
+        date = (p.get("patent_date") or "")[:10]
+        results.append(_result(
+            title=title,
+            url=f"https://patents.google.com/patent/US{pid}",
+            source="patentsview",
+            institution="USPTO PatentsView",
+            snippet=abstract,
+            date=date,
+            rid=pid,
+        ))
+    return results
+
+
+# ── MACROECONOMICS ────────────────────────────────────────────────────────────
+
+def search_imf(query: str, limit: int = 5) -> list[dict]:
+    """IMF DataMapper — 132 global macroeconomic indicators. No key required."""
+    data = _get("https://www.imf.org/external/datamapper/api/v1/indicators")
+    if not data:
+        return []
+    indicators = data.get("indicators") or {}
+    q_terms = [t for t in query.lower().split() if len(t) > 2]
+    def _matches(v: dict) -> bool:
+        text = ((v.get("label") or "") + " " + (v.get("description") or "")).lower()
+        return any(t in text for t in q_terms)
+    matches = [(k, v) for k, v in indicators.items() if _matches(v)][:limit]
+    results = []
+    for code, meta in matches:
+        label = meta.get("label", code)
+        desc = (meta.get("description") or "")[:280]
+        unit = meta.get("unit", "")
+        results.append(_result(
+            title=f"{label} ({unit})" if unit else label,
+            url=f"https://www.imf.org/external/datamapper/{code}",
+            source="imf",
+            institution="International Monetary Fund (IMF)",
+            snippet=desc,
+            date="",
+            rid=code,
+        ))
+    return results
+
+
+# ── SOCIAL SCIENCE PREPRINTS ───────────────────────────────────────────────────
+
+def search_osf(query: str, limit: int = 5) -> list[dict]:
+    """OSF Preprints — open social science, psychology, medicine preprints. No key required."""
+    url = (
+        "https://api.osf.io/v2/preprints/?filter[title]="
+        + urllib.parse.quote(query)
+        + f"&page[size]={limit}&filter[is_published]=true"
+    )
+    data = _get(url, headers={"Accept": "application/vnd.api+json"})
+    if not data:
+        return []
+    items = (data.get("data") or [])[:limit]
+    results = []
+    for item in items:
+        attrs = item.get("attributes") or {}
+        links = item.get("links") or {}
+        title = attrs.get("title", "").strip()
+        desc = (attrs.get("description") or "")[:280]
+        doi = attrs.get("doi") or ""
+        date = (attrs.get("date_published") or attrs.get("date_created") or "")[:10]
+        url_ = links.get("html") or links.get("iri") or ""
+        results.append(_result(
+            title=title,
+            url=url_,
+            source="osf",
+            institution="Open Science Framework (OSF)",
+            snippet=desc or doi,
+            date=date,
+            rid=item.get("id", ""),
+        ))
+    return results
+
+
+# ── SPORTS ───────────────────────────────────────────────────────────────────
+
+def search_thesportsdb(query: str, limit: int = 5) -> list[dict]:
+    """TheSportsDB — teams, players, leagues, and events. No key required (demo tier)."""
+    results = []
+    for kind, key, endpoint in [
+        ("teams",   "teams",   f"https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t={urllib.parse.quote(query)}"),
+        ("players", "players", f"https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p={urllib.parse.quote(query)}"),
+    ]:
+        if len(results) >= limit:
+            break
+        data = _get(endpoint)
+        if not data or not data.get(kind):
+            continue
+        for item in (data[kind] or [])[:limit - len(results)]:
+            if kind == "teams":
+                name = item.get("strTeam", "")
+                sport = item.get("strSport", "")
+                league = item.get("strLeague", "")
+                desc = (item.get("strDescriptionEN") or "")[:280]
+                url_ = f"https://www.thesportsdb.com/team/{item.get('idTeam','')}"
+                snippet = f"{sport} · {league}" if sport else league
+            else:
+                name = item.get("strPlayer", "")
+                sport = item.get("strSport", "")
+                nation = item.get("strNationality", "")
+                desc = (item.get("strDescriptionEN") or "")[:280]
+                url_ = f"https://www.thesportsdb.com/player/{item.get('idPlayer','')}"
+                snippet = f"{sport} · {nation}" if sport else nation
+            results.append(_result(
+                title=name,
+                url=url_,
+                source="thesportsdb",
+                institution="TheSportsDB",
+                snippet=snippet + (f" — {desc[:200]}" if desc else ""),
+                date="",
+                rid=item.get("idTeam") or item.get("idPlayer", ""),
+            ))
+    return results[:limit]
+
+
+# ── FINANCE / FX ─────────────────────────────────────────────────────────────
+
+def search_frankfurter(query: str, limit: int = 5) -> list[dict]:
+    """Frankfurter — ECB official exchange rates. No key required."""
+    # Determine base currency from query; default EUR
+    q_upper = query.upper()
+    known = {"USD","EUR","GBP","JPY","CHF","AUD","CAD","CNY","SEK","NOK","DKK","NZD","SGD","HKD","KRW","INR","BRL","MXN","ZAR","TRY"}
+    base = next((tok for tok in q_upper.split() if tok in known), "EUR")
+    url = f"https://api.frankfurter.app/latest?from={base}"
+    data = _get(url)
+    if not data or "rates" not in data:
+        return []
+    rates = data["rates"]
+    date = data.get("date", "")
+    results = []
+    # Score currencies by query relevance (mentioned first, otherwise alphabetical)
+    scored = sorted(rates.items(), key=lambda kv: (0 if kv[0] in q_upper else 1, kv[0]))
+    for currency, rate in scored[:limit]:
+        results.append(_result(
+            title=f"1 {base} = {rate} {currency}",
+            url="https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/",
+            source="frankfurter",
+            institution="European Central Bank (ECB) via Frankfurter",
+            snippet=f"Base: {base} · As of {date}",
+            date=date,
+            rid=f"{base}/{currency}",
+        ))
+    return results
+
+
 # ── Source registry ────────────────────────────────────────────────────────────
 
 SOURCES: dict[str, dict] = {
@@ -2070,6 +2378,22 @@ SOURCES: dict[str, dict] = {
     "carbon_intensity": {"name": "UK Carbon Intensity",     "domain": ["environment", "energy", "climate"],    "key_required": False},
     # Weather
     "nws":              {"name": "National Weather Service", "domain": ["weather", "government", "science"],    "key_required": False},
+    # News
+    "gdelt":            {"name": "GDELT",                   "domain": ["news", "current_events"],               "key_required": False},
+    # Public health
+    "who_gho":          {"name": "WHO Global Health Observatory", "domain": ["public_health", "medicine"],      "key_required": False},
+    # Global weather/climate
+    "open_meteo":       {"name": "Open-Meteo",              "domain": ["climate", "weather"],                   "key_required": False},
+    # Patents
+    "patentsview":      {"name": "USPTO PatentsView",       "domain": ["patents", "technology", "science"],     "key_required": False},
+    # Macroeconomics
+    "imf":              {"name": "IMF DataMapper",          "domain": ["macroeconomics", "economics"],          "key_required": False},
+    # Social science preprints
+    "osf":              {"name": "Open Science Framework",  "domain": ["social_science", "psychology", "medicine"], "key_required": False},
+    # Sports
+    "thesportsdb":      {"name": "TheSportsDB",             "domain": ["sports"],                               "key_required": False},
+    # Finance / FX
+    "frankfurter":      {"name": "ECB via Frankfurter",     "domain": ["finance", "economics"],                 "key_required": False},
     # Opt-in only — general reference, not suitable for academic citation
     "wikipedia":        {"name": "Wikipedia",               "domain": ["general", "reference"],              "fn_name": "search_wikipedia",        "key_required": False, "opt_in": True},
 }
@@ -2491,6 +2815,69 @@ _DOMAIN_SEEDS: dict[str, list[str]] = {
         "What severe weather alerts are issued today?",
         "Are there any flood warnings currently active?",
     ],
+    "news": [
+        "What is happening in the news today?",
+        "What are the latest headlines about this topic?",
+        "What did the media report about this event?",
+        "What are the current news stories about climate change?",
+        "What is the latest news from this country?",
+    ],
+    "current_events": [
+        "What is happening in the world right now?",
+        "What were the major events this week?",
+        "What is the current political situation in this country?",
+        "What happened recently with this conflict or election?",
+        "What are the breaking news stories today?",
+    ],
+    "public_health": [
+        "What is the global life expectancy rate?",
+        "How many people die from malaria each year?",
+        "What is the WHO's data on childhood vaccination rates?",
+        "What are the leading causes of death globally?",
+        "What does the WHO say about this disease?",
+    ],
+    "climate": [
+        "What is the global average temperature anomaly?",
+        "How hot will it be in Paris next week?",
+        "What is the current weather in Tokyo?",
+        "How does this country's climate compare to global averages?",
+        "What are the temperature trends for this region?",
+    ],
+    "patents": [
+        "Is there a patent for this invention?",
+        "Who holds the patent on this technology?",
+        "What patents exist for electric vehicle batteries?",
+        "When was this technology first patented?",
+        "What companies have patents in this field?",
+    ],
+    "macroeconomics": [
+        "What is the GDP growth rate for this country?",
+        "What does the IMF forecast for inflation?",
+        "What is the current account balance for the eurozone?",
+        "How does the IMF measure purchasing power parity?",
+        "What are the IMF's economic projections for next year?",
+    ],
+    "social_science": [
+        "What does recent research say about social media and mental health?",
+        "Are there preprints on this psychological phenomenon?",
+        "What do open access studies show about this behavioral pattern?",
+        "What is the replication status of this social science finding?",
+        "What recent preprints exist on voting behavior or political psychology?",
+    ],
+    "sports": [
+        "What is the history of Manchester United?",
+        "How many World Cup titles has Brazil won?",
+        "Who are the top players in the NBA?",
+        "What league does this team play in?",
+        "What are the statistics for this athlete?",
+    ],
+    "finance": [
+        "What is the current EUR to USD exchange rate?",
+        "How many dollars is one pound sterling?",
+        "What is the exchange rate between yen and euro?",
+        "What is the current value of the Swiss franc?",
+        "What are today's foreign exchange rates?",
+    ],
 }
 
 # Domain → source IDs (mirrors _DOMAIN_ROUTES structure)
@@ -2519,7 +2906,16 @@ _DOMAIN_SOURCES: dict[str, list[str]] = {
     "economics":           ["worldbank", "federal_register", "datagov", "openalex"],
     "food":                ["openfoodfacts", "wikidata"],
     "environment":         ["carbon_intensity", "usgs", "openalex"],
-    "weather":             ["nws", "wikidata"],
+    "weather":             ["nws", "open_meteo", "wikidata"],
+    "news":                ["gdelt"],
+    "current_events":      ["gdelt"],
+    "public_health":       ["who_gho", "pubmed", "europepmc"],
+    "climate":             ["open_meteo", "carbon_intensity", "usgs", "openalex"],
+    "patents":             ["patentsview"],
+    "macroeconomics":      ["imf", "worldbank"],
+    "social_science":      ["osf", "openalex", "crossref"],
+    "sports":              ["thesportsdb"],
+    "finance":             ["frankfurter", "worldbank"],
 }
 
 _SEMANTIC_THRESHOLD = 0.30  # min cosine similarity to trust a domain match
