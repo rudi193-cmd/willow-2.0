@@ -131,3 +131,4 @@ def test_ensure_registry_from_seed(tmp_path, monkeypatch):
     data = load_registry(package_root=repo, bootstrap=False)
     assert "willow-2.0" in data["projects"]
     assert "DispatchesFromReality" in data["projects"]
+    assert "safe-app-store-public" in data["projects"]
