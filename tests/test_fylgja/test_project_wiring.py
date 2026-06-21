@@ -5,7 +5,6 @@ from willow.fylgja.mcp_projects import audit_project, sync_project
 from willow.fylgja.project_wiring import (
     render_fleet_cursor_hooks,
     render_project_claude_settings,
-    sync_project_wiring,
 )
 
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
