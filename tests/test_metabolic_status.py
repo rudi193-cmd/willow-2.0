@@ -10,7 +10,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 def test_check_metabolic_status_no_briefing(monkeypatch, tmp_path):
     from core import metabolic_status as ms
 
-    monkeypatch.setattr(ms, "resolve_store_root", lambda: tmp_path)
     monkeypatch.setattr(ms, "fleet_home", lambda: tmp_path)
     monkeypatch.setattr(ms, "_systemd_user_state", lambda _u: "missing")
 
@@ -26,8 +25,8 @@ def test_check_metabolic_status_consecrated_when_timer_and_briefing(
 ):
     from core import metabolic_status as ms
 
-    briefings = tmp_path / "briefings"
-    briefings.mkdir()
+    briefings = tmp_path / "store" / "briefings"
+    briefings.mkdir(parents=True)
     db = briefings / "daily.db"
     conn = sqlite3.connect(str(db))
     conn.execute("CREATE TABLE records (id TEXT PRIMARY KEY, data TEXT, created TEXT)")
@@ -38,7 +37,6 @@ def test_check_metabolic_status_consecrated_when_timer_and_briefing(
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(ms, "resolve_store_root", lambda: tmp_path)
     monkeypatch.setattr(ms, "fleet_home", lambda: tmp_path)
     monkeypatch.setattr(
         ms, "_systemd_user_state", lambda u: "enabled" if "timer" in u else "active"
