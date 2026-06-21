@@ -126,6 +126,7 @@ def _willow_server_block(
     agent: str,
     profile: str,
     package_root: Path,
+    extra_env: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     config = render_mcp_config(agent, package_root)
     willow = config.get("mcpServers", {}).get("willow")
@@ -135,9 +136,25 @@ def _willow_server_block(
     if isinstance(env, dict):
         env["WILLOW_MCP_PROFILE"] = profile
         env.setdefault("WILLOW_INFERENCE_PROVIDER", "auto")
+        for key, val in (extra_env or {}).items():
+            if isinstance(val, str):
+                env[key] = expand_home(val)
     # Materialized configs use absolute launcher path for out-of-tree repos
     willow["args"] = [expand_home("${HOME}/github/willow-2.0/sap/unified_mcp.sh")]
     return willow
+
+
+def _static_server_block(name: str, extra_env: dict[str, Any] | None = None) -> dict[str, Any]:
+    if name not in _STATIC_SERVERS:
+        raise ValueError(f"unknown static server {name!r}")
+    block = json.loads(json.dumps(_STATIC_SERVERS[name]))
+    if extra_env:
+        env = block.setdefault("env", {})
+        if isinstance(env, dict):
+            for key, val in extra_env.items():
+                if isinstance(val, str):
+                    env[key] = expand_home(val)
+    return block
 
 
 def render_project_mcp(
@@ -153,16 +170,23 @@ def render_project_mcp(
     if not isinstance(servers, list) or not servers:
         raise ValueError(f"project {project_id!r}: servers[] required")
 
+    willow_env = entry.get("env") if isinstance(entry.get("env"), dict) else {}
+    server_env = entry.get("server_env") if isinstance(entry.get("server_env"), dict) else {}
+
     mcp_servers: dict[str, Any] = {}
     for name in servers:
         if not isinstance(name, str):
             continue
         if name == "willow":
             mcp_servers["willow"] = _willow_server_block(
-                agent=agent, profile=profile, package_root=root
+                agent=agent,
+                profile=profile,
+                package_root=root,
+                extra_env=willow_env,
             )
         elif name in _STATIC_SERVERS:
-            mcp_servers[name] = json.loads(json.dumps(_STATIC_SERVERS[name]))
+            overrides = server_env.get(name) if isinstance(server_env.get(name), dict) else {}
+            mcp_servers[name] = _static_server_block(name, overrides)
         else:
             raise ValueError(f"project {project_id!r}: unknown server {name!r}")
 

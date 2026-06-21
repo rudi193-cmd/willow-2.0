@@ -23,6 +23,102 @@
         "python": "fleet"
       },
       "note": "Writing portfolio — full fleet wiring via willow project sync."
+    },
+    "safe-app-store": {
+      "path": "{{HOME}}/github/safe-app-store",
+      "agent": "vishwakarma",
+      "profile": "standard",
+      "servers": ["willow", "law-gazelle", "courtlistener"],
+      "ides": ["cursor", "claude"],
+      "env": {
+        "WILLOW_DEV_SAFE_ROOT": "{{HOME}}/github",
+        "WILLOW_STORE_ROOT": "{{HOME}}/github/safe-app-store/.willow/store"
+      },
+      "server_env": {
+        "law-gazelle": {
+          "NEST_SOURCE": "{{HOME}}/Desktop/Nest",
+          "PYTHONPATH": "{{HOME}}/github/safe-app-store/apps/law-gazelle"
+        },
+        "courtlistener": {
+          "PYTHONPATH": "{{HOME}}/github/courtlistener-mcp/src"
+        }
+      },
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "SAFE App Store monorepo — Vishwakarma persona; law + court MCP."
+    },
+    "safe-app-willow-grove": {
+      "path": "{{HOME}}/github/safe-app-willow-grove",
+      "agent": "heimdallr",
+      "profile": "standard",
+      "servers": ["willow"],
+      "ides": ["cursor", "claude"],
+      "env": {
+        "WILLOW_DEV_SAFE_ROOT": "{{HOME}}/github"
+      },
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Grove fleet bus — Heimdallr persona."
+    },
+    "courtlistener-mcp": {
+      "path": "{{HOME}}/github/courtlistener-mcp",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow", "courtlistener"],
+      "ides": ["cursor", "claude"],
+      "server_env": {
+        "courtlistener": {
+          "PYTHONPATH": "{{HOME}}/github/courtlistener-mcp/src"
+        }
+      },
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "CourtListener MCP development workspace."
+    },
+    "community": {
+      "path": "{{HOME}}/github/community",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow"],
+      "ides": ["cursor", "claude"],
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "UTETY/community lessons — lightweight Willow core."
+    },
+    "sean-data-vault": {
+      "path": "{{HOME}}/github/sean-data-vault",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow", "law-gazelle"],
+      "ides": ["cursor", "claude"],
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Personal data vault — law-gazelle for legal reads."
     }
   }
 }

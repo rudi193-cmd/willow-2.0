@@ -94,6 +94,31 @@ def test_sync_and_audit_roundtrip(tmp_path, monkeypatch):
     assert issues == []
 
 
+def test_render_project_mcp_with_env_overrides(tmp_path, monkeypatch):
+    repo = tmp_path / "willow-2.0"
+    repo.mkdir()
+    _setup_repo_template(repo)
+    wh = tmp_path / ".willow"
+    monkeypatch.setenv("WILLOW_HOME", str(wh))
+
+    entry = {
+        "path": str(tmp_path / "store"),
+        "agent": "vishwakarma",
+        "profile": "standard",
+        "servers": ["willow", "law-gazelle"],
+        "env": {"WILLOW_STORE_ROOT": str(tmp_path / "store" / ".willow" / "store")},
+        "server_env": {
+            "law-gazelle": {"PYTHONPATH": str(tmp_path / "apps" / "law-gazelle")}
+        },
+    }
+    payload = render_project_mcp("safe-app-store", entry, package_root=repo)
+    assert payload["mcpServers"]["willow"]["env"]["WILLOW_AGENT_NAME"] == "vishwakarma"
+    assert "WILLOW_STORE_ROOT" in payload["mcpServers"]["willow"]["env"]
+    assert payload["mcpServers"]["law-gazelle"]["env"]["PYTHONPATH"] == str(
+        tmp_path / "apps" / "law-gazelle"
+    )
+
+
 def test_ensure_registry_from_seed(tmp_path, monkeypatch):
     repo = tmp_path / "willow-2.0"
     repo.mkdir()
