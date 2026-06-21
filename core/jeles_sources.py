@@ -2931,6 +2931,8 @@ _DOMAIN_SOURCES: dict[str, list[str]] = {
 }
 
 _SEMANTIC_THRESHOLD = 0.30  # min cosine similarity to trust a domain match
+_PERSPECTIVE_FLOOR  = 0.26  # min relevance for a *secondary* perspective (below the primary)
+_PERSPECTIVE_LAMBDA = 0.5   # MMR trade-off: relevance vs. diversity when picking perspectives
 
 
 def _get_embedding(text: str) -> list[float]:
@@ -3123,6 +3125,56 @@ def route_sources_semantic(query: str) -> list[str]:
                 return merged[:_MAX_ROUTE_SOURCES]
 
     return _DEFAULT_SOURCES
+
+
+def route_perspectives_semantic(query: str, k: int = 3) -> list[tuple[str, list[str]]]:
+    """Route a query to up to `k` *deliberately diverse* domain perspectives.
+
+    Unlike route_sources_semantic (which flattens the nearest-neighbour cluster into
+    one source list), this picks domains that are each relevant to the query but far
+    apart from one another in centroid space — so a query lands on, e.g., physics AND
+    philosophy rather than physics AND high-energy-physics. Selection is Maximal
+    Marginal Relevance: start from the most relevant domain, then repeatedly add the
+    candidate that maximises lambda*relevance - (1-lambda)*max_similarity_to_picked.
+
+    Returns a list of (domain, source_ids) groups, grouping preserved so the caller
+    can retrieve and synthesise per perspective. Falls back to a single ("general",
+    route_sources_semantic(query)) group when embeddings/centroids are unavailable or
+    the query is off-domain (top relevance below _SEMANTIC_THRESHOLD)."""
+    if k < 1:
+        k = 1
+    q_vec = _get_embedding(query)
+    centroids = _load_centroids() if q_vec else {}
+    if not q_vec or not centroids:
+        return [("general", route_sources_semantic(query))]
+
+    # Relevance of every domain that actually has sources wired up.
+    rel = {
+        d: _cosine(q_vec, v)
+        for d, v in centroids.items()
+        if _DOMAIN_SOURCES.get(d)
+    }
+    if not rel:
+        return [("general", route_sources_semantic(query))]
+
+    ranked = sorted(rel.items(), key=lambda x: x[1], reverse=True)
+    # Off-domain query: behave like the normal router (single best-cluster group).
+    if ranked[0][1] < _SEMANTIC_THRESHOLD:
+        return [("general", route_sources_semantic(query))]
+
+    selected: list[str] = [ranked[0][0]]
+    candidates = [d for d, _ in ranked[1:] if rel[d] >= _PERSPECTIVE_FLOOR]
+    while len(selected) < k and candidates:
+        best_d, best_score = None, None
+        for d in candidates:
+            diversity = max(_cosine(centroids[d], centroids[s]) for s in selected)
+            mmr = _PERSPECTIVE_LAMBDA * rel[d] - (1 - _PERSPECTIVE_LAMBDA) * diversity
+            if best_score is None or mmr > best_score:
+                best_d, best_score = d, mmr
+        selected.append(best_d)
+        candidates.remove(best_d)
+
+    return [(d, _DOMAIN_SOURCES.get(d, [])) for d in selected if _DOMAIN_SOURCES.get(d)]
 
 
 def question_to_intent(question: str) -> str:

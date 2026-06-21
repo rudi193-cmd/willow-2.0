@@ -2188,20 +2188,132 @@ async def mem_jeles_ask(
     question: str,
     sources:  list = [],
     limit:    int  = 2,
+    perspectives: int = 0,
 ) -> dict:
     """Jeles: Answer a natural language question. Checks local corpus first (jeles_atoms);
     falls back to trusted institutional sources (LOC, arXiv, PubMed, etc.) on a corpus miss.
     Live-source results are auto-promoted into the corpus through the gate check.
     Auto-routes to relevant source groups. Pass sources=[] to auto-route,
-    or name specific source IDs to override. limit=results per source (default 2)."""
-    logger.info("[w2] mem_jeles_ask app_id=%s question=%r sources=%s", app_id, question[:80], sources or "auto")
+    or name specific source IDs to override. limit=results per source (default 2).
+    perspectives>=2 enables multi-perspective mode: routes to that many deliberately
+    diverse domain lenses (e.g. scientific + philosophical) and synthesises an answer
+    that contrasts what they agree and disagree on. Default 0 = single-answer mode."""
+    logger.info("[w2] mem_jeles_ask app_id=%s question=%r sources=%s perspectives=%s",
+                app_id, question[:80], sources or "auto", perspectives)
     from core.jeles_sources import (
-        search as jeles_search, route_sources_semantic, question_to_query,
-        question_to_intent,
+        search as jeles_search, route_sources_semantic, route_perspectives_semantic,
+        question_to_query, question_to_intent,
     )
     from core.llm_edge import respond as llm_respond
 
     loop = asyncio.get_running_loop()
+
+    # Multi-perspective mode: route to deliberately diverse domains and contrast them.
+    # Bypasses corpus-first (we want live, lens-diverse retrieval). Honoured only when
+    # sources are auto-routed — an explicit `sources` override stays single-answer.
+    if perspectives >= 2 and not sources:
+        p_intent = await loop.run_in_executor(_executor, question_to_intent, question)
+        p_query  = question_to_query(p_intent)
+        groups   = await loop.run_in_executor(
+            _executor, route_perspectives_semantic, p_intent, perspectives,
+        )
+        logger.info("[w2] mem_jeles_ask multi-perspective intent=%r groups=%s",
+                    p_intent[:80], [g[0] for g in groups])
+        p_citations:   list = []
+        p_promote:     list = []
+        p_blocks:      list = []
+        p_used:        list = []
+        p_idx = 1
+        per_budget = max(700, 2400 // max(1, len(groups)))
+        for domain, src_ids in groups:
+            if not src_ids:
+                continue
+            raw = await loop.run_in_executor(_executor, jeles_search, p_query, src_ids, limit)
+            lines:  list = []
+            budget = per_budget
+            for source_id, hits in raw.get("results", {}).items():
+                for hit in hits:
+                    title   = (hit.get("title")   or "").strip()
+                    snippet = (hit.get("snippet") or "").strip()
+                    if not (title or snippet):
+                        continue
+                    url  = hit.get("url", "")
+                    inst = hit.get("institution", source_id)
+                    date = hit.get("date", "")
+                    p_citations.append({"n": p_idx, "title": title, "url": url,
+                                        "source": inst, "date": date, "perspective": domain})
+                    line = f"[{p_idx}] {title}" + (f": {snippet}" if snippet else "")
+                    lines.append(line[:400])
+                    p_promote.append({
+                        "title":   title,
+                        "content": f"Source: {inst}\nDate: {date}\nURL: {url}\n\n{snippet}",
+                        "domain":  source_id,
+                    })
+                    budget -= len(line)
+                    p_idx  += 1
+                    if budget <= 0:
+                        break
+                if budget <= 0:
+                    break
+            if lines:
+                p_used.append(domain)
+                p_blocks.append(f"### Perspective: {domain}\n" + "\n".join(lines))
+
+        if not p_blocks:
+            return {
+                "answer": "No results found in trusted sources for this query.",
+                "citations": [], "sources_used": [g[0] for g in groups],
+                "question": question, "total_results": 0, "multi_perspective": True,
+            }
+
+        p_system = (
+            "You are Jeles, a trusted librarian. You are given source excerpts grouped "
+            "under several PERSPECTIVES (different domains/framings of the same question). "
+            "Write a synthesis that: (1) states what the perspectives AGREE on; "
+            "(2) explicitly surfaces where they DIFFER, contradict, or merely emphasise "
+            "different things — attribute each framing to its perspective by name. "
+            "Cite every fact with its number in brackets, e.g. [1]. Use ONLY the excerpts "
+            "below; never use outside knowledge. If the excerpts do not address the "
+            "question, say exactly: 'The trusted sources do not contain this answer.'"
+        )
+        try:
+            p_answer = await loop.run_in_executor(
+                _executor, llm_respond, p_system, [],
+                f"Question: {question}\n\n" + "\n\n".join(p_blocks),
+            )
+        except Exception as e:
+            p_answer = f"(synthesis unavailable: {e})"
+
+        promoted = 0
+        if pg and p_promote:
+            def _promote_perspectives():
+                count = 0
+                for item in p_promote:
+                    try:
+                        result = pg.jeles_extract_atom(
+                            agent=app_id, jsonl_id=f"live-promote-{app_id}",
+                            content=item["content"], domain=item["domain"], title=item["title"],
+                        )
+                        if result.get("id"):
+                            count += 1
+                    except Exception:
+                        pass
+                return count
+            try:
+                promoted = await loop.run_in_executor(_executor, _promote_perspectives)
+            except Exception:
+                promoted = 0
+
+        return {
+            "answer":            p_answer,
+            "citations":         p_citations,
+            "perspectives_used": p_used,
+            "sources_used":      [g[0] for g in groups],
+            "question":          question,
+            "total_results":     len(p_citations),
+            "multi_perspective": True,
+            "promoted":          promoted,
+        }
 
     # Step 0: corpus-first lookup — return early if local jeles_atoms cover the question
     _CORPUS_THRESHOLD = 0.42
