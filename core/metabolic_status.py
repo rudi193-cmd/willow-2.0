@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 import subprocess
 
-from willow.fylgja.willow_home import fleet_home, resolve_store_root
+from willow.fylgja.willow_home import fleet_home
 
 
 def _systemd_user_state(unit: str) -> str:
@@ -49,7 +49,11 @@ def check_metabolic_status() -> dict:
         "consecrated": False,
     }
 
-    briefings_db = resolve_store_root() / "briefings" / "daily.db"
+    # The nightly briefing is a fleet-global artifact written to the fleet home store
+    # by the norn pass. Read it from fleet_home() — NOT resolve_store_root() — so a
+    # per-workspace WILLOW_STORE_ROOT override (repo-local SOIL isolation) does not
+    # make the probe look in an empty local store and under-report consecration.
+    briefings_db = fleet_home() / "store" / "briefings" / "daily.db"
     if briefings_db.exists():
         try:
             conn = sqlite3.connect(str(briefings_db))
