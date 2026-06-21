@@ -99,6 +99,12 @@ fi
 "${VENV}/bin/pip" install --quiet -r "${REPO_ROOT}/requirements.txt"
 ok "Requirements installed"
 
+hdr "Fleet venv (\$WILLOW_HOME/venv)"
+PYTHONPATH="${REPO_ROOT}" WILLOW_HOME="${WILLOW_HOME:-${HOME}/github/.willow}" \
+    "${VENV}/bin/python3" -m willow.fylgja.fleet_venv sync \
+    && ok "Fleet venv symlinked to .venv-dev" \
+    || warn "Fleet venv sync skipped (run: ./willow.sh venv sync)"
+
 # Fleet contract: private willow-config when present, else repo public pack
 LINK_ARGS=()
 if [[ "${PUBLIC_MODE}" -eq 1 ]]; then
