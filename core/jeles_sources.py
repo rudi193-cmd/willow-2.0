@@ -1840,7 +1840,6 @@ def search_inspirehep(query: str, limit: int = 5) -> list[dict]:
         doi = ((meta.get("dois") or [{}])[0]).get("value", "")
         arxiv = ((meta.get("arxiv_eprints") or [{}])[0]).get("value", "")
         pub = (meta.get("publication_info") or [{}])[0]
-        journal = pub.get("journal_title", "")
         year = str(pub.get("year", ""))
         link = f"https://doi.org/{doi}" if doi else (f"https://arxiv.org/abs/{arxiv}" if arxiv else "")
         results.append(_result(
@@ -1930,7 +1929,6 @@ def search_openfoodfacts(query: str, limit: int = 5) -> list[dict]:
 def search_carbon_intensity(query: str, limit: int = 5) -> list[dict]:
     """UK Carbon Intensity API — official National Grid ESO data. No key required.
     Returns current carbon intensity and generation fuel mix regardless of query."""
-    import re as _re
     intensity_data = _get("https://api.carbonintensity.org.uk/intensity")
     generation_data = _get("https://api.carbonintensity.org.uk/generation")
     results = []
@@ -2001,7 +1999,7 @@ def search_nws(query: str, limit: int = 5) -> list[dict]:
         area     = props.get("areaDesc", "")
         effective = (props.get("effective") or "")[:10]
         fid  = props.get("id", "")
-        url_link = f"https://www.weather.gov"
+        url_link = "https://www.weather.gov"
         results.append(_result(
             title=f"{event} — {area}" if area else event,
             url=url_link,
