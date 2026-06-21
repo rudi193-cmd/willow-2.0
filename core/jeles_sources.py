@@ -1857,20 +1857,34 @@ def search_inspirehep(query: str, limit: int = 5) -> list[dict]:
 # ── ECONOMICS ─────────────────────────────────────────────────────────────────
 
 def search_worldbank(query: str, limit: int = 5) -> list[dict]:
-    """World Bank Open Data — global development indicators. No key required."""
-    # Search indicators by name
-    url = (
-        "https://api.worldbank.org/v2/indicator?format=json&per_page="
-        + str(limit)
-        + "&source=2&q="
-        + urllib.parse.quote(query)
-    )
+    """World Bank Open Data — global development indicators (WDI). No key required.
+    The v2 /indicator endpoint has no free-text search (the `q=` param is ignored and
+    returns indicators alphabetically), so fetch the WDI indicator list and rank
+    client-side by whole-word relevance — title weighted over description."""
+    url = "https://api.worldbank.org/v2/indicator?format=json&per_page=2000&source=2"
     data = _get(url)
     if not data or not isinstance(data, list) or len(data) < 2:
         return []
     indicators = data[1] or []
+    q_terms = [t for t in query.lower().split() if len(t) > 2]
+    def _words(s: str) -> set:
+        return {w for w in "".join(c if c.isalnum() else " " for c in (s or "").lower()).split()}
+    if q_terms:
+        # Whole-word match (so "product" does not hit "production"), ranked by
+        # relevance — alphabetical order otherwise buries the real match under AG.*.
+        scored = []
+        for item in indicators:
+            name_w = _words(item.get("name"))
+            note_w = _words(item.get("sourceNote"))
+            score = sum((3 if t in name_w else 0) + (1 if t in note_w else 0) for t in q_terms)
+            if score > 0:
+                scored.append((score, item))
+        scored.sort(key=lambda x: -x[0])
+        matches = [item for _, item in scored[:limit]]
+    else:
+        matches = indicators[:limit]
     results = []
-    for item in indicators[:limit]:
+    for item in matches:
         iid = item.get("id", "")
         name = item.get("name", "")
         source = (item.get("sourceNote") or "")[:300]
