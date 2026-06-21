@@ -220,6 +220,23 @@ def test_kp3_no_note_for_bound_path(repo_root):
     assert notes == []
 
 
+def test_operator_promoted_rw_project_roots(repo_root):
+    """DispatchesFromReality + safe-app-store-public are Kart RW when present."""
+    if sandbox_manifest(allow_net=False, root=repo_root)["engine"] != "bwrap":
+        pytest.skip("bwrap not active")
+    home = Path.home()
+    promoted = (
+        home / "github" / "DispatchesFromReality",
+        home / "github" / "safe-app-store-public",
+    )
+    mounts = {str(h): ro for h, _c, ro in collect_bind_mounts(repo_root)}
+    for path in promoted:
+        if not path.is_dir():
+            continue
+        key = str(path.resolve())
+        assert key in mounts, f"missing bind for {key}"
+        assert mounts[key] is False, f"{key} must be read-write"
+
 def test_kp3_result_carries_manifest(monkeypatch):
     monkeypatch.setenv("WILLOW_KART_NO_BWRAP", "1")
     status, result = run_shell_result_for_task("echo manifest-ok", timeout=10)
