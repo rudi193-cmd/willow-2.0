@@ -25,9 +25,11 @@ _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.insert(0, _ROOT)
 
 from agents.hanuman.lib import skill_steward as ss  # noqa: E402
+from core.grove_gate import assert_grove as _assert_grove  # noqa: E402
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
+    _assert_grove("skill_steward")
     result = ss.run_once(
         force=args.force,
         dry_run=args.dry_run,

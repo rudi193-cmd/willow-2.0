@@ -27,40 +27,45 @@
     "DBUS_",
     "XDG_"
   ],
+  "credential_env_prefixes": [
+    "TWINE_",
+    "PYPI_",
+    "ANTHROPIC_",
+    "OPENROUTER_",
+    "GROQ_",
+    "GITHUB_",
+    "NPM_",
+    "HUGGINGFACE_",
+    "HF_",
+    "OPENAI_",
+    "AWS_",
+    "DISCORD_"
+  ],
   "bind_read_only": [
     "/usr",
     "/etc",
     "/bin",
     "/lib",
     "/lib64",
-    "/lib32",
     "/sbin",
-    "/sys"
+    "/sys",
+    "{{HOME}}/github",
+    "{{HOME}}/agents",
+    "{{HOME}}/.config/git",
+    "{{HOME}}/.config/systemd"
   ],
   "bind_read_write": [
     "{{WILLOW_ROOT}}",
     "{{HOME}}/.willow",
-    "{{HOME}}/github",
-    "{{HOME}}/agents",
-    "{{HOME}}/SAFE",
-    "{{HOME}}/safe-app-store",
     "{{HOME}}/.local",
-    "{{HOME}}/.ssh",
-    "{{HOME}}/.config/gh",
-    "{{HOME}}/.config/git",
-    "{{HOME}}/.config/systemd",
-    "{{HOME}}/.kaggle",
-    "{{HOME}}/Desktop",
-    "{{HOME}}/Ashokoa",
-    "/tmp",
-    "/var/run/postgresql",
-    "/media/willow"
+    "/var/run/postgresql"
   ],
   "bind_try": [
+    "{{HOME}}/Desktop",
+    "{{HOME}}/Ashokoa",
     "{{WILLOW_GROVE_ROOT}}",
-    "{{WILLOW_SAFE_ROOT}}",
-    "{{WILLOW_AGENTS_ROOT}}",
-    "{{HOME}}/sean-data-vault",
+    "{{HOME}}/github/DispatchesFromReality",
+    "{{HOME}}/github/safe-app-store-public",
     "{{HOME}}/.willow-venv",
     "{{WILLOW_ROOT}}/.venv-dev",
     "{{HOME}}/.gitconfig",
@@ -74,10 +79,31 @@
     "{{HOME}}/.config/pypoetry",
     "{{HOME}}/.local/share/uv",
     "/run/user",
+    "/run/media",
     "{{XDG_RUNTIME_DIR}}",
     "/run/systemd/resolve"
   ],
+  "bind_try_read_only": [
+    "{{WILLOW_SAFE_ROOT}}",
+    "{{WILLOW_AGENTS_ROOT}}",
+    "{{HOME}}/sean-data-vault",
+    "{{HOME}}/.claude/projects",
+    "{{HOME}}/.cursor",
+    "/lib32",
+    "{{HOME}}/SAFE",
+    "{{HOME}}/safe-app-store",
+    "{{HOME}}/.kaggle",
+    "/media/willow"
+  ],
   "worktree_scan_roots": [
     "{{WILLOW_ROOT}}/worktrees"
-  ]
+  ],
+  "_security_notes": {
+    "github_ro": "~/github is read-only by default (S4/GAP-A). WILLOW_ROOT + worktrees + WILLOW_GROVE_ROOT nest as read-write on top. Operator-promoted RW: DispatchesFromReality, safe-app-store-public. Private safe-app-store stays read-only.",
+    "safe_ro": "SAFE store + agents + data-vault are read-only via bind_try_read_only (GAP-A: the sovereign data must not be mutable by an arbitrary task).",
+    "ssh_dropped": "~/.ssh is no longer bound (S1). SSH git uses SSH_AUTH_SOCK (reachable via /run/user) + ~/.ssh/known_hosts ro, both only on allow_net. Private keys never enter the sandbox.",
+    "creds_gated": "~/.config/gh + ~/.netrc and credential_env_prefixes are present only on allow_net (S1/GAP-B). A no-network task gets zero credentials.",
+    "tmp_tmpfs": "/tmp + /dev/shm are private tmpfs, not host binds (S11/S16).",
+    "transcripts_ro": "S5/KP4 (operator decision 2026-06-12: bind): ~/.claude/projects + ~/.cursor are ro via bind_try_read_only. ~/.claude root stays unbound — it can hold .credentials.json, which must never enter the sandbox."
+  }
 }

@@ -7,7 +7,7 @@ import subprocess
 import urllib.request
 import uuid
 from datetime import datetime, timezone
-from core.willow_store import WillowStore
+from core.store_port import StorePort
 
 _OUTBOX_COL  = "grove/outbox"
 
@@ -54,7 +54,7 @@ _ALERTS_COL  = "grove/pending_alerts"
 
 
 def outbox_queue(
-    store: WillowStore,
+    store: StorePort,
     to_addr: str,
     packet_type: str,
     payload: dict,
@@ -73,7 +73,7 @@ def outbox_queue(
     return msg_id
 
 
-def outbox_drain(store: WillowStore, to_addr: str) -> list[dict]:
+def outbox_drain(store: StorePort, to_addr: str) -> list[dict]:
     """Return all undelivered messages for a recipient and mark them delivered."""
     pending = store.list(f"{_OUTBOX_COL}/{to_addr}")
     undelivered = [r for r in pending if not r.get("delivered", False)]
@@ -84,7 +84,7 @@ def outbox_drain(store: WillowStore, to_addr: str) -> list[dict]:
 
 
 def node_announce(
-    store: WillowStore,
+    store: StorePort,
     addr: str,
     name: str,
     willow_version: str,
@@ -116,12 +116,12 @@ def node_announce(
     })
 
 
-def node_list(store: WillowStore) -> list[dict]:
+def node_list(store: StorePort) -> list[dict]:
     """Return all known nodes."""
     return store.list(_NODES_COL)
 
 
-def alert_pending(store: WillowStore) -> dict | None:
+def alert_pending(store: StorePort) -> dict | None:
     """Return the most recent pending alert, or None."""
     alerts = store.list(_ALERTS_COL)
     if not alerts:
@@ -129,7 +129,7 @@ def alert_pending(store: WillowStore) -> dict | None:
     return sorted(alerts, key=lambda a: a.get("created_at", ""), reverse=True)[0]
 
 
-def alert_dismiss(store: WillowStore, alert_id: str) -> None:
+def alert_dismiss(store: StorePort, alert_id: str) -> None:
     """Mark an alert as dismissed."""
     alert = store.get(_ALERTS_COL, alert_id)
     if alert:

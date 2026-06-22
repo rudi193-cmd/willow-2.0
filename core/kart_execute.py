@@ -40,6 +40,21 @@ def _strip_allow_net_directive(task_text: str) -> tuple[str, bool]:
     return "\n".join(lines).strip(), allow_net
 
 
+def trim_task_result(result, status: str = ""):
+    """Drop the bulky sandbox manifest from read surfaces for successful tasks.
+
+    The manifest stays on the stored task row (audit_verify S-gates read it
+    there); failed tasks keep it for boundary debugging.
+    """
+    if not isinstance(result, dict) or "sandbox_manifest" not in result:
+        return result
+    if str(status).lower() in ("failed", "error"):
+        return result
+    out = dict(result)
+    del out["sandbox_manifest"]
+    return out
+
+
 def _normalize_shell_result(raw: dict) -> dict:
     stdout = (raw.get("stdout") or "").strip()
     stderr = (raw.get("stderr") or "").strip()
@@ -54,6 +69,10 @@ def _normalize_shell_result(raw: dict) -> dict:
     }
     if raw.get("error"):
         out["error"] = raw["error"]
+    # KP3: carry the boundary manifest + setup state through to the task result.
+    for _k in ("sandbox_manifest", "sandbox_setup"):
+        if raw.get(_k) is not None:
+            out[_k] = raw[_k]
     return out
 
 
@@ -101,6 +120,12 @@ def run_shell_task(
     context: str = "poll",
 ) -> tuple[str, dict]:
     """Execute a shell-class task string. Returns (status, result)."""
+    from core.kart_task_scan import check_kart_task
+
+    blocked = check_kart_task(task_text)
+    if blocked:
+        return "failed", blocked
+
     timeout = timeout if timeout is not None else kart_timeout(context)
     cmd_body, allow_net = _strip_allow_net_directive(task_text)
     blocks = _iter_fenced_blocks(cmd_body)
@@ -416,14 +441,13 @@ def run_workflow_phase(
         return "failed", {"error": err, "phase": phase_name, "run_id": run_id}
 
 
-def execute_task_row(
+def _dispatch_task_row(
     row: dict,
     pg: PgBridge,
     *,
     timeout: int | None = None,
     context: str = "poll",
 ) -> tuple[str, dict]:
-    """Route one claimed task row. Returns (status, result)."""
     task_id = row["id"]
     cmd = row.get("task") or ""
     goal = row.get("goal")
@@ -442,6 +466,38 @@ def execute_task_row(
         return run_shell_task(cmd, timeout=timeout, context=context)
     except Exception as e:
         return "failed", {"error": str(e)}
+
+
+def execute_task_row(
+    row: dict,
+    pg: PgBridge,
+    *,
+    timeout: int | None = None,
+    context: str = "poll",
+) -> tuple[str, dict]:
+    """Route one claimed task row. Returns (status, result).
+
+    KP7/S10: on failure (or always, with WILLOW_KART_LOG_ALL=1) a durable
+    forensic artifact lands in $WILLOW_HOME/.kart-logs/<task_id>/ and the
+    result carries its path as `log_dir`. The unclipped-output private keys
+    are popped here so they never reach task_complete.
+    """
+    status, result = _dispatch_task_row(row, pg, timeout=timeout, context=context)
+
+    full_stdout = result.pop("_full_stdout", None) if isinstance(result, dict) else None
+    full_stderr = result.pop("_full_stderr", None) if isinstance(result, dict) else None
+    if isinstance(result, dict) and (
+        status != "completed" or os.environ.get("WILLOW_KART_LOG_ALL")
+    ):
+        from core.kart_sandbox import write_task_log
+
+        log_dir = write_task_log(
+            row["id"], row.get("task") or "", status, result,
+            full_stdout=full_stdout, full_stderr=full_stderr,
+        )
+        if log_dir:
+            result["log_dir"] = log_dir
+    return status, result
 
 
 def drain_claimed_tasks(

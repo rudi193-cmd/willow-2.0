@@ -26,6 +26,7 @@ _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.insert(0, _ROOT)
 
 from core import soil
+from core.grove_gate import assert_grove as _assert_grove
 from willow.fylgja.willow_home import willow_home
 
 _SOIL_DISCOVERY = "upstream_steward/discovery"
@@ -186,6 +187,7 @@ def _fetch_repo_meta(repo: str) -> dict:
 
 
 def run_once(*, seed_manual: list[dict] | None = None) -> dict:
+    _assert_grove("upstream_scout")
     excluded = _load_exclude()
     seen: set[str] = set()
     candidates: list[dict] = []

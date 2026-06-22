@@ -11,19 +11,22 @@
       "Glob(*)",
       "Grep(*)",
       "Skill(*)",
-      "mcp__willow__fleet_status",
-      "mcp__willow__fleet_health",
-      "mcp__willow__fleet_tool_guide",
-      "mcp__willow__mai_read_file",
-      "mcp__willow__mai_write_file",
-      "mcp__willow__code_graph_search",
-      "mcp__willow__code_graph_suggest",
-      "mcp__willow__skill_list",
-      "mcp__willow__skill_load",
-      "mcp__willow__agent_task_submit",
-      "mcp__willow__kart_task_run"
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "Task(*)",
+      "mcp__willow__fleet_restart",
+      "mcp__willow__*",
+      "mcp__codebase-memory-mcp__*",
+      "mcp__claude_ai_Grove__*"
+    ],
+    "deny": [
+      "mcp__willow__app_uninstall",
+      "mcp__willow__policy_put",
+      "mcp__willow__policy_delete",
+      "mcp__willow__routine_register"
     ]
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["willow"]
+  "enabledMcpjsonServers": ["willow", "codebase-memory-mcp"]
 }

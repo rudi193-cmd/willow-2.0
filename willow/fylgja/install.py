@@ -21,6 +21,7 @@ def _is_fylgja_entry(entry: dict) -> bool:
             "run_fylgja_hook.py",
             "hook_runner",
             "fylgja-hook",
+            "status_strip.py",
             "willow.fylgja.events.",
         )):
             return True

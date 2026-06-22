@@ -17,17 +17,21 @@ root `../willow.md` as an agent.
 | What lives at repo root | [`ROOT_LAYOUT.md`](ROOT_LAYOUT.md) |
 | Private config vs public code | [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) · [`PUBLIC_REMOTE_BOOT.md`](PUBLIC_REMOTE_BOOT.md) |
 | Fleet contract (public snapshot) | [`CONTRACT.md`](CONTRACT.md) — sync via `scripts/sync_contract_snapshot.py` |
-| Session dev log (layout + CI, 2026-05-27) | [`dev-log-2026-05-27-fleet-github-layout.md`](dev-log-2026-05-27-fleet-github-layout.md) |
+| Audits (fleet/system reports) | [`audits/`](audits/) — latest: [`audits/SYSTEM_AUDIT_2026-06-10.md`](audits/SYSTEM_AUDIT_2026-06-10.md) |
 | Open work (curated backlog) | [`OPEN_WORK.md`](OPEN_WORK.md) |
+| Upstream contribution strategy | [`UPSTREAM_CONTRIBUTION_STRATEGY.md`](UPSTREAM_CONTRIBUTION_STRATEGY.md) |
 | Agent identity (not all hanuman) | [`AGENT_IDENTITY.md`](AGENT_IDENTITY.md) |
 | CLI + provider agnostic inference | [`RUNTIME_AND_INFERENCE.md`](RUNTIME_AND_INFERENCE.md) |
 | Branding (b17, b20, voice) | [`BRANDING.md`](BRANDING.md) |
 | Beta gate / ops | [`BETA_AUDIT_REPORT.md`](BETA_AUDIT_REPORT.md) |
+| Scheduled jobs / fleet timers | [`SCHEDULED_JOBS.md`](SCHEDULED_JOBS.md) — metabolic (nightly), W8 census (weekly), repo sweep |
 | MCP tool profiles (reduce picker noise) | [`MCP_TOOL_PROFILES.md`](MCP_TOOL_PROFILES.md) |
 
 ---
 
 ## Common Workflows
+
+_Dev log archive: [`dev-log-2026-05-27-fleet-github-layout.md`](dev-log-2026-05-27-fleet-github-layout.md)_
 
 | Goal | Path |
 |------|------|
@@ -69,6 +73,20 @@ Start at [`templates/README.md`](templates/README.md) — canonical router for a
 
 ---
 
+## Benchmarks
+
+| Artifact | What |
+|----------|------|
+| [`../benchmarks/README.md`](../benchmarks/README.md) | Benchmark and research atlas — families, sidecars, local pointers |
+| [`../benchmarks/catalog.json`](../benchmarks/catalog.json) | Machine-readable benchmark registry |
+| [`../benchmarks/sidecars/cartographer_code_memory/`](../benchmarks/sidecars/cartographer_code_memory/) | CBM cartographer prompt sidecar: SQLite DB, JSON, Markdown, refresh script |
+| [`model-benchmark-field-report-2026-06.md`](model-benchmark-field-report-2026-06.md) | Observational Claude model field report (June 2026) |
+| [`../willow/bench/locomo/`](../willow/bench/locomo/) | LoCoMo / LongMemEval Path A external memory benchmarks |
+| [`../willow/bench/retrieval_gold.json`](../willow/bench/retrieval_gold.json) | Fleet KB retrieval gold-query regression gate |
+| [`corpus/larousse-path-a-ephemeris-pattern.md`](corpus/larousse-path-a-ephemeris-pattern.md) | Research pattern: Larousse ephemeris ↔ Path A memory |
+
+---
+
 ## Reference (deep)
 
 Moved to `archive/docs/` during the 2.0 cut — still accurate on design, stale on version strings until we refresh them:
@@ -77,7 +95,7 @@ Moved to `archive/docs/` during the 2.0 cut — still accurate on design, stale 
 - [`../archive/docs/TECHNICAL_SPEC.md`](../archive/docs/TECHNICAL_SPEC.md)
 - [`../archive/docs/superpowers/README.md`](../archive/docs/superpowers/README.md) — historical plans/specs (1.9 era; do not execute blindly)
 
-Schema: [`db/WILLOW_SCHEMA.md`](db/WILLOW_SCHEMA.md) · ADRs: [`adrs/README.md`](adrs/README.md)
+Schema: [`db/WILLOW_SCHEMA.md`](db/WILLOW_SCHEMA.md) · Memory: [`MEMORY_STACK.md`](MEMORY_STACK.md) · ADRs: [`adrs/README.md`](adrs/README.md)
 
 ---
 

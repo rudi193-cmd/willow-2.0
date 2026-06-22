@@ -9,12 +9,24 @@ from __future__ import annotations
 import json
 import os
 import shlex
-import sys
 from pathlib import Path
 
 FYLGJA_CONFIG = Path("willow") / "fylgja" / "config"
 FYLGJA_BIN = Path("willow") / "fylgja" / "bin" / "fylgja-hook"
 ACTIVE_AGENT_FILE = Path(".willow") / "active-agent"
+
+
+def workspace_root(repo: Path | None = None) -> Path | None:
+    """Project workspace when hooks run from an out-of-tree fleet repo."""
+    raw = os.environ.get("WILLOW_PROJECT_ROOT", "").strip()
+    if raw:
+        return Path(raw).expanduser().resolve()
+    return None
+
+
+def resolve_workspace_root(repo: Path | None = None) -> Path:
+    """Willow package root (willow-2.0) — code + hook runner anchor."""
+    return repo or repo_root()
 
 
 def repo_root(start: Path | None = None) -> Path:
@@ -97,6 +109,12 @@ def resolve_agent_name(repo: Path | None = None, hint: str = "") -> str:
     if hint.strip():
         return hint.strip()
 
+    ws = workspace_root()
+    if ws is not None:
+        active = read_active_agent(ws)
+        if active:
+            return active
+
     active = read_active_agent(root)
     if active:
         return active
@@ -150,17 +168,23 @@ def load_mcp_env(repo: Path | None = None, agent: str = "") -> dict[str, str]:
             agent = ""
 
     out: dict[str, str] = {}
-    for path in mcp_config_paths(root, agent):
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        willow = data.get("mcpServers", {}).get("willow", {})
-        env = willow.get("env") or {}
-        if isinstance(env, dict):
-            for k, v in env.items():
-                if isinstance(v, str):
-                    out.setdefault(k, v)
+    ws = workspace_root()
+    path_roots: list[Path] = []
+    if ws is not None:
+        path_roots.append(ws)
+    path_roots.append(root)
+    for path_root in path_roots:
+        for path in mcp_config_paths(path_root, agent):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            willow = data.get("mcpServers", {}).get("willow", {})
+            env = willow.get("env") or {}
+            if isinstance(env, dict):
+                for k, v in env.items():
+                    if isinstance(v, str):
+                        out.setdefault(k, v)
     return out
 
 
@@ -183,14 +207,46 @@ def merge_hook_env(repo: Path | None = None, agent: str = "") -> dict[str, str]:
     merged.setdefault("GROVE_NAME", resolved)
     merged["WILLOW_ROOT"] = str(root)
     merged["PYTHONPATH"] = str(root)
+    ws = workspace_root()
+    if ws is not None:
+        merged["WILLOW_PROJECT_ROOT"] = str(ws)
+    py = hook_python(root)
+    merged["WILLOW_PYTHON"] = str(py)
     return merged
 
 
+def sync_fleet_env_agent(agent: str, repo: Path | None = None) -> bool:
+    """Keep $WILLOW_HOME/env WILLOW_AGENT_NAME aligned with active-agent."""
+    name = agent.strip()
+    if not name:
+        return False
+    from willow.fylgja.willow_home import fleet_home
+
+    env_path = fleet_home(repo) / "env"
+    if not env_path.is_file():
+        return False
+    key = "WILLOW_AGENT_NAME="
+    lines = env_path.read_text(encoding="utf-8").splitlines()
+    found = False
+    out: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith(key) or stripped.startswith(f"export {key}"):
+            prefix = "export " if stripped.startswith("export ") else ""
+            out.append(f"{prefix}{key}{name}")
+            found = True
+        else:
+            out.append(line)
+    if not found:
+        out.append(f"{key}{name}")
+    env_path.write_text("\n".join(out).rstrip() + "\n", encoding="utf-8")
+    return True
+
+
 def hook_python(repo: Path) -> Path:
-    venv_python = repo / ".venv-dev" / "bin" / "python3"
-    if venv_python.is_file():
-        return venv_python
-    return Path(sys.executable)
+    from willow.fylgja.python_env import willow_python
+
+    return Path(willow_python(repo))
 
 
 def event_module(module: str) -> str:
@@ -207,10 +263,10 @@ def hook_shell_command(repo: Path, fmt: str, module: str) -> str:
 
 
 def hook_python_command(repo: Path, fmt: str, module: str) -> str:
-    """Absolute command when IDE requires it (legacy / global Claude settings)."""
-    py = hook_python(repo)
-    full = event_module(module)
-    return (
-        f"{shlex.quote(str(py))} -m willow.fylgja.hook_runner "
-        f"--format {shlex.quote(fmt)} {shlex.quote(full)}"
-    )
+    """Absolute hook command for global Claude settings.
+
+    Global Claude hooks run from whichever repo the user opened, so calling
+    ``python -m willow...`` directly depends on cwd/PYTHONPATH. Route through
+    the repo wrapper instead; it anchors cwd and resolves the active Python.
+    """
+    return hook_shell_command(repo, fmt, module)

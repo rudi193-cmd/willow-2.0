@@ -17,6 +17,30 @@ import urllib.request
 
 GROVE_HEALTH_URL = os.environ.get("GROVE_HEALTH_URL", "http://localhost:7777/health")
 
+# Fleet runners that must call assert_grove() before doing work (EA422361 P2).
+FLEET_GROVE_GATED: tuple[str, ...] = (
+    "scripts/kart_poll.py",
+    "scripts/grove_msg.py",
+    "tools/jukebox.py",
+    "tools/nest_watcher.py",
+    "willow/grove_listen.py",
+    "willow/grove_monitor.py",
+    "core/kart_worker.py",
+    "agents/hanuman/bin/journal_watcher.py",
+    "agents/hanuman/bin/journal_responder.py",
+    "agents/hanuman/bin/auto_dream.py",
+    "agents/hanuman/bin/dead_reckoning.py",
+    "agents/hanuman/bin/kb_truth_drift.py",
+    "agents/hanuman/bin/think_map.py",
+    "agents/hanuman/bin/upstream_watcher.py",
+    "agents/hanuman/bin/upstream_responder.py",
+    "agents/hanuman/bin/stabilization_worker.py",
+    "agents/hanuman/bin/skill_steward.py",
+    "agents/hanuman/bin/kb_briefer.py",
+    "agents/hanuman/bin/ratification_triage.py",
+    "agents/hanuman/bin/upstream_scout.py",
+)
+
 _BANNER = """
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║

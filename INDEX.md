@@ -121,6 +121,7 @@
 | `README-FELIX.md` | Felix runtime notes |
 | `README.md` | Project README |
 | `SECURITY_AUDIT.md` | Security audit log |
+| `benchmarks/` | Benchmark and research atlas — sidecars, catalog, local pointers |
 | `docs/` | Documentation, ADRs, runbooks, lore, nomenclature |
 | `docs/ATOM_EXTRACTION_COMPLETE.md` | Atom extraction completion notes |
 | `docs/ATOM_EXTRACTION_DESIGN.md` | Atom extraction design spec |
@@ -175,36 +176,47 @@
 | `agents/heimdallr` |
 | `agents/loki` |
 | `agents/willow` |
+| `apps/ratatosk` |
 | `docs/.nojekyll` |
 | `docs/AGENT_IDENTITY.md` |
 | `docs/LANDING_DESIGN.md` |
 | `docs/MCP_SPEC_COMPLIANCE.md` |
 | `docs/MCP_TOOL_PROFILES.md` |
+| `docs/MEMORY_STACK.md` |
 | `docs/OPENCLAW_DISCORD_SETUP.md` |
 | `docs/PUBLIC_REMOTE_BOOT.md` |
 | `docs/RUNTIME_AND_INFERENCE.md` |
+| `docs/SCHEDULED_JOBS.md` |
 | `docs/SKILL_AUDIT_CURSOR_VS_WILLOW.md` |
 | `docs/SKILL_SURFACE_STRATEGY.md` |
+| `docs/UPSTREAM_CONTRIBUTION_STRATEGY.md` |
 | `docs/WILLOW_CONFIG.md` |
+| `docs/adr` |
 | `docs/audits` |
 | `docs/corpus` |
 | `docs/dev-log-2026-05-27-fleet-github-layout.md` |
+| `docs/dev-log-2026-06-12-current-cursor-benchmark-backfill.md` |
 | `docs/handoffs` |
 | `docs/index.html` |
 | `docs/kb` |
+| `docs/model-benchmark-field-report-2026-06.md` |
 | `docs/provenance` |
+| `docs/recovery` |
 | `docs/static` |
+| `docs/upstream` |
 | `install-windows.ps1` |
 | `operation_paperclip_genealogy.db` |
 | `paperclip-research` |
 | `sap/MCP_SPEC.lock.json` |
 | `sap/adapters` |
+| `sap/cbm_facade.py` |
 | `sap/handoff_paths.py` |
 | `sap/mcp_enrich.py` |
 | `sap/mcp_guide.py` |
 | `sap/mcp_profiles.py` |
 | `sap/mcp_registry.json` |
 | `sap/spec` |
+| `sap/willow_run_compact.py` |
 | `seed-windows.py` |
 | `setup.sh` |
 | `sociotechnical.db` |

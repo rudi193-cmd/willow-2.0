@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "projects": {
+    "willow-2.0": {
+      "path": "{{HOME}}/github/willow-2.0",
+      "agent": "willow",
+      "profile": "standard",
+      "servers": ["willow", "codebase-memory-mcp"],
+      "ides": ["cursor", "claude", "codex"],
+      "note": "Primary fleet dev repo — install_project still wires hooks; mcp sync owns MCP JSON."
+    },
+    "DispatchesFromReality": {
+      "path": "{{HOME}}/github/DispatchesFromReality",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow", "law-gazelle"],
+      "ides": ["cursor", "claude"],
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Writing portfolio — full fleet wiring via willow project sync."
+    },
+    "safe-app-store-public": {
+      "path": "{{HOME}}/github/safe-app-store-public",
+      "agent": "vishwakarma",
+      "profile": "standard",
+      "servers": ["willow", "law-gazelle", "courtlistener"],
+      "ides": ["cursor", "claude"],
+      "app_stubs": true,
+      "env": {
+        "WILLOW_DEV_SAFE_ROOT": "{{HOME}}/github",
+        "WILLOW_STORE_ROOT": "{{HOME}}/github/safe-app-store-public/.willow/store"
+      },
+      "server_env": {
+        "law-gazelle": {
+          "NEST_SOURCE": "{{HOME}}/Desktop/Nest",
+          "PYTHONPATH": "{{HOME}}/github/safe-app-store-public/apps/law-gazelle"
+        },
+        "courtlistener": {
+          "PYTHONPATH": "{{HOME}}/github/courtlistener-mcp/src"
+        }
+      },
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Canonical SAFE monorepo — Vishwakarma; Kart RW. ~/github/safe-app-store symlinks here. apps/*/.mcp.json synced from mcp_app.stub.json. See docs/fleet_paths.md."
+    },
+    "safe-app-willow-grove": {
+      "path": "{{HOME}}/github/safe-app-willow-grove",
+      "agent": "heimdallr",
+      "profile": "standard",
+      "servers": ["willow"],
+      "ides": ["cursor", "claude"],
+      "env": {
+        "WILLOW_DEV_SAFE_ROOT": "{{HOME}}/github"
+      },
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Grove fleet bus — Heimdallr persona."
+    },
+    "courtlistener-mcp": {
+      "path": "{{HOME}}/github/courtlistener-mcp",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow", "courtlistener"],
+      "ides": ["cursor", "claude"],
+      "server_env": {
+        "courtlistener": {
+          "PYTHONPATH": "{{HOME}}/github/courtlistener-mcp/src"
+        }
+      },
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "CourtListener MCP development workspace."
+    },
+    "community": {
+      "path": "{{HOME}}/github/community",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow"],
+      "ides": ["cursor", "claude"],
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "UTETY/community lessons — lightweight Willow core."
+    },
+    "sean-data-vault": {
+      "path": "{{HOME}}/github/sean-data-vault",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow", "law-gazelle"],
+      "ides": ["cursor", "claude"],
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Personal data vault — law-gazelle for legal reads."
+    }
+  }
+}

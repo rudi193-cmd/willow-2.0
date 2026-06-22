@@ -371,8 +371,10 @@ def install_project(
 
     if not dry_run:
         from willow.fylgja.link_fleet_home import link_fleet_home
+        from willow.fylgja.project_env import sync_fleet_env_agent
 
         link_fleet_home(package_root=root)
+        sync_fleet_env_agent(agent, root)
         from willow.fylgja.global_settings import init_global_settings, load_global_settings
 
         if set_fleet_default:

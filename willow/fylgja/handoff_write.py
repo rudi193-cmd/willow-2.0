@@ -19,6 +19,10 @@ def handoff_dir(agent: str) -> Path:
 
 def next_session_filename(agent: str, suffix: str = "") -> str:
     """Return session_handoff-YYYY-MM-DD{sfx}_{agent}.md avoiding collisions."""
+    # UTC is the canonical clock for all Willow artifacts — intentional, do NOT
+    # localize. The harness reports "today" in local time, so this filename can be
+    # one day ahead between ~18:00 local and midnight. That gap is correct; the
+    # prompt_submit [CLOCK] line declares the relationship to agents each turn.
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     base = f"session_handoff-{today}{suffix}_{agent}.md"
     dest = handoff_dir(agent)

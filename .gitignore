@@ -19,6 +19,7 @@ agents/*/config/mcp.json
 /willow.md
 willow/fylgja/config/fleet.env
 willow/fylgja/config/settings.global.json
+willow/fylgja/config/settings.local.json
 
 # Public fallback materialization (per-clone generated home)
 .willow/generated/
@@ -85,6 +86,7 @@ scripts/sean.md
 *.sqlite
 *.sqlite3
 *.db
+!benchmarks/sidecars/cartographer_code_memory/cartographer_code_memory_sidecar.db
 sap/tools/handoffs.db
 gaps.db
 archive/*.db
@@ -105,3 +107,4 @@ docs/api/
 # LoCoMo benchmark — run artifacts and downloaded dataset files
 willow/bench/locomo/external_runs/
 willow/bench/locomo/data/
+handoffs/

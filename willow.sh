@@ -66,13 +66,82 @@ unset WILLOW_PG_HOST WILLOW_PG_PORT WILLOW_PG_PASS
 export WILLOW_PG_DB="${WILLOW_PG_DB:-willow_20}"
 export WILLOW_PG_USER="${WILLOW_PG_USER:-$(whoami)}"
 ACTIVE_AGENT_FILE="${WILLOW_ROOT}/.willow/active-agent"
-if [[ -z "${WILLOW_AGENT_NAME:-}" && -f "${ACTIVE_AGENT_FILE}" ]]; then
-    WILLOW_AGENT_NAME="$(tr -d '[:space:]' < "${ACTIVE_AGENT_FILE}")"
+ACTIVE_AGENT=""
+if [[ -f "${ACTIVE_AGENT_FILE}" ]]; then
+    ACTIVE_AGENT="$(tr -d '[:space:]' < "${ACTIVE_AGENT_FILE}")"
 fi
-export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-hanuman}"
+if [[ -n "${ACTIVE_AGENT}" ]]; then
+    WILLOW_AGENT_NAME="${ACTIVE_AGENT}"
+elif [[ -z "${WILLOW_AGENT_NAME:-}" ]]; then
+    WILLOW_AGENT_NAME="hanuman"
+fi
+export WILLOW_AGENT_NAME
 # Fleet launcher follows active agent — do not inherit stale human Grove handles from profile.
 export GROVE_SENDER="${WILLOW_AGENT_NAME}"
 export GROVE_NAME="${WILLOW_AGENT_NAME}"
+
+# User-systemd services surfaced by start-all/stop-all/status-all. Keep this as
+# the single inventory so restart hygiene does not drift between commands.
+WILLOW_SYSTEMD_SERVICES=(
+    grove-mcp
+    grove-serve
+    willow-grove-listen
+    upstream-watcher
+    journal-watcher
+    journal-responder
+    willow-dashboard
+    willow-metabolic
+    corpus-watcher
+    willow-discord-responder
+    kart-worker
+    orin-worker
+    willow-mcp
+    nest-watcher
+    drop-server
+)
+
+WILLOW_STOP_SERVICES=(
+    willow-dashboard
+    corpus-watcher
+    journal-responder
+    journal-watcher
+    upstream-watcher
+    willow-discord-responder
+    willow-grove-listen
+    grove-mcp
+    grove-serve
+    willow-metabolic
+    kart-worker
+    orin-worker
+    willow-mcp
+    nest-watcher
+    drop-server
+)
+
+_willow_service_note() {
+    case "$1" in
+        journal-responder)
+            echo "helper; spawned by journal-watcher per entry"
+            ;;
+        corpus-watcher)
+            echo "missing local unit/script; human-start only when restored"
+            ;;
+        willow-metabolic)
+            echo "timer/socket capable; service is oneshot"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+_willow_unit_file_exists() {
+    [[ -f "${WILLOW_ROOT}/systemd/${1}.service" ]]
+}
+
+_willow_user_unit_known() {
+    systemctl --user list-unit-files "${1}.service" --no-legend 2>/dev/null | grep -q .
+}
 
 # ── LLM provider keys — uncomment whichever is active ────────────────────────
 # export ANTHROPIC_API_KEY=""
@@ -123,6 +192,17 @@ if pg: pg.close()
         systemctl --user is-active willow-metabolic.socket 2>/dev/null \
             && echo "  Metabolic socket: active" \
             || echo "  Metabolic socket: inactive"
+        systemctl --user is-active willow-metabolic.timer 2>/dev/null \
+            && echo "  Metabolic timer:  active" \
+            || echo "  Metabolic timer:  inactive"
+        "${WILLOW_PYTHON}" -c "
+import json, sys
+sys.path.insert(0, '${WILLOW_ROOT}')
+from core.metabolic_status import check_metabolic_status
+m = check_metabolic_status()
+print('  Last briefing:', m.get('last_briefing') or 'none')
+print('  Consecrated:', m.get('consecrated'))
+" 2>/dev/null || true
         ;;
 
     fleet_status)
@@ -233,6 +313,11 @@ print(json.dumps({
     metabolic)
         echo "Willow 2.0 — running Norn pass"
         WILLOW_PG_DB="${WILLOW_PG_DB}" exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/core/metabolic.py"
+        ;;
+
+    w8-census)
+        echo "Willow 2.0 — W8 canonical reconstruction census witness"
+        WILLOW_PG_DB="${WILLOW_PG_DB}" exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/scripts/w8_census_witness.py"
         ;;
 
     kart-worker)
@@ -459,8 +544,14 @@ print('  The Einherjar grow stronger.')
 
     start-all)
         echo "Willow 2.0 — starting all services"
-        _services=(grove-mcp grove-serve upstream-watcher journal-watcher journal-responder willow-dashboard willow-metabolic corpus-watcher)
-        for svc in "${_services[@]}"; do
+        for svc in "${WILLOW_SYSTEMD_SERVICES[@]}"; do
+            note="$(_willow_service_note "${svc}")"
+            if [[ -n "${note}" ]]; then
+                if ! _willow_user_unit_known "${svc}" && ! _willow_unit_file_exists "${svc}"; then
+                    echo "  [–] ${svc} skipped (${note})"
+                    continue
+                fi
+            fi
             if systemctl --user is-active --quiet "${svc}.service" 2>/dev/null; then
                 echo "  [✓] ${svc} already running"
             else
@@ -475,8 +566,14 @@ print('  The Einherjar grow stronger.')
 
     stop-all)
         echo "Willow 2.0 — stopping all services"
-        _services=(willow-dashboard upstream-watcher grove-mcp grove-serve journal-watcher journal-responder willow-metabolic corpus-watcher)
-        for svc in "${_services[@]}"; do
+        for svc in "${WILLOW_STOP_SERVICES[@]}"; do
+            if ! _willow_user_unit_known "${svc}" && ! _willow_unit_file_exists "${svc}"; then
+                note="$(_willow_service_note "${svc}")"
+                if [[ -n "${note}" ]]; then
+                    echo "  [–] ${svc} skipped (${note})"
+                fi
+                continue
+            fi
             systemctl --user stop "${svc}.service" 2>/dev/null \
                 && echo "  [↓] ${svc} stopped" \
                 || echo "  [–] ${svc} was not running"
@@ -510,14 +607,20 @@ else:
             || echo "  [✗] ollama            unreachable"
 
         # Systemd user services
-        _services=(grove-mcp grove-serve upstream-watcher journal-watcher journal-responder willow-dashboard willow-metabolic corpus-watcher)
-        for svc in "${_services[@]}"; do
+        for svc in "${WILLOW_SYSTEMD_SERVICES[@]}"; do
+            note="$(_willow_service_note "${svc}")"
             if systemctl --user is-active --quiet "${svc}.service" 2>/dev/null; then
                 printf "  [\033[32m✓\033[0m] %-18s running\n" "${svc}"
             elif systemctl --user is-enabled --quiet "${svc}.service" 2>/dev/null; then
                 printf "  [\033[31m✗\033[0m] %-18s dead (enabled)\n" "${svc}"
-            else
+            elif _willow_user_unit_known "${svc}"; then
                 printf "  [\033[33m–\033[0m] %-18s disabled\n" "${svc}"
+            elif _willow_unit_file_exists "${svc}"; then
+                printf "  [\033[33m–\033[0m] %-18s available (not installed)\n" "${svc}"
+            elif [[ -n "${note}" ]]; then
+                printf "  [\033[33m–\033[0m] %-18s %s\n" "${svc}" "${note}"
+            else
+                printf "  [\033[33m–\033[0m] %-18s missing unit\n" "${svc}"
             fi
         done
 
@@ -761,6 +864,21 @@ print(f'  Disabled: ${PROVIDER}')
         exec "${WILLOW_PYTHON}" -m willow.fylgja.agents_cli "$@"
         ;;
 
+    mcp)
+        shift
+        exec "${WILLOW_PYTHON}" -m willow.fylgja.mcp_cli "$@"
+        ;;
+
+    project)
+        shift
+        exec "${WILLOW_PYTHON}" -m willow.fylgja.project_cli "$@"
+        ;;
+
+    venv)
+        shift
+        exec "${WILLOW_PYTHON}" -m willow.fylgja.venv_cli "$@"
+        ;;
+
     upstream)
         _WATCHER="${WILLOW_ROOT}/agents/hanuman/bin/upstream_watcher.py"
         _RESPONDER="${WILLOW_ROOT}/agents/hanuman/bin/upstream_responder.py"
@@ -886,7 +1004,7 @@ else:
         ;;
 
     *)
-        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|agents [list|active <id>|install <id>|check]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
+        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|agents [list|active <id>|install <id>|check]|mcp [list|init|sync|check|audit]|project [list|sync|check]|venv [check|sync]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|w8-census|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
         exit 1
         ;;
 esac

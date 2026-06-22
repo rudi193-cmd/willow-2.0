@@ -8,7 +8,7 @@ description: Willow 2.0 primary boot gate — reads contract, establishes contex
 
 > **Primary boot gate.** Run before producing any response to the user. A greeting, short message, or casual opening is not an exception — boot first.
 >
-> **Exceptions (narrow):**
+> **Exceptions (narrow — only these two; the agent does not classify a turn as exempt on its own judgment):**
 > - User is in a physical, mental, or personal emergency — respond immediately, boot after.
 > - User explicitly says to skip it ("sandbox", "load without context", "no startup", or equivalent) — acknowledge and proceed without boot.
 
@@ -42,6 +42,13 @@ In **private-config**: Postgres down remains a hard stop (step 3).
 
 ## Steps
 
+> **`{agent}` throughout this file = the fleet identity**, read from
+> `WILLOW_AGENT_NAME` / `.willow/active-agent` — **never the persona**. The
+> persona (step 7) is a voice overlay; it does not own a SOIL/KB namespace.
+> Stack, overseer, flags, ledger, handoffs, and the boot sentinel all key off
+> the fleet id. Reading `{persona}/stack` instead of `{fleet}/stack` is the
+> classic mismatch: it surfaces a stale namespace the Stop hook never writes.
+
 **1. Contract**
 `mai_read_file("willow.md")` — load the fleet contract.
 Fallback: Read the raw file.
@@ -49,6 +56,12 @@ Fallback: Read the raw file.
 **2. Local context** *(compact)*
 Agent name · repo root · current branch · staged/unstaged/untracked counts · one-line diff note.
 No full patch. No full diffs.
+
+> **Clocks.** All Willow artifacts (handoff filenames, DB timestamps) are **UTC**;
+> the harness reports "today" in **local** time. Between ~18:00 local and midnight
+> the two calendar dates differ by one day — this is correct, not drift. The
+> per-turn `[CLOCK]` line (prompt_submit hook) states the exact offset. Do not
+> "correct" a UTC-dated handoff to match local "today."
 
 **3. Fleet health** *(parallel with 4–6)*
 `willow_status(app_id=<agent>)` — Postgres, SOIL, Ollama, manifests (`level=quick` by default).
@@ -113,12 +126,14 @@ The hook injects picker + `[PERSONA-IDENTITY]` lines into system context only �
 If active: load context per the persona registry (source defined in `willow.md` — the fleet contract, not any runtime-specific path). The optional `{persona}-boot.md` overlay supplements that registry context; it never changes fleet identity.
 
 **8. Corrections + Preferences**
-Read `corpus/corrections` and `corpus/preferences` — already seeded from memory feedback files by SessionStart hook.
+`soil_list(collection="corpus/corrections")` and `soil_list(collection="corpus/preferences")` — seeded from memory feedback files by SessionStart hook. These live in SOIL, not as flat files; `Read corpus/corrections` will 404.
 Surface count and top items. These are behavioral rails for this session.
 
 **9. Stack snapshot**
 Read SOIL `{agent}/stack/current` — open tasks, open threads, open decisions written by last stop hook.
+`{agent}` here is the **fleet id** (`WILLOW_AGENT_NAME` / `active-agent`), not the active persona — the Stop hook writes `{fleet}/stack`, so reading `{persona}/stack` returns a frozen record that never updates.
 Prefer this over handoff title when richer. This is the authoritative "what was open."
+If `written_at` is older than the latest handoff/ledger entry, the snapshot froze — note it and fall back to the handoff; do not trust stale `open_*` lists.
 
 **10. Open initiatives**
 `soil_list({agent}/overseer)` → filter `status != "closed"`. One line per hit: `[branch] goal`.
@@ -144,7 +159,7 @@ Also orient against these registries if not already loaded this session:
 Paths are relative to repo root. All six are dark by default — they do not self-announce. For session artifacts, copy from `docs/templates/` — do not improvise structure.
 
 **13. Flag triage**
-`soil_list({agent}/flags)` — close duplicates, surface open ones (max 5, one-line fix_path ≤150 chars).
+`soil_list({agent}/flags, filter={"flag_state": "open"})` — surface open ones (max 5, one-line fix_path ≤150 chars).
 Empty → skip.
 
 **14. Boot report + sentinel**
@@ -226,10 +241,24 @@ Q2: {open question}
 ...
 Q16: {open question}
 Q17: {next single bite — one sentence, no preamble}
+
+## Agent Notes for Human
+
+- {reminders, to-do's, stated unfinished tasks, patterns surfaced — max 17 lines}
+
+## Human Notes to Agent
+
+- {leave empty at close; the operator writes here afterward — handoff_latest reads it live from the file at next boot}
+
+## Machine block for handoff_rebuild / kb_ingest
+
+```json
+{"summary": "", "open_threads": [], "agreements": [], "key_actions": [], "next_steps": [], "tools_used": [], "signals": {}}
+```
 ```
 
 **Required:** `format: v2` and `session:` in frontmatter. Without them `handoff_latest` will not surface this file.
-**Required:** Section headers must match exactly — `## What I Now Understand`, `## Open Threads`, `## What We Agreed On`, `## 17 Questions`.
+**Required:** Section headers must match exactly — `## What I Now Understand`, `## Open Threads`, `## What We Agreed On`, `## 17 Questions`, `## Agent Notes for Human`, `## Human Notes to Agent`, `## Machine block …`.
 **Required:** Q17 line must be `Q17: <text>` — no question mark in the key, colon-delimited, no preamble. Q17 is always "What is the next single bite?" answered.
 **Convention:** Q1-Q16 are open questions for the next session — things unresolved, decisions pending, gates not yet crossed. Write as many as are genuinely open (pad to 17 only if needed). Q17 is always the next action.
 

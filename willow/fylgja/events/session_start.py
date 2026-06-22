@@ -15,8 +15,27 @@ from core.agent_identity import require_agent_name
 from willow.fylgja._mcp import call
 from willow.fylgja._grove import call as _grove_call
 from willow.fylgja._state import reset_turn_count
+from willow.fylgja.anchor_state import reset_prompt_count
 from willow.fylgja.events._stack_snapshot import normalize_stack_record
 from willow.fylgja.project_env import repo_root
+from willow.fylgja.session_inject import (
+    CONFIRMATION_EXCERPT_CHARS,
+    CORRECTION_EXCERPT_CHARS,
+    DENIAL_EXCERPT_CHARS,
+    MAX_CORRECTIONS,
+    MAX_CROSS_RUNTIME_OPEN,
+    MAX_HUMAN_CONFIRMATIONS,
+    MAX_PREFERENCES,
+    MAX_TOOL_DENIALS,
+    PREFERENCE_EXCERPT_CHARS,
+    dedup_fingerprint,
+    excerpt_corpus,
+    is_continuation_source,
+    is_fresh_source,
+    minimal_continuation_block,
+    record_injection,
+    should_skip_duplicate,
+)
 from willow.fylgja.willow_home import willow_home
 
 try:
@@ -190,13 +209,14 @@ def _check_willow_status() -> str:
 
 def _register_jeles(session_id: str) -> None:
     try:
-        projects_dir = Path.home() / ".claude" / "projects"
-        jsonl_files = list(projects_dir.rglob(f"{session_id}.jsonl"))
-        if jsonl_files:
+        from willow.fylgja.claude_projects import find_claude_jsonl
+
+        jsonl = find_claude_jsonl(session_id)
+        if jsonl:
             call("willow_jeles_register", {
                 "app_id": AGENT,
                 "agent": AGENT,
-                "jsonl_path": str(jsonl_files[0]),
+                "jsonl_path": str(jsonl),
                 "session_id": session_id,
             }, timeout=10)
     except Exception:
@@ -288,6 +308,47 @@ def _ensure_grove_mcp() -> str:
 
 
 
+def _open_attention_items(agent: str) -> tuple[int, list[str]]:
+    """Merge open human gaps ({agent}/gaps) and open SOIL flags ({agent}/flags).
+
+    Previously only {agent}/gaps was queried; block-telemetry flags live in
+    {agent}/flags, so startup reported open_flags=0 while flat handoff showed 10+.
+    """
+    ranked: list[tuple[int, str]] = []
+
+    try:
+        gaps = call("store_list", {"app_id": agent, "collection": f"{agent}/gaps"}, timeout=5)
+        for gap in gaps or []:
+            if gap.get("status") != "open":
+                continue
+            title = str(gap.get("title") or gap.get("id") or "?")[:60]
+            ranked.append((int(gap.get("severity") or 0), title))
+    except Exception:
+        pass
+
+    try:
+        flags = call("store_list", {"app_id": agent, "collection": f"{agent}/flags"}, timeout=5)
+        for flag in flags or []:
+            if flag.get("flag_state") != "open":
+                continue
+            title = str(flag.get("title") or flag.get("id") or "?")
+            if title.startswith("Blessed path"):
+                continue
+            title = title[:60]
+            ranked.append((int(flag.get("severity") or flag.get("hit_count") or 0), title))
+    except Exception:
+        pass
+
+    ranked.sort(key=lambda pair: pair[0], reverse=True)
+    titles = [title for _, title in ranked[:3]]
+    return len(ranked), titles
+
+
+def _is_generic_next_bite(text: str) -> bool:
+    t = (text or "").strip().lower()
+    return t in ("", "what is the next single bite?", "what is the next single bite")
+
+
 def _run_silent_startup(session_id: str = "") -> dict:
     """
     Silent startup — 5 targeted MCP calls, writes session_anchor.json.
@@ -295,7 +356,6 @@ def _run_silent_startup(session_id: str = "") -> dict:
     """
     anchor_dir = willow_home()
     anchor_file = anchor_dir / f"session_anchor_{AGENT}.json"
-    state_file = anchor_dir / f"anchor_state_{AGENT}.json"
 
     result = {
         "handoff_title": "", "handoff_summary": "",
@@ -320,6 +380,21 @@ def _run_silent_startup(session_id: str = "") -> dict:
                 result["next_bite"] = result["handoff_next_bite"]
     except Exception as e:
         result["mcp_errors"].append({"step": "handoff", "error": str(e)[:80]})
+
+    # 1b. Cross-runtime bridge — handoff-aligned threads + next bite (all IDEs)
+    try:
+        from willow.fylgja.cross_runtime import read_bridge
+
+        bridge = read_bridge()
+        if isinstance(bridge, dict):
+            bridge_threads = bridge.get("open_threads") or []
+            if bridge_threads:
+                result["handoff_threads"] = bridge_threads
+            bridge_bite = str(bridge.get("next_bite") or "").strip()
+            if bridge_bite and not _is_generic_next_bite(bridge_bite):
+                result["next_bite"] = bridge_bite
+    except Exception as e:
+        result["mcp_errors"].append({"step": "cross_runtime", "error": str(e)[:80]})
 
     # 2. Postgres health — MCP first, shell fallback
     try:
@@ -354,7 +429,7 @@ def _run_silent_startup(session_id: str = "") -> dict:
             try:
                 row = call("store_get", {
                     "app_id": AGENT,
-                    "collection": f"{AGENT}/sessions/store",
+                    "collection": f"{AGENT}/sessions",
                     "id": store_id,
                 }, timeout=5)
                 if isinstance(row, dict) and row and not row.get("error"):
@@ -363,32 +438,25 @@ def _run_silent_startup(session_id: str = "") -> dict:
             except Exception:
                 continue
         if session:
-            result["next_bite"] = session.get("next_bite", "")
+            composite_bite = (session.get("next_bite") or "").strip()
+            # Session composite is often stale (prior session close). Do not override
+            # handoff/cross-runtime next bite — only fill when nothing better exists.
+            if composite_bite and not result["next_bite"]:
+                result["next_bite"] = composite_bite
     except Exception as e:
         result["mcp_errors"].append({"step": "session", "error": str(e)[:80]})
 
-    # 4. Open flags
+    # 4. Open gaps + flags (both collections — see _open_attention_items)
     try:
-        gaps = call("store_list", {"app_id": AGENT, "collection": f"{AGENT}/gaps/store"}, timeout=5)
-        open_gaps = sorted(
-            [g for g in (gaps or []) if g.get("status") == "open"],
-            key=lambda g: g.get("severity", 0), reverse=True,
-        )
-        result["open_flags"] = len(open_gaps)
-        result["top_flags"] = [g.get("title", "")[:60] for g in open_gaps[:3]]
+        count, titles = _open_attention_items(AGENT)
+        result["open_flags"] = count
+        result["top_flags"] = titles
     except Exception as e:
         result["mcp_errors"].append({"step": "flags", "error": str(e)[:80]})
-        try:
-            flags = call("store_list", {"app_id": AGENT, "collection": f"{AGENT}/flags"}, timeout=5)
-            open_flags = [f for f in (flags or []) if f.get("flag_state") == "open"]
-            result["open_flags"] = len(open_flags)
-            result["top_flags"] = [f.get("title", "")[:60] for f in open_flags[:3]]
-        except Exception:
-            pass
 
     # 5. Recent traces since last handoff
     try:
-        params: dict = {"app_id": AGENT, "collection": f"{AGENT}/turns/store", "query": ""}
+        params: dict = {"app_id": AGENT, "collection": f"{AGENT}/turns", "query": ""}
         if handoff_date:
             params["after"] = handoff_date
         traces = call("store_search", params, timeout=5)
@@ -436,20 +504,54 @@ def _run_silent_startup(session_id: str = "") -> dict:
 
     # 6. Corpus identity — seed + corrections + preferences (direct SOIL read)
     try:
-        from core.willow_store import WillowStore as _WS
-        _store = _WS()
+        from core.store_port import get_store_port
+        _store = get_store_port()
         _seed_rec = _store.get("corpus/seed", "seed") or {}
         _corrs = _store.all("corpus/corrections") or []
         _prefs = _store.all("corpus/preferences") or []
+        _confs = _store.all("corpus/confirmations") or []
         _corrs.sort(key=lambda r: r.get("created_at", ""), reverse=True)
         _prefs.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+        _confs.sort(key=lambda r: r.get("last_seen", r.get("created_at", "")), reverse=True)
+        human_confs = [
+            r.get("content", "")
+            for r in _confs
+            if r.get("content")
+            and str(r.get("source", "")).startswith("prompt_submit")
+        ]
+        from willow.fylgja.tool_denials import top_denial_lessons
         result["corpus"] = {
             "seed": _seed_rec.get("content", ""),
-            "corrections": [r.get("content", "") for r in _corrs[:10] if r.get("content")],
-            "preferences": [r.get("content", "") for r in _prefs[:10] if r.get("content")],
+            "corrections": [
+                excerpt_corpus(r.get("content", ""), CORRECTION_EXCERPT_CHARS)
+                for r in _corrs[:MAX_CORRECTIONS]
+                if r.get("content")
+            ],
+            "correction_total": len(_corrs),
+            "preferences": [
+                excerpt_corpus(r.get("content", ""), PREFERENCE_EXCERPT_CHARS)
+                for r in _prefs[:MAX_PREFERENCES]
+                if r.get("content")
+            ],
+            "preference_total": len(_prefs),
+            "confirmations": [
+                excerpt_corpus(c, CONFIRMATION_EXCERPT_CHARS)
+                for c in human_confs[:MAX_HUMAN_CONFIRMATIONS]
+            ],
+            "confirmation_total": len(human_confs),
+            "tool_denials": [
+                excerpt_corpus(lesson, DENIAL_EXCERPT_CHARS)
+                for lesson in top_denial_lessons(_store, limit=MAX_TOOL_DENIALS)
+            ],
         }
     except Exception:
-        result["corpus"] = {"seed": "", "preferences": [], "corrections": []}
+        result["corpus"] = {
+            "seed": "",
+            "preferences": [],
+            "corrections": [],
+            "confirmations": [],
+            "tool_denials": [],
+        }
 
     # Flat handoff — read most recent file and verify anchor against JSONL
     flat: dict = {}
@@ -487,7 +589,6 @@ def _run_silent_startup(session_id: str = "") -> dict:
             "run_id": run_id,
             "flat_handoff_verified": flat.get("verified", False),
         }, indent=2))
-        state_file.write_text(json.dumps({"prompt_count": 0}))
     except Exception:
         pass
 
@@ -550,8 +651,8 @@ def _seed_corpus_corrections() -> None:
         return
 
     try:
-        from core.willow_store import WillowStore as _WS
-        store = _WS()
+        from core.store_port import get_store_port
+        store = get_store_port()
     except Exception:
         return
 
@@ -607,6 +708,10 @@ def main():
 
     session_id = data.get("session_id", "")
     session_source = data.get("source", "startup")  # startup | resume | clear | compact
+    lite_inject = is_continuation_source(session_source)
+
+    if is_fresh_source(session_source):
+        reset_prompt_count(AGENT)
 
     # Reset dedup tracker for the new session
     if _CONTEXT_AVAILABLE:
@@ -616,8 +721,9 @@ def main():
             pass
 
     _clear_stale_thread()
-    reset_turn_count()  # fresh session — boot guard must fire exactly once
-    BOOT_DONE.unlink(missing_ok=True)  # clear previous session's sentinel — boot must run once per session
+    if is_fresh_source(session_source):
+        reset_turn_count()  # fresh session — boot guard must fire exactly once
+        BOOT_DONE.unlink(missing_ok=True)
     grove_status = _ensure_grove_mcp()  # instant local file check
     if session_id:
         _register_jeles(session_id)
@@ -679,16 +785,18 @@ def main():
     try:
         from willow.fylgja.persona import anchor_lines as _persona_lines
 
-        lines.append(_persona_lines())
+        if not lite_inject:
+            lines.append(_persona_lines())
     except Exception:
         pass
 
-    try:
-        from willow.fylgja.cross_runtime import anchor_lines as _cross_runtime_lines
+    if not lite_inject:
+        try:
+            from willow.fylgja.cross_runtime import anchor_lines as _cross_runtime_lines
 
-        lines.extend(_cross_runtime_lines())
-    except Exception:
-        pass
+            lines.extend(_cross_runtime_lines(max_open=MAX_CROSS_RUNTIME_OPEN))
+        except Exception:
+            pass
 
     # Flat handoff — verified ground truth takes priority over MCP handoff prose
     flat = startup.get("flat_handoff", {})
@@ -726,13 +834,52 @@ def main():
     if corpus.get("seed"):
         lines.append(f"why: {corpus['seed'][:120]}")
     if corpus.get("corrections"):
-        lines.append(f"corrections ({len(corpus['corrections'])}):")
-        for c in corpus["corrections"]:
-            lines.append(f"  · {c[:100]}")
+        cap = MAX_CORRECTIONS if not lite_inject else min(2, MAX_CORRECTIONS)
+        shown = corpus["corrections"][:cap]
+        if shown:
+            total = int(corpus.get("correction_total") or len(corpus["corrections"]))
+            head = f"corrections — operator ({len(shown)}"
+            if total > len(shown):
+                head += f"/{total}"
+            head += "):"
+            lines.append(head)
+            for c in shown:
+                lines.append(f"  · {c}")
     if corpus.get("preferences"):
-        lines.append(f"preferences ({len(corpus['preferences'])}):")
-        for p in corpus["preferences"]:
-            lines.append(f"  · {p[:100]}")
+        cap = MAX_PREFERENCES if not lite_inject else min(2, MAX_PREFERENCES)
+        shown = corpus["preferences"][:cap]
+        if shown:
+            total = int(corpus.get("preference_total") or len(corpus["preferences"]))
+            head = f"preferences — operator ({len(shown)}"
+            if total > len(shown):
+                head += f"/{total}"
+            head += "):"
+            lines.append(head)
+            for p in shown:
+                lines.append(f"  · {p}")
+    if corpus.get("confirmations"):
+        cap = MAX_HUMAN_CONFIRMATIONS if not lite_inject else 1
+        shown = corpus["confirmations"][:cap]
+        if shown:
+            total = int(corpus.get("confirmation_total") or len(corpus["confirmations"]))
+            head = f"confirmations — operator ({len(shown)}"
+            if total > len(shown):
+                head += f"/{total}"
+            head += "):"
+            lines.append(head)
+            for c in shown:
+                lines.append(f"  · {c}")
+    if corpus.get("tool_denials"):
+        # Automated lane — fewer slots; never crowd out human corrections above.
+        cap = MAX_TOOL_DENIALS if not lite_inject else 0
+        shown = corpus["tool_denials"][:cap]
+        if shown:
+            lines.append(
+                f"learned denials — automated ({len(corpus['tool_denials'])}); "
+                "defer to operator corrections when they conflict:"
+            )
+            for lesson in shown:
+                lines.append(f"  · {lesson}")
 
     # Stack snapshot — inject open tasks + open decisions from last stop hook write
     snap = startup.get("stack_snapshot", {})
@@ -755,26 +902,27 @@ def main():
     elif startup["handoff_summary"]:
         lines.append(startup["handoff_summary"])
 
-    if projects_summary:
+    if not lite_inject and projects_summary:
         lines.append("")
         lines.append("[PROJECTS]")
         lines.append(projects_summary)
-    grove_pid_file = Path("/tmp/grove-monitor.pid")
-    grove_log_file = Path("/tmp/grove-monitor.log")
-    # The LISTEN/NOTIFY monitor is considered active when its pidfile exists.
-    # Logs are expected at /tmp/grove-monitor.log (typically via systemd redirect),
-    # but we key off pid to avoid a chicken/egg with file creation timing.
-    if grove_pid_file.exists() and grove_log_file.exists():
-        lines.append(
-            "GROVE MONITOR: active — "
-            "Monitor(description='Grove mentions', persistent=True, "
-            "command='tail -n +1 -f /tmp/grove-monitor.log | grep --line-buffered \"\\[MENTION\\]\"')"
-        )
-    elif grove_pid_file.exists():
-        lines.append(
-            "GROVE MONITOR: pid active but log missing at /tmp/grove-monitor.log "
-            "(check systemd unit StandardOutput= path)"
-        )
+    if not lite_inject:
+        grove_pid_file = Path("/tmp/grove-monitor.pid")
+        grove_log_file = Path("/tmp/grove-monitor.log")
+        # The LISTEN/NOTIFY monitor is considered active when its pidfile exists.
+        # Logs are expected at /tmp/grove-monitor.log (typically via systemd redirect),
+        # but we key off pid to avoid a chicken/egg with file creation timing.
+        if grove_pid_file.exists() and grove_log_file.exists():
+            lines.append(
+                "GROVE MONITOR: active — "
+                "Monitor(description='Grove mentions', persistent=True, "
+                "command='tail -n +1 -f /tmp/grove-monitor.log | grep --line-buffered \"\\[MENTION\\]\"')"
+            )
+        elif grove_pid_file.exists():
+            lines.append(
+                "GROVE MONITOR: pid active but log missing at /tmp/grove-monitor.log "
+                "(check systemd unit StandardOutput= path)"
+            )
     if startup["postgres"] == "unknown":
         lines.append("BOOT DEGRADED — invoke /startup before responding to anything.")
 
@@ -787,6 +935,20 @@ def main():
                 lines.append(ledger_ctx)
         except Exception:
             pass
+
+    if lite_inject:
+        lines.append("[SESSION] compact/resume — trimmed boot injection.")
+
+    fingerprint = dedup_fingerprint(session_id, lines)
+    if should_skip_duplicate(session_id, fingerprint):
+        lines = minimal_continuation_block(
+            AGENT,
+            startup["postgres"],
+            startup.get("next_bite") or startup.get("handoff_next_bite", ""),
+        )
+        record_injection(session_id, fingerprint, lite=True)
+    else:
+        record_injection(session_id, fingerprint, lite=lite_inject)
 
     print(json.dumps({
         "hookSpecificOutput": {

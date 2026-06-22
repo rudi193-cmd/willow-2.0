@@ -22,21 +22,13 @@ def test_detect_feedback_empty_on_clean_prompt():
     assert results == []
 
 
-def test_should_anchor_true_at_interval(tmp_path):
-    state_file = tmp_path / "anchor_state.json"
-    state_file.write_text(json.dumps({"prompt_count": 24}))
-    with patch("willow.fylgja.events.prompt_submit.STATE_FILE", state_file), patch(
-        "core.soil.get", return_value=None
-    ):
+def test_should_anchor_true_at_interval():
+    with patch("willow.fylgja.events.prompt_submit.get_prompt_count", return_value=25):
         assert should_anchor() is True
 
 
-def test_should_anchor_false_before_interval(tmp_path):
-    state_file = tmp_path / "anchor_state.json"
-    state_file.write_text(json.dumps({"prompt_count": 3}))
-    with patch("willow.fylgja.events.prompt_submit.STATE_FILE", state_file), patch(
-        "core.soil.get", return_value=None
-    ):
+def test_should_anchor_false_before_interval():
+    with patch("willow.fylgja.events.prompt_submit.get_prompt_count", return_value=3):
         assert should_anchor() is False
 
 

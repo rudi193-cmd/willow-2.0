@@ -1,0 +1,11 @@
+[Unit]
+Description=Willow Repo Fleet Sweep — weekly hygiene pass
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+
+[Timer]
+OnCalendar=Mon *-*-* 04:00:00
+Persistent=true
+Unit=repo-fleet-sweep.service
+
+[Install]
+WantedBy=timers.target

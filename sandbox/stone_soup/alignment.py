@@ -1,0 +1,930 @@
+"""Willow Alignment Calculus — measurable invariant checks (structure-only)."""
+from __future__ import annotations
+
+import json
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+from sandbox.stone_soup.adapters import IngredientResult
+from sandbox.stone_soup.willow_shim import kb_search
+
+METRICS_PATH = Path(__file__).resolve().parent / "alignment_metrics.json"
+_REPORTS_DIR = Path(__file__).resolve().parent / "reports"
+
+_HOME_PATH_RE = re.compile(r"(/home/[^\s]+|~[/\\][^\s]+)")
+
+
+@dataclass
+class MetricResult:
+    id: str
+    domain: str
+    invariant: str
+    label: str
+    weight: float
+    passed: bool
+    detail: str
+    signals: dict[str, Any] = field(default_factory=dict)
+    # Was there a source/substrate to test this invariant against? Drives the
+    # violated-vs-pending split in the witness layer; does not affect score.
+    evidence_present: bool = True
+
+
+def load_metrics_config() -> dict[str, Any]:
+    return json.loads(METRICS_PATH.read_text(encoding="utf-8"))
+
+
+def _layer_map(layers: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {layer["id"]: layer for layer in layers.get("layers", [])}
+
+
+def _layer_signal(layers: dict[str, Any], layer_id: str, field: str) -> Any:
+    layer = _layer_map(layers).get(layer_id, {})
+    return layer.get("signals", {}).get(field)
+
+
+def _layer_status(layers: dict[str, Any], layer_id: str) -> str:
+    return str(_layer_map(layers).get(layer_id, {}).get("status", "unknown"))
+
+
+def _kb_text_blob(raw: dict[str, IngredientResult]) -> str:
+    parts: list[str] = []
+    for result in raw.values():
+        for hit in result.kb_hits:
+            parts.append(str(hit.get("title", "")))
+            parts.append(str(hit.get("summary", "")))
+    return " ".join(parts).lower()
+
+
+def _archive_member_names(structure: dict[str, Any]) -> list[str]:
+    names: list[str] = []
+    for meta in structure.get("archives", {}).values():
+        if isinstance(meta, dict):
+            names.extend(meta.get("member_names", []))
+    return [n.lower() for n in names]
+
+
+def _table_names(structure: dict[str, Any]) -> list[str]:
+    names: list[str] = []
+    for db_entry in structure.get("local_dbs", {}).values():
+        if isinstance(db_entry, dict):
+            names.extend(db_entry.get("tables", {}).keys())
+    return [n.lower() for n in names]
+
+
+def _table_row_total(structure: dict[str, Any]) -> int:
+    total = 0
+    for db_entry in structure.get("local_dbs", {}).values():
+        if not isinstance(db_entry, dict):
+            continue
+        for count in db_entry.get("tables", {}).values():
+            if isinstance(count, int):
+                total += count
+    return total
+
+
+def _archives_present(structure: dict[str, Any]) -> int:
+    count = 0
+    for meta in structure.get("archives", {}).values():
+        if isinstance(meta, dict) and meta.get("exists"):
+            count += 1
+    return count
+
+
+def _sources_present(structure: dict[str, Any]) -> bool:
+    if _archives_present(structure) > 0:
+        return True
+    for db_entry in structure.get("local_dbs", {}).values():
+        if isinstance(db_entry, dict) and db_entry.get("exists"):
+            return True
+    return False
+
+
+def _concept_count(raw: dict[str, IngredientResult], ingredient_id: str) -> int:
+    result = raw.get(ingredient_id)
+    if not result:
+        return 0
+    total = 0
+    for meta in result.structure.get("private_files", {}).values():
+        if isinstance(meta, dict):
+            total += len(meta.get("concepts", []))
+    return total
+
+
+@dataclass
+class _MetricContext:
+    """Shared inputs each metric evaluator may read."""
+
+    metric: dict[str, Any]
+    raw: dict[str, IngredientResult]
+    layers: dict[str, Any]
+    disc: dict[str, Any]
+    gov: dict[str, Any]
+    prov: dict[str, Any]
+    rr_structure: dict[str, Any]
+    ab_structure: dict[str, Any]
+    kb_blob: str
+
+
+# Each evaluator returns (passed, detail, signals).
+_EvalResult = tuple[bool, str, dict[str, Any]]
+
+
+def _eval_boolean_and(ctx: _MetricContext) -> _EvalResult:
+    signals: dict[str, Any] = {}
+    checks = []
+    for signal in ctx.metric.get("signals", []):
+        if signal == "rh_dirty_atom_count_gt_zero":
+            val = ctx.rr_structure.get("rh_dirty_atom_count", 0) or 0
+            checks.append(val > 0)
+            signals[signal] = val
+        elif signal == "harness_ready":
+            val = bool(ctx.rr_structure.get("harness_exists"))
+            checks.append(val)
+            signals[signal] = val
+    passed = all(checks) if checks else False
+    return passed, f"checks={checks}", signals
+
+
+def _eval_kb_keyword(ctx: _MetricContext) -> _EvalResult:
+    metric = ctx.metric
+    keywords = [k.lower() for k in metric.get("keywords", [])]
+    ingredient_id = metric.get("ingredient", "")
+    if ingredient_id and ingredient_id in ctx.raw:
+        parts = []
+        for hit in ctx.raw[ingredient_id].kb_hits:
+            parts.append(str(hit.get("title", "")))
+            parts.append(str(hit.get("summary", "")))
+        blob = " ".join(parts).lower()
+    else:
+        blob = ctx.kb_blob
+    hits = [k for k in keywords if k in blob]
+    passed = len(hits) >= 1
+    # Structural fallback: angrybob DB witness counts as cross-index
+    if not passed and metric.get("structural_fallback") and ingredient_id == "angrybob":
+        passed = _table_row_total(ctx.ab_structure) > 0
+        signals = {
+            "matched_keywords": hits,
+            "scoped": ingredient_id,
+            "structural_fallback": True,
+            "db_rows": _table_row_total(ctx.ab_structure),
+        }
+        detail = f"structural fallback via {signals['db_rows']} DB rows"
+    else:
+        signals = {"matched_keywords": hits, "scoped": ingredient_id or "all"}
+        detail = f"matched {len(hits)}/{len(keywords)} keywords"
+    return passed, detail, signals
+
+
+def _eval_archive_present(ctx: _MetricContext) -> _EvalResult:
+    count = _archives_present(ctx.rr_structure)
+    min_archives = int(ctx.metric.get("min_archives", 1))
+    passed = count >= min_archives
+    return passed, f"{count} archive(s) present (need {min_archives})", {"archives_present": count}
+
+
+def _eval_probe_diversity(ctx: _MetricContext) -> _EvalResult:
+    titles: set[str] = set()
+    for query in ctx.metric.get("queries", []):
+        for hit in kb_search(query, limit=3, project="rh-dirty"):
+            title = hit.get("title")
+            if title:
+                titles.add(title)
+    min_unique = int(ctx.metric.get("min_unique_titles", 2))
+    passed = len(titles) >= min_unique
+    signals = {"unique_titles": len(titles), "sample": sorted(titles)[:4]}
+    return passed, f"{len(titles)} unique probe titles (need {min_unique})", signals
+
+
+def _eval_discernment_flag(ctx: _MetricContext) -> _EvalResult:
+    flag = ctx.metric.get("flag", "")
+    val = ctx.disc.get("signals", {}).get(flag)
+    passed = val not in (False, None, "")
+    return passed, f"{flag}={val!r}", {flag: val}
+
+
+def _eval_rh_noise_probe(ctx: _MetricContext) -> _EvalResult:
+    query = ctx.metric.get(
+        "query",
+        "deprecated failed iteration non-canon discard",
+    )
+    hits = kb_search(query, limit=5, project="rh-dirty")
+    top_titles = [(h.get("title") or "") for h in hits[:3]]
+    noise_in_top3 = [
+        t for t in top_titles if "deprecated" in t.lower() or "[dirty] deprecated" in t.lower()
+    ]
+    passed = len(noise_in_top3) == 0 and len(hits) > 0
+    signals = {"top_titles": top_titles, "noise_in_top3": noise_in_top3}
+    detail = "no deprecated in top-3" if passed else f"noise surfaced: {noise_in_top3!r}"
+    return passed, detail, signals
+
+
+def _eval_source_present(ctx: _MetricContext) -> _EvalResult:
+    passed = _sources_present(ctx.ab_structure)
+    signals = {
+        "archives": _archives_present(ctx.ab_structure),
+        "dbs": sum(
+            1
+            for e in ctx.ab_structure.get("local_dbs", {}).values()
+            if isinstance(e, dict) and e.get("exists")
+        ),
+    }
+    detail = "archive or DB present" if passed else "no angrybob source found"
+    return passed, detail, signals
+
+
+def _eval_table_pattern(ctx: _MetricContext) -> _EvalResult:
+    patterns = [p.lower() for p in ctx.metric.get("patterns", [])]
+    names = _table_names(ctx.ab_structure)
+    archive_names = _archive_member_names(ctx.ab_structure)
+    combined = names + archive_names
+    matched = [n for n in combined if any(p in n for p in patterns)]
+    passed = len(matched) >= 1
+    signals = {
+        "matched_tables": matched[:8],
+        "all_tables": names[:12],
+        "archive_members": archive_names[:12],
+    }
+    return passed, f"matched {len(matched)} name(s) for patterns {patterns}", signals
+
+
+def _eval_table_row_count(ctx: _MetricContext) -> _EvalResult:
+    total = _table_row_total(ctx.ab_structure)
+    min_rows = int(ctx.metric.get("min_rows", 1))
+    # Archive with DB members counts as non-empty rule store (structure signal)
+    archive_has_db = any(
+        name.endswith(".db")
+        for name in _archive_member_names(ctx.ab_structure)
+    )
+    passed = total >= min_rows or archive_has_db
+    signals = {"total_rows": total, "archive_has_db": archive_has_db}
+    detail = f"total rows={total}, archive_has_db={archive_has_db} (need rows≥{min_rows} or db member)"
+    return passed, detail, signals
+
+
+def _eval_layer_signal(ctx: _MetricContext) -> _EvalResult:
+    layer_id = ctx.metric.get("layer", "")
+    field_name = ctx.metric.get("field", "")
+    min_value = int(ctx.metric.get("min_value", 1))
+    value = _layer_signal(ctx.layers, layer_id, field_name)
+    numeric = int(value) if isinstance(value, (int, float)) else 0
+    passed = numeric >= min_value
+    return passed, f"{layer_id}.{field_name}={value!r} (need ≥{min_value})", {field_name: value}
+
+
+def _eval_layer_status(ctx: _MetricContext) -> _EvalResult:
+    layer_id = ctx.metric.get("layer", "")
+    required = ctx.metric.get("required_status", "present")
+    status = _layer_status(ctx.layers, layer_id)
+    passed = status == required
+    return passed, f"{layer_id} status={status!r} (need {required!r})", {"status": status}
+
+
+def _eval_governance_verdict(ctx: _MetricContext) -> _EvalResult:
+    required = ctx.metric.get("required_verdict", "frame_present")
+    verdict = ctx.gov.get("verdict", "")
+    passed = verdict == required
+    return passed, f"verdict={verdict!r}", {"verdict": verdict, "pass_ratio": ctx.gov.get("pass_ratio")}
+
+
+def _eval_layer_coverage(ctx: _MetricContext) -> _EvalResult:
+    layer_rows = ctx.layers.get("layers", [])
+    total = len(layer_rows) or 1
+    present = sum(1 for layer in layer_rows if layer.get("status") == "present")
+    ratio = present / total
+    min_ratio = float(ctx.metric.get("min_ratio", 0.7))
+    passed = ratio >= min_ratio
+    signals = {"present": present, "total": total, "ratio": round(ratio, 3)}
+    return passed, f"coverage {present}/{total} ({ratio:.0%})", signals
+
+
+def _eval_concept_count(ctx: _MetricContext) -> _EvalResult:
+    ingredient_id = ctx.metric.get("ingredient", "")
+    count = _concept_count(ctx.raw, ingredient_id)
+    min_concepts = int(ctx.metric.get("min_concepts", 1))
+    passed = count >= min_concepts
+    return passed, f"{count} concepts (need {min_concepts})", {"concept_count": count}
+
+
+def _eval_provenance_complete(ctx: _MetricContext) -> _EvalResult:
+    rows = ctx.prov.get("classifications", [])
+    passed = all(
+        row.get("has_kb_signal") or row.get("has_local_structure")
+        for row in rows
+    )
+    complete = sum(
+        1
+        for row in rows
+        if row.get("has_kb_signal") or row.get("has_local_structure")
+    )
+    signals = {"ingredients": len(rows), "complete": complete}
+    return passed, f"{complete}/{len(rows)} ingredients witnessed", signals
+
+
+def _shape_compare(verdict: dict[str, Any], *, source: str) -> _EvalResult:
+    status = str(verdict.get("status", "pending"))
+    runs_present = bool(verdict.get("runs_present"))
+    issues = list(verdict.get("issues", []))
+    signals = {
+        "compare_status": status,
+        "runs_present": runs_present,
+        "issues": issues[:4],
+        "source": source,
+    }
+    if status == "pending":
+        detail = "clean/dirty runs absent — R1/R3 convergence pending"
+    elif status == "pass":
+        detail = f"clean/dirty noise probes converge ({source})"
+    else:
+        detail = f"divergence: {len(issues)} noise probe(s) surfaced deprecated ({source})"
+    return status == "pass", detail, signals
+
+
+def _eval_rh_compare_verdict(ctx: _MetricContext) -> _EvalResult:
+    """R1/R3 true clean-vs-dirty convergence via sandbox.rh_harness.compare.
+
+    Default reads a saved structured report (rh-compare.json); set
+    ``run_live: true`` on the metric to invoke the live compare instead. An
+    absent/unreadable report or an unavailable harness yields pending — the
+    witness layer then marks it pending, never violated (Q4/Demon's Dividend).
+    """
+    metric = ctx.metric
+    if metric.get("run_live"):
+        try:
+            from sandbox.rh_harness.compare import compare_verdict
+            verdict = compare_verdict()
+        except (Exception, SystemExit) as exc:  # noqa: BLE001 — any failure = pending
+            return (
+                False,
+                f"rh compare live run failed ({type(exc).__name__})",
+                {"compare_status": "pending", "runs_present": False},
+            )
+        return _shape_compare(verdict, source="live")
+
+    rp = metric.get("report", "rh-compare.json")
+    report_path = Path(rp) if Path(rp).is_absolute() else _REPORTS_DIR / rp
+    if not report_path.is_file():
+        return (
+            False,
+            "no saved rh-compare report — R1/R3 convergence pending",
+            {"compare_status": "pending", "runs_present": False},
+        )
+    try:
+        verdict = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return (
+            False,
+            f"rh-compare report unreadable ({type(exc).__name__})",
+            {"compare_status": "pending", "runs_present": False},
+        )
+    return _shape_compare(verdict, source="report")
+
+
+def _shape_reconstruction(
+    recon: dict[str, Any] | None, metric: dict[str, Any]
+) -> _EvalResult:
+    """Turn a canonical-reconstruction census into a pass/detail/signals triple.
+
+    cost = unreconstructable / total over the canonical population. "Supported"
+    means traceable to origin via any of three genuine provenance legs —
+    ledger ∪ source_id ∪ provenance-typed edges (see run.canonical_reconstruction_
+    census / §8). Loose relates_to/part_of/precedes links are excluded: a
+    2026-06-14 census showed "any edge" covers ~96% (too loose), while genuine
+    provenance lands at discriminating union coverage (post-backfill: 271/271,
+    cost 0.0). An absent or
+    empty population yields pending (never violated for a missing substrate).
+    """
+    total = int((recon or {}).get("canonical_total", 0) or 0)
+    if not recon or total <= 0:
+        return (
+            False,
+            "no canonical atoms to test — reconstruction pending",
+            {"recon_status": "pending", "canonical_total": 0, "runs_present": False},
+        )
+    supported = int(recon.get("supported", 0) or 0)
+    unsupported = max(total - supported, 0)
+    cost = round(unsupported / total, 3)
+    max_cost = float(metric.get("max_cost", 0.05))
+    passed = cost <= max_cost
+    signals = {
+        "recon_status": "measured",
+        "runs_present": True,
+        "canonical_total": total,
+        "supported": supported,
+        "unsupported": unsupported,
+        "reconstruction_cost": cost,
+        "max_cost": max_cost,
+        "by_support": recon.get("by_support", {}),
+    }
+    detail = (
+        f"{supported}/{total} canonical atoms reconstructable via "
+        f"ledger ∪ source_id ∪ provenance edges "
+        f"(cost {cost:.0%}, need ≤{max_cost:.0%})"
+    )
+    return passed, detail, signals
+
+
+def _eval_decoder_mismatch(ctx: _MetricContext) -> _EvalResult:
+    """W8 canonical reconstruction coverage: of the atoms Willow promotes to
+    *canonical*, how many are traceable to origin via a genuine provenance leg —
+    FRANK ledger ∪ explicit content.source_id ∪ provenance-typed edges
+    (references/summarizes/documents/derives_from/…)? An atom with none is a
+    decoder mismatch: asserted as load-bearing, yet its origin can't be
+    recovered.
+
+    History (logged, not buried): the first cut measured ledger-only and wrongly
+    reported ~97% untraceable; the next over-corrected via "any edge" (~96%,
+    non-discriminating).     The genuine three-leg definition is discriminating; after PR #374 backfill
+  and pipeline wiring (PR #375), live census is 271/271 (cost 0.0). See §8.
+
+    Source of the census mirrors rh_compare_verdict: live (``run_live: true``)
+    or a saved structured report (``report``). Absent report / unavailable
+    census / empty canonical population all yield pending, never violated.
+    """
+    metric = ctx.metric
+    if metric.get("run_live"):
+        try:
+            from sandbox.stone_soup.run import canonical_reconstruction_census
+            recon = canonical_reconstruction_census()
+        except (Exception, SystemExit) as exc:  # noqa: BLE001 — any failure = pending
+            return (
+                False,
+                f"reconstruction census live run failed ({type(exc).__name__})",
+                {"recon_status": "pending", "canonical_total": 0, "runs_present": False},
+            )
+        return _shape_reconstruction(recon, metric)
+
+    rp = metric.get("report", "recon-canonical.json")
+    report_path = Path(rp) if Path(rp).is_absolute() else _REPORTS_DIR / rp
+    if not report_path.is_file():
+        return (
+            False,
+            "no saved reconstruction census — canonical coverage pending",
+            {"recon_status": "pending", "canonical_total": 0, "runs_present": False},
+        )
+    try:
+        recon = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return (
+            False,
+            f"reconstruction report unreadable ({type(exc).__name__})",
+            {"recon_status": "pending", "canonical_total": 0, "runs_present": False},
+        )
+    return _shape_reconstruction(recon, metric)
+
+
+def _eval_redaction_check(ctx: _MetricContext) -> _EvalResult:
+    # Scan layer/handoff signals for absolute home paths in values we emit
+    leaks: list[str] = []
+    handoff_root = _layer_signal(ctx.layers, "handoff", "handoff_root")
+    if isinstance(handoff_root, str) and _HOME_PATH_RE.search(handoff_root):
+        leaks.append("handoff_root")
+    passed = len(leaks) == 0
+    detail = "no absolute path leaks" if passed else f"leaks: {leaks}"
+    return passed, detail, {"leaks": leaks}
+
+
+_METRIC_EVALUATORS: dict[str, Any] = {
+    "boolean_and": _eval_boolean_and,
+    "kb_keyword": _eval_kb_keyword,
+    "archive_present": _eval_archive_present,
+    "probe_diversity": _eval_probe_diversity,
+    "discernment_flag": _eval_discernment_flag,
+    "rh_noise_probe": _eval_rh_noise_probe,
+    "source_present": _eval_source_present,
+    "table_pattern": _eval_table_pattern,
+    "table_row_count": _eval_table_row_count,
+    "layer_signal": _eval_layer_signal,
+    "layer_status": _eval_layer_status,
+    "governance_verdict": _eval_governance_verdict,
+    "layer_coverage": _eval_layer_coverage,
+    "concept_count": _eval_concept_count,
+    "provenance_complete": _eval_provenance_complete,
+    "redaction_check": _eval_redaction_check,
+    "rh_compare_verdict": _eval_rh_compare_verdict,
+    "decoder_mismatch": _eval_decoder_mismatch,
+}
+
+
+def _evidence_present(kind: str, ctx: _MetricContext, signals: dict[str, Any]) -> bool:
+    """Was there a source/substrate to test this invariant against?
+
+    A not-witnessed invariant splits into *violated* (substrate present, the
+    predicate fails) vs *pending* (no substrate to test). This probe reads the
+    same context the evaluator saw — for kb-search kinds it reads back the
+    already-captured signals rather than re-querying. Default True: if a kind
+    is always testable, a failure is a real violation, never pending.
+    """
+    ab, rr = ctx.ab_structure, ctx.rr_structure
+    if kind == "boolean_and":
+        return bool(rr)
+    if kind == "kb_keyword":
+        iid = ctx.metric.get("ingredient", "")
+        scoped = bool(ctx.raw[iid].kb_hits) if iid and iid in ctx.raw else bool(ctx.kb_blob.strip())
+        fallback = iid == "angrybob" and _table_row_total(ab) > 0
+        return scoped or fallback
+    if kind == "archive_present":
+        return bool(rr.get("archives"))
+    if kind == "probe_diversity":
+        return int(signals.get("unique_titles", 0)) > 0
+    if kind == "rh_noise_probe":
+        return len(signals.get("top_titles", [])) > 0
+    if kind == "discernment_flag":
+        return ctx.disc.get("signals", {}).get(ctx.metric.get("flag", "")) is not None
+    if kind == "source_present":
+        return bool(ab.get("local_dbs")) or bool(ab.get("archives"))
+    if kind in ("table_pattern", "table_row_count"):
+        return bool(_table_names(ab)) or bool(_archive_member_names(ab)) or _sources_present(ab)
+    if kind in ("layer_signal", "layer_status"):
+        return _layer_map(ctx.layers).get(ctx.metric.get("layer", "")) is not None
+    if kind == "layer_coverage":
+        return bool(ctx.layers.get("layers"))
+    if kind == "governance_verdict":
+        return bool(ctx.gov.get("verdict"))
+    if kind == "concept_count":
+        res = ctx.raw.get(ctx.metric.get("ingredient", ""))
+        return bool(res and res.structure.get("private_files"))
+    if kind == "provenance_complete":
+        return len(ctx.prov.get("classifications", [])) > 0
+    if kind == "rh_compare_verdict":
+        # Substrate = the clean/dirty runs actually had hits; the evaluator
+        # records that in signals.runs_present. Absent -> pending, not violated.
+        return bool(signals.get("runs_present"))
+    if kind == "decoder_mismatch":
+        # Substrate = a non-empty canonical population existed to measure.
+        # Absent (no canonical atoms / no census) -> pending, not violated.
+        return int(signals.get("canonical_total", 0) or 0) > 0
+    # redaction_check and any unknown kind are always testable.
+    return True
+
+
+def _evaluate_metric(
+    metric: dict[str, Any],
+    *,
+    raw: dict[str, IngredientResult],
+    layers: dict[str, Any],
+    disc: dict[str, Any],
+    gov: dict[str, Any],
+    prov: dict[str, Any],
+) -> MetricResult:
+    rr = raw.get("rendereason")
+    ab = raw.get("angrybob")
+    ctx = _MetricContext(
+        metric=metric,
+        raw=raw,
+        layers=layers,
+        disc=disc,
+        gov=gov,
+        prov=prov,
+        rr_structure=rr.structure if rr else {},
+        ab_structure=ab.structure if ab else {},
+        kb_blob=_kb_text_blob(raw),
+    )
+
+    kind = metric.get("kind", "")
+    evaluator = _METRIC_EVALUATORS.get(kind)
+    if evaluator is None:
+        passed, detail, signals = False, "unimplemented", {}
+    else:
+        passed, detail, signals = evaluator(ctx)
+
+    return MetricResult(
+        id=metric["id"],
+        domain=metric.get("domain", ""),
+        invariant=metric.get("invariant", ""),
+        label=metric.get("label", metric["id"]),
+        weight=float(metric.get("weight", 1.0)),
+        passed=passed,
+        detail=detail,
+        signals=signals,
+        evidence_present=_evidence_present(kind, ctx, signals),
+    )
+
+
+# Projection maps Φ (alignment_calculus.md §5) — which map carries each
+# domain's invariants into the shared claim/process graph 𝒢.
+_PROJECTION = {
+    "rendereason": "Φ_render",
+    "angrybob": "Φ_bob",
+    "willow": "Φ_willow",
+    "cross": "Φ_soup",
+}
+
+
+@dataclass
+class InvariantWitness:
+    """One metric reframed as evidence for an invariant predicate I ∈ 𝓘.
+
+    The alignment calculus (alignment_calculus.md §1) measures alignment as
+    I(v) ⇒ I(π(v)): an invariant that holds in a source domain must survive
+    its projection π into the shared graph 𝒢. Each metric is the measurable
+    proxy for one such invariant; an InvariantWitness records whether that
+    invariant was *witnessed* under its projection Φ, plus the evidence that
+    did the witnessing. Score is unaffected — this is the structured view of
+    the same pass/fail the metric already produced.
+    """
+
+    invariant: str           # R1..R5 | B1..B5 | W1..W7 | X1..X3
+    domain: str              # rendereason | angrybob | willow | cross
+    projection: str          # Φ map carrying the invariant into 𝒢
+    label: str
+    weight: float
+    witnessed: bool          # invariant holds under projection (== metric passed)
+    evidence_present: bool   # was there a substrate to test? splits violated/pending
+    proxy: str               # how it was measured (metric detail)
+    evidence: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def status(self) -> str:
+        """Three-state view (does not affect score):
+
+        - witnessed: invariant holds under projection
+        - violated:  substrate present, predicate fails (a real misalignment)
+        - pending:   no substrate to test yet (absent source/ingest)
+        """
+        if self.witnessed:
+            return "witnessed"
+        return "violated" if self.evidence_present else "pending"
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "invariant": self.invariant,
+            "domain": self.domain,
+            "projection": self.projection,
+            "label": self.label,
+            "weight": self.weight,
+            "witnessed": self.witnessed,
+            "status": self.status,
+            "proxy": self.proxy,
+            "evidence": self.evidence,
+        }
+
+
+def _witness_from_metric(result: MetricResult) -> InvariantWitness:
+    return InvariantWitness(
+        invariant=result.invariant or result.id,
+        domain=result.domain,
+        projection=_PROJECTION.get(result.domain, "Φ_soup"),
+        label=result.label,
+        weight=result.weight,
+        witnessed=result.passed,
+        evidence_present=result.evidence_present,
+        proxy=result.detail,
+        evidence=result.signals,
+    )
+
+
+def _witness_summary(witnesses: list[InvariantWitness]) -> dict[str, Any]:
+    """Aggregate witnesses by projection Φ — three-state counts + weight-coverage.
+
+    coverage is witnessed-weight over total-weight: pending and violated both
+    count against it (classify, don't rescore — absent sources never inflate).
+    """
+    by_proj: dict[str, dict[str, Any]] = {}
+    for w in witnesses:
+        slot = by_proj.setdefault(
+            w.projection,
+            {
+                "witnessed": 0,
+                "violated": 0,
+                "pending": 0,
+                "total": 0,
+                "weight_witnessed": 0.0,
+                "weight_total": 0.0,
+            },
+        )
+        slot["total"] += 1
+        slot["weight_total"] += w.weight
+        slot[w.status] += 1
+        if w.witnessed:
+            slot["weight_witnessed"] += w.weight
+    for slot in by_proj.values():
+        wt = slot["weight_total"] or 1.0
+        slot["coverage"] = round(slot["weight_witnessed"] / wt, 3)
+        slot["weight_witnessed"] = round(slot["weight_witnessed"], 3)
+        slot["weight_total"] = round(slot["weight_total"], 3)
+    return by_proj
+
+
+def evaluate_alignment(
+    *,
+    raw: dict[str, IngredientResult],
+    layers: dict[str, Any],
+    disc: dict[str, Any],
+    gov: dict[str, Any],
+    prov: dict[str, Any],
+    config: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Evaluate all alignment metrics and return scored summary."""
+    cfg = config or load_metrics_config()
+    metrics_cfg = cfg.get("metrics", [])
+    results: list[MetricResult] = []
+
+    for metric in metrics_cfg:
+        results.append(
+            _evaluate_metric(
+                metric,
+                raw=raw,
+                layers=layers,
+                disc=disc,
+                gov=gov,
+                prov=prov,
+            )
+        )
+
+    total_weight = sum(r.weight for r in results) or 1.0
+    passed_weight = sum(r.weight for r in results if r.passed)
+    score = round(passed_weight / total_weight, 3)
+
+    bands = cfg.get("verdict_bands", {})
+    aligned_min = float(bands.get("aligned", 0.75))
+    partial_min = float(bands.get("partial", 0.45))
+    if score >= aligned_min:
+        verdict = "aligned"
+    elif score >= partial_min:
+        verdict = "partial"
+    else:
+        verdict = "misaligned"
+
+    by_domain: dict[str, dict[str, Any]] = {}
+    for domain_id, meta in cfg.get("domains", {}).items():
+        domain_results = [r for r in results if r.domain == domain_id]
+        d_weight = sum(r.weight for r in domain_results) or 1.0
+        d_passed = sum(r.weight for r in domain_results if r.passed)
+        by_domain[domain_id] = {
+            "label": meta.get("label", domain_id),
+            "invariants": meta.get("invariants", []),
+            "score": round(d_passed / d_weight, 3),
+            "passed": sum(1 for r in domain_results if r.passed),
+            "total": len(domain_results),
+        }
+
+    failures = [
+        {"id": r.id, "invariant": r.invariant, "label": r.label, "detail": r.detail}
+        for r in results
+        if not r.passed
+    ]
+
+    witnesses = [_witness_from_metric(r) for r in results]
+
+    return {
+        "stage": "alignment",
+        "score": score,
+        "verdict": verdict,
+        "verdict_bands": bands,
+        "domains": by_domain,
+        "metrics": [
+            {
+                "id": r.id,
+                "domain": r.domain,
+                "invariant": r.invariant,
+                "label": r.label,
+                "weight": r.weight,
+                "passed": r.passed,
+                "detail": r.detail,
+                "signals": r.signals,
+            }
+            for r in results
+        ],
+        "failures": failures,
+        "witnesses": [w.as_dict() for w in witnesses],
+        "witness_summary": _witness_summary(witnesses),
+    }
+
+
+def render_human_synthesis(alignment: dict[str, Any], syn: dict[str, Any]) -> dict[str, Any]:
+    """Human-facing synthesis from alignment metrics + stone-soup observations."""
+    score = alignment.get("score", 0)
+    verdict = alignment.get("verdict", "unknown")
+    domains = alignment.get("domains", {})
+    failures = alignment.get("failures", [])
+    witnesses = alignment.get("witnesses", [])
+    witness_summary = alignment.get("witness_summary", {})
+
+    what_lines: list[str] = []
+    gap_lines: list[str] = []
+    next_lines: list[str] = []
+
+    for domain_id, meta in domains.items():
+        label = meta.get("label", domain_id)
+        d_score = meta.get("score", 0)
+        passed = meta.get("passed", 0)
+        total = meta.get("total", 0)
+        if d_score >= 0.75:
+            what_lines.append(
+                f"**{label}** ({domain_id}): strong alignment ({passed}/{total} metrics, score {d_score:.0%})."
+            )
+        elif d_score >= 0.45:
+            what_lines.append(
+                f"**{label}** ({domain_id}): partial alignment ({passed}/{total} metrics, score {d_score:.0%})."
+            )
+        else:
+            gap_lines.append(
+                f"**{label}** ({domain_id}): weak alignment ({passed}/{total} metrics, score {d_score:.0%})."
+            )
+
+    for obs in syn.get("observations", [])[:6]:
+        what_lines.append(obs)
+
+    # Gaps speak the three-state language: violated (real misalignment, fix it)
+    # vs pending (no substrate yet, supply a source). Falls back to flat
+    # failures if an older alignment dict carries no witnesses.
+    violated = [w for w in witnesses if w.get("status") == "violated"]
+    pending = [w for w in witnesses if w.get("status") == "pending"]
+    if witnesses:
+        for w in violated[:8]:
+            gap_lines.append(
+                f"`{w['invariant']}` **violated** ({w['projection']}): {w['proxy']}"
+            )
+        for w in pending[:8]:
+            gap_lines.append(
+                f"`{w['invariant']}` *pending* ({w['projection']}): no substrate yet — {w['proxy']}"
+            )
+    else:
+        for fail in failures[:8]:
+            gap_lines.append(f"`{fail['invariant']}` ({fail['id']}): {fail['detail']}")
+
+    for item in syn.get("follow_ups", [])[:4]:
+        next_lines.append(item)
+
+    if verdict == "aligned":
+        headline = (
+            "Willow preserves most shared invariants across Rendereason, angrybob, "
+            "and its own reconstruction layers."
+        )
+    elif verdict == "partial":
+        headline = (
+            "Willow lines up structurally with both projects, but full mathematical "
+            "alignment still needs compare runs and deeper admissibility wiring."
+        )
+    else:
+        headline = (
+            "Willow is not yet aligned — missing sources or layer witnesses dominate."
+        )
+
+    if disc_note := _cross_domain_reading(alignment):
+        what_lines.append(disc_note)
+
+    next_lines.extend(
+        [
+            "Run `python3 -m sandbox.rh_harness.compare` for R1/R3 clean-dirty convergence.",
+            "Re-run alignment after any angrybob DB extract or rh-dirty ingest.",
+        ]
+    )
+    if pending:
+        next_lines.append(
+            f"{len(pending)} invariant(s) pending — supply the absent source "
+            "(rh-dirty ingest / angrybob extract) so they can be witnessed."
+        )
+
+    # Per-projection coverage, one line per Φ map (calculus §5).
+    coverage_lines = [
+        f"{proj}: {slot['coverage']:.0%} witnessed ({slot['witnessed']}/{slot['total']}; "
+        f"{slot['violated']} violated, {slot['pending']} pending)"
+        for proj, slot in witness_summary.items()
+    ]
+
+    return {
+        "stage": "human_synthesis",
+        "headline": headline,
+        "overall_verdict": verdict,
+        "overall_score": score,
+        "what_aligns": what_lines,
+        "gaps": gap_lines,
+        "next_steps": next_lines,
+        "projection_coverage": coverage_lines,
+        "violated_count": len(violated),
+        "pending_count": len(pending),
+        "framing": (
+            "Alignment is invariant preservation under projection, not fluent commentary. "
+            "Gaps are split: violated = substrate present but predicate fails; "
+            "pending = no substrate yet (absence never inflates the score). "
+            "See alignment_calculus.md for objects, maps, and failure modes."
+        ),
+    }
+
+
+def _cross_domain_reading(alignment: dict[str, Any]) -> str:
+    render = alignment.get("domains", {}).get("rendereason", {})
+    bob = alignment.get("domains", {}).get("angrybob", {})
+    willow = alignment.get("domains", {}).get("willow", {})
+    cross = alignment.get("domains", {}).get("cross", {})
+
+    parts = []
+    if render.get("score", 0) >= 0.5 and bob.get("score", 0) >= 0.5:
+        parts.append(
+            "Rendereason (canon under noise) and angrybob (admissible moves) both "
+            "project into Willow's claim/process graph."
+        )
+    if willow.get("score", 0) >= 0.7:
+        parts.append(
+            "Willow's provenance, Jeles, ledger, and handoff layers witness "
+            "reconstruction machinery for decoder mismatch."
+        )
+    if cross.get("score", 0) >= 0.7:
+        parts.append(
+            "Stone Soup theory concepts bridge the pot: recipe ≠ grandmother, "
+            "alignment = measured invariant preservation."
+        )
+    return " ".join(parts)

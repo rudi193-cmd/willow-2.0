@@ -1,90 +1,68 @@
-"""soil.py — thin sqlite3 wrapper for SOIL collections used by the dashboard.
+"""soil.py — compat shim over WillowStore (SOIL layout unification, 2026-06-12).
 b17: WDASH  ΔΣ=42
+
+Historically this module wrote `{collection}/store.db` while the MCP layer
+(`core/willow_store.py`) wrote `{collection}.db` — the same logical collection
+landed in two files depending on the caller (flag-soil-dual-layout-divergence).
+Per operator decision the WillowStore layout is canonical; this module keeps
+its old 5-function API but delegates every operation to WillowStore.
+
+Legacy `{collection}/store.db` files are merged by scripts/soil_merge_layouts.py
+and the `<name>/store` addressing is hard-rejected by WillowStore.
 """
-import json
 import sqlite3
-from datetime import datetime
 from pathlib import Path
 
-from willow.fylgja.willow_home import resolve_store_root
+from core.store_port import get_store_port
+
+
+def _get_store():
+    # A fresh adapter per call: WillowStore.__init__ is cheap, and caching one
+    # here would freeze the store root past a WILLOW_STORE_ROOT change
+    # (test isolation, fork sandboxes).
+    return get_store_port()
 
 
 def _root() -> Path:
-    return resolve_store_root()
+    return _get_store().root
 
 
 def _db(collection: str) -> Path:
-    p = _root() / Path(collection)
-    p.mkdir(parents=True, exist_ok=True)
-    return p / "store.db"
-
-
-def _conn(db_path: Path) -> sqlite3.Connection:
-    conn = sqlite3.connect(str(db_path), check_same_thread=False)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS records (
-            id TEXT PRIMARY KEY,
-            data TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            deleted INTEGER DEFAULT 0
-        )
-    """)
-    conn.commit()
-    return conn
+    """Canonical sqlite file for a collection ({collection}.db)."""
+    return _get_store().backend._db_path(collection)
 
 
 def put(collection: str, record_id: str, record: dict) -> None:
     """Insert or update a record. Safe to call multiple times (upsert)."""
-    db = _db(collection)
-    conn = _conn(db)
-    now = datetime.now().isoformat()
-    conn.execute("""
-        INSERT INTO records (id, data, created_at, updated_at)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at
-    """, (record_id, json.dumps(record, default=str), now, now))
-    conn.commit()
-    conn.close()
+    _get_store().put(collection, record, record_id=record_id)
 
 
 def get(collection: str, record_id: str) -> dict | None:
-    db = _db(collection)
-    if not db.exists():
+    rec = _get_store().get(collection, record_id)
+    if rec is None:
         return None
-    conn = _conn(db)
-    row = conn.execute(
-        "SELECT data FROM records WHERE id=? AND deleted=0", (record_id,)
-    ).fetchone()
-    conn.close()
-    if not row:
-        return None
-    rec = json.loads(row[0])
-    rec["_id"] = record_id
+    rec.setdefault("_id", record_id)
     return rec
 
 
 def all_records(collection: str) -> list[dict]:
-    db = _db(collection)
-    if not db.exists():
-        return []
-    conn = _conn(db)
-    rows = conn.execute(
-        "SELECT id, data FROM records WHERE deleted=0 ORDER BY created_at"
-    ).fetchall()
-    conn.close()
-    result = []
-    for rid, data in rows:
-        rec = json.loads(data)
-        rec["_id"] = rid
-        result.append(rec)
-    return result
+    out = []
+    for rec in _get_store().list(collection):
+        rec.setdefault("_id", rec.get("id") or rec.get("_soil_id"))
+        out.append(rec)
+    return out
+
+
+def stats() -> dict:
+    return _get_store().stats()
 
 
 def query(collection: str, sql: str) -> list[tuple]:
-    """Run a raw SQL query against a SOIL collection's store.db."""
-    db = _db(collection)
+    """Run a raw SQL query against a SOIL collection's canonical db."""
+    try:
+        db = _db(collection)
+    except ValueError:
+        return []
     if not db.exists():
         return []
     conn = sqlite3.connect(str(db))

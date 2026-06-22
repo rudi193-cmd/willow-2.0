@@ -6,6 +6,78 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2026.06.7] - 2026-06-15
+
+Reliability & observability release: a per-turn clock contract that ends the recurring local↔UTC date confusion, runtime skill-surface sync plus a CI drift guard, a scheduler for the W8 trust instrument, and the embed-backfill fix that removes the single largest source of Kart failures — all since `v2026.06.6`.
+
+### Added
+
+- **W8 census scheduler** — `scripts/w8_census_witness.py` plus `systemd/willow-w8-census.{service,timer}`: a weekly canonical-reconstruction census refreshes the saved report the evaluator reads and posts a Grove `#alerts` message when reconstruction cost exceeds 0.05. `setup.sh` now links `*.timer` units (the loop previously copied only `*.service`/`*.socket`). The trust instrument finally has a heartbeat (#381).
+- **Skill-surface drift guard** — `check_surfaces()` now compares every canonical skill body to `skill_text()` output on all four runtime surfaces; a new `surface-drift` CI job runs it on every PR (#380).
+- **Per-turn clock line** — `prompt_submit` emits a `[CLOCK]` line with the local↔UTC offset and an explicit "one-day gap is correct, not drift" note when the dates straddle midnight; documented in `boot.md`, and the UTC handoff-filename convention is marked intentional in `handoff_write.py` (#378).
+
+### Fixed
+
+- **Stale runtime skill surfaces** — the worktree skill and four others (boot, shutdown, grove-quorum, persistent-memory-stack) regenerated from canonical across `.claude`/`.codex`/`.cursor`/`.agents`; the host-side worktree-teardown (S18) fallback now actually reaches the loaded skills (#379, #380).
+- **Embed-backfill false failures** — `willow_embed_backfill` now exits 0 (clean no-op skip) instead of 1 when the Ollama embedder is unreachable. Run at startup where Ollama is often not yet up, this one job failed 268/274 times and accounted for ~36% of all Kart failures (#382).
+
+## [2026.06.6] - 2026-06-10
+
+Audit-execution release: six of the eight SYSTEM_AUDIT_2026-06-10 action-plan PRs, the boot-order contract hardening, the upstream-tracker convergence fix, and two-way handoff notes since `v2026.06.5`.
+
+### Added
+
+- **System audit landed** — `docs/audits/SYSTEM_AUDIT_2026-06-10.md` at rev 8 (16 findings, autonomy map, capability inventory); finding #16: bwrap sandbox environment divergence (#308).
+- **Repo-fleet hygiene sweep** — `scripts/repo_fleet_sweep.py`: diverged/unpushed repos, untracked deliverables, runtime dirt, branch litter, stash↔atom parity; `--emit-flags` into SOIL (#312).
+- **Memory-stack tightening** — ratified tier requires human attestation (fail-closed); handoff completeness gate (`session_close.py --check-handoff`, wired into /shutdown); norn-pass pump at close + fleet weekly; `scripts/soil_graduate.py` (stable SOIL → intake); `scripts/audit_bitemporal.py` supersede⇔invalid_at verifier (#313).
+- **Two-way handoff notes** — `## Agent Notes for Human` + `## Human Notes to Agent` in HANDOFF (and AUDIT/INVESTIGATION/TASK/DEV_LOG) templates; `handoff_latest` reads both live from the newest file so post-close operator notes surface at next boot; machine block now required (#319).
+- **Kart retention sweep** — `scripts/kart_scripts_sweep.py`: auto-generated bodies >14d deleted (dry-run default), named files report-only (#311).
+
+### Changed
+
+- **boot-order rule hardened** — boot before any response; the agent does not classify a turn as exempt; only explicit user waiver or user emergency (#307).
+- **/handoff retired** — /shutdown absorbs the handoff write as step 2; surface checks and tests track the retirement (#306).
+- **Contract & docs truth** — `docs/CONTRACT.md` regenerated (mcp-first Critical, public-safety, PII clause); handoff path notation standardized to `~/.willow/`; docs INDEX gains an Audits row (#308).
+- **Upstream Contribution Tracker** — single stable `bot/upstream-tracker` branch, PR reuse, no self-triggered runs, concurrency cancel; 44 stale bot branches swept (#318).
+
+### Fixed
+
+- **Skill sync frontmatter** — `skill_text()` recognizes `@markdownai` ahead of YAML; all four surface trees regenerated, double frontmatter and placeholder descriptions gone (#310).
+- **Kart facade defects** — stdout clipped head+tail with explicit marker (was silent front-truncation), `script_body` shell shebangs rejected with a clear error, `willow_run(run_now)` returns the submitted task's own result; `gen_index.py` refuses to regenerate inside the sandbox (#311).
+- **17-Questions parser** — extraction terminates at the next section instead of EOF (#319).
+
+### Security / Privacy
+
+- **Operator data untracked** — machine-private `settings.local.json` removed from the repo; desktop IP/username in `tools/xfer.sh` moved to env vars; kart skill examples parameterized; Desktop/Ashokoa sandbox binds demoted to `bind_try` (#309).
+
+## [2026.06.5] - 2026-06-10
+
+Minor release: fleet service inventory, public contract hardening, open-web search, handoff index fixes, and agent permission templates since `v2026.06.4`.
+
+### Added
+
+- **Fleet service inventory** — centralized `WILLOW_SYSTEMD_SERVICES` / `WILLOW_STOP_SERVICES` in `willow.sh`; `journal-watcher` unit; broader `status-all` visibility (#302).
+- **Wildcard permission templates** — global MCP/native allow patterns for agent install surfaces (#300).
+- **Open web search** — `willow_web_search` MCP tool (DuckDuckGo HTML, no API key) (#294).
+- **Operator alert lane** — `notify-send` + `pg_notify` on human-required queue enqueue.
+- **Ratatosk** — local app suite for phone and desktop (#296).
+- **Nest seed** — portable Nest bootstrap from file dump (#298).
+- **RH test harness** — clean vs dirty KB ingestion comparison sandbox (#297).
+
+### Changed
+
+- **Public Willow contract** — `mcp-first` elevated to Critical; verification-based `finish-to-completion`; new `public-safety` default-deny PII rule (#302).
+- **Kart sandbox** — `/run/media` bind for removable media paths (#302).
+
+### Fixed
+
+- **Handoff index** — `handoff_latest` prefers newer same-day KB atoms by mtime over lexicographic id (#303).
+- **Handoff index** — remove cross-agent fallbacks in `handoff_latest` (#295).
+- **Jeles web search** — module-level `_SEARCH_EXECUTOR`; concurrent source dispatch with wall-clock cap (#292, #293).
+- **Claude global hook** — Fylgja venv path fix (#299).
+- **Kart sandbox** — fail-loud guard in `sign_manifest` for bwrap sandbox.
+- **Gate** — `willow_web_search` added to `PERMISSION_GROUPS` and MCP profiles.
+
 ## [2026.06.4] - 2026-06-09
 
 Minor release: Willow 2.0 surface integration, persona boot overlays, human-required gates, and KB ship-shape maintenance since `v2026.06.3`.

@@ -15,7 +15,7 @@ format: v2
 <!--
 AGENT INSTRUCTIONS
 - Use for: end of every substantive session (default).
-- Save as: ~/github/.willow/handoffs/<agent>/session_handoff-YYYY-MM-DD_<agent>.md
+- Save as: ~/.willow/handoffs/<agent>/session_handoff-YYYY-MM-DD_<agent>.md (~/.willow is a symlink to ~/github/.willow — same place)
 - Repo: willow-config (commit handoff if USER asks; many stay local until promoted).
 - Also run willow/fylgja/skills/handoff.md sequence: handoff_latest → kb_ingest → ledger_write → handoff_rebuild.
 - AGENT = $WILLOW_AGENT_NAME only — not the IDE model name.
@@ -58,9 +58,21 @@ Q17: What is the next single bite?
 
 - 
 
+## Agent Notes for Human
+
+<!-- reminders, to-do's, stated unfinished tasks, patterns surfaced — max 17 lines -->
+
+-
+
+## Human Notes to Agent
+
+<!-- leave empty at close; the operator writes here afterward — surfaced live at next boot via handoff_latest -->
+
+-
+
 ---
 
-## Machine block (optional — for handoff_rebuild / kb_ingest)
+## Machine block for handoff_rebuild / kb_ingest
 
 ```json
 {

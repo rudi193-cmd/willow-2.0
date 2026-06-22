@@ -212,6 +212,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "mem_jeles_register", "mem_jeles_search", "mem_jeles_web_search",
         "mem_jeles_invalidate",
         "source_trail_verify",
+        "willow_web_search",
     }),
     "intake": frozenset({
         "intake_write", "intake_list", "intake_promote", "intake_schedule", "intake_schedule_fleet",
@@ -298,7 +299,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "kb_extract_from_session", "kb_intelligence_run", "kb_backup",
         "fleet_system_status", "fleet_identity_status",
         "willow_remember", "willow_run", "willow_delegate", "willow_work",
-        "willow_message", "willow_app", "willow_external", "willow_code",
+        "willow_message", "willow_app", "willow_external", "willow_web_search", "willow_code",
     }),
     # Write tools added since knowledge_write was first cut.
     "knowledge_write_ext": frozenset({

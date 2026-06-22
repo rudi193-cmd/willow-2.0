@@ -31,6 +31,8 @@ NOVITA_IMG_MODEL = "revAnimated_v122.safetensors"
 NOVITA_IMG_URL   = "https://api.novita.ai/v3/async/txt2img"
 NOVITA_POLL_URL  = "https://api.novita.ai/v3/async/task-result"
 
+OPENROUTER_IMG_MODEL = "black-forest-labs/flux.2-flex"
+
 ASPECT_TO_WH: dict[str, tuple[int, int]] = {
     "1:1": (512, 512), "16:9": (768, 432), "9:16": (432, 768),
     "4:3": (640, 480), "3:4": (480, 640),
@@ -276,5 +278,62 @@ def imagine_novita(prompt: str, output_path: str | None, aspect_ratio: str = "1:
             elif "FAILED" in status or "ERROR" in status:
                 return {"error": f"Novita task failed: {status}"}
         return {"error": "Novita image generation timed out"}
+    except Exception as e:
+        return {"error": f"{type(e).__name__}: {e}"}
+
+
+def imagine_openrouter(prompt: str, output_path: str | None, aspect_ratio: str = "1:1") -> dict:
+    """Generate an image via OpenRouter chat-completions with modalities=['image'].
+
+    OpenRouter does not expose a /v1/images/generations endpoint; instead image
+    generation models are called through /api/v1/chat/completions with the
+    modalities parameter.  The response content contains base64 data-URL items.
+    """
+    import base64
+    import datetime
+    api_key = load_credential("OPENROUTER_API_KEY")
+    if not api_key:
+        return {"error": "OPENROUTER_API_KEY not found in credentials"}
+    try:
+        data = json.dumps({
+            "model": OPENROUTER_IMG_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "modalities": ["image"],
+        }).encode()
+        req = urllib.request.Request(
+            OPENROUTER_URL, data=data,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+                "HTTP-Referer": "https://github.com/rudi193-cmd/willow-2.0",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=60) as r:
+            result = json.loads(r.read())
+        msg = result.get("choices", [{}])[0].get("message", {})
+        # OpenRouter BFL models return images in message.images (not message.content)
+        img_data_url = None
+        for candidate in [msg.get("images") or [], msg.get("content") or []]:
+            for item in candidate:
+                if isinstance(item, dict) and item.get("type") == "image_url":
+                    img_data_url = item["image_url"]["url"]
+                    break
+            if img_data_url:
+                break
+        if not img_data_url:
+            return {"error": f"No image in response: {json.dumps(result)[:400]}"}
+        header, b64 = img_data_url.split(",", 1)
+        ext = "png" if "png" in header else "jpg"
+        img_bytes = base64.b64decode(b64)
+        if output_path:
+            save_path = pathlib.Path(output_path).expanduser()
+        else:
+            out_dir = pathlib.Path.home() / "Pictures" / "willow-gen"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            save_path = out_dir / f"willow_gen_{ts}.{ext}"
+        save_path.write_bytes(img_bytes)
+        return {"path": str(save_path), "prompt": prompt, "aspect_ratio": aspect_ratio,
+                "model": OPENROUTER_IMG_MODEL}
     except Exception as e:
         return {"error": f"{type(e).__name__}: {e}"}

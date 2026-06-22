@@ -1,0 +1,240 @@
+{
+  "version": 1,
+  "description": "Measurable alignment checks derived from alignment_calculus.md. Structure-only inputs; no private corpus text.",
+  "verdict_bands": {
+    "aligned": 0.75,
+    "partial": 0.45
+  },
+  "domains": {
+    "rendereason": {
+      "label": "Rendereason discernment",
+      "invariants": ["R1", "R2", "R3", "R4", "R5"]
+    },
+    "angrybob": {
+      "label": "angrybob admissibility/calculus",
+      "invariants": ["B1", "B2", "B3", "B4", "B5"]
+    },
+    "willow": {
+      "label": "Willow reconstruction machinery",
+      "invariants": ["W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"]
+    },
+    "cross": {
+      "label": "Cross-domain bridge",
+      "invariants": ["X1", "X2", "X3"]
+    }
+  },
+  "metrics": [
+    {
+      "id": "render_r5_indexed_canon",
+      "domain": "rendereason",
+      "invariant": "R5",
+      "label": "rh-dirty indexed with harness",
+      "weight": 1.0,
+      "kind": "boolean_and",
+      "signals": ["rh_dirty_atom_count_gt_zero", "harness_ready"]
+    },
+    {
+      "id": "render_r2_apo_vocab",
+      "domain": "rendereason",
+      "invariant": "R2",
+      "label": "APO vocabulary in KB hits",
+      "weight": 1.0,
+      "kind": "kb_keyword",
+      "keywords": ["apo", "infogeometric", "axioms pattern ontology"]
+    },
+    {
+      "id": "render_r4_archive_structure",
+      "domain": "rendereason",
+      "invariant": "R4",
+      "label": "Rendereason archives present",
+      "weight": 0.8,
+      "kind": "archive_present",
+      "min_archives": 1
+    },
+    {
+      "id": "render_r1_probe_overlap",
+      "domain": "rendereason",
+      "invariant": "R1",
+      "label": "Lightweight probe title diversity",
+      "weight": 0.7,
+      "kind": "probe_diversity",
+      "queries": [
+        "current canonical proof strategy information geometric APO",
+        "Axioms Pattern Ontology custom terminology infogeometric"
+      ],
+      "min_unique_titles": 2
+    },
+    {
+      "id": "render_r3_noise_awareness",
+      "domain": "rendereason",
+      "invariant": "R3",
+      "label": "Deprecated suppression on rh-dirty noise probe",
+      "weight": 0.8,
+      "kind": "rh_noise_probe",
+      "query": "deprecated failed iteration non-canon discard"
+    },
+    {
+      "id": "render_r1r3_clean_dirty_convergence",
+      "domain": "rendereason",
+      "invariant": "R1",
+      "label": "True clean/dirty convergence (rh_harness compare)",
+      "weight": 1.0,
+      "kind": "rh_compare_verdict",
+      "report": "rh-compare.json"
+    },
+    {
+      "id": "bob_b1_source_present",
+      "domain": "angrybob",
+      "invariant": "B1",
+      "label": "angrybob archive or DB present",
+      "weight": 1.0,
+      "kind": "source_present"
+    },
+    {
+      "id": "bob_b2_admissibility_schema",
+      "domain": "angrybob",
+      "invariant": "B2",
+      "label": "Admissibility schema signal",
+      "weight": 1.0,
+      "kind": "table_pattern",
+      "patterns": ["admiss", "boundary", "rule", "constraint"]
+    },
+    {
+      "id": "bob_b3_calculus_schema",
+      "domain": "angrybob",
+      "invariant": "B3",
+      "label": "Calculus schema signal",
+      "weight": 1.0,
+      "kind": "table_pattern",
+      "patterns": ["calculus", "transform", "move", "operator"]
+    },
+    {
+      "id": "bob_b4_nonempty_rules",
+      "domain": "angrybob",
+      "invariant": "B4",
+      "label": "Non-empty rule tables",
+      "weight": 0.8,
+      "kind": "table_row_count",
+      "min_rows": 1
+    },
+    {
+      "id": "bob_b5_kb_cross_index",
+      "domain": "angrybob",
+      "invariant": "B5",
+      "label": "KB cross-index for angrybob themes",
+      "weight": 0.6,
+      "kind": "kb_keyword",
+      "ingredient": "angrybob",
+      "structural_fallback": true,
+      "keywords": ["angrybob", "admissibility", "calculus", "llm physics", "unified theory"]
+    },
+    {
+      "id": "willow_w1_kb_substrate",
+      "domain": "willow",
+      "invariant": "W1",
+      "label": "Live KB substrate",
+      "weight": 1.0,
+      "kind": "layer_signal",
+      "layer": "kb",
+      "field": "live_atoms",
+      "min_value": 1
+    },
+    {
+      "id": "willow_w2_jeles_lane",
+      "domain": "willow",
+      "invariant": "W2",
+      "label": "Jeles substrate present (live atom count)",
+      "weight": 0.9,
+      "kind": "layer_signal",
+      "layer": "jeles",
+      "field": "live_atoms",
+      "min_value": 1
+    },
+    {
+      "id": "willow_w3_ledger",
+      "domain": "willow",
+      "invariant": "W3",
+      "label": "FRANK ledger present",
+      "weight": 0.8,
+      "kind": "layer_signal",
+      "layer": "ledger",
+      "field": "entries",
+      "min_value": 1
+    },
+    {
+      "id": "willow_w4_handoff",
+      "domain": "willow",
+      "invariant": "W4",
+      "label": "Handoff continuity",
+      "weight": 0.9,
+      "kind": "layer_status",
+      "layer": "handoff",
+      "required_status": "present"
+    },
+    {
+      "id": "willow_w5_synthesis_anchors",
+      "domain": "willow",
+      "invariant": "W5",
+      "label": "Existing synthesis anchors",
+      "weight": 1.0,
+      "kind": "layer_signal",
+      "layer": "existing_synthesis",
+      "field": "anchor_count",
+      "min_value": 2
+    },
+    {
+      "id": "willow_w6_governance",
+      "domain": "willow",
+      "invariant": "W6",
+      "label": "Oakenscroll governance frame",
+      "weight": 0.7,
+      "kind": "governance_verdict",
+      "required_verdict": "frame_present"
+    },
+    {
+      "id": "willow_w7_layer_coverage",
+      "domain": "willow",
+      "invariant": "W7",
+      "label": "Willow layer coverage",
+      "weight": 1.0,
+      "kind": "layer_coverage",
+      "min_ratio": 0.7
+    },
+    {
+      "id": "willow_w8_decoder_mismatch",
+      "domain": "willow",
+      "invariant": "W8",
+      "label": "Canonical reconstruction coverage (ledger ∪ source_id ∪ provenance edges)",
+      "weight": 1.0,
+      "kind": "decoder_mismatch",
+      "report": "recon-canonical.json",
+      "max_cost": 0.05
+    },
+    {
+      "id": "cross_x1_theory_bridge",
+      "domain": "cross",
+      "invariant": "X1",
+      "label": "Stone Soup theory concepts extracted",
+      "weight": 0.8,
+      "kind": "concept_count",
+      "ingredient": "stone_soup_papers",
+      "min_concepts": 2
+    },
+    {
+      "id": "cross_x2_ingredient_provenance",
+      "domain": "cross",
+      "invariant": "X2",
+      "label": "All ingredients have KB or local structure",
+      "weight": 1.0,
+      "kind": "provenance_complete"
+    },
+    {
+      "id": "cross_x3_no_path_leak",
+      "domain": "cross",
+      "invariant": "X3",
+      "label": "Reports avoid absolute private paths",
+      "weight": 1.0,
+      "kind": "redaction_check"
+    }
+  ]
+}

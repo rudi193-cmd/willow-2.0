@@ -50,6 +50,15 @@ git worktree remove worktrees/<slug>   # only if worktree directory was used
 git branch -d feat/<slug>
 ```
 
+### Husk removal runs on the host (S18 exception)
+
+A worktree directory is bind-mounted into **every** Kart sandbox, so `git worktree remove` / `rmdir` / `rm -rf` against it returns **EBUSY** inside bwrap — the cleanup must run host-side. This is the **one** sanctioned exception to the MCP-first / no-agent-Bash rule: agent `Bash` is permitted for a *single, unchained* `rm`/`rmdir`/`git worktree remove|prune` whose targets all live under a `/worktrees/` directory. Anything with chaining or substitution (`;`, `&&`, `|`, `` ` ``, `$(`) falls through to the normal guards. Enforced in `willow/fylgja/events/pre_tool.py` (`_is_worktree_cleanup`).
+
+```bash
+rm -rf ~/github/<repo>/worktrees/<slug>   # full dir → rm -rf (rmdir only removes an empty one)
+git -C ~/github/<repo> worktree prune
+```
+
 ```
 fork_merge(fork_id=<fork_id>, outcome_note="merged to master", app_id="hanuman")
 ```

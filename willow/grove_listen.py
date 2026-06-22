@@ -13,6 +13,7 @@ Auto when primary agent is fleet (not Auto).
 """
 import os
 from core.agent_identity import require_agent_name
+from core.grove_gate import assert_grove as _assert_grove
 import re
 import select
 import sys
@@ -92,12 +93,9 @@ class _PidLock:
         except BlockingIOError:
             print("[grove-listen] already running — exiting", flush=True)
             raise SystemExit(0)
-        except Exception:
-            # If locking fails unexpectedly, proceed — better to have monitoring than silence.
-            try:
-                self.pid_path.write_text(str(os.getpid()) + "\n")
-            except Exception:
-                pass
+        except Exception as exc:
+            print(f"[grove-listen] lock failed — exiting: {exc}", file=sys.stderr, flush=True)
+            raise SystemExit(1)
         return self
 
     def __exit__(self, exc_type, exc, tb):
@@ -160,6 +158,7 @@ def is_direct_mention(content: str, agent: str) -> bool:
 
 
 def main():
+    _assert_grove("grove_listen")
     with _PidLock(_LOCK_PATH, _PID_PATH):
         _run()
 
@@ -256,7 +255,12 @@ def _run():
         except Exception as e:
             print(f"[grove-listen-error] {e}", flush=True)
             try:
+                stale = conn
                 conn = connect()
+                try:
+                    stale.close()
+                except Exception:
+                    pass
                 cur = conn.cursor()
                 ch_map = load_channels(cur)
                 # Re-seed cursors so we don't replay or miss messages after reconnect

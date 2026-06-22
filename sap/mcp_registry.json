@@ -20,6 +20,7 @@
     "grove":      "Grove — human+agent message bus",
     "mai":        "MarkdownAI — document rendering and phase execution",
     "code_graph": "Code Graph — symbol indexing, impact analysis, walk",
+    "cbm":        "Codebase Memory — bounded codebase-memory-mcp facade (F-001..F-008)",
     "app":        "Apps — SAFE app lifecycle (install, uninstall, status)",
     "policy":     "Policy — SAFE policy put/list/delete",
     "voice":      "Voice — key term extraction for TTS",
@@ -50,6 +51,7 @@
     "willow_message":      {"group": "willow", "tier": "core", "description": "Facade: read, search, or send Grove messages."},
     "willow_app":          {"group": "willow", "tier": "core", "description": "Facade: inspect SAFE app registration and manifest state."},
     "willow_external":     {"group": "willow", "tier": "core", "description": "Facade: ask, search, or verify cited external sources through Jeles/source-trail."},
+    "willow_web_search":   {"group": "willow", "tier": "core", "description": "Open web search via DuckDuckGo HTML. Use for current events, tech news, and general queries the institutional Jeles sources cannot cover."},
     "willow_code":         {"group": "willow", "tier": "core", "description": "Facade: search or suggest code context through the code graph."},
 
     "kb_search":          {"group": "kb",     "description": "Search KB atoms by title/content. Use semantic=true for embedding-based retrieval (nomic-embed). Depth limit 3 before asking user."},
@@ -174,6 +176,13 @@
     "code_graph_explain": {"group": "code_graph", "description": "Explain a symbol in context of the code graph."},
     "code_graph_impact":  {"group": "code_graph", "description": "Analyze impact of changing a symbol — what else would break?"},
     "code_graph_suggest": {"group": "code_graph", "description": "Suggest related symbols based on code graph proximity."},
+
+    "cbm_status":         {"group": "cbm", "description": "Resolve indexed CBM project + F-001..F-008 guardrail reference."},
+    "cbm_search":         {"group": "cbm", "description": "Bounded codebase-memory search_graph (LIMIT enforced, tests filtered)."},
+    "cbm_trace":          {"group": "cbm", "description": "Bounded trace_path with capped caller/callee lists."},
+    "cbm_query":          {"group": "cbm", "description": "Bounded query_graph — auto-appends LIMIT when missing."},
+    "cbm_verify_callers": {"group": "cbm", "description": "Graph inbound callers + ripgrep cross-check (F-004/F-007)."},
+    "cbm_reconcile":      {"group": "cbm", "description": "CBM search + native code_graph explain side-by-side."},
 
     "app_install":        {"group": "app",    "description": "Install a SAFE app from monorepo or standalone repo URL. Registers manifest and wires .mcp.json."},
     "app_uninstall":      {"group": "app",    "description": "Uninstall a SAFE app and remove its manifest."},

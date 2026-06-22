@@ -50,15 +50,26 @@ def write_text(path: Path, text: str) -> None:
 
 def skill_text(src: Path, skill_name: str) -> str:
     text = src.read_text(encoding="utf-8")
-    if text.startswith("---\n") and "\nname:" in text.split("---", 2)[1]:
-        return text
+    mai_line = ""
+    body = text
+    if body.startswith("@markdownai"):
+        head, _, rest = body.partition("\n")
+        mai_line = head
+        body = rest.lstrip("\n")
+    if body.startswith("---\n") and "\nname:" in body.split("---", 2)[1]:
+        if not mai_line:
+            return text
+        # Canonical order for copies: YAML frontmatter first, @markdownai as body line 1.
+        _, yaml_block, rest = body.split("---\n", 2)
+        return f"---\n{yaml_block}---\n\n{mai_line}\n\n{rest.lstrip()}"
     title = skill_name.replace("-", " ").title()
+    prefix = f"{mai_line}\n\n" if mai_line else ""
     return (
         "---\n"
         f"name: {skill_name}\n"
         f"description: Willow Fylgja skill: {title}.\n"
         "---\n\n"
-        f"{text}"
+        f"{prefix}{body}"
     )
 
 
@@ -100,7 +111,7 @@ def sync_commands(dst_root: Path) -> None:
     if dst_root.exists() or dst_root.is_symlink():
         rm_path(dst_root)
     dst_root.mkdir(parents=True, exist_ok=True)
-    for src_root in (FYLGJA / "commands", SKILLS / "commands"):
+    for src_root in (SKILLS / "commands",):
         if not src_root.is_dir():
             continue
         for src in sorted(src_root.glob("*.md")):
@@ -123,7 +134,12 @@ def cloud_mcp_json() -> dict:
                     "WILLOW_CONFIG_MODE": "public-fallback",
                     "WILLOW_MCP_PROFILE": "standard",
                 },
-            }
+            },
+            "codebase-memory-mcp": {
+                "type": "stdio",
+                "command": "codebase-memory-mcp",
+                "args": [],
+            },
         }
     }
 
@@ -269,11 +285,26 @@ def check_surfaces() -> list[str]:
             if count < 30:
                 errors.append(f"too few skills under {surface}/skills ({count})")
 
-    for name in ("boot", "startup", "handoff", "power", "willow-remote"):
+    for name in ("boot", "startup", "shutdown", "power", "willow-remote"):
         for surface in REMOTE_SURFACES:
             skill = ROOT / surface / "skills" / name / "SKILL.md"
             if not skill.is_file():
                 errors.append(f"missing skill: {surface}/skills/{name}/SKILL.md")
+
+    # Content drift: every canonical skill body must match skill_text() output on
+    # every surface. This catches the failure mode where the file exists and the
+    # count is fine, but the committed body lags a canonical edit that was never
+    # re-synced (observed: boot/shutdown surfaces stale by an entire section).
+    for src in sorted(SKILLS.glob("*.md")):
+        name = src.stem
+        expected = skill_text(src, name)
+        for surface in REMOTE_SURFACES:
+            dst = ROOT / surface / "skills" / name / "SKILL.md"
+            if dst.is_file() and dst.read_text(encoding="utf-8") != expected:
+                errors.append(
+                    f"stale content: {surface}/skills/{name}/SKILL.md "
+                    f"— run: python3 scripts/sync_remote_cursor_surface.py"
+                )
 
     return errors
 

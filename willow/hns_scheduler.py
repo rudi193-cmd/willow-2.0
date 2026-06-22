@@ -1,7 +1,7 @@
 # willow/hns_scheduler.py — HNS Layer 2: node selection for inference routing. ΔΣ=42
 from __future__ import annotations
 
-from core.willow_store import WillowStore
+from core.store_port import StorePort
 from willow.grove_coordination import node_list
 
 # Approximate VRAM (GB) per model family. Used when a node has no explicit quota.
@@ -42,7 +42,7 @@ def _estimate_vram_gb(model_name: str) -> float:
     return _VRAM_DEFAULT
 
 
-def select_node(store: WillowStore, model_name: str) -> dict | None:
+def select_node(store: StorePort, model_name: str) -> dict | None:
     """Return the best opted-in node for model_name, or None if none qualify.
 
     Selection criteria (all must pass):

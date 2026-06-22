@@ -17,6 +17,7 @@ from willow.fylgja.project_env import (
     list_agent_identities,
     read_active_agent,
     repo_root,
+    sync_fleet_env_agent,
     write_active_agent,
 )
 
@@ -107,6 +108,8 @@ def cmd_active(root: Path, agent: str, *, install: bool = False) -> int:
         print(f"Unknown agent {agent!r} — no agents/{agent}/config/identity.json")
         return 1
     write_active_agent(root, agent)
+    if sync_fleet_env_agent(agent, root):
+        print(f"Fleet env WILLOW_AGENT_NAME → {agent}")
     print(f"Active agent → {agent}")
     if install:
         install_project(agent_name=agent, ides=["all"], package_root=root, dry_run=False)

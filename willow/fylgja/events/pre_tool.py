@@ -30,6 +30,10 @@ from willow.fylgja.safety.security_scan import (
 AGENT = require_agent_name()
 MAX_DEPTH = int(os.environ.get("WILLOW_AGENT_MAX_DEPTH", "3"))
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
+_BLOCK_FLAG_THRESHOLD = int(os.environ.get("WILLOW_BLOCK_FLAG_THRESHOLD", "10"))
+_BASH_SESSION_THRESHOLD = int(os.environ.get("WILLOW_BASH_SESSION_THRESHOLD", "5"))
+_WARN_ESCALATE_STRIKES = int(os.environ.get("WILLOW_WARN_ESCALATE_STRIKES", "2"))
+_SESSION_BAN_STRIKES = int(os.environ.get("WILLOW_SESSION_BAN_STRIKES", "3"))
 
 _REPO_ROOT = str(Path(__file__).parent.parent.parent.parent)
 
@@ -71,25 +75,78 @@ def _markdownai_write_block(tool_name: str, tool_input: dict) -> str | None:
     return None
 
 
+def _rule_key(tool_name: str, reason: str) -> str:
+    """Stable per-rule id. Block reasons are fixed redirect strings, so the
+    tool + reason-prefix identifies the rule across repeated hits."""
+    import hashlib
+    digest = hashlib.sha1(f"{tool_name}|{reason[:80]}".encode("utf-8")).hexdigest()[:8]
+    return f"block-{digest}"
+
+
 def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
-    """Write a correction atom to corpus/corrections when a tool is blocked."""
+    """Phase 4(a/b): hook-enforcement blocks are *telemetry*, not human feedback.
+
+    (a) Increment a per-rule counter in corpus/block_telemetry (one row per rule:
+        hit_count, first/last_seen, runtimes) instead of writing a fresh correction
+        atom every time.
+    (b) When hit_count crosses a multiple of WILLOW_BLOCK_FLAG_THRESHOLD, open a
+        SOIL flag in willow/flags so operators see repeated enforcement — agents
+        keep attempting a blocked pattern despite redirects.
+    """
     try:
         if _REPO_ROOT not in sys.path:
             sys.path.insert(0, _REPO_ROOT)
-        from core.willow_store import WillowStore
-        import uuid as _uuid
-        _store = WillowStore()
-        record_id = f"corr-{_uuid.uuid4().hex[:8]}"
-        _store.put("corpus/corrections", {
-            "id": record_id,
-            "type": "correction",
-            "source": "pre_tool_block",
-            "content": f"Blocked {tool_name}: {reason[:200]}",
-            "session_id": session_id,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "sandbox": True,
-            "b17": "CRPS0",
-        }, record_id=record_id)
+        from core.store_port import get_store_port
+        _store = get_store_port()
+        key = _rule_key(tool_name, reason)
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            runtime = AGENT
+        except Exception:
+            runtime = "unknown"
+        existing = _store.get("corpus/block_telemetry", key) or {}
+        runtimes = set(existing.get("runtimes") or [])
+        runtimes.add(runtime)
+        new_count = int(existing.get("hit_count") or 0) + 1
+        _store.put("corpus/block_telemetry", {
+            "id": key,
+            "type": "block_telemetry",
+            "tool": tool_name,
+            "sample_reason": reason[:200],
+            "hit_count": new_count,
+            "first_seen": existing.get("first_seen") or now,
+            "last_seen": now,
+            "last_session_id": session_id,
+            "runtimes": sorted(runtimes),
+            "b17": "BTEL0",
+        }, record_id=key)
+        # Phase 4(b): repetition trigger — open a flag at each threshold crossing.
+        if new_count % _BLOCK_FLAG_THRESHOLD == 0:
+            flag_id = f"flag-{key}"
+            existing_flag = _store.get("willow/flags", flag_id) or {}
+            if existing_flag.get("flag_state") != "open":
+                _store.put("willow/flags", {
+                    "id": flag_id,
+                    "type": "flag",
+                    "flag_state": "open",
+                    "title": (
+                        f"Repeated enforcement: '{tool_name}' blocked {new_count}× fleet-wide"
+                    ),
+                    "source": "block_telemetry",
+                    "rule_key": key,
+                    "hit_count": new_count,
+                    "sample_reason": reason[:200],
+                    "fix_path": (
+                        "Agents still attempting this pattern — check boot tool_denial "
+                        "injection and pre_tool warn escalation; review BASH_BLOCKS / "
+                        "_MCP_BASH_TO_MCP redirects"
+                    ),
+                    "opened_at": now,
+                    "b17": "BFLAG0",
+                }, record_id=flag_id)
+        # Signal taxonomy: also write a tool_denial preference signal.
+        from willow.fylgja.tool_denials import upsert_tool_denial
+        upsert_tool_denial(_store, tool_name=tool_name, reason=reason, session_id=session_id)
     except Exception:
         pass
 
@@ -138,6 +195,9 @@ BASH_BLOCKS = [
     (r"\bfind\s", "warn",
      "find detected. Prefer MCP: code_graph_search or Glob for file discovery. "
      "→ Glob({pattern: '<dir>/**/*.py'}) · code_graph_search({query: '<symbol>'})"),
+    (r"^\s*bash\s+", "warn",
+     "bash <script> detected. Prefer Kart for script execution. "
+     "→ agent_task_submit(app_id, task='bash scripts/foo.sh') + kart_task_run(app_id)"),
 ]
 
 # Loki runs disk audits. These read-only patterns bypass the builder guards above.
@@ -159,6 +219,33 @@ _SQLITE_USER_PATHS = [
 
 def _sqlite_access_allowed(command: str) -> bool:
     return any(re.search(p, command) for p in _SQLITE_USER_PATHS)
+
+
+# Worktree-cleanup exception (S18). Git worktree husks are bind-mounted into every
+# Kart sandbox, so their removal returns EBUSY inside bwrap — it MUST run host-side
+# via agent Bash. This is the one shell operation the MCP/Kart lane structurally
+# cannot perform. The exception is deliberately narrow: a SINGLE bare rm/rmdir/
+# git-worktree command whose every target lives under a `/worktrees/` directory, with
+# NO command chaining or substitution (`;`, `&&`, `||`, `|`, backtick, `$(`). That
+# strictness is what lets it also bypass the destructive security scan safely — a
+# chained or substituted command never matches, so nothing can be smuggled through.
+_WORKTREE_CLEANUP_RE = re.compile(
+    r"^(?:"
+    r"rm\s+-[a-zA-Z]*r[a-zA-Z]*\s+(?:[^\s]*/worktrees/[^\s]+\s*)+"
+    r"|rmdir\s+(?:-[a-zA-Z]+\s+)?(?:[^\s]*/worktrees/[^\s]+\s*)+"
+    r"|git\s+(?:-C\s+[^\s]+\s+)?worktree\s+"
+    r"(?:remove(?:\s+--force|\s+-f)?\s+[^\s]*/worktrees/[^\s]+|prune)\s*"
+    r")$"
+)
+_WORKTREE_CLEANUP_FORBIDDEN = (";", "&&", "||", "|", "`", "$(", "\n", ">", "<")
+
+
+def _is_worktree_cleanup(command: str) -> bool:
+    """True only for a single, unchained rm/rmdir/git-worktree on a /worktrees/ path."""
+    c = command.strip()
+    if any(tok in c for tok in _WORKTREE_CLEANUP_FORBIDDEN):
+        return False
+    return bool(_WORKTREE_CLEANUP_RE.match(c))
 
 F5_PROSE_TOOLS = {
     "mcp__willow__soil_put": "record",
@@ -191,6 +278,9 @@ def check_channel_enforce(tool_name: str, tool_input: dict) -> str | None:
 
 def check_bash_block(command: str) -> tuple[str, str] | None:
     """Returns (decision, reason) or None. decision is 'block' or 'warn'."""
+    # S18 exception: worktree husk cleanup is host-only (bind-mount EBUSY in Kart).
+    if _is_worktree_cleanup(command):
+        return None
     if AGENT in _AUDIT_AGENTS:
         for pattern in _AUDIT_ALLOW_PATTERNS:
             if re.search(pattern, command, re.MULTILINE):
@@ -260,6 +350,85 @@ def _write_depth(n: int) -> None:
             DEPTH_FILE.write_text(str(n))
     except Exception:
         pass
+
+
+def _bash_counter_path(session_id: str) -> Path:
+    safe = (session_id or "unknown")[:16].replace("/", "_")
+    return Path(f"/tmp/willow-bash-count-{safe}.txt")
+
+
+def _session_rule_strikes_path(session_id: str) -> Path:
+    safe = (session_id or "unknown")[:16].replace("/", "_")
+    return Path(f"/tmp/willow-rule-strikes-{safe}.json")
+
+
+def _read_session_rule_strikes(session_id: str) -> dict[str, int]:
+    p = _session_rule_strikes_path(session_id)
+    try:
+        if p.exists():
+            data = json.loads(p.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return {str(k): int(v) for k, v in data.items()}
+    except Exception:
+        pass
+    return {}
+
+
+def _increment_session_rule_strike(session_id: str, rule_key: str) -> int:
+    """Per-session strikes for a rule_key (warn/block attempts). Returns new count."""
+    strikes = _read_session_rule_strikes(session_id)
+    count = int(strikes.get(rule_key, 0)) + 1
+    strikes[rule_key] = count
+    try:
+        _session_rule_strikes_path(session_id).write_text(
+            json.dumps(strikes), encoding="utf-8"
+        )
+    except Exception:
+        pass
+    return count
+
+
+def _apply_bash_escalation(
+    session_id: str,
+    decision: str,
+    reason: str,
+) -> tuple[str, str]:
+    """Escalate warn→block on repeat; session-ban after N strikes on same rule."""
+    rule_key = _rule_key("Bash", reason)
+    current = _read_session_rule_strikes(session_id).get(rule_key, 0)
+    ban_msg = (
+        f"[SESSION-BAN] This Bash pattern is blocked for the rest of this session "
+        f"(rule {rule_key}, {_SESSION_BAN_STRIKES}+ attempts). "
+        f"Use willow_run / Kart or the MCP redirect.\n\n"
+    )
+    if current >= _SESSION_BAN_STRIKES:
+        return "block", ban_msg + reason
+    strike = _increment_session_rule_strike(session_id, rule_key)
+    if strike >= _SESSION_BAN_STRIKES:
+        return "block", ban_msg + reason
+    if decision == "warn" and strike >= _WARN_ESCALATE_STRIKES:
+        return (
+            "block",
+            (
+                f"[ESCALATED] Repeated Bash attempt ({strike}× this session) — "
+                f"now blocked. Use willow_run / Kart or MCP.\n\n{reason}"
+            ),
+        )
+    if decision == "block" and strike >= 2:
+        return "block", f"[REPEAT {strike}×] {reason}"
+    return decision, reason
+
+
+def _increment_bash_count(session_id: str) -> int:
+    """Increment per-session direct Bash call counter. Returns new count."""
+    p = _bash_counter_path(session_id)
+    try:
+        count = int(p.read_text().strip()) if p.exists() else 0
+        count += 1
+        p.write_text(str(count))
+        return count
+    except Exception:
+        return 0
 
 
 _F5_DOC_FIELDS = {"content", "body", "raw_content"}
@@ -408,9 +577,13 @@ def main():
     if tool_name == "Bash":
         command = tool_input.get("command", "")
         # Willow workflow guard first
-        result = check_bash_block(command) if command else None
-        if result:
-            decision, reason = result
+        block_result = check_bash_block(command) if command else None
+        escalated: tuple[str, str] | None = None
+        if block_result:
+            escalated = _apply_bash_escalation(
+                session_id, block_result[0], block_result[1]
+            )
+            decision, reason = escalated
             if decision == "block":
                 if _LEDGER_AVAILABLE:
                     try:
@@ -420,12 +593,34 @@ def main():
                 _corpus_log_block("Bash", reason, session_id)
                 print(json.dumps({"decision": "block", "reason": reason}))
                 sys.exit(0)
-            else:
-                # warn — let the command through but surface the redirect
-                print(json.dumps({"decision": "warn", "reason": reason}))
-        # Security scan — exfiltration, credential theft, destructive, obfuscation
-        # Skip for user-owned SQLite databases (DROP TABLE etc. on personal data is fine).
-        if command and not (re.search(r"\bsqlite3\b", command) and _sqlite_access_allowed(command)):
+
+        # Increment per-session counter for all non-blocked Bash calls.
+        bash_count = _increment_bash_count(session_id) if command else 0
+        count_warn: str | None = None
+        if _BASH_SESSION_THRESHOLD > 0 and bash_count % _BASH_SESSION_THRESHOLD == 0:
+            count_warn = (
+                f"[BASH-COUNT] {bash_count} direct Bash calls this session. "
+                "Prefer Kart for shell work: "
+                "agent_task_submit(app_id, task=...) → kart_task_run(app_id)."
+            )
+
+        # Emit a single warn combining tool-redirect and count milestone if both apply.
+        if escalated:
+            _, reason = escalated
+            full_reason = f"{reason}\n\n{count_warn}" if count_warn else reason
+            print(json.dumps({"decision": "warn", "reason": full_reason}))
+        elif count_warn:
+            print(json.dumps({"decision": "warn", "reason": count_warn}))
+
+        # Security scan — exfiltration, credential theft, destructive, obfuscation.
+        # Skip for user-owned SQLite databases (DROP TABLE etc. on personal data is fine)
+        # and for worktree-cleanup (a /worktrees/ path matches the destructive-path
+        # rule; the strict single-command check above means nothing else can ride along).
+        _scan_skip = (
+            (re.search(r"\bsqlite3\b", command) and _sqlite_access_allowed(command))
+            or _is_worktree_cleanup(command)
+        )
+        if command and not _scan_skip:
             issues = _scan_bash(command)
             bad = _scan_worst(issues)
             if bad and bad.severity >= SEV_HIGH:
@@ -436,6 +631,7 @@ def main():
                         f"(category: {bad.category}, severity: {bad.severity})"
                     ),
                 }))
+                sys.exit(0)
         sys.exit(0)
 
     # Write/Edit tools — MarkdownAI routing, security path check, F5 canon guard

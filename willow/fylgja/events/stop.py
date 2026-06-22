@@ -35,6 +35,25 @@ _AGENT = require_agent_name()
 BOOT_DONE = Path(f"/tmp/willow-boot-done-{_AGENT}.flag")
 
 
+def _log_hook_error(where: str, detail: dict) -> None:
+    """Append a hook error to logs/hook_errors.jsonl so a silently-failing
+    background step (e.g. a SOIL write that returns an error dict) leaves a
+    durable trace instead of vanishing under except: pass."""
+    try:
+        from willow.fylgja.willow_home import willow_home
+
+        _log_dir = willow_home() / "logs"
+        _log_dir.mkdir(parents=True, exist_ok=True)
+        with open(_log_dir / "hook_errors.jsonl", "a") as _f:
+            _f.write(json.dumps({
+                "where": where,
+                "ts": datetime.now(timezone.utc).isoformat(),
+                **detail,
+            }) + "\n")
+    except Exception:
+        pass
+
+
 def read_turns_since(cursor: str, turns_file: Path) -> list[str]:
     """Return lines from turns_file whose timestamp is after cursor."""
     if not turns_file.exists():
@@ -58,7 +77,7 @@ def _compute_affect_with_traces(session_id: str) -> tuple[str, list]:
     try:
         traces = call("store_search", {
             "app_id": _AGENT,
-            "collection": f"{_AGENT}/turns/store",
+            "collection": f"{_AGENT}/turns",
             "query": "",
             "limit": 50,
         }, timeout=5) or []
@@ -82,7 +101,7 @@ def _compute_affect(session_id: str) -> str:
 
 
 def _write_failure_atom(session_id: str, traces: list) -> None:
-    """Write failure atom to hanuman/atoms/store. Only called for friction sessions."""
+    """Write failure atom to hanuman/atoms. Only called for friction sessions."""
     if call is None:
         return
     pairs = Counter((t.get("tool", ""), t.get("target", "")) for t in traces)
@@ -92,7 +111,7 @@ def _write_failure_atom(session_id: str, traces: list) -> None:
     try:
         call("store_put", {
             "app_id": _AGENT,
-            "collection": f"{_AGENT}/atoms/store",
+            "collection": f"{_AGENT}/atoms",
             "record": {
                 "id": f"failure-{session_id[:8]}",
                 "type": "failure",
@@ -135,7 +154,7 @@ def _write_reflection_atom(session_id: str, affect: str, traces: list) -> None:
             try:
                 call("store_put", {
                     "app_id": _AGENT,
-                    "collection": f"{_AGENT}/atoms/store",
+                    "collection": f"{_AGENT}/atoms",
                     "record": {
                         "id": f"reflection-{session_id[:8]}",
                         "type": "reflection",
@@ -160,7 +179,7 @@ def _write_reflection_atom(session_id: str, affect: str, traces: list) -> None:
     try:
         call("store_put", {
             "app_id": _AGENT,
-            "collection": f"{_AGENT}/atoms/store",
+            "collection": f"{_AGENT}/atoms",
             "record": {
                 "id": f"reflection-pending-{session_id[:8]}",
                 "type": "reflection_pending",
@@ -184,7 +203,7 @@ def mark_session_clean(turn_count: int = 0) -> None:
 
 def _write_session_composite(session_id: str) -> None:
     """Write session composite atom. Fast — no LLM, pure store_put.
-    next_bite is populated later by the /handoff skill via store_update.
+    next_bite is populated later by the /shutdown skill (handoff step) via store_update.
     """
     if call is None:
         return
@@ -202,7 +221,7 @@ def _write_session_composite(session_id: str) -> None:
         }
         call("store_put", {
             "app_id": _AGENT,
-            "collection": f"{_AGENT}/sessions/store",
+            "collection": f"{_AGENT}/sessions",
             "record": record,
         }, timeout=4)
     except Exception:
@@ -525,14 +544,19 @@ def _write_stack_snapshot(session_id: str) -> None:
             "handoff_title": handoff_title,
             "agent": _AGENT,
         }
-        call("soil_put", {
+        resp = call("soil_put", {
             "app_id": _AGENT,
             "collection": f"{_AGENT}/stack",
             "record_id": "current",
             "record": record,
         }, timeout=8)
-    except Exception:
-        pass
+        # soil_put returns {id, action} on success. A returned error dict (or a
+        # missing id) means the write never landed — surface it instead of
+        # silently passing, so the snapshot can't freeze unnoticed again.
+        if not isinstance(resp, dict) or "error" in resp or not resp.get("id"):
+            _log_hook_error("stack_snapshot", {"agent": _AGENT, "response": resp})
+    except Exception as e:
+        _log_hook_error("stack_snapshot", {"agent": _AGENT, "exception": repr(e)})
 
 
 def _is_isolated_directory() -> bool:

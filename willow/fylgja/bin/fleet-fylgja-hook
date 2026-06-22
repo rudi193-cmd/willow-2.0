@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# fleet-fylgja-hook — Fylgja hooks for fleet workspaces outside willow-2.0.
+# Cursor/Claude invoke this from the project root; it anchors Willow code + Python
+# in willow-2.0 while preserving WILLOW_PROJECT_ROOT for identity + MCP env.
+set -euo pipefail
+
+FMT="${1:?usage: fleet-fylgja-hook <cursor|claude> <module>}"
+MODULE="${2:?usage: fleet-fylgja-hook <cursor|claude> <module>}"
+
+export WILLOW_PROJECT_ROOT="${WILLOW_PROJECT_ROOT:-$(pwd)}"
+WILLOW_ROOT="${WILLOW_ROOT:-${HOME}/github/willow-2.0}"
+
+if [[ ! -f "${WILLOW_ROOT}/willow/fylgja/hook_runner.py" ]]; then
+  echo "fleet-fylgja-hook: willow-2.0 not found at ${WILLOW_ROOT}" >&2
+  exit 1
+fi
+
+cd "${WILLOW_ROOT}"
+
+if [[ -f "${WILLOW_PROJECT_ROOT}/.willow/active-agent" ]]; then
+  export WILLOW_AGENT_NAME="${WILLOW_AGENT_NAME:-$(tr -d '[:space:]' < "${WILLOW_PROJECT_ROOT}/.willow/active-agent")}"
+  export AGENT_NAME="${AGENT_NAME:-${WILLOW_AGENT_NAME}}"
+fi
+
+if [[ -n "${WILLOW_PYTHON:-}" && -x "${WILLOW_PYTHON}" ]]; then
+  PY="${WILLOW_PYTHON}"
+elif [[ -x "${WILLOW_ROOT}/.venv-dev/bin/python3" ]]; then
+  PY="${WILLOW_ROOT}/.venv-dev/bin/python3"
+elif [[ -x "${HOME}/github/.willow/venv/bin/python3" ]]; then
+  PY="${HOME}/github/.willow/venv/bin/python3"
+elif [[ -x "${HOME}/.willow/venv/bin/python3" ]]; then
+  PY="${HOME}/.willow/venv/bin/python3"
+else
+  PY="$(command -v python3)"
+fi
+
+export WILLOW_ROOT
+export PYTHONPATH="${WILLOW_ROOT}:${PYTHONPATH:-}"
+
+exec "${PY}" -m willow.fylgja.hook_runner --format "${FMT}" "willow.fylgja.events.${MODULE}"

@@ -8,7 +8,7 @@ FastMCP rebuild of sap_mcp.py.
 
 Tool prefixes (14 domains):
   kb_        knowledge base
-  soil_      store (WillowStore)
+  soil_      store (StorePort → WillowStore)
   fleet_     server status, health, reload, restart
   agent_     dispatch, route, task submission
   fork_      session forks
@@ -46,7 +46,7 @@ from sap.handoff_index import (
     scan_markdown_handoffs,
     select_best_handoff,
 )
-from sap.handoff_paths import discover_handoff_dirs, handoff_db_path, handoffs_root
+from sap.handoff_paths import discover_handoff_dirs, handoff_db_path, handoffs_root, handoffs_roots
 from typing import AsyncIterator
 
 # ── Path setup ────────────────────────────────────────────────────────────────
@@ -115,7 +115,7 @@ except Exception as _pg_import_err:
     init_schema = None  # type: ignore[assignment]
     logger.warning("pg_bridge import failed: %s", _pg_import_err)
 
-from willow_store import WillowStore
+from core.store_port import StorePort, get_store_port
 
 try:
     from willow.grove_coordination import node_announce as _node_announce
@@ -139,7 +139,7 @@ _MCP_INSTRUCTIONS = (Path(__file__).parent / "MCP_INSTRUCTIONS.md").read_text(en
 
 # ── Global state (initialized in lifespan) ────────────────────────────────────
 pg:    "PgBridge | None" = None  # type: ignore[type-arg]
-store: WillowStore       = None  # type: ignore[assignment]
+store: StorePort = None  # type: ignore[assignment]
 
 # ── Module-level constants ────────────────────────────────────────────────────
 _ENV_SNAPSHOT_PREFIXES = ("WILLOW_", "GROVE_", "HOME", "USER", "PATH", "PGUSER", "PGHOST", "PGPORT")
@@ -243,7 +243,7 @@ def _init_pg():
             return None
 
 
-def _startup_node_announce(s: "WillowStore") -> None:
+def _startup_node_announce(s: StorePort) -> None:
     """Register this node in the grove registry with live hardware + Ollama models."""
     if _node_announce is None:
         return
@@ -298,7 +298,7 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[None]:
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(_executor, _kill_stale_instances)
     pg    = await loop.run_in_executor(_executor, _init_pg)
-    store = WillowStore(STORE_ROOT)
+    store = get_store_port(STORE_ROOT)
 
     await loop.run_in_executor(_executor, _startup_node_announce, store)
     await loop.run_in_executor(_executor, _startup_backfill_check)
@@ -344,23 +344,8 @@ def _check_ollama() -> dict:
 
 
 def _check_metabolic() -> dict:
-    import sqlite3 as _sqlite3
-    result: dict = {"last_briefing": None, "socket": "unknown"}
-    briefings_db = _store_root() / "briefings" / "daily.db"
-    if briefings_db.exists():
-        try:
-            conn = _sqlite3.connect(str(briefings_db))
-            row = conn.execute(
-                "SELECT id, created FROM records ORDER BY created DESC LIMIT 1"
-            ).fetchone()
-            conn.close()
-            if row:
-                result["last_briefing"] = row[1]
-        except Exception:
-            pass
-    socket_path = _fleet_home() / "metabolic.sock"
-    result["socket"] = "active" if socket_path.exists() else "inactive"
-    return result
+    from core.metabolic_status import check_metabolic_status
+    return check_metabolic_status()
 
 
 def _normalize_local_paths(text: str) -> str:
@@ -426,7 +411,7 @@ def _hot_reload(target: str = "all") -> dict:
 
     if target in ("all", "store"):
         try:
-            store = WillowStore(STORE_ROOT)
+            store = get_store_port(STORE_ROOT)
             reloaded.append(f"store: reloaded ({STORE_ROOT})")
         except Exception as e:
             errors.append(f"store: {e}")
@@ -735,12 +720,16 @@ async def soil_search_all(app_id: str, query: str) -> dict:
 
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
-async def soil_list(app_id: str, collection: str) -> list:
-    """Return every record in a SOIL collection.
-    Use soil_search for large collections — soil_list returns everything."""
-    logger.info("[w2] soil_list app_id=%s col=%s", app_id, collection)
+async def soil_list(app_id: str, collection: str, filter: dict = None) -> list:
+    """Return records in a SOIL collection.
+    filter: optional dict of {field: value} to match — e.g. {"flag_state": "open"}.
+    Use soil_search for large collections — soil_list returns everything unless filtered."""
+    logger.info("[w2] soil_list app_id=%s col=%s filter=%s", app_id, collection, filter)
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(_executor, store.all, collection)
+    records = await loop.run_in_executor(_executor, store.all, collection)
+    if filter:
+        records = [r for r in records if all(r.get(k) == v for k, v in filter.items())]
+    return records
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -1464,6 +1453,7 @@ async def agent_task_submit(
     Prefer this over agent Bash for ls, git, pytest, pipelines, and scripts.
     Use script_body (not inline task strings) when Python or nested quotes are involved —
     writes {WILLOW_ROOT}/.kart-scripts/kart-*.py and queues python3 <path>.
+    script_body must be Python (it always runs via python3); shell goes in task=.
 
     Set allow_net=True for git push, gh, curl, etc.
     After submit, call kart_task_run(app_id) or wait for kart-worker / Stop kart_poll."""
@@ -1481,6 +1471,12 @@ async def agent_task_submit(
 
     task_text = cmd if not allow_net else cmd + "\n# allow_net"
 
+    from core.kart_task_scan import check_kart_task
+
+    blocked = check_kart_task(task_text, script_body=script_body)
+    if blocked:
+        return blocked
+
     def _submit():
         task_id = pg.submit_task(task_text, submitted_by=submitted_by or app_id, agent=agent)
         if not task_id:
@@ -1494,6 +1490,9 @@ async def agent_task_submit(
     return await loop.run_in_executor(_executor, _submit)
 
 
+from core.kart_execute import trim_task_result as _trim_task_result
+
+
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
 async def agent_task_status(app_id: str, task_id: str) -> dict:
@@ -1505,6 +1504,8 @@ async def agent_task_status(app_id: str, task_id: str) -> dict:
     row = await loop.run_in_executor(_executor, pg.task_status, task_id)
     if row is None:
         return {"error": "not found", "task_id": task_id}
+    row = dict(row)
+    row["result"] = _trim_task_result(row.get("result"), row.get("status", ""))
     return row
 
 
@@ -1583,7 +1584,7 @@ async def kart_task_run(
                     "task_id": r["id"],
                     "status": r["status"],
                     "cmd": (r.get("task") or "")[:80],
-                    "result": r.get("result"),
+                    "result": _trim_task_result(r.get("result"), r["status"]),
                 })
             if not active:
                 break
@@ -1606,7 +1607,7 @@ async def kart_task_run(
                     "task_id": task_id,
                     "status": status,
                     "cmd": (row.get("task") or "")[:80],
-                    "result": result,
+                    "result": _trim_task_result(result, status),
                     "executed_by": "fallback",
                 })
 
@@ -1640,7 +1641,7 @@ async def intake_schedule(
     def _schedule():
         import sys
         target  = agent or app_id
-        script  = str(_SAP_ROOT.parent / "scripts" / "promote_intake.py")
+        script  = str(_SAP_ROOT / "scripts" / "promote_intake.py")
         cmd_parts = [sys.executable, script, f"--days={days}", f"--agent={target}"]
         if no_llm:
             cmd_parts.append("--no-llm")
@@ -1674,7 +1675,7 @@ async def intake_schedule_fleet(
 
     def _schedule():
         import sys
-        script = str(_SAP_ROOT.parent / "scripts" / "promote_intake.py")
+        script = str(_SAP_ROOT / "scripts" / "promote_intake.py")
         cmd_parts = [sys.executable, script, "--fleet", f"--days={days}"]
         if no_llm:
             cmd_parts.append("--no-llm")
@@ -1736,9 +1737,21 @@ async def infer_imagine(
     output_path:  str = "",
     aspect_ratio: str = "1:1",
 ) -> dict:
-    """Generate an image via Imagen 4 (ganas3 / Google AI). Returns saved file path."""
+    """Generate an image. Uses OpenRouter (OPENROUTER_API_KEY) with flux-schnell;
+    falls back to Novita (NOVITA_API_KEY) if OpenRouter key is absent."""
     logger.info("[w2] infer_imagine app_id=%s", app_id)
     loop = asyncio.get_running_loop()
+    from willow.fylgja.willow_home import willow_home
+    import json as _json
+    creds_path = willow_home() / "secrets" / "credentials.json"
+    try:
+        creds = _json.loads(creds_path.read_text())
+    except Exception:
+        creds = {}
+    if creds.get("OPENROUTER_API_KEY") or __import__("os").environ.get("OPENROUTER_API_KEY"):
+        return await loop.run_in_executor(
+            _executor, _inf.imagine_openrouter, prompt, output_path or None, aspect_ratio,
+        )
     return await loop.run_in_executor(
         _executor, _inf.imagine_novita, prompt, output_path or None, aspect_ratio,
     )
@@ -2127,6 +2140,29 @@ async def mem_jeles_web_search(
 
 @mcp.tool()
 @sap_gate()
+async def willow_web_search(
+    app_id:           str,
+    query:            str,
+    max_results:      int  = 8,
+    trusted_only:     bool = False,
+    include_handoffs: bool = False,
+) -> dict:
+    """Open web search via DuckDuckGo HTML (no API key required). Returns title, url, snippet,
+    source, and hostname for each result. Use for current events, tech news, personnel moves,
+    and any query that needs the live open web rather than institutional archives.
+    trusted_only: filter results to verified institutional domain suffixes.
+    include_handoffs: prepend OpenStreetMap/Google Maps links for navigational queries."""
+    logger.info("[w2] willow_web_search app_id=%s query=%r max=%d trusted=%s", app_id, query, max_results, trusted_only)
+    from core.web_search import search_web
+    loop = asyncio.get_running_loop()
+    hits = await loop.run_in_executor(
+        _executor, lambda: search_web(query, max_results=max_results, trusted_only=trusted_only, include_handoffs=include_handoffs)
+    )
+    return {"query": query, "results": hits, "count": len(hits)}
+
+
+@mcp.tool()
+@sap_gate()
 async def source_trail_verify(
     app_id:  str,
     text:    str,
@@ -2152,19 +2188,196 @@ async def mem_jeles_ask(
     question: str,
     sources:  list = [],
     limit:    int  = 2,
+    perspectives: int = 0,
+    verify: bool = False,
 ) -> dict:
-    """Jeles: Answer a natural language question from trusted sources.
-    Auto-routes to relevant source groups (music→MusicBrainz, medicine→PubMed, etc.).
-    Synthesizes a cited answer via Groq→Ollama. Pass sources=[] to auto-route,
-    or name specific source IDs to override. limit=results per source (default 2)."""
-    logger.info("[w2] mem_jeles_ask app_id=%s question=%r sources=%s", app_id, question[:80], sources or "auto")
+    """Jeles: Answer a natural language question. Checks local corpus first (jeles_atoms);
+    falls back to trusted institutional sources (LOC, arXiv, PubMed, etc.) on a corpus miss.
+    Live-source results are auto-promoted into the corpus through the gate check.
+    Auto-routes to relevant source groups. Pass sources=[] to auto-route,
+    or name specific source IDs to override. limit=results per source (default 2).
+    perspectives>=2 enables multi-perspective mode: routes to that many deliberately
+    diverse domain lenses (e.g. scientific + philosophical) and synthesises an answer
+    that contrasts what they agree and disagree on. Default 0 = single-answer mode.
+    verify=true adds a per-claim cross-source check: each atomic claim in the answer is
+    tagged corroborated (>=2 distinct institutions), single_source, or unsupported,
+    returned under a 'verification' key with a summary count."""
+    logger.info("[w2] mem_jeles_ask app_id=%s question=%r sources=%s perspectives=%s verify=%s",
+                app_id, question[:80], sources or "auto", perspectives, verify)
     from core.jeles_sources import (
-        search as jeles_search, route_sources_semantic, question_to_query,
-        question_to_intent,
+        search as jeles_search, route_sources_semantic, route_perspectives_semantic,
+        question_to_query, question_to_intent,
     )
+    from core.jeles_verify import verify_claims
     from core.llm_edge import respond as llm_respond
 
     loop = asyncio.get_running_loop()
+
+    # Multi-perspective mode: route to deliberately diverse domains and contrast them.
+    # Bypasses corpus-first (we want live, lens-diverse retrieval). Honoured only when
+    # sources are auto-routed — an explicit `sources` override stays single-answer.
+    if perspectives >= 2 and not sources:
+        p_intent = await loop.run_in_executor(_executor, question_to_intent, question)
+        p_query  = question_to_query(p_intent)
+        groups   = await loop.run_in_executor(
+            _executor, route_perspectives_semantic, p_intent, perspectives,
+        )
+        logger.info("[w2] mem_jeles_ask multi-perspective intent=%r groups=%s",
+                    p_intent[:80], [g[0] for g in groups])
+        p_citations:   list = []
+        p_promote:     list = []
+        p_blocks:      list = []
+        p_used:        list = []
+        p_idx = 1
+        per_budget = max(700, 2400 // max(1, len(groups)))
+        for domain, src_ids in groups:
+            if not src_ids:
+                continue
+            raw = await loop.run_in_executor(_executor, jeles_search, p_query, src_ids, limit)
+            lines:  list = []
+            budget = per_budget
+            for source_id, hits in raw.get("results", {}).items():
+                for hit in hits:
+                    title   = (hit.get("title")   or "").strip()
+                    snippet = (hit.get("snippet") or "").strip()
+                    if not (title or snippet):
+                        continue
+                    url  = hit.get("url", "")
+                    inst = hit.get("institution", source_id)
+                    date = hit.get("date", "")
+                    p_citations.append({"n": p_idx, "title": title, "url": url,
+                                        "source": inst, "date": date, "perspective": domain})
+                    line = f"[{p_idx}] {title}" + (f": {snippet}" if snippet else "")
+                    lines.append(line[:400])
+                    p_promote.append({
+                        "title":   title,
+                        "content": f"Source: {inst}\nDate: {date}\nURL: {url}\n\n{snippet}",
+                        "domain":  source_id,
+                    })
+                    budget -= len(line)
+                    p_idx  += 1
+                    if budget <= 0:
+                        break
+                if budget <= 0:
+                    break
+            if lines:
+                p_used.append(domain)
+                p_blocks.append(f"### Perspective: {domain}\n" + "\n".join(lines))
+
+        if not p_blocks:
+            return {
+                "answer": "No results found in trusted sources for this query.",
+                "citations": [], "sources_used": [g[0] for g in groups],
+                "question": question, "total_results": 0, "multi_perspective": True,
+            }
+
+        p_system = (
+            "You are Jeles, a trusted librarian. You are given source excerpts grouped "
+            "under several PERSPECTIVES (different domains/framings of the same question). "
+            "Write a synthesis that: (1) states what the perspectives AGREE on; "
+            "(2) explicitly surfaces where they DIFFER, contradict, or merely emphasise "
+            "different things — attribute each framing to its perspective by name. "
+            "Cite every fact with its number in brackets, e.g. [1]. Use ONLY the excerpts "
+            "below; never use outside knowledge. If the excerpts do not address the "
+            "question, say exactly: 'The trusted sources do not contain this answer.'"
+        )
+        try:
+            p_answer = await loop.run_in_executor(
+                _executor, llm_respond, p_system, [],
+                f"Question: {question}\n\n" + "\n\n".join(p_blocks),
+            )
+        except Exception as e:
+            p_answer = f"(synthesis unavailable: {e})"
+
+        promoted = 0
+        if pg and p_promote:
+            def _promote_perspectives():
+                count = 0
+                for item in p_promote:
+                    try:
+                        result = pg.jeles_extract_atom(
+                            agent=app_id, jsonl_id=f"live-promote-{app_id}",
+                            content=item["content"], domain=item["domain"], title=item["title"],
+                        )
+                        if result.get("id"):
+                            count += 1
+                    except Exception:
+                        pass
+                return count
+            try:
+                promoted = await loop.run_in_executor(_executor, _promote_perspectives)
+            except Exception:
+                promoted = 0
+
+        p_result = {
+            "answer":            p_answer,
+            "citations":         p_citations,
+            "perspectives_used": p_used,
+            "sources_used":      [g[0] for g in groups],
+            "question":          question,
+            "total_results":     len(p_citations),
+            "multi_perspective": True,
+            "promoted":          promoted,
+        }
+        if verify:
+            p_result["verification"] = await loop.run_in_executor(
+                _executor, verify_claims, p_answer, "\n\n".join(p_blocks), p_citations, llm_respond,
+            )
+        return p_result
+
+    # Step 0: corpus-first lookup — return early if local jeles_atoms cover the question
+    _CORPUS_THRESHOLD = 0.42
+    _CORPUS_MIN_HITS  = 2
+    if pg:
+        try:
+            corpus_hits = await loop.run_in_executor(
+                _executor, pg.search_jeles_semantic, question, 5,
+            )
+            strong = [h for h in corpus_hits if h.get("distance", 1.0) < _CORPUS_THRESHOLD]
+            if len(strong) >= _CORPUS_MIN_HITS:
+                logger.info("[w2] mem_jeles_ask corpus HIT (%d strong) — skipping live sources", len(strong))
+                c_citations: list = []
+                c_snippets:  list = []
+                c_budget = 1500
+                for i, h in enumerate(strong, 1):
+                    t = (h.get("title")   or "").strip()
+                    c = (h.get("content") or "").strip()
+                    d = h.get("domain", "corpus")
+                    c_citations.append({"n": i, "title": t, "source": d, "date": ""})
+                    line = f"[{i}] {t}" + (f": {c[:300]}" if c else "")
+                    c_snippets.append(line[:400])
+                    c_budget -= len(line)
+                    if c_budget <= 0:
+                        break
+                c_system = (
+                    "You are Jeles, a trusted librarian. Answer using ONLY the numbered source "
+                    "excerpts below. Cite each fact with its number in brackets, e.g. [1]. "
+                    "2-6 sentences or a short bulleted list. "
+                    "NEVER use outside knowledge — if the excerpts do not contain the answer, say "
+                    "exactly: 'The trusted sources do not contain this answer.'"
+                )
+                try:
+                    c_answer = await loop.run_in_executor(
+                        _executor, llm_respond,
+                        c_system, [], f"Question: {question}\n\nSources:\n" + "\n\n".join(c_snippets),
+                    )
+                except Exception as e:
+                    c_answer = f"(synthesis unavailable: {e})"
+                c_result = {
+                    "answer":        c_answer,
+                    "citations":     c_citations,
+                    "sources_used":  ["corpus"],
+                    "question":      question,
+                    "total_results": len(strong),
+                    "corpus_hit":    True,
+                }
+                if verify:
+                    c_result["verification"] = await loop.run_in_executor(
+                        _executor, verify_claims, c_answer, "\n\n".join(c_snippets), c_citations, llm_respond,
+                    )
+                return c_result
+        except Exception as _corpus_err:
+            logger.warning("[w2] mem_jeles_ask corpus lookup failed (%s) — falling through to live sources", _corpus_err)
 
     # Step 1: extract factual intent (handles trivia framing)
     intent = await loop.run_in_executor(_executor, question_to_intent, question)
@@ -2193,8 +2406,9 @@ async def mem_jeles_ask(
         }
 
     # Build citation list + snippet block within token budget
-    citations: list = []
+    citations:     list = []
     snippet_lines: list = []
+    promote_queue: list = []
     budget = 1500
     idx = 1
     for source_id, hits in results_by_source.items():
@@ -2208,6 +2422,12 @@ async def mem_jeles_ask(
             line = f"[{idx}] {title}" + (f": {snippet}" if snippet else "")
             snippet_lines.append(line[:400])
             budget -= len(line)
+            if title or snippet:
+                promote_queue.append({
+                    "title":   title,
+                    "content": f"Source: {inst}\nDate: {date}\nURL: {url}\n\n{snippet}",
+                    "domain":  source_id,
+                })
             idx += 1
             if budget <= 0:
                 break
@@ -2231,13 +2451,45 @@ async def mem_jeles_ask(
     except Exception as e:
         answer = f"(synthesis unavailable: {e})"
 
-    return {
-        "answer": answer,
-        "citations": citations,
-        "sources_used": active_sources,
-        "question": question,
+    # Promote live-source results into corpus through gate check
+    promoted = 0
+    if pg and promote_queue:
+        def _promote_all():
+            count = 0
+            for item in promote_queue:
+                try:
+                    result = pg.jeles_extract_atom(
+                        agent=app_id,
+                        jsonl_id=f"live-promote-{app_id}",
+                        content=item["content"],
+                        domain=item["domain"],
+                        title=item["title"],
+                    )
+                    if result.get("id"):
+                        count += 1
+                except Exception:
+                    pass
+            return count
+        try:
+            promoted = await loop.run_in_executor(_executor, _promote_all)
+            logger.info("[w2] mem_jeles_ask promoted %d atoms to corpus", promoted)
+        except Exception as _promo_err:
+            logger.warning("[w2] mem_jeles_ask promotion failed: %s", _promo_err)
+
+    result = {
+        "answer":        answer,
+        "citations":     citations,
+        "sources_used":  active_sources,
+        "question":      question,
         "total_results": total,
+        "corpus_hit":    False,
+        "promoted":      promoted,
     }
+    if verify:
+        result["verification"] = await loop.run_in_executor(
+            _executor, verify_claims, answer, snippet_block, citations, llm_respond,
+        )
+    return result
 
 
 @mcp.tool()
@@ -2676,15 +2928,20 @@ async def ledger_write(
 
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
-async def ledger_read(app_id: str, project: str = "", limit: int = 20) -> dict:
-    """Read the FRANK tamper-evident ledger, optionally filtered by project."""
-    logger.info("[w2] ledger_read app_id=%s project=%s", app_id, project)
+async def ledger_read(app_id: str, project: str = "", limit: int = 20, full: bool = False) -> dict:
+    """Read the FRANK tamper-evident ledger, optionally filtered by project.
+
+    Entries with content over ~2k chars are compacted (keys + summary fields
+    survive; bulk payloads are elided). Pass full=True for raw rows."""
+    logger.info("[w2] ledger_read app_id=%s project=%s full=%s", app_id, project, full)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
     entries = await loop.run_in_executor(
         _executor, pg.ledger_read, project or None, limit,
     )
+    if not full:
+        entries = [pg.compact_ledger_entry(e, max_chars=2000) for e in entries]
     return {"entries": entries, "count": len(entries)}
 
 
@@ -2757,6 +3014,49 @@ async def hook_log_read(app_id: str, hook_name: str = "", limit: int = 50) -> di
 
 # ── Tools — handoff_ domain ───────────────────────────────────────────────────
 
+_NOTE_SECTION_MARKERS = {
+    "agent_notes": "## Agent Notes for Human",
+    "human_notes": "## Human Notes to Agent",
+}
+
+
+def extract_live_handoff_notes(agent: str) -> dict:
+    """Read agent/human note sections from the newest handoff FILE on disk.
+
+    Human notes are written by the operator AFTER the close pipeline ran, so
+    the DB row is stale for them by design — these always come live from disk.
+    """
+    import re as _re
+
+    out: dict = {}
+    try:
+        root = handoffs_root() / agent
+        files = sorted(
+            root.glob("session_handoff-*.md"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if not files:
+            return out
+        text = files[0].read_text(encoding="utf-8")
+        for key, marker in _NOTE_SECTION_MARKERS.items():
+            if marker in text:
+                block = _re.split(r"\n(?=## |---)", text[text.find(marker) + len(marker):])[0]
+                items = [
+                    ln.strip()[2:].strip()
+                    for ln in block.splitlines()
+                    if ln.strip().startswith("- ")
+                ]
+                items = [i for i in items if i]
+                if items:
+                    out[key] = items
+        if out:
+            out["notes_file"] = files[0].name
+    except Exception as _e:
+        logger.warning("[w2] live handoff notes extract failed: %s", _e)
+    return out
+
+
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
 async def handoff_latest(app_id: str, agent: str = "") -> dict:
@@ -2780,26 +3080,26 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                     if agent_filter:
                         cur.execute(
                             """
-                            SELECT id, title, summary, valid_at, content
+                            SELECT id, title, summary, valid_at, created_at, updated_at, content
                             FROM knowledge
                             WHERE category = 'handoff'
                               AND source_type = 'session'
                               AND invalid_at IS NULL
-                              AND (project = %s OR content::text ILIKE %s)
-                            ORDER BY valid_at DESC
+                              AND project = %s
+                            ORDER BY COALESCE(updated_at, created_at, valid_at) DESC
                             LIMIT 5
                             """,
-                            (agent_filter, f"%{agent_filter}%"),
+                            (agent_filter,),
                         )
                     else:
                         cur.execute(
                             """
-                            SELECT id, title, summary, valid_at, content
+                            SELECT id, title, summary, valid_at, created_at, updated_at, content
                             FROM knowledge
                             WHERE category = 'handoff'
                               AND source_type = 'session'
                               AND invalid_at IS NULL
-                            ORDER BY valid_at DESC
+                            ORDER BY COALESCE(updated_at, created_at, valid_at) DESC
                             LIMIT 5
                             """
                         )
@@ -2836,6 +3136,7 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                             "capabilities": content.get("capabilities") or [],
                             "_source": "kb",
                             "_valid_at": str(row["valid_at"]),
+                            "_sort_at": str(row.get("updated_at") or row.get("created_at") or row["valid_at"]),
                         })
                     if kb_candidates:
                         kb_result = select_best_handoff(kb_candidates)
@@ -2851,10 +3152,7 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                 cur  = conn.cursor()
                 base_sql = handoff_select_sql(conn)
                 sql_agent = f"{base_sql} WHERE h.file_type = 'session' AND f.filename LIKE ?"
-                sql_any = f"{base_sql} WHERE h.file_type = 'session'"
                 rows = cur.execute(sql_agent, (f"%{agent_filter}%",)).fetchall() if agent_filter else []
-                if not rows:
-                    rows = cur.execute(sql_any).fetchall()
                 sqlite_candidates: list[dict] = []
                 for row in rows:
                     sqlite_candidates.append({
@@ -2878,7 +3176,9 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
         markdown_result: dict | None = None
         if agent_filter:
             try:
-                md_candidates = scan_markdown_handoffs(agent_filter, handoffs_root())
+                md_candidates: list[dict] = []
+                for root in handoffs_roots():
+                    md_candidates.extend(scan_markdown_handoffs(agent_filter, root))
                 if md_candidates:
                     markdown_result = select_best_handoff(md_candidates)
             except Exception as _e:
@@ -2891,11 +3191,13 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
         if not candidates:
             return {"error": "No session handoffs found."}
         result = select_best_handoff(candidates) or candidates[0]
+        if agent_filter:
+            result.update(extract_live_handoff_notes(agent_filter))
         result["next_bite"] = extract_next_bite(
             result.get("questions") or [],
             str(result.get("summary") or ""),
         )
-        for key in ("_source", "_valid_at", "mtime"):
+        for key in ("_source", "_valid_at", "_sort_at", "mtime"):
             result.pop(key, None)
         return result
 
@@ -3354,7 +3656,7 @@ async def kb_intelligence_run(
 
     def _run():
         import sys
-        script = str(_SAP_ROOT.parent / "scripts" / "sleep_consolidation.py")
+        script = str(_SAP_ROOT / "scripts" / "sleep_consolidation.py")
         cmd = [sys.executable, script]
         if dry_run:
             cmd.append("--dry-run")
@@ -4941,6 +5243,130 @@ async def code_graph_impact(
     return await loop.run_in_executor(_executor, _run)
 
 
+# ── Tools — cbm domain (codebase-memory-mcp bounded facade) ─────────────────
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cbm_status(app_id: str) -> dict:
+    """Resolve indexed CBM project for this repo and surface F-001..F-008 guardrails."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.cbm_facade import LIMITATIONS, resolve_project
+        resolved = resolve_project()
+        return {
+            "resolved": resolved,
+            "limitations": LIMITATIONS,
+            "usage": "Prefer cbm_* over raw codebase-memory-mcp; cross-check with cbm_verify_callers",
+        }
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cbm_search(
+    app_id: str,
+    query: str,
+    limit: int = 10,
+    exclude_tests: bool = True,
+    project: str = "",
+) -> dict:
+    """Bounded search_graph via codebase-memory-mcp CLI (F-003 LIMIT enforced)."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.cbm_facade import search
+        return search(query, limit=limit, project=project, exclude_tests=exclude_tests)
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cbm_trace(
+    app_id: str,
+    function_name: str,
+    direction: str = "both",
+    depth: int = 3,
+    include_tests: bool = False,
+    project: str = "",
+) -> dict:
+    """Bounded trace_path — caps caller/callee lists (F-004/F-007 verify note attached)."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.cbm_facade import trace
+        return trace(
+            function_name,
+            direction=direction,
+            depth=depth,
+            project=project,
+            include_tests=include_tests,
+        )
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cbm_query(
+    app_id: str,
+    query: str,
+    max_rows: int = 25,
+    project: str = "",
+) -> dict:
+    """Bounded query_graph — auto-appends LIMIT when missing (F-001/F-003)."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.cbm_facade import query as cbm_query_fn
+        return cbm_query_fn(query, project=project, max_rows=max_rows)
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cbm_verify_callers(
+    app_id: str,
+    function_name: str,
+    file_path: str = "",
+    include_tests: bool = False,
+    project: str = "",
+) -> dict:
+    """Graph inbound callers + ripgrep cross-check (F-004/F-007 dead-code guard)."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.cbm_facade import verify_callers
+        return verify_callers(
+            function_name,
+            file_path=file_path,
+            project=project,
+            include_tests=include_tests,
+        )
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def cbm_reconcile(
+    app_id: str,
+    symbol: str,
+    max_results: int = 5,
+) -> dict:
+    """Side-by-side CBM search + native code_graph explain for one symbol."""
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.cbm_facade import reconcile_symbol
+        return reconcile_symbol(symbol, max_results=max_results)
+
+    return await loop.run_in_executor(_executor, _run)
+
+
 # ── Tools — session_query (S11) ──────────────────────────────────────────────
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -5445,10 +5871,20 @@ async def willow_run(
         submitted_by=app_id,
         allow_net=allow_net,
     )
-    out = {"facade": "willow_run", "backend": "agent_task_submit", "submitted": submitted}
     if run_now and not submitted.get("error"):
-        out["run"] = await kart_task_run(app_id=app_id, agent=agent)
-    return out
+        from sap.willow_run_compact import compact_willow_run_outcome
+
+        # kart_task_run drains the whole pending backlog, not just this task —
+        # compact to one stdout copy (no submitted + run.results + status triple).
+        run_payload = await kart_task_run(app_id=app_id, agent=agent)
+        tid = submitted.get("task_id")
+        status_row = None
+        if tid and not any(
+            r.get("task_id") == tid for r in (run_payload.get("results") or [])
+        ):
+            status_row = await agent_task_status(app_id=app_id, task_id=tid)
+        return compact_willow_run_outcome(submitted, run_payload, status_row)
+    return {"facade": "willow_run", "backend": "agent_task_submit", "submitted": submitted}
 
 
 @mcp.tool()
@@ -5578,6 +6014,15 @@ async def willow_code(
     if mode == "suggest":
         result = await code_graph_suggest(app_id=app_id, task=query, max_results=max_results)
         backend = "code_graph_suggest"
+    elif mode in ("cbm", "graph"):
+        result = await cbm_search(app_id=app_id, query=query, limit=max_results)
+        backend = "cbm_search"
+    elif mode == "reconcile":
+        result = await cbm_reconcile(app_id=app_id, symbol=query, max_results=max_results)
+        backend = "cbm_reconcile"
+    elif mode == "verify":
+        result = await cbm_verify_callers(app_id=app_id, function_name=query)
+        backend = "cbm_verify_callers"
     else:
         result = await code_graph_search(app_id=app_id, query=query, max_results=max_results)
         backend = "code_graph_search"

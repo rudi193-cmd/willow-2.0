@@ -149,10 +149,10 @@ def _try_fleet(system: str, user: str) -> Optional[str]:
 def _try_hns(system: str, user: str) -> Optional[str]:
     """Route to the best HNS-opted-in node. Returns None if no node qualifies or quota full."""
     try:
-        from willow_store import WillowStore
+        from core.store_port import get_store_port
         from willow.hns_scheduler import select_node
         from willow.hns_enforcer import acquire, release
-        store = WillowStore()
+        store = get_store_port()
         model = os.environ.get("WILLOW_INFERENCE_OLLAMA_MODEL", _OLLAMA_MODEL)
         node = select_node(store, model)
         if node is None:

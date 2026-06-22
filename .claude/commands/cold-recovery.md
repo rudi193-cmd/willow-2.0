@@ -296,4 +296,4 @@ Optional: /startup if anchor stale or boot degraded
 | Continuity restored, ready to work | Proceed on chosen thread |
 | Infrastructure question | `/boot` |
 | Anchor missing/stale, deeper continuity needed | `/startup` |
-| Session end, structured handoff needed | `/handoff` (v2 schema in `boot.md`) |
+| Session end, structured handoff needed | `/shutdown` (handoff write is step 2) |

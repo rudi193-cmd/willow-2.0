@@ -383,8 +383,8 @@ def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> di
     reflections_written = 0
     if collections:
         try:
-            from core.willow_store import WillowStore
-            store = WillowStore()
+            from core.store_port import get_store_port
+            store = get_store_port()
             reflections_written = soil_reflection_pass(store, collections, dry_run=dry_run)
         except Exception as _re:
             import sys as _sys
@@ -401,6 +401,71 @@ def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> di
             import sys as _sys
             print(f"[norn] intake promote error: {_ipe}", file=_sys.stderr)
             report["intake_promote_error"] = str(_ipe)
+
+        try:
+            import importlib.util as _ilu
+            _abf_spec = _ilu.spec_from_file_location(
+                "archive_block_flags", WILLOW_ROOT / "scripts" / "archive_block_flags.py"
+            )
+            _abf_mod = _ilu.module_from_spec(_abf_spec)
+            _abf_spec.loader.exec_module(_abf_mod)
+            report["block_flags_archived"] = _abf_mod.archive_pass(dry_run=False)
+        except Exception as _ae:
+            import sys as _sys
+            print(f"[norn] archive_block_flags pass error: {_ae}", file=_sys.stderr)
+            report["block_flags_archive_error"] = str(_ae)
+
+        try:
+            import importlib.util as _ilu
+            _ps_spec = _ilu.spec_from_file_location(
+                "promote_signals", WILLOW_ROOT / "scripts" / "promote_signals.py"
+            )
+            _ps_mod = _ilu.module_from_spec(_ps_spec)
+            _ps_spec.loader.exec_module(_ps_mod)
+            report["signal_promote"] = _ps_mod.promote_pass(dry_run=False)
+        except Exception as _spe:
+            import sys as _sys
+            print(f"[norn] signal promote pass error: {_spe}", file=_sys.stderr)
+            report["signal_promote_error"] = str(_spe)
+
+        try:
+            import importlib.util as _ilu
+            _sw_spec = _ilu.spec_from_file_location(
+                "signal_weight_updater", WILLOW_ROOT / "scripts" / "signal_weight_updater.py"
+            )
+            _sw_mod = _ilu.module_from_spec(_sw_spec)
+            _sw_spec.loader.exec_module(_sw_mod)
+            report["signal_weight"] = _sw_mod.run(dry_run=False)
+        except Exception as _swe:
+            import sys as _sys
+            print(f"[norn] signal weight pass error: {_swe}", file=_sys.stderr)
+            report["signal_weight_error"] = str(_swe)
+
+        try:
+            import importlib.util as _ilu
+            _sr_spec = _ilu.spec_from_file_location(
+                "signal_recurrence_tracker", WILLOW_ROOT / "scripts" / "signal_recurrence_tracker.py"
+            )
+            _sr_mod = _ilu.module_from_spec(_sr_spec)
+            _sr_spec.loader.exec_module(_sr_mod)
+            report["signal_recurrence"] = _sr_mod.track_recurrence(dry_run=False)
+        except Exception as _sre:
+            import sys as _sys
+            print(f"[norn] signal recurrence pass error: {_sre}", file=_sys.stderr)
+            report["signal_recurrence_error"] = str(_sre)
+
+        try:
+            import importlib.util as _ilu
+            _sa_spec = _ilu.spec_from_file_location(
+                "signal_archive_pass", WILLOW_ROOT / "scripts" / "signal_archive_pass.py"
+            )
+            _sa_mod = _ilu.module_from_spec(_sa_spec)
+            _sa_spec.loader.exec_module(_sa_mod)
+            report["signal_archive"] = _sa_mod.archive_pass(dry_run=False)
+        except Exception as _sae:
+            import sys as _sys
+            print(f"[norn] signal archive pass error: {_sae}", file=_sys.stderr)
+            report["signal_archive_error"] = str(_sae)
 
         try:
             from core import soil as _soil

@@ -68,7 +68,7 @@ def _get_open_gates(agent: str) -> list[str]:
     gates: list[str] = []
     try:
         from willow.fylgja._mcp import call
-        for collection in (f"{agent}/flags", f"{agent}/gaps/store"):
+        for collection in (f"{agent}/flags", f"{agent}/gaps"):
             try:
                 records = call("store_list", {"app_id": agent, "collection": collection}, timeout=5)
                 if isinstance(records, list):

@@ -13,13 +13,18 @@ from willow.fylgja._mcp import call
 from willow.fylgja._state import (
     AGENT, is_first_turn, increment_turn_count, get_trust_state, save_trust_state,
 )
+from willow.fylgja.anchor_state import (
+    ANCHOR_INTERVAL as _ANCHOR_INTERVAL,
+    bump_prompt_count,
+    context_advisory,
+    prompt_count as get_prompt_count,
+)
 from willow.fylgja.willow_home import willow_home
 
 _HOME = willow_home()
-ANCHOR_INTERVAL = 25
+ANCHOR_INTERVAL = _ANCHOR_INTERVAL
 FLAT_HANDOFF_INTERVAL = 10  # write flat handoff every N prompts
 ANCHOR_CACHE = _HOME / f"session_anchor_{AGENT}.json"
-STATE_FILE = _HOME / f"anchor_state_{AGENT}.json"
 TURNS_FILE = Path.home() / "agents" / AGENT / "cache" / "turns.txt"
 ACTIVE_BUILD_FILE = Path(f"/tmp/{AGENT}-active-build.json")
 DISPATCH_INBOX = Path(f"/tmp/willow-dispatch-inbox-{AGENT}.json")
@@ -85,6 +90,88 @@ def detect_correction(prompt: str) -> bool:
     return False
 
 
+# Patterns that signal a user preference (positive direction, not a correction).
+# Corrections take precedence — detect_preference() checks detect_correction() first.
+_PREFERENCE_PATTERNS = [
+    r"\bi (prefer|like|want|love)\b.{0,60}(you|to|when)\b",
+    r"\bi'?d (prefer|like|rather|love)\b",
+    r"\bplease (always|from now on|going forward)\b",
+    r"\b(from now on|going forward|in the future).{0,40}(please|always|can you|could you)\b",
+    r"\bcan you (always|please)\b.{0,60}",
+    r"\bwould (prefer|rather)\b",
+    r"\b(keep|continue).{0,20}(doing|using|that way|like that)\b",
+    r"\bi'?d appreciate\b",
+]
+
+
+def detect_preference(prompt: str) -> bool:
+    """Return True if prompt looks like a user preference statement (not a correction)."""
+    if len(prompt.strip()) < 20:
+        return False
+    if detect_correction(prompt):
+        return False
+    for pattern in _PREFERENCE_PATTERNS:
+        if re.search(pattern, prompt, re.IGNORECASE):
+            return True
+    return False
+
+
+# Patterns that signal a positive confirmation (user approving agent behavior).
+# Corrections take precedence — detect_confirmation() checks detect_correction() first.
+# Lower minimum length (4) because confirmations are naturally brief.
+_CONFIRMATION_PATTERNS = [
+    r"\byes.{0,20}exactly\b",
+    r"\b(yes|yeah).{0,10}(that'?s|that is).{0,20}(right|it|correct|perfect)\b",
+    r"\bperfect\b",
+    r"\bgood call\b",
+    r"\bright approach\b",
+    r"\bthat works\b",
+    r"\bkeep (doing|that|it|going).{0,10}(up|that way|like that|going)\b",
+    r"\bexactly (right|that|what i wanted|what i needed)\b",
+    r"\bthat'?s (exactly|perfect|great|what i wanted)\b",
+    r"\byes,? (do|keep|go|continue|proceed)\b",
+]
+
+
+def detect_confirmation(prompt: str) -> bool:
+    """Return True if prompt looks like a positive confirmation of agent behavior."""
+    if len(prompt.strip()) < 4:
+        return False
+    if detect_correction(prompt):
+        return False
+    for pattern in _CONFIRMATION_PATTERNS:
+        if re.search(pattern, prompt, re.IGNORECASE):
+            return True
+    return False
+
+
+# Patterns that signal a scope redirect (user changing direction mid-task).
+# Distinct from corrections (wrong action taken) and preferences (standing rule).
+_SCOPE_REDIRECT_PATTERNS = [
+    r"\bactually.{0,10}(don'?t|let'?s not|skip|ignore|forget)\b",
+    r"\blet'?s not.{0,20}(do|take|focus|look|go|work)\b",
+    r"\blet'?s (skip|move on|focus on something else|change direction|leave that)\b",
+    r"\bnot right now\b",
+    r"\bskip that for now\b",
+    r"\bthat'?s not the direction\b",
+    r"\b(forget|ignore|drop) that\b",
+    r"\blet'?s (look at|work on|focus on) something else\b",
+    r"\b(set that aside|table that|park that)\b",
+]
+
+
+def detect_scope_redirect(prompt: str) -> bool:
+    """Return True if prompt is a mid-task direction change (not a correction or preference)."""
+    if len(prompt.strip()) < 12:
+        return False
+    if detect_correction(prompt):
+        return False
+    for pattern in _SCOPE_REDIRECT_PATTERNS:
+        if re.search(pattern, prompt, re.IGNORECASE):
+            return True
+    return False
+
+
 def detect_feedback(prompt: str) -> list[dict]:
     found, seen = [], set()
     for pattern, fb_type, rule in FEEDBACK_PATTERNS:
@@ -96,46 +183,18 @@ def detect_feedback(prompt: str) -> list[dict]:
     return found
 
 
-def _read_anchor_state() -> dict:
+def should_anchor(count: int | None = None) -> bool:
     try:
-        import sys as _sys
-        import os as _os
-        _root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "../../../.."))
-        if _root not in _sys.path:
-            _sys.path.insert(0, _root)
-        from core import soil
-        record = soil.get("agent/anchor", AGENT)
-        if record:
-            return record
-    except Exception:
-        pass
-    return json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {"prompt_count": 0}
-
-
-def _write_anchor_state(state: dict) -> None:
-    try:
-        import sys as _sys
-        import os as _os
-        _root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "../../../.."))
-        if _root not in _sys.path:
-            _sys.path.insert(0, _root)
-        from core import soil
-        soil.put("agent/anchor", AGENT, state)
-        return
-    except Exception:
-        pass
-    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STATE_FILE.write_text(json.dumps(state))
-
-
-def should_anchor() -> bool:
-    try:
-        state = _read_anchor_state()
-        count = state.get("prompt_count", 0) + 1
-        _write_anchor_state({"prompt_count": count})
-        return count % ANCHOR_INTERVAL == 0
+        n = get_prompt_count(AGENT) if count is None else count
+        return n > 0 and n % ANCHOR_INTERVAL == 0
     except Exception:
         return False
+
+
+def _inject_context_sentinel(count: int) -> None:
+    advisory = context_advisory(count)
+    if advisory:
+        print(advisory)
 
 
 def get_active_task() -> str | None:
@@ -177,8 +236,8 @@ def _run_source_ring(session_id: str) -> None:
     save_trust_state(state)
 
 
-def _run_anchor() -> None:
-    if not should_anchor():
+def _run_anchor(count: int) -> None:
+    if not should_anchor(count):
         return
     try:
         anchor = json.loads(ANCHOR_CACHE.read_text()) if ANCHOR_CACHE.exists() else {}
@@ -303,11 +362,9 @@ def _inject_dispatch_inbox() -> None:
         pass
 
 
-def _run_flat_handoff_checkpoint(session_id: str) -> None:
+def _run_flat_handoff_checkpoint(session_id: str, count: int) -> None:
     """Write flat handoff every FLAT_HANDOFF_INTERVAL prompts — crash-safe checkpoint."""
     try:
-        state = _read_anchor_state()
-        count = state.get("prompt_count", 0)
         if count % FLAT_HANDOFF_INTERVAL != 0:
             return
         from willow.fylgja.handoff_flat import write_flat_handoff
@@ -317,28 +374,32 @@ def _run_flat_handoff_checkpoint(session_id: str) -> None:
 
 
 def _run_corpus_capture(prompt: str, session_id: str) -> None:
-    """Stage correction atoms to corpus/corrections when a correction is detected."""
-    if not detect_correction(prompt):
+    """Stage corpus atoms when a signal is detected in the prompt."""
+    is_correction = detect_correction(prompt)
+    is_preference = detect_preference(prompt)
+    is_confirmation = detect_confirmation(prompt)
+    is_scope_redirect = detect_scope_redirect(prompt)
+    if not any([is_correction, is_preference, is_confirmation, is_scope_redirect]):
         return
     try:
         import sys as _sys
         _repo_root = str(Path(__file__).parent.parent.parent.parent)
         if _repo_root not in _sys.path:
             _sys.path.insert(0, _repo_root)
-        from core.willow_store import WillowStore
-        _store = WillowStore()
-        import uuid as _uuid
-        record_id = f"corr-{_uuid.uuid4().hex[:8]}"
-        _store.put("corpus/corrections", {
-            "id": record_id,
-            "type": "correction",
-            "source": "prompt_submit_hook",
-            "content": prompt.strip()[:300],
-            "session_id": session_id,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "sandbox": True,
-            "b17": "CRPS0",
-        }, record_id=record_id)
+        from core.store_port import get_store_port
+        store = get_store_port()
+        if is_correction:
+            from willow.fylgja.corrections import upsert_correction
+            upsert_correction(store, source="prompt_submit_hook", content=prompt, session_id=session_id)
+        if is_preference:
+            from willow.fylgja.preferences import upsert_preference
+            upsert_preference(store, content=prompt, session_id=session_id)
+        if is_confirmation:
+            from willow.fylgja.confirmations import upsert_confirmation
+            upsert_confirmation(store, content=prompt, session_id=session_id)
+        if is_scope_redirect:
+            from willow.fylgja.scope_redirects import upsert_scope_redirect
+            upsert_scope_redirect(store, content=prompt, session_id=session_id)
     except Exception:
         pass
 
@@ -373,6 +434,39 @@ def _inject_mcp_routing() -> None:
             "[WILLOW-LANES] Data → MCP (fleet_status, handoff_latest, kb_search, soil_*). "
             "Execution → agent_task_submit + kart_task_run. Registry: sap/mcp_registry.json"
         )
+
+
+def _inject_clock() -> None:
+    """Every turn: surface the local↔UTC relationship.
+
+    Willow artifacts (handoff filenames, DB ts) are UTC-stamped, but the harness
+    injects "today" in local time. Between ~18:00 local and midnight the two
+    calendar dates legitimately differ by one day. Without this line agents
+    re-derive that gap as clock drift — observed twice. State the rule instead.
+    """
+    try:
+        now_local = datetime.now().astimezone()
+        now_utc = now_local.astimezone(timezone.utc)
+        tzname = now_local.tzname() or "local"
+        offset = now_local.utcoffset()
+        total_min = int(offset.total_seconds() // 60) if offset else 0
+        sign = "+" if total_min >= 0 else "-"
+        oh, om = divmod(abs(total_min), 60)
+        off_str = f"UTC{sign}{oh}" + (f":{om:02d}" if om else "")
+        same_day = now_local.date() == now_utc.date()
+        line = (
+            f"[CLOCK] {now_local.strftime('%Y-%m-%d %H:%M')} {tzname} ({off_str}) "
+            f"= {now_utc.strftime('%Y-%m-%d %H:%M')} UTC · "
+            "Willow artifacts are UTC-stamped; \"today\" in context is local."
+        )
+        if not same_day:
+            line += (
+                " The one-day gap (handoff filenames, DB ts vs local date) is "
+                "correct, not drift."
+            )
+        print(line)
+    except Exception:
+        pass
 
 
 def _inject_stabilization_brief() -> None:
@@ -481,12 +575,15 @@ def main():
     _boot_guard()
     _run_persona(prompt)
     increment_turn_count()
+    prompt_count = bump_prompt_count(AGENT)
+    _inject_context_sentinel(prompt_count)
     _inject_mcp_routing()
+    _inject_clock()
     _inject_stabilization_brief()
     _run_source_ring(session_id)
     _run_route(prompt, session_id)
-    _run_anchor()
-    _run_flat_handoff_checkpoint(session_id)
+    _run_anchor(prompt_count)
+    _run_flat_handoff_checkpoint(session_id, prompt_count)
     _inject_dispatch_inbox()
     _run_corpus_capture(prompt, session_id)
     _run_feedback(prompt, session_id)

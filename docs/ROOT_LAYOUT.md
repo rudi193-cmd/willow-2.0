@@ -33,6 +33,22 @@ One-off or operator tools (`ingest_seeds.py`, `session_close.py`, `orchestrator.
 python3 scripts/session_close.py
 ```
 
+## `benchmarks/` — benchmark and research atlas
+
+Tracked benchmark artifacts plus repo-safe pointers to local continuations.
+Each sidecar keeps its refresh script, machine-readable report, readable chart,
+and any SQLite database required for continuation.
+
+| File | Purpose |
+| --- | --- |
+| `benchmarks/README.md` | Human-facing atlas grouped by benchmark family |
+| `benchmarks/catalog.json` | Machine-readable registry with visibility fields |
+| `benchmarks/sidecars/` | Focused sidecar datasets (e.g. cartographer CBM prompt) |
+
+Local-only benchmark harness (`$NEST/claude_benchmarks.db`, session reports)
+is catalogued in `catalog.json` with `local_pointer` visibility — not copied
+into the repo.
+
 ## `sap/` — MCP server
 
 `sap/sap_mcp.py` via `sap/unified_mcp.sh` for daily IDE use. `sap/willow_mcp.sh`

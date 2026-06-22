@@ -12,6 +12,20 @@ def test_redirect_ls_blocks_to_kart():
     assert "agent_task_submit" in result[1]
 
 
+def test_redirect_git_warns_to_kart():
+    result = redirect_for_command("git status -sb")
+    assert result is not None
+    assert result[0] == "warn"
+    assert "agent_task_submit" in result[1]
+
+
+def test_redirect_gh_warns_to_kart():
+    result = redirect_for_command("gh pr view 440")
+    assert result is not None
+    assert result[0] == "warn"
+    assert "allow_net" in result[1].lower()
+
+
 def test_format_brief_two_lanes():
     assert "[WILLOW-LANES]" in format_brief()
     assert "willow_find" in format_brief()
