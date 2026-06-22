@@ -24,40 +24,13 @@
       },
       "note": "Writing portfolio — full fleet wiring via willow project sync."
     },
-    "safe-app-store": {
-      "path": "{{HOME}}/github/safe-app-store",
-      "agent": "vishwakarma",
-      "profile": "standard",
-      "servers": ["willow", "law-gazelle", "courtlistener"],
-      "ides": ["cursor", "claude"],
-      "env": {
-        "WILLOW_DEV_SAFE_ROOT": "{{HOME}}/github",
-        "WILLOW_STORE_ROOT": "{{HOME}}/github/safe-app-store/.willow/store"
-      },
-      "server_env": {
-        "law-gazelle": {
-          "NEST_SOURCE": "{{HOME}}/Desktop/Nest",
-          "PYTHONPATH": "{{HOME}}/github/safe-app-store/apps/law-gazelle"
-        },
-        "courtlistener": {
-          "PYTHONPATH": "{{HOME}}/github/courtlistener-mcp/src"
-        }
-      },
-      "wiring": {
-        "hooks": true,
-        "active_agent": true,
-        "cursor_settings": "symlink",
-        "claude_settings": "project",
-        "python": "fleet"
-      },
-      "note": "SAFE App Store monorepo — Vishwakarma persona; law + court MCP."
-    },
     "safe-app-store-public": {
       "path": "{{HOME}}/github/safe-app-store-public",
       "agent": "vishwakarma",
       "profile": "standard",
       "servers": ["willow", "law-gazelle", "courtlistener"],
       "ides": ["cursor", "claude"],
+      "app_stubs": true,
       "env": {
         "WILLOW_DEV_SAFE_ROOT": "{{HOME}}/github",
         "WILLOW_STORE_ROOT": "{{HOME}}/github/safe-app-store-public/.willow/store"
@@ -78,7 +51,7 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "Public SAFE App Store monorepo — Vishwakarma; Kart RW; publishable apps."
+      "note": "Canonical SAFE monorepo — Vishwakarma; Kart RW. ~/github/safe-app-store symlinks here. apps/*/.mcp.json synced from mcp_app.stub.json. See docs/fleet_paths.md."
     },
     "safe-app-willow-grove": {
       "path": "{{HOME}}/github/safe-app-willow-grove",
