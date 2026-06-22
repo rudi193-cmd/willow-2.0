@@ -38,6 +38,7 @@ _STATIC_SERVERS: dict[str, dict[str, Any]] = {
     },
 }
 
+
 def _package_root() -> Path:
     return repo_root()
 

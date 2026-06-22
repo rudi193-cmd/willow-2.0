@@ -6,11 +6,9 @@ from willow.fylgja.mcp_projects import (
     audit_project,
     ensure_registry,
     load_registry,
-    render_app_mcp_stub,
     render_project_mcp,
     sync_app_stubs,
     sync_project,
-    unregistered_mcp_files,
 )
 from willow.fylgja.project_wiring import expand_home, render_claude_permissions
 
@@ -180,7 +178,6 @@ def test_audit_expands_home_aliases(tmp_path, monkeypatch):
     # Simulate on-disk absolute path while registry uses ${HOME}
     mcp_path = proj / ".mcp.json"
     on_disk = json.loads(mcp_path.read_text(encoding="utf-8"))
-    lg_args = on_disk["mcpServers"]["law-gazelle"]["args"]
     on_disk["mcpServers"]["law-gazelle"]["args"] = [
         f"{home}/github/safe-app-store-public/apps/law-gazelle/gazelle_mcp.py"
     ]
