@@ -1,0 +1,34 @@
+#coop {
+    height: 1fr;
+}
+
+#perch-list {
+    width: 20;
+    border-right: solid $primary-darken-2;
+}
+
+#thread-list {
+    width: 35;
+    border-right: solid $primary-darken-2;
+}
+
+#message-pane {
+    width: 1fr;
+}
+
+#perch-header, #thread-header, #message-header {
+    background: $primary-darken-3;
+    color: $text;
+    padding: 0 1;
+    text-style: bold;
+}
+
+#compose-area {
+    height: 6;
+    border-top: solid $primary-darken-2;
+}
+
+#compose-hint {
+    color: $text-muted;
+    padding: 0 1;
+}

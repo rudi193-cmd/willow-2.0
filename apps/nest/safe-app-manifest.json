@@ -1,0 +1,13 @@
+{
+  "app_id": "willow-nest",
+  "name": "Willow Nest",
+  "description": "First-party file intake pipeline. Watches drop zones, classifies, routes, and runs pipeline stages.",
+  "version": "0.2.0",
+  "b17": "1284BC7D",
+  "entry": "apps/nest/nest.py",
+  "permissions": ["store_read", "store_write", "kb_read", "kb_write"],
+  "drop_zones": [
+    "~/Desktop/Nest/",
+    "~/Ashokoa/Nest/processed/"
+  ]
+}
