@@ -12,7 +12,7 @@ Output: ~/.willow/session_gaps.json
 import json
 import re
 import sys
-from collections import defaultdict, Counter
+from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -117,7 +117,7 @@ def main():
         json.dump(top_gaps, f, indent=2)
 
     print(f"\n{len(gaps)} persistent gaps found (5+ sessions, no KB atom)")
-    print(f"Top 15:")
+    print("Top 15:")
     for g in top_gaps[:15]:
         marker = " ★" if g["is_known_domain"] else ""
         print(f"  {g['session_count']:3d}x  {g['topic']}{marker}")
