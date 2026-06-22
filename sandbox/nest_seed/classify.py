@@ -12,11 +12,49 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+# Candidate finder — intentionally loose; _plausible_date() does the real
+# validation so we reject semver ("2.1.170"), version strings, and out-of-range
+# numbers that the bare pattern would otherwise tag as dates.
 _DATE_RE = re.compile(
-    r"\b(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}"
+    r"\b(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{1,4}"
     r"|\w+ \d{1,2},? \d{4}"
-    r"|\d{4}[/\-\.]\d{2}[/\-\.]\d{2})\b"
+    r"|\d{4}[/\-\.]\d{1,2}[/\-\.]\d{1,2})\b"
 )
+
+_MONTH_ABBR = {
+    "jan", "feb", "mar", "apr", "may", "jun",
+    "jul", "aug", "sep", "oct", "nov", "dec",
+}
+
+
+def _plausible_date(s: str) -> bool:
+    """True only if `s` is a real calendar date — not a semver/version string.
+
+    Rejects "2.1.170", "2.1.17" (dotted triplets without a 4-digit year),
+    out-of-range months/days, and month-name forms whose leading token is not
+    an actual month.
+    """
+    s = s.strip()
+    # Numeric forms — separator must be consistent across both positions (\2).
+    m = re.fullmatch(r"(\d{1,4})([/\-.])(\d{1,2})\2(\d{1,4})", s)
+    if m:
+        a, sep, c = m.group(1), m.group(2), m.group(4)
+        ai, bi, ci = int(a), int(m.group(3)), int(c)
+        # ISO: yyyy-mm-dd
+        if len(a) == 4:
+            return 1 <= bi <= 12 and 1 <= ci <= 31
+        # Dotted separator → require a 4-digit year, else it's a version string.
+        if sep == ".":
+            return len(c) == 4 and 1 <= ai <= 31 and 1 <= bi <= 12
+        # Slash/dash dd-mm-yy(yy) or mm-dd-yy(yy): year must be 2 or 4 digits.
+        if len(c) in (2, 4):
+            return 1 <= ai <= 31 and 1 <= bi <= 31 and (ai <= 12 or bi <= 12)
+        return False
+    # Month-name form: "June 21, 2024" — leading token must be a month.
+    mm = re.fullmatch(r"([A-Za-z]+) \d{1,2},? \d{4}", s)
+    if mm:
+        return mm.group(1).lower()[:3] in _MONTH_ABBR
+    return False
 
 _PERSON_PREFIXES = re.compile(
     r"\b(mr\.?|mrs\.?|ms\.?|dr\.?|prof\.?|rev\.?)\s+([A-Z][a-z]+ [A-Z][a-z]+)",
@@ -30,11 +68,26 @@ _LOCATION_WORDS = re.compile(
     re.IGNORECASE,
 )
 
-_RECEIPT_WORDS = re.compile(
-    r"\b(total|subtotal|receipt|invoice|tax|paid|amount due|"
-    r"credit card|cash|change|qty|quantity)\b",
+# Strong signals stand alone — these words rarely appear outside real receipts.
+_RECEIPT_STRONG = re.compile(
+    r"\b(receipt|invoice|subtotal|amount due|grand total)\b",
     re.IGNORECASE,
 )
+# Weak signals are common in ordinary text/JSON, so they only count as a receipt
+# when paired with an actual currency amount (see _CURRENCY_RE).
+_RECEIPT_WEAK = re.compile(
+    r"\b(total|tax|paid|credit card|cash|change|qty|quantity)\b",
+    re.IGNORECASE,
+)
+# Require a currency symbol — bare decimals like "2.17" appear in version
+# strings and config and must not promote a JSON blob to a receipt.
+_CURRENCY_RE = re.compile(r"[$£€]\s?\d[\d,]*(?:\.\d{2})?")
+
+
+def _is_receipt(text: str) -> bool:
+    if _RECEIPT_STRONG.search(text):
+        return True
+    return bool(_RECEIPT_WEAK.search(text) and _CURRENCY_RE.search(text))
 
 _EVENT_WORDS = re.compile(
     r"\b(birthday|anniversary|wedding|graduation|funeral|ceremony|"
@@ -61,7 +114,7 @@ def classify(text: str, filename: str = "") -> list[Fragment]:
     name_lower = filename.lower()
 
     # Detect receipt
-    if _RECEIPT_WORDS.search(text):
+    if _is_receipt(text):
         frags.append(Fragment(
             fragment_type="receipt",
             content=text[:500],
@@ -70,6 +123,8 @@ def classify(text: str, filename: str = "") -> list[Fragment]:
         ))
         # Extract dates from receipt
         for m in _DATE_RE.finditer(text):
+            if not _plausible_date(m.group()):
+                continue
             frags.append(Fragment(
                 fragment_type="date",
                 content=m.group(),
@@ -116,6 +171,8 @@ def classify(text: str, filename: str = "") -> list[Fragment]:
 
     # Extract dates
     for m in _DATE_RE.finditer(text):
+        if not _plausible_date(m.group()):
+            continue
         frags.append(Fragment(
             fragment_type="date",
             content=m.group(),
