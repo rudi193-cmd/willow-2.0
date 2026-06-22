@@ -6,7 +6,6 @@
 
 | Path | Description |
 |------|-------------|
-| `.mcp.json` | MCP server configuration (per-machine, gitignored) |
 | `AGENTS.md` | Agent registry and personas |
 | `CLAUDE.md` | Claude Code pointer → willow.md |
 | `GEMINI.md` | Gemini runtime pointer → willow.md |
@@ -97,7 +96,6 @@
 | `app.py` | Application entry point |
 | `bin/` | Executables |
 | `core/` | Shared core utilities — pg_bridge, config, helpers |
-| `gaps.db` | SQLite gaps tracking database |
 | `migrations/` | Database migrations |
 | `pyproject.toml` | Python project config |
 | `requirements.txt` | Python dependencies |
@@ -167,18 +165,18 @@
 
 | Path |
 |------|
-| `${HOME}` |
-| `.kart-scripts` |
-| `.mcp.json.bak` |
 | `.pre-commit-config.yaml` |
 | `CHANGELOG.md` |
 | `CODEX.md` |
 | `CONTRIBUTING.md` |
+| `DRAFT_v1.md` |
+| `DRAFT_v2.md` |
+| `DRAFT_v3.md` |
+| `PIECE_OUTLINE.md` |
 | `agents/heimdallr` |
 | `agents/loki` |
 | `agents/willow` |
 | `apps/ratatosk` |
-| `apps/star` |
 | `docs/.nojekyll` |
 | `docs/AGENT_IDENTITY.md` |
 | `docs/LANDING_DESIGN.md` |
@@ -206,8 +204,9 @@
 | `docs/recovery` |
 | `docs/static` |
 | `docs/upstream` |
-| `handoffs` |
 | `install-windows.ps1` |
+| `operation_paperclip_genealogy.db` |
+| `paperclip-research` |
 | `sap/MCP_SPEC.lock.json` |
 | `sap/adapters` |
 | `sap/cbm_facade.py` |
@@ -220,9 +219,9 @@
 | `sap/willow_run_compact.py` |
 | `seed-windows.py` |
 | `setup.sh` |
+| `sociotechnical.db` |
 | `stubs` |
 | `uv.lock` |
-| `willow.egg-info` |
 | `willow.py` |
 | `willow/bench` |
 | `willow/hns_enforcer.py` |

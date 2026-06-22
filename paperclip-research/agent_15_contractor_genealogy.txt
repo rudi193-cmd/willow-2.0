@@ -1,0 +1,477 @@
+INSTITUTIONAL GENEALOGY: OPERATION PAPERCLIP TO PRESENT-DAY DEFENSE CONTRACTORS
+Research Agent 15 — Contractor Genealogy
+Generated: 2026-03-07
+Sources: WebSearch (multiple queries), public records, news reporting, encyclopedic databases
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+A direct, traceable institutional lineage runs from Operation Paperclip (1945) to
+present-day Fortune 500 defense contractors, with Huntsville, Alabama as the
+geographic anchor. The chain is not metaphorical. It is organizational:
+
+  Operation Paperclip (1945)
+    → 118 German engineers to Redstone Arsenal, Huntsville (1950)
+      → Army Ballistic Missile Agency / Wernher von Braun's team
+        → Marshall Space Flight Center (MSFC), est. 1960
+          → Brown Engineering Company (1953, renamed) → Teledyne Brown Engineering (1967)
+            → Dynetics, Inc. (1974, founded by TBE alumni)
+              → Leidos acquires Dynetics for $1.65B (2020)
+                → Leidos: $16.7B revenue, 48,000 employees, hypersonic weapons prime
+
+Simultaneously:
+  MSFC / Redstone Arsenal ecosystem →
+    Intergraph Corporation (1969, Saturn guidance software engineers)
+    Cummings Research Park (1962, conceived by von Braun himself)
+    Boeing Huntsville (1962, Saturn V S-IC stage prime contractor)
+    Blue Origin Huntsville (2017/2020, BE-4 production at von Braun's test stand)
+
+Total current Huntsville defense/aerospace economic impact: $6B+ annual, 70,000+ workers.
+
+================================================================================
+SECTION 1: TELEDYNE BROWN ENGINEERING — THE FIRST SPINOFF
+================================================================================
+
+FOUNDING CIRCUMSTANCES
+- Opened July 1, 1953 as "Alabama Engineering and Tool"
+- Founded by John Bolton, recruited specifically by the local chamber of commerce
+  to serve von Braun's rocket team at Redstone Arsenal
+- Stated mission at founding: provide the engineering and manufacturing services
+  that did not exist in Huntsville but that von Braun's group required
+
+This is the critical link. Von Braun's team arrived at Redstone Arsenal in 1950.
+By 1953 the void of technical support infrastructure was acute enough that
+Huntsville civic leaders recruited Bolton from Georgia to create it. TBE was
+literally built to service a Paperclip operation.
+
+CORPORATE EVOLUTION
+- 1953: Founded as Alabama Engineering and Tool
+- 1956: Merged with Brown's Engineering Company (Indianapolis, owned by R.P. Brown);
+        renamed Brown Engineering Company, Inc.
+- 1967: Acquired by Teledyne Incorporated (Los Angeles); renamed Teledyne Brown Engineering
+- Present: Operating subsidiary of Teledyne Technologies (NYSE: TDY), still headquartered
+           at Cummings Research Park, Huntsville
+
+RELATIONSHIP TO VON BRAUN'S TEAM
+- Described in company history as "the first high-technology firm established in
+  Huntsville Alabama to assist Wernher von Braun and his rocket team in developing
+  the Redstone Rocket"
+- TBE founder Milton Cummings (later president of Brown Engineering) was a direct
+  co-architect of Cummings Research Park with von Braun
+- TBE/Brown Engineering provided engineering services and technical support for
+  both the ABMA and the Explorer I mission (1958)
+
+CUMMINGS RESEARCH PARK CONNECTION
+- Milton Cummings (Brown Engineering president) and VP Joe Moquin were instrumental
+  in founding the research park
+- Cummings Research Park began explicitly from a brainstorming session between
+  von Braun and Huntsville community leaders, with von Braun lobbying the Alabama
+  legislature for it in 1961
+- Established March 1962; renamed Cummings Research Park in 1973 in honor of Milton Cummings
+- Brown Engineering was the FIRST company to locate in the park
+- Current status: 2nd largest research park in the US (4th globally), 300+ companies,
+  26,000+ employees
+
+CURRENT CONTRACTS (2024-2025) — Still Active
+- $476M NASA IDIQ for Earth observation (Multi-User System for Earth Sensing / MUSES
+  platform aboard ISS) — awarded September 2024
+- $114M U.S. Army Space and Missile Defense Command contract: TACRAM 2 (Tactical Range
+  Air Defense Missile), extending work TBE has performed since 2014 — awarded August 2024
+- $126.7M Naval Supply Systems Command IDIQ for Naval Health Research Center support
+  — awarded August 2025
+- $42.9M NAVSEA MK11 SEAL Delivery Vehicle program (combat submersibles) — December 2025
+- $39M contract for Combat Submersible Vehicles (separate award)
+- $127M Navy IDIQ for medical modeling, IT, and simulation
+
+TBE remains operationally active across missile defense, space observation, naval
+special operations, and medical research — a portfolio range that reflects 70+ years
+of contract diversification from its original von Braun support role.
+
+================================================================================
+SECTION 2: DYNETICS — THE SECOND-GENERATION SPINOFF
+================================================================================
+
+FOUNDING
+- Founded 1974 by Herschel Matheny and Dr. Steve Gilbert
+- Both were employees of Teledyne Brown Engineering at the time of founding
+- Purpose: "to be a company of world-class experts in ballistic missile defense (BMD)
+  that could compete on contracts in Huntsville, Alabama"
+- Location: Huntsville, Cummings Research Park
+
+THE LINEAGE IS DIRECT:
+  Paperclip scientists → MSFC/Redstone Army work → TBE founded to support them
+  → TBE employees Matheny and Gilbert → Dynetics
+
+LEADERSHIP SUCCESSION
+- 1974-1988: Matheny (President) and Gilbert (Sr. VP) lead the company
+- 1988: Matheny and Gilbert approach employees Marc Bendickson (PhD) and Tom Baumbach
+  about an employee purchase
+- 1989: Matheny and Gilbert retire; Bendickson becomes President
+  (Note: this employee buyout kept the company independent and Huntsville-rooted
+  for 31 more years before the Leidos acquisition)
+
+PROGRAMS — DIRECT CONTINUATIONS OF MSFC/ARMY WORK
+- Ballistic missile defense (founding charter, rooted in Redstone Arsenal mission)
+- 1980s expansion: electro-optic and infrared sensors, missile systems analysis,
+  software, modeling and simulation, foreign materiel exploitation of radars,
+  missiles, and missile seekers
+- 2009: Won MSFC IT support contract ($335M over 5 years, teamed with CIBER and others)
+- 2012: Opened 226,500 sq ft "Solutions Complex" in Cummings Research Park
+- Common Hypersonic Glide Body (C-HGB): $351.6M contract (pre-Leidos), then
+  $670M follow-on contract (November 2024, post-Leidos)
+- Long Range Hypersonic Weapon (LRHW / Dark Eagle): subcontractor to Lockheed Martin
+- Enduring Indirect Fires Protection Capability (IFPC): $265M DOD contract (2025)
+- Small Glide Munition, High Energy Laser Tactical Vehicle Demonstrator
+
+THE LEIDOS ACQUISITION — WHAT IT WAS WORTH
+- Announced December 2019; completed 2020
+- Price: $1.65 billion cash
+- What Leidos acquired:
+  * C-HGB and LRHW programs (hypersonic offensive weapons)
+  * Small Glide Munition program
+  * High Energy Laser Tactical Vehicle Demonstrator
+  * Hypersonics, directed energy, space solutions, unmanned/counter-UAS,
+    intelligence, electronic warfare, radar capabilities
+  * Prime contractor status on U.S. Army's priority hypersonics program
+  * Physical presence at Redstone Arsenal / Cummings Research Park
+  * Proximity to Army Materiel Command, Aviation and Missile Command,
+    Missile Defense Agency, and MSFC — all in the same geographic cluster
+  * Institutional knowledge and workforce rooted in 45+ years of Huntsville
+    defense work
+
+- Leidos stated the deal would add ~$1B in annualized revenue and $110M in
+  adjusted EBITDA
+- Strategic framing: Leidos explicitly cited proximity to Army Materiel Command,
+  Army Aviation and Missile Command, DOD Missile Defense Agency, and NASA MSFC
+  as core strategic value — i.e., they were paying for the Paperclip geography
+
+================================================================================
+SECTION 3: LEIDOS TODAY — THE INSTITUTIONAL SUCCESSOR
+================================================================================
+
+SCALE (FY 2024)
+- Revenue: $16.7 billion (FY 2024, up 8% YoY)
+- Revenue (FY ending January 2026): ~$17.2 billion
+- Total contract backlog: $43.6 billion (Q4 2024)
+- Employees: ~48,000 worldwide
+- Fortune 500 company (ranked mid-200s)
+- Headquarters: Reston, Virginia
+- Origins: Founded 1969 as Science Applications International Corporation (SAIC);
+  became Leidos when SAIC split in 2013; absorbed Lockheed Martin IT sector in 2016
+
+HUNTSVILLE PROGRAMS (DYNETICS SUBSIDIARY)
+- $204M Army contract for missile launcher assets (December 2024, work through 2026)
+- $670M C-HGB contract (November 2024)
+- $265M IFPC weapon system manufacture (2025)
+- $48M Army General Electronic Test Station (GETS) equipment (through 2029)
+- $334M air-breathing hypersonic system development
+- $32M defense radar contract
+
+TRACEABLE LINEAGE
+Leidos's Dynetics subsidiary continues work that is institutionally continuous with:
+1. The missile defense analysis work Matheny and Gilbert left TBE to do in 1974
+2. TBE's own work supporting von Braun's team since 1953
+3. The Army Ballistic Missile Agency programs von Braun's Paperclip team ran at
+   Redstone Arsenal since 1950
+
+The C-HGB program — Dynetics' flagship — is a direct successor to the hypersonic
+glide vehicle work rooted in intercontinental ballistic missile research that
+von Braun's team pioneered. The Redstone missile (1953-1958), which TBE was
+founded to support, was the direct ancestor of the ICBM/IRBM programs that
+became ballistic missile defense, which became Dynetics' founding mission, which
+became Leidos's hypersonics portfolio.
+
+================================================================================
+SECTION 4: OTHER PAPERCLIP-LINKED CONTRACTORS
+================================================================================
+
+--- CUMMINGS RESEARCH PARK AS INSTITUTIONAL ANCHOR ---
+
+Von Braun personally conceived the research park. It is the physical container
+of the entire genealogy. Current roster (300+ companies, 26,000+ employees) includes:
+- SAIC, Northrop Grumman, Boeing, ADTRAN, HudsonAlpha, Teledyne Brown Engineering,
+  Leidos/Dynetics, Lockheed Martin, and hundreds more
+
+Every significant defense contractor in Huntsville operates within the park or
+in its immediate shadow — a park designed by a Paperclip scientist to sustain the
+ecosystem he built.
+
+--- INTERGRAPH CORPORATION ---
+
+- Founded February 1969 as M&S Computing, Huntsville, Alabama
+- Founders: Jim Meadlock, Nancy Meadlock, Terry Schansman, Keith Schonrock,
+  Bob Thurber
+- Background: Founders came from IBM's Federal Systems Division, developing
+  computing services for NASA and defense contracts
+- Specific connection: Founders developed guidance software for the Saturn rocket
+  — i.e., they built software for von Braun's launch vehicle
+- Early work: Providing computational support for defense and space initiatives
+  at Redstone Arsenal and MSFC
+- Evolution: Renamed Intergraph in 1980; pioneered high-performance graphics
+  workstations and CAD/CAM/CAE software
+- Scale at peak: Became a major global CAD/GIS software company
+- Current: Acquired by Hexagon AB (2010); Hexagon/Intergraph celebrated 50 years
+  in 2019; still Huntsville-based
+
+Intergraph is a Paperclip-linked institution through the Saturn V software chain.
+Its founders were computational engineers who worked on von Braun's rockets, then
+spun out to build commercial/defense software. The genealogy: Paperclip → Saturn V
+→ guidance software engineers → M&S Computing → Intergraph → Hexagon.
+
+--- SAIC (SCIENCE APPLICATIONS INTERNATIONAL CORPORATION) ---
+
+- Founded 1969 by Dr. J. Robert Beyster in San Diego (NOT a Huntsville native company)
+- Presence in Huntsville: 50+ years, described as "integral part of Huntsville"
+- Supports Army and NASA work; listed as major presence at Cummings Research Park
+- No direct MSFC founder link — SAIC's Huntsville presence reflects the gravity
+  of the Redstone/MSFC ecosystem attracting contractors, not a spinoff genealogy
+- Performed MSFC-contracted work dating to at least the 1990s
+- Note: SAIC split in 2013; the SAIC government IT business became Leidos
+
+--- COLSA CORPORATION ---
+
+- Founded 1980, started in a Huntsville garage
+- Alabama Engineering Hall of Fame inductee
+- Huntsville-based defense/space contractor
+- Specific MSFC/Paperclip links not established from available data
+
+--- DESE RESEARCH ---
+
+- Founded 1982, Huntsville
+- Defense contractor, location near Redstone Arsenal
+- Specific MSFC/Paperclip links not established from available data
+
+--- BOEING IN HUNTSVILLE ---
+
+Timeline:
+- 1962: Boeing established Huntsville operations, initially in an old cotton mill
+  on Meridian Street
+- Trigger: Kennedy's 1961 moon commitment and the resulting Saturn V program
+- Role: Prime contractor for Saturn V S-IC (first stage), the stage designed and
+  directed by von Braun's team at MSFC
+- 1966: Employment peaked at ~4,500 in Huntsville (Saturn V production peak)
+- Post-Apollo: Transitioned to Missile and Weapon Systems work
+- Programs since: International Space Station, Ground-based Midcourse Defense (GMD),
+  Space Launch System (SLS), missile defense programs
+
+Current (2024):
+- 3,400+ employees in Huntsville
+- SLS core stage, upper stage, and avionics (most powerful rocket NASA has built)
+- $882M Army cargo engineering and logistics contract (Redstone Arsenal contracting)
+- $1B+ missile seeker contract (2022)
+- Economic output (2021): $2.731 billion; $663.2M earnings; 9,402 direct/indirect jobs
+
+THE LINK: Boeing came to Huntsville specifically to build von Braun's Saturn V.
+The relationship was not incidental — Boeing was a contract subordinate to MSFC,
+executing designs produced by von Braun's Paperclip team. Boeing's entire Huntsville
+identity for its first decade was as an implementation arm of the Paperclip rocket program.
+That gravitational relationship persisted: Boeing stayed in Huntsville and diversified
+into missile defense, then SLS — each program anchored to the same Redstone/MSFC nexus.
+
+================================================================================
+SECTION 5: BLUE ORIGIN — THE NEWEST LINK IN THE CHAIN
+================================================================================
+
+TIMELINE
+- June 2017: Blue Origin announces Huntsville BE-4 engine factory location
+- 2018: Breaks ground on 350,000 sq ft facility
+- February 17, 2020: Factory formally opens; CEO Bob Smith cuts ribbon
+- Investment: $200M+; 300+ jobs added to local economy
+- January 16, 2025: New Glenn maiden flight from Cape Canaveral LC-36
+
+WHY HUNTSVILLE
+Blue Origin cited:
+1. Highly-skilled workforce (direct heritage of MSFC/Redstone talent pipeline)
+2. Deep aerospace history (70+ years of rocket development)
+3. Strong business climate
+4. Proximity to customers and suppliers in North Alabama
+5. Competitive access to oxygen, hydrogen, natural gas (propellant supply chain)
+
+THE MSFC TEST STAND LINK — Most Direct Institutional Connection
+- Blue Origin negotiated use of MSFC Test Stand 4670
+- Test Stand 4670 is the historic Saturn V first stage test stand — the same
+  stand where von Braun's team tested the S-IC booster stage (Boeing/MSFC, 1960s)
+  and later Space Shuttle main engines
+- Blue Origin's BE-4 and BE-3U engines are now acceptance-tested on this stand
+- Structure: Space Act Agreement — Blue Origin invested in refurbishment/modernization
+  of the stand; NASA retains ownership
+
+This is the most literal institutional continuity available: a rocket engine built
+in 2020 to power a 21st-century orbital vehicle is being tested on hardware
+originally built to test engines designed by scientists brought to America under
+Operation Paperclip in 1945.
+
+NEW GLENN ROCKET
+- Seven BE-4 engines on first stage (manufactured in Huntsville)
+- Two BE-3U engines on second stage
+- Combined first-stage thrust: ~4 million lbs (comparable to Saturn IB class)
+- First stage reusable (25+ flight design minimum)
+- Maiden flight reached orbit: January 16, 2025
+
+NO DIRECT VON BRAUN DESIGN CONTINUITY in the engineering sense — New Glenn uses
+full-flow staged combustion (BE-4), a fundamentally different cycle than Saturn
+F-1/J-2 engines. However, the institutional continuity is explicit: Blue Origin
+deliberately chose to manufacture and test in the facilities and talent ecosystem
+that von Braun built.
+
+================================================================================
+SECTION 6: CURRENT LARGEST CONTRACTS — HUNTSVILLE 2024-2025
+================================================================================
+
+| Contractor | Contract Value | Program | Agency | Notes |
+|---|---|---|---|---|
+| Astrion | $3.7B | Air Force Test Operations and Sustainment (TOS) II | USAF | Huntsville HQ |
+| Leidos/Dynetics | $670M | Common Hypersonic Glide Body (C-HGB) | Army | TBE/Dynetics lineage |
+| Boeing | $882M | Cargo Engineering & Logistics Support | Army/Redstone | Saturn V lineage |
+| Leidos/Dynetics | $265M | IFPC Weapon System manufacture | DOD | Army missile defense |
+| Leidos/Dynetics | $204M | Launcher Assets | Army | Dynetics lineage |
+| Army/Raytheon | $9.8B | PAC-3 Patriot missiles | Army | Largest missile mfg contract ever at Redstone |
+| Teledyne Brown Eng | $476M | MUSES Earth Observation (NASA IDIQ) | NASA | TBE / CRP lineage |
+| Leidos/Dynetics | $334M | Air-breathing Hypersonic System | DOD | Dynetics lineage |
+| Teledyne Brown Eng | $126.7M | Naval Health Research Center support | Navy/NAVSUP | |
+| Teledyne Brown Eng | $114M | TACRAM 2 Missile Defense | Army SMDC | TBE / CRP lineage |
+| Invariant Corp | $200M+ | Multi-Use Launcher Electronics (MULE) | DLA/AMTC | Huntsville HQ |
+| Gray Analytics | $59.5M | Missile Defense Agency IDIQ | MDA | Huntsville small business |
+
+TOTAL ECONOMIC SCALE
+- Defense/aerospace: Huntsville's largest employer sector
+- 70,000+ workers in defense/aerospace
+- $6B+ annual economic impact (Huntsville-Madison County Chamber)
+- Redstone Arsenal: Over $100B in government contracts in database records for the region
+
+TRACEABLE-TO-PAPERCLIP CONTRACTS (direct lineage)
+1. ALL Leidos/Dynetics missile defense and hypersonics work — Dynetics → TBE → von Braun support
+2. ALL Teledyne Brown Engineering contracts — direct organizational successor, founded 1953 for von Braun
+3. Boeing Huntsville — arrived 1962 for Saturn V; all subsequent work flows from that entry
+4. Blue Origin — using von Braun's test stand for engine acceptance testing
+5. Northrop Grumman / SAIC / Lockheed Martin Huntsville — present because of gravitational pull
+   of the ecosystem von Braun created
+
+================================================================================
+SECTION 7: SYNTHESIS — THE FULL GENEALOGY MAP
+================================================================================
+
+TIER 1: ORIGIN INSTITUTION (1945-1960)
+  Operation Paperclip → 118 German engineers to Redstone Arsenal (1950)
+  → Army Ballistic Missile Agency (ABMA) under von Braun
+  → Explorer I (1958)
+  → Marshall Space Flight Center est. 1960 (von Braun, first director)
+
+TIER 2: FIRST-GENERATION INSTITUTIONAL SPINOFFS (1953-1969)
+  Brown Engineering / TBE (1953): Created to serve the Paperclip team
+  Cummings Research Park (1962): Conceived by von Braun to sustain the ecosystem
+  Boeing Huntsville (1962): Recruited to execute von Braun's Saturn V designs
+  Intergraph / M&S Computing (1969): Saturn V guidance software engineers → commercial
+
+TIER 3: SECOND-GENERATION SPINOFFS (1969-1980)
+  Dynetics (1974): TBE employees Matheny and Gilbert → ballistic missile defense
+  COLSA Corp (1980): Huntsville, defense/space services
+
+TIER 4: CORPORATE CONSOLIDATION (2013-2020)
+  Teledyne Technologies acquires TBE (TBE was acquired by Teledyne Inc. 1967;
+    Teledyne Technologies spun off 1999)
+  Leidos acquires Dynetics for $1.65B (2020)
+
+TIER 5: CURRENT INHERITORS (2020-present)
+  Leidos ($16.7B revenue) — carries Dynetics hypersonics franchise, Huntsville anchor
+  Teledyne Brown Engineering — still active, same Cummings Research Park address
+  Boeing Huntsville — SLS, missile defense, $2.7B economic output
+  Blue Origin Huntsville — BE-4 production, testing at Saturn V test stand
+  Northrop Grumman, SAIC, Lockheed Martin — gravity-attracted successors
+
+THE DOLLAR TRAIL:
+  U.S. Army/NASA contracts 1950s-1960s → created TBE, Intergraph, attracted Boeing
+  → TBE spawned Dynetics → Leidos paid $1.65B for that lineage in 2020
+  → Leidos now collects $16.7B/year across government, including hypersonics work
+    that traces to Redstone Arsenal ballistic missile research
+
+THE PEOPLE TRAIL:
+  Paperclip scientists (1945) → Redstone Army engineers (1950-1960) →
+  MSFC engineers (1960+) → TBE founders recruited to serve them (1953) →
+  TBE engineers Matheny/Gilbert → founded Dynetics (1974) →
+  Dynetics workforce (1974-2020) → absorbed into Leidos (2020) →
+  Current Leidos/Dynetics engineers in Huntsville building hypersonic weapons
+
+THE PHYSICAL TRAIL:
+  Von Braun's team at Redstone Arsenal →
+  Cummings Research Park (von Braun's idea, TBE first tenant) →
+  Dynetics Solutions Complex at Cummings Research Park →
+  Blue Origin factory in Huntsville →
+  BE-4 engines tested at Saturn V test stand (MSFC 4670) →
+  New Glenn launch orbit January 2025
+
+================================================================================
+SECTION 8: INVESTIGATIVE ASSESSMENT
+================================================================================
+
+CONFIRMED LINKS (strong evidence):
+- TBE founding explicitly to serve von Braun (company's own stated history)
+- Dynetics founding by TBE alumni (named: Matheny and Gilbert)
+- Cummings Research Park conceived by von Braun (direct historical record)
+- Boeing's Huntsville entry tied to Saturn V S-IC contract (Boeing's own account)
+- Blue Origin's use of Test Stand 4670, originally built for Saturn V first stage
+- Leidos acquisition explicitly motivated by proximity to Redstone/MSFC nexus
+
+PROBABLE LINKS (strong circumstantial, not directly confirmed):
+- Intergraph founders developed Saturn V guidance software at IBM Federal Systems
+  before spinning out — this is highly plausible given their stated backgrounds
+  but the exact Paperclip connection (vs. American MSFC engineers) is not specified
+
+UNANSWERED QUESTIONS:
+1. Were any Paperclip scientists themselves founders or named officers at TBE, or
+   were all Paperclip scientists on the government side (ABMA/MSFC) while TBE
+   was the commercial support layer? Available evidence suggests the latter —
+   TBE was founded by an outside businessman to serve the Paperclip team, not by
+   the scientists themselves.
+2. Coleman Research Corporation specifically — insufficient data found; further
+   research warranted.
+3. Exact MSFC roles of Matheny and Gilbert before founding Dynetics — confirmed
+   they were TBE employees, but their specific projects are not documented in
+   available public sources.
+
+BOTTOM LINE FINDING:
+The Paperclip-to-present genealogy is real, traceable, and financially substantial.
+Leidos ($16.7B/year) is the largest single corporate inheritor of the Paperclip
+institutional ecosystem — but only through two acquisition hops (TBE 1967→Teledyne,
+Dynetics 2020→Leidos). Boeing Huntsville, Teledyne Brown Engineering, and the
+Cummings Research Park complex represent the more direct, unbroken institutional
+links. The total annual dollar value of contracts flowing through Huntsville's
+Paperclip-descended institutional network exceeds $10 billion annually.
+
+================================================================================
+SOURCES
+================================================================================
+
+- Our History — Teledyne Brown Engineering: https://www.tbe.com/who-we-are/our-history
+- Teledyne Brown Engineering — Encyclopedia of Alabama: https://encyclopediaofalabama.org/article/teledyne-brown-engineering/
+- Teledyne Brown Engineering 65th Anniversary: https://www.cobrt-archive.com/press-releases/teledyne-brown-engineering-celebrates-65-years/7/16/2018
+- Dynetics — Wikipedia: https://en.wikipedia.org/wiki/Dynetics
+- Dynetics History: https://www.dynetics.com/about/history/
+- Dynetics Alabama Engineering Hall of Fame: https://engrhof.org/aehofmembers/dynetics/
+- Leidos acquires Dynetics — FlightGlobal: https://www.flightglobal.com/defence/leidos-165bn-buy-of-dynetics-brings-hypersonic-missiles-and-glide-munitions/135880.article
+- Leidos acquisition complete: https://www.leidos.com/insights/leidos-completes-acquisition-dynetics-expanding-companys-portfolio-new-offerings
+- Dynetics $670M C-HGB contract: https://thedefensepost.com/2024/11/28/dynetics-hypersonic-glide-body/
+- Leidos/Dynetics IFPC $265M: https://washingtonexec.com/2025/07/leidos-subsidiary-wins-265m-dod-contract-for-indirect-fire-protection-capability/
+- Leidos FY2024 results: https://investors.leidos.com/news-releases/news-release-details/leidos-posts-strong-fourth-quarter-and-fiscal-year-2024-results
+- Cummings Research Park — Encyclopedia of Alabama: https://encyclopediaofalabama.org/article/cummings-research-park/
+- Cummings Research Park 50th Anniversary (US Army): https://www.army.mil/article/88950
+- Boeing Huntsville at 60: https://www.boeing.com/features/2022/12/boeing-huntsville-at-60
+- Boeing in Alabama: https://encyclopediaofalabama.org/article/boeing-in-alabama/
+- Boeing Huntsville current defense missions: https://www.madeinalabama.com/2024/07/huntsville-operations-support-boeings-critical-defense-missions/
+- Blue Origin opens Huntsville factory: https://www.blueorigin.com/news/blue-origin-opens-huntsville-engine-factory
+- Blue Origin factory February 2020: https://www.madeinalabama.com/2020/02/blue-origin-officially-opens-alabama-rocket-engine-factory/
+- Blue Origin Test Stand 4670 restoration: https://huntsvillebusinessjournal.com/lead/2022/05/09/blue-origins-facelift-of-historic-nasa-test-stand-presents-challenges/
+- New Glenn maiden flight Wikipedia: https://en.wikipedia.org/wiki/New_Glenn
+- Intergraph — Wikipedia: https://en.wikipedia.org/wiki/Intergraph
+- Intergraph history — FundingUniverse: https://www.fundinguniverse.com/company-histories/intergraph-corporation-history/
+- SAIC — Wikipedia: https://en.wikipedia.org/wiki/Science_Applications_International_Corporation
+- SAIC Huntsville: https://www.saic.com/huntsville
+- Von Braun economic legacy: https://huntsvillebusinessjournal.com/news/2025/03/25/wernher-von-brauns-lasting-economic-legacy-in-huntsville/
+- Operation Paperclip — National Air and Space Museum: https://airandspace.si.edu/stories/editorial/project-paperclip-and-american-rocketry-after-world-war-ii
+- Operation Paperclip in Huntsville (ResearchGate): https://www.researchgate.net/publication/252763511_Operation_Paperclip_in_Huntsville_Alabama
+- Huntsville defense contracts database: https://www.governmentcontractswon.com/department/defense/huntsville_al_alabama.asp
+- TBE $476M NASA contract: https://huntsvillebusinessjournal.com/news/2024/09/27/teledyne-brown-engineering-wins-476m-nasa-contract/
+- TBE $114M Army missile defense contract: https://www.teledyne.com/en-us/news/Pages/teledyne-brown-engineering-secures-114-million-contract-to-enhance-missile-defense-systems.aspx
+- Huntsville defense sector 2026: https://orbysa.com/news/misc/2026-01-30-alabama-emerges-as-aerospace-and-defense-powerhouse-in-2026
+- Huntsville Golden Dome overview: https://huntsvillebusinessjournal.com/news/2025/09/01/huntsvilles-golden-dome-what-we-know-now-and-whats-coming-next/

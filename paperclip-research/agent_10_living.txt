@@ -1,0 +1,437 @@
+OPERATION PAPERCLIP: LIVING STATUS, DOCUMENTED DEATHS, AND LIVING DESCENDANTS
+Research Agent 10 Report
+Generated: 2026-03-07
+Sources: Web searches, Wikipedia, Legacy.com obituaries, NASA oral history records, UAH archives
+
+================================================================================
+SECTION 1: CONFIRMED LATE DEATHS — SCIENTISTS WHO LIVED INTO 2000s-2010s
+================================================================================
+
+The following Generation-1 Paperclip scientists had documented deaths after 2000,
+living well beyond average life expectancy:
+
+--- DIETER GRAU (April 24, 1913 – December 17, 2014) ---
+CONFIRMED DEAD. Age at death: 101.
+Role: Quality assurance director for Saturn I and Saturn V rockets; core member of
+von Braun's rocket group. Arrived USA via Operation Paperclip from Peenemunde.
+Death location: Huntsville, Alabama.
+Status verified by: Legacy.com obituary, Wikipedia, AL.com (Huntsville).
+Sources: Dieter Grau Obituary (Legacy.com), Wikipedia/Dieter_Grau.
+
+--- ERNST STUHLINGER (December 19, 1913 – May 25, 2008) ---
+CONFIRMED DEAD. Age at death: 94.
+Role: Guidance systems developer, later director of MSFC Space Science Laboratory
+(1960-1968), MSFC associate director for science (1968-1975). Pioneer of ion engine
+research for long-endurance spaceflight. PhD student under Werner Heisenberg.
+Death location: Huntsville, Alabama (in failing health for several months prior).
+Status verified by: Find a Grave memorial, SpaceRef obituary, Wikipedia.
+NOTE: Stuhlinger gave multiple recorded oral history interviews (see Section 6).
+Sources: Ernst Stuhlinger Find a Grave, SpaceRef obituary notice.
+
+--- KONRAD DANNENBERG (February 4, 1912 – February 16, 2009) ---
+CONFIRMED DEAD. Age at death: 96.
+Role: Rocket propulsion pioneer, Saturn V development. Received NASA Exceptional
+Service Medal 1973. Held by British briefly as potential war criminal before being
+recruited for Paperclip.
+Death location: Huntsville, Alabama.
+Status verified by: Legacy.com obituary, Physics Today AIP obituary, Wikipedia.
+NOTE: Dannenberg co-conducted oral history interviews of other Paperclip scientists.
+Sources: Konrad Dannenberg (Legacy.com), Physics Today AIP obituary.
+
+--- WALTER HAEUSSERMANN (March 2, 1914 – December 8, 2010) ---
+CONFIRMED DEAD. Age at death: 96.
+Role: Director of Guidance and Control Laboratory at MSFC; developed guidance and
+control systems for Redstone, Jupiter, and Saturn program (Astrionics Laboratory).
+Death cause: Complications from a fall.
+Death location: Huntsville, Alabama.
+Status verified by: Legacy.com obituary (AL.com, December 14, 2010), Wikipedia.
+Sources: Walter Haeussermann Obituary (Legacy.com), Philosophy of Science Portal notice.
+
+--- HANS FICHTNER (September 8, 1917 – October 21, 2012) ---
+CONFIRMED DEAD. Age at death: 95.
+Role: Rocket scientist, worked on V-2 rockets under von Braun at Peenemunde from
+1939-1945, later brought to USA via Paperclip.
+Death location: Huntsville, Alabama area.
+Status verified by: Wikipedia, AstroNautix entry.
+
+--- RUDOLF "RUDI" SCHLIDT (1914 – September 28, 2012) ---
+CONFIRMED DEAD. Age at death: approximately 97-98.
+Role: Member of von Braun's Paperclip rocket team.
+Death location: Huntsville, Alabama.
+Status verified by: Find a Grave memorial, theufochronicles.com announcement,
+Laughlin Service obituary.
+Sources: Rudolf Hans Schlidt (Find a Grave memorial #97969952).
+
+--- OSCAR HOLDERER (1919 – May 5, 2015) ---
+CONFIRMED DEAD. Age at death: 95.
+Role: Low-level engineer under von Braun; designed the wind tunnel used for Saturn V
+testing at MSFC; after retirement designed exhibits including multi-axis trainer and
+one-sixth gravity chair for U.S. Space & Rocket Center.
+Death cause: Stroke a few days prior.
+Death location: Huntsville, Alabama.
+Survivors: Second wife Jan Smith Dunlap Holderer; stepchildren Clifford Dunlap and
+Mary Gaither.
+STATUS NOTE: In 2015, multiple outlets (Boston Globe, Mercury News, San Diego Union-
+Tribune) reported Holderer as "the last known member" of the original German moon
+rocket design team. This claim was applied specifically to the core von Braun Paperclip
+group that arrived in 1945. See discrepancy note below under Section 5.
+Sources: Oscar Holderer Wikipedia, Legacy.com obituary, Boston Globe obituary.
+
+--- GEORG VON TIESENHAUSEN (May 18, 1914 – June 3, 2018) ---
+CONFIRMED DEAD. Age at death: 104.
+Role: Rocket scientist; designed test stands for V-2 engines at Peenemunde; arrived
+USA 1953 (Operation Paperclip second wave); worked on Redstone at Redstone Arsenal;
+originated concept for the Lunar Rover (1959, initially rejected); worked through
+Apollo and into Shuttle era.
+Death location: His home in Huntsville, Alabama.
+Additional note: Neil Armstrong made a rare public appearance in 2011 to present von
+Tiesenhausen with a lifetime achievement award at the U.S. Space & Rocket Center.
+Holocaust Memorial Museum (USHMM) holds an oral history interview with him.
+STATUS NOTE: Von Tiesenhausen was officially designated the LAST LIVING NASA scientist
+to have worked on Nazi rockets and been brought to the US under Operation Paperclip.
+Sources: Vice article, TechTimes article, Georg von Tiesenhausen Wikipedia.
+
+================================================================================
+SECTION 2: POTENTIALLY STILL ALIVE — SCIENTISTS BORN AFTER 1925
+================================================================================
+
+--- FRIEDWARDT WINTERBERG (born June 12, 1929) ---
+STATUS: LIKELY STILL ALIVE as of 2026. Age: approximately 96.
+Role: German-American theoretical physicist. PhD from Max Planck Institute, Gottingen
+(1955), under Werner Heisenberg. Brought to USA in 1959 via Operation Paperclip.
+Hired at University of Nevada, Reno as associate professor of physics (1963),
+promoted to full professor (1968); holds title of research professor emeritus.
+Research fields: General relativity, Planck scale physics, nuclear fusion,
+inertial confinement fusion, plasmas. Over 260 publications and three books.
+EVIDENCE OF CONTINUED ACTIVITY:
+- Wikipedia article last updated September 22, 2025; uses present tense ("is"),
+  no death date recorded.
+- Published in Physics Essays journal in 2023-2024 ("The Einstein myth and the
+  crisis in modern physics").
+- Google Scholar profile active with 2,348 citations.
+- viXra.org lists active preprint submissions.
+- PeoplePill.com bio notation: "German physicist (1929–)" with no end date.
+CAVEAT: No source positively confirms he was alive in early 2026; the absence of
+a death notice combined with recent publications in 2023-2024 makes him a strong
+candidate for still being alive. No obituary, death notice, or university memorial
+found anywhere.
+CLARIFICATION ON PAPERCLIP MEMBERSHIP: Winterberg's association with Paperclip is
+specifically his 1959 arrival. He was not in the original 1945-1946 cohort; he is
+a later-wave recruit. He worked independently and is not a member of the "von Braun
+rocket group" per se, but is formally a Paperclip scientist.
+Sources: Friedwardt Winterberg Wikipedia, University of Nevada Reno profile (2009),
+PeoplePill biography, Physics Essays publication 2023-2024.
+
+CONCLUSION ON GENERATION-1 SURVIVORSHIP: Among the well-documented rocket/aerospace
+Paperclip scientists, Georg von Tiesenhausen (d. 2018) appears to be the last confirmed
+death of a core member. Friedwardt Winterberg (b. 1929, physicist) appears to be the
+only plausible surviving Generation-1 Paperclip scientist as of 2026, if still alive.
+
+================================================================================
+SECTION 3: THE "LAST SURVIVOR" QUESTION — CLARIFYING THE DISCREPANCY
+================================================================================
+
+Two scientists were each identified by the media as "the last survivor," creating
+apparent contradiction:
+
+OSCAR HOLDERER (d. May 2015, age 95):
+- The Boston Globe, Mercury News, and multiple outlets in May 2015 called him
+  "the last known member of the German moon rocket design team."
+- This likely referred specifically to the original 1945-1946 wave of Paperclip
+  recruits who arrived at Fort Bliss with von Braun.
+
+GEORG VON TIESENHAUSEN (d. June 2018, age 104):
+- Vice, TechTimes, WAFF, and Scotsman in June 2018 called him "the last living
+  NASA scientist to have worked on Nazi rockets after being brought to the US
+  under Operation Paperclip."
+- Von Tiesenhausen arrived in the US in 1953, a later Paperclip wave than
+  Holderer's 1945 arrival.
+
+RESOLUTION: The discrepancy is definitional. Holderer was the last of the
+1945-cohort (those who arrived immediately after the war). Von Tiesenhausen,
+arriving eight years later in 1953, outlived Holderer by three years and died
+in 2018 as the last of any Paperclip Peenemunde veteran in the US program.
+Von Tiesenhausen is the confirmed overall last survivor of the Paperclip
+rocket scientist cohort (Peenemunde connection) in any wave.
+
+FRIEDWARDT WINTERBERG remains the only possibly still-living Paperclip scientist
+as of 2026, as a physicist (not rocket engineer) recruited in 1959.
+
+================================================================================
+SECTION 4: GENERATION-2 DESCENDANTS — CHILDREN OF PAPERCLIP SCIENTISTS
+(Born ~1940-1970, currently aged ~55-85)
+================================================================================
+
+This generation is largely still alive. The von Braun family is the most
+documented case.
+
+--- WERNHER VON BRAUN'S CHILDREN ---
+
+IRIS CAREEN VON BRAUN (December 9, 1948 – April 17, 2013)
+STATUS: DECEASED. Died of cancer at age 60 in Huntsville, Alabama.
+She was the eldest of von Braun's three children, born at Fort Bliss Army Hospital
+(El Paso, TX). Worked as a business executive in Huntsville; active philanthropist;
+supporter of United Way and Huntsville Hospital Foundation.
+NOTE: She predecased her own mother (Maria von Braun, who died 2025).
+Sources: StartnewsWire "Iris Careen Von Braun" profile, various family references.
+
+MARGRIT CECILE VON BRAUN (born May 8, 1952, Huntsville, Alabama)
+STATUS: ALIVE AND ACTIVE as of early 2026. Age: approximately 73.
+Occupation: Professor emerita of environmental engineering, University of Idaho.
+Co-founder and director of Terragraphics International Foundation (TIFO), a 501(c)(3)
+non-profit focused on environmental justice and hazard management. Current focus:
+environmental justice and education at the Duck Valley Indian Reservation
+(Nevada/Idaho border). Married to Ian von Lindern.
+PUBLIC ACTIVITIES (2024-2025):
+- Guest speaker, Space Explorers Celebration, U.S. Space & Rocket Center,
+  October 2024. Talk titled "Reaching for the Moon: A Family Adventure."
+- Recipient of inaugural Founders Award from U.S. Space & Rocket Center.
+- Referenced in Huntsville Business Journal article March 25, 2025 about von
+  Braun's economic legacy.
+- Quoted on Artemis program: "He would be proud that we're going back to the moon
+  with the Artemis program."
+Sources: Margrit von Braun Wikipedia, 256today.com Space Explorers Celebration
+announcement, Huntsville Business Journal 2025.
+
+PETER CONSTANTINE VON BRAUN (born 1960)
+STATUS: BELIEVED ALIVE. Age: approximately 65.
+He is Wernher von Braun's only son. Limited public profile.
+Known prior occupations: principal and board of education member in Greenwich, CT;
+real estate work. No current high-profile role documented.
+Notable: Was present at the inaugural Founders Award ceremony at U.S. Space &
+Rocket Center. Appeared in 1969 MSFC employee picnic photograph at UAH Archives.
+Sources: Wernher von Braun Wikipedia, New Award to Von Braun Family (HvillBlast).
+
+--- MARIA VON BRAUN (WIFE) ---
+Maria Luise von Quistorp von Braun (born 1928 – January 20, 2025)
+STATUS: RECENTLY DECEASED. Age at death: 96. Died at her home in Alexandria, VA,
+surrounded by family. She was Wernher's wife (married March 1, 1947, under military
+guard in Landshut). After his death in 1977 she remained in Alexandria; became a yoga
+instructor; known as "second grandmother" to neighborhood children. NSS Society
+Governor. Survived by her three children (Iris had predeceased her).
+NOTE: Her death in January 2025 was described by local media as marking the end of
+an era for the German rocket scientists' generation.
+Sources: Huntsville Business Journal Feb 10 2025, 256 Today Feb 2025, NSS notice,
+Find a Grave memorial #279488972.
+
+================================================================================
+SECTION 5: GENERATION-3 DESCENDANTS — GRANDCHILDREN OF PAPERCLIP SCIENTISTS
+(Born ~1965-1995, currently aged ~30-60, prime career years)
+================================================================================
+
+OVERALL FINDING: Very limited documented public information on Generation-3 Paperclip
+descendants in notable career positions. No Generation-3 figure has achieved the
+public recognition that might generate search results linking them explicitly to their
+Paperclip grandparent. This is unsurprising — most would not seek or receive
+attention on the basis of their grandparent's wartime history.
+
+VON BRAUN GRANDCHILDREN:
+- Margrit von Braun's children (via John Luther Adams and/or Ian von Lindern):
+  Names not publicly documented in searchable sources.
+  Would be approximately 35-55 years old in 2026.
+- Peter von Braun's children (if any): Not documented in public records found.
+- Iris von Braun's children (if any): Not documented; she died 2013 at 60.
+- No Generation-3 von Braun family member has an identified public-facing role in
+  aerospace, government, or other notable career as of 2026 based on searches.
+
+OTHER PAPERCLIP FAMILIES:
+- New Mexico Museum of Space History maintains a "Families of Operation Paperclip"
+  project documenting the 108 families stationed at Fort Bliss. This is the most
+  significant known database of Paperclip family descendants. The exhibit
+  documents descendants but specific names and current roles are not indexed in
+  open web search results.
+- Oscar Holderer's stepchildren (Clifford Dunlap and Mary Gaither) are not
+  documented in notable positions.
+- No Generation-3 Paperclip descendant in aerospace, defense, or notable public
+  role was identified through open-web search.
+
+RESEARCH CAVEAT: Absence of search results does not mean these individuals do not
+exist or hold notable positions. They may simply not be publicly associated with
+their grandfather's Paperclip history in a way that generates searchable records.
+The New Mexico Museum of Space History (Alamogordo) "Families of Operation Paperclip"
+project would be the most productive single resource for further research on this
+question.
+
+================================================================================
+SECTION 6: ORAL HISTORY INTERVIEWS — SCIENTISTS RECORDED WHILE ALIVE
+================================================================================
+
+Significant oral history documentation exists for several Paperclip scientists.
+
+NASA JOHNSON SPACE CENTER ORAL HISTORY PROJECT:
+The JSC Oral History Project (established 1996) captured interviews with numerous
+NASA personnel from Mercury, Gemini, Apollo, Skylab, and Shuttle programs.
+Multiple Paperclip scientists were interviewed.
+
+ERNST STUHLINGER — Multiply interviewed:
+- Interview 1: Recorded 1989 (NASA, transcript available as PDF on nasa.gov)
+- Interview 2: December 8, 1997, Huntsville, AL (JSC Oral History Project)
+  Transcript: historycollection.jsc.nasa.gov
+- Interview 3: May 7, 1999, Huntsville, AL (JSC Oral History Project,
+  interviewer Rebecca Wright). PDF transcript available on nasa.gov.
+- Interview 4: 1984, interviewed by fellow Paperclip scientist Konrad Dannenberg
+  and UAH professor Donald Tarter as part of an oral history series.
+Also: Ernst Stuhlinger Collection at UAH Archives, Special Collections, and Digital
+Initiatives (libarchstor2.uah.edu/digitalcollections/collections/show/19).
+
+KONRAD DANNENBERG — not only an interview subject but also served as an interviewer
+for other scientists' oral histories.
+
+GEORG VON TIESENHAUSEN:
+United States Holocaust Memorial Museum (USHMM) holds an oral history interview.
+URL: collections.ushmm.org/search/catalog/irn48105
+
+WERNHER VON BRAUN — Historical recordings:
+UAH Archives holds taped audio recordings of von Braun as part of the Saturn V
+NASA History Project; among the earliest in the UAH oral history collection.
+
+WALTER DORNBERGER — Also represented in UAH's oral history recordings.
+
+WILLY LEY — UAH oral history recordings (Ley was associated with Paperclip
+scientists but was not himself a Paperclip recruit — he had emigrated pre-war).
+
+GERHARD REISIG:
+Gerhard Reisig Collection at UAH Archives:
+libarchstor2.uah.edu/digitalcollections/collections/show/188
+Includes personal papers and materials related to his Paperclip-era work.
+
+FRIEDRICH DUERR:
+An oral history audio interview was made during initial information collection
+for the "Stages to Saturn" NASA history project.
+
+UAH OPERATION PAPERCLIP DIGITAL COLLECTION:
+The full UAH Operation Paperclip digital archive can be searched at:
+libarchstor2.uah.edu/digitalcollections/ (search: "Operation Paperclip")
+Over 100 oral history interviews focusing on space history are held at UAH.
+The collection includes photographs, technical documents, oral histories, and
+digitized personal papers from the Paperclip era.
+
+OSCAR HOLDERER COLLECTION:
+UAH Archives holds the Oscar Holderer Collection:
+libarchstor2.uah.edu/digitalcollections/collections/show/47
+
+================================================================================
+SECTION 7: CHRONOLOGICAL TIMELINE OF LAST DEATHS — 2000 TO PRESENT
+================================================================================
+
+This timeline documents the final attrition of Generation-1 Paperclip scientists:
+
+2008 — Ernst Stuhlinger, died May 25, age 94
+2009 — Konrad Dannenberg, died February 16, age 96-97
+2010 — Walter Haeussermann, died December 8, age 96
+2012 — Hans Fichtner, died October 21, age 95
+2012 — Rudolf "Rudi" Schlidt, died September 28, age ~97-98
+2013 — [NOTE: Iris von Braun (Generation 2) died April 17, age 60 — cancer]
+2014 — Dieter Grau, died December 17, age 101
+2015 — Oscar Holderer, died May 5, age 95
+       (Called "last known member" of original Paperclip moon rocket team)
+2018 — Georg von Tiesenhausen, died June 3, age 104
+       (CONFIRMED LAST Paperclip veteran of Peenemunde/rocket group)
+2025 — Maria von Braun (WIFE, not scientist), died January 20, age 96
+       (End of last direct "first-generation" Paperclip household figure)
+
+CURRENT (2026):
+- Friedwardt Winterberg (born 1929, physicist, Paperclip 1959 wave): LIKELY ALIVE
+  No death notice found. Recent publications 2023-2024. Age ~96.
+- Margrit von Braun (born 1952, Gen-2 daughter): CONFIRMED ALIVE, active publicly
+- Peter von Braun (born 1960, Gen-2 son): BELIEVED ALIVE
+
+================================================================================
+SECTION 8: SUMMARY FINDINGS
+================================================================================
+
+1. LAST CONFIRMED DEATH of a Paperclip rocket/aerospace engineer:
+   Georg von Tiesenhausen, June 3, 2018, age 104.
+
+2. LIKELY LAST LIVING Paperclip scientist (any field):
+   Friedwardt Winterberg (physicist, b. 1929, Paperclip 1959), age ~96 as of 2026.
+   Status: Presumed alive based on no death record and publications through 2023-2024.
+   Wikipedia (updated Sept. 2025) still presents him in present tense.
+
+3. MOST ACTIVE LIVING Generation-2 DESCENDANT:
+   Dr. Margrit von Braun (b. 1952), professor emerita of environmental engineering
+   at University of Idaho; active public speaker (2024 Space Explorers Celebration);
+   runs TIFO non-profit. She is the most visible and active surviving direct descendant
+   of any Paperclip scientist.
+
+4. RECENTLY DECEASED Generation-2 family member:
+   Maria von Braun (wife of Wernher, b. 1928), died January 20, 2025, age 96.
+
+5. GENERATION-3 (grandchildren): No publicly documented notable careers or roles
+   found via open-web research. The New Mexico Museum of Space History "Families of
+   Operation Paperclip" project is the best known resource for tracing descendants
+   further. No aerospace engineers or notable public figures among grandchildren
+   have been identified in indexed sources.
+
+6. ORAL HISTORY RECORD: Most robust for Ernst Stuhlinger (multiple recorded
+   interviews, 1989-1999). UAH Archives holds the most comprehensive collection of
+   Operation Paperclip materials including audio recordings, personal papers, and
+   over 100 oral history interviews. NASA JSC Oral History Project holds additional
+   transcripts accessible online. Georg von Tiesenhausen interview held by USHMM.
+
+================================================================================
+RESEARCH NOTES AND GAPS
+================================================================================
+
+- "Fred Speer" / "Fridtjof Speer": Referenced in sources as one of the seven still-
+  alive Paperclip scientists circa 2010. Death date not found in searches.
+
+- Hans Fichtner's Wikipedia article should be checked for a specific death date
+  confirmation (October 21, 2012 found in search but not from Wikipedia primary text).
+
+- The New Mexico Museum of Space History "Families of Operation Paperclip" page
+  (nmspacemuseum.org/space-vault/families-of-operation-paperclip/) was identified
+  as a key resource for Generation-2 and Generation-3 descendants but could not be
+  fetched directly. Direct visit or contact with that museum is recommended for
+  descendant tracing.
+
+- Iris Careen von Braun's death (April 17, 2013, cancer, Huntsville) was reported
+  in startnewswire.com and xwhos.com but not confirmed through a direct obituary
+  in this research pass. Treat as probable but verify independently.
+
+- "Klaus Heimburg" (son of Karl Heimburg) and "Uwe Hueter" (son of Hans Hueter)
+  as specified in research brief: No results found in open web searches for either
+  name. These individuals may be private citizens without documented public profiles.
+
+================================================================================
+PRIMARY SOURCES REFERENCED
+================================================================================
+
+- Dieter Grau obituary: https://www.legacy.com/obituaries/name/dieter-grau-obituary?pid=179290643
+- Dieter Grau Wikipedia: https://en.wikipedia.org/wiki/Dieter_Grau
+- Ernst Stuhlinger Find a Grave: https://www.findagrave.com/memorial/78230982/ernst-stuhlinger
+- Ernst Stuhlinger oral history (1997): https://www.nasa.gov/wp-content/uploads/2025/08/stuhlingere-12-8-97.pdf
+- Ernst Stuhlinger oral history (1999): https://www.nasa.gov/wp-content/uploads/2025/08/stuhlingere-5-7-99.pdf
+- Ernst Stuhlinger oral history index: https://historycollection.jsc.nasa.gov/JSCHistoryPortal/history/oral_histories/StuhlingerE/stuhlingere.htm
+- Konrad Dannenberg obituary AIP: https://pubs.aip.org/physicstoday/Online/17736/Obituary-of-Konrad-Dannenberg
+- Walter Haeussermann Wikipedia: https://en.wikipedia.org/wiki/Walter_Haeussermann
+- Rudolf Schlidt Find a Grave: https://www.findagrave.com/memorial/97969952/rudolf-hans-schlidt
+- Oscar Holderer Wikipedia: https://en.wikipedia.org/wiki/Oscar_Holderer
+- Oscar Holderer obituary Boston Globe: https://www.bostonglobe.com/metro/obituaries/2015/05/06/last-known-member-german-moon-rocket-design-team-dies/UYxHeFO3kAgIpiR9hkQqWJ/story.html
+- Mercury News: "Last of Wernher von Braun's rocket scientists dies": https://www.mercurynews.com/2015/05/06/last-of-wernher-von-brauns-rocket-scientists-dies-in-alabama/
+- Georg von Tiesenhausen Wikipedia: https://en.wikipedia.org/wiki/Georg_von_Tiesenhausen
+- Georg von Tiesenhausen Vice obituary: https://www.vice.com/en/article/nasa-nazi-georg-von-tiesenhausen-operation-paperclip/
+- Georg von Tiesenhausen TechTimes: https://www.techtimes.com/articles/229561/20180606/georg-von-tiesenhausen-last-surviving-member-of-german-rocket-team-dies-at-104.htm
+- Georg von Tiesenhausen USHMM oral history: https://collections.ushmm.org/search/catalog/irn48105
+- Friedwardt Winterberg Wikipedia: https://en.wikipedia.org/wiki/Friedwardt_Winterberg
+- Friedwardt Winterberg Google Scholar: https://scholar.google.com/citations?user=HI8hW9YAAAAJ&hl=en
+- Margrit von Braun Wikipedia: https://en.wikipedia.org/wiki/Margrit_von_Braun
+- Margrit von Braun Space Explorers Celebration: https://256today.com/dr-margrit-von-braun-to-headline-space-explorers-celebration-in-huntsville/
+- Huntsville Business Journal (Wernher von Braun economic legacy 2025): https://huntsvillebusinessjournal.com/news/2025/03/25/wernher-von-brauns-lasting-economic-legacy-in-huntsville/
+- Maria von Braun obituary 2025: https://huntsvillebusinessjournal.com/news/2025/02/10/maria-von-braun-wife-of-dr-wernher-von-braun-has-passed-away/
+- Maria von Braun 256 Today: https://256today.com/maria-von-braun-widow-of-dr-wernher-von-braun-dies-at-96/
+- Maria von Braun Find a Grave: https://www.findagrave.com/memorial/279488972/maria_luise-von_braun
+- Wernher von Braun Wikipedia (children): https://en.wikipedia.org/wiki/Wernher_von_Braun
+- Iris Careen von Braun profile: https://startnewswire.com/iris-careen-von-braun/
+- New Mexico Museum of Space History - Families of Operation Paperclip: https://nmspacemuseum.org/space-vault/families-of-operation-paperclip/
+- UAH digital collections Operation Paperclip: http://libarchstor2.uah.edu/digitalcollections/
+- UAH oral history collections guide: https://libguides.uah.edu/c.php?g=263653&p=1760003
+- Oscar Holderer UAH Collection: http://libarchstor2.uah.edu/digitalcollections/collections/show/47
+- Gerhard Reisig UAH Collection: http://libarchstor2.uah.edu/digitalcollections/collections/show/188
+- NASA JSC Oral History Project list: https://www.nasa.gov/history/history-publications-and-resources/oral-histories/nasa-list/
+- Operation Paperclip Wikipedia: https://en.wikipedia.org/wiki/Operation_Paperclip
+- List of Germans via Operation Paperclip Wikipedia: https://en.wikipedia.org/wiki/List_of_Germans_relocated_to_the_US_via_Operation_Paperclip
+
+================================================================================
+END OF REPORT
+================================================================================
