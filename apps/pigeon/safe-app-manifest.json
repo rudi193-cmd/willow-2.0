@@ -1,0 +1,10 @@
+{
+  "app_id": "willow-pigeon",
+  "name": "Willow Pigeon",
+  "description": "First-party unified mailbox. Gmail (OAuth), Grove internal mail, OpenClaw sessions.",
+  "version": "0.1.0",
+  "b17": "1284BC7D",
+  "entry": "apps/pigeon/__main__.py",
+  "permissions": ["store_read", "grove_read", "grove_write", "kb_read"],
+  "backends": ["gmail", "grove", "openclaw"]
+}
