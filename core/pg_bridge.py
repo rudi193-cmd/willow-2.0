@@ -655,7 +655,7 @@ _PG_LOCK_TIMEOUT = int(os.environ.get("WILLOW_PG_LOCK_TIMEOUT", "10000"))  # ms
 
 
 def _pg_kwargs() -> dict:
-    return dict(
+    kwargs = dict(
         dbname=os.environ.get("WILLOW_PG_DB", "willow_20"),
         user=os.environ.get("WILLOW_PG_USER", os.environ.get("USER", "")),
         host=os.environ.get("WILLOW_PG_HOST") or None,
@@ -663,6 +663,10 @@ def _pg_kwargs() -> dict:
         connect_timeout=_PG_CONNECT_TIMEOUT,
         options=f"-c statement_timeout={_PG_STATEMENT_TIMEOUT} -c lock_timeout={_PG_LOCK_TIMEOUT}",
     )
+    password = os.environ.get("WILLOW_PG_PASSWORD") or os.environ.get("PGPASSWORD")
+    if password:
+        kwargs["password"] = password
+    return kwargs
 
 
 def _connect() -> "psycopg2.connection":
