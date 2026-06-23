@@ -145,7 +145,7 @@ def seed_demo_atoms(bridge) -> dict[str, Any]:
 
 
 def search_demo_memory(bridge, query: str, *, limit: int = 5) -> list[dict[str, Any]]:
-    """Search demo atoms; prefer project filter, fall back to global keyword search."""
+    """Search seeded demo atoms only — never operator fleet memory."""
     attempts = [query.strip(), _compact_query(query)]
     seen: set[str] = set()
     for attempt in attempts:
@@ -158,15 +158,12 @@ def search_demo_memory(bridge, query: str, *, limit: int = 5) -> list[dict[str, 
             limit=limit,
             exclude_superseded=True,
         )
-        if rows:
-            return rows
-        rows = bridge.knowledge_search(
-            attempt,
-            limit=limit,
-            exclude_superseded=True,
-        )
-        if rows:
-            return rows
+        demo_rows = [
+            r for r in rows
+            if str(r.get("id", "")).startswith("PUBDEMO")
+        ]
+        if demo_rows:
+            return demo_rows[:limit]
     return []
 
 
