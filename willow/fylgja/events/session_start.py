@@ -162,7 +162,7 @@ def _scan_hardware() -> tuple[list[str], list[str]]:
         alerts.append(f"thermals: {e}")
 
     try:
-        from core.host_profile import index_hardware_parts, load_host_profile
+        from core.host_profile import index_hardware_parts
 
         mem = {}
         for line in Path("/proc/meminfo").read_text().splitlines():

@@ -105,16 +105,38 @@ def load_sandbox_config(root: Path | None = None) -> dict:
 
 
 def _discover_worktree_targets(scan_roots: list[Path]) -> list[Path]:
-    """Bind worktrees/ and every child (symlink targets included)."""
+    """Bind worktrees/ once; add external symlink targets only.
+
+    Per-child directory binds are redundant (the parent rw bind covers them) and
+    can leave stale host mount entries that block ``git worktree remove`` with
+    EBUSY after Kart exits. Symlinked worktrees pointing outside the parent
+    still need an explicit bind at their resolved path.
+    """
     found: list[Path] = []
     seen: set[str] = set()
     for root in scan_roots:
         if not root.is_dir():
             continue
-        for candidate in (root, *root.iterdir()):
+        try:
+            resolved_root = root.resolve()
+        except OSError:
+            continue
+        key = str(resolved_root)
+        if key not in seen:
+            seen.add(key)
+            found.append(resolved_root)
+        try:
+            children = list(root.iterdir())
+        except OSError:
+            continue
+        for candidate in children:
+            if not candidate.is_symlink():
+                continue
             try:
                 resolved = candidate.resolve()
             except OSError:
+                continue
+            if not resolved.exists():
                 continue
             key = str(resolved)
             if key in seen:
