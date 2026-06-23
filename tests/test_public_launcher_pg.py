@@ -2,7 +2,6 @@
 
 from core.public_launcher_pg import (
     DOCKER_FALLBACK_HOST_PORT,
-    host_port_open,
     pick_docker_host_port,
     resolve_postgres_plan,
 )
