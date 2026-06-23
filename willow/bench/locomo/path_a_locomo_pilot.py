@@ -290,9 +290,10 @@ async def evaluate_qa(
                 "category": qa.category,
             })
     finally:
-        sess = getattr(adapter, "_session", None)
-        if sess is not None and not sess.closed:
-            await sess.close()
+        for obj in (adapter, judge_adapter):
+            sess = getattr(obj, "_session", None)
+            if sess is not None and not sess.closed:
+                await sess.close()
     return per_question, hypotheses
 
 

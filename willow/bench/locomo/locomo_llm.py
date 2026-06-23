@@ -182,13 +182,50 @@ class ClaudeJudge:
         return verdict.startswith("CORRECT")
 
 
+class OllamaJudge:
+    """Local LLM-as-judge via Ollama HTTP API. No API key, runs offline.
+
+    A weaker grader than a frontier model, but produces an LLM-judge accuracy
+    signal (vs token_f1 string overlap) entirely local-first. Use a frontier
+    judge (ClaudeJudge) for the publishable competitive number.
+    """
+
+    def __init__(
+        self, model: str = "llama3.1:8b", base_url: str = "http://localhost:11434"
+    ) -> None:
+        try:
+            import aiohttp  # noqa: F401
+        except ImportError as e:
+            raise ImportError(
+                "aiohttp package is required for OllamaJudge. "
+                "Install it with: pip install aiohttp"
+            ) from e
+        self.model = model
+        self.base_url = base_url.rstrip("/")
+        self._aiohttp = aiohttp
+
+    async def judge(self, question: str, gold: str, predicted: str) -> bool:
+        prompt = build_judge_prompt(question, gold, predicted)
+        url = f"{self.base_url}/api/generate"
+        payload = {"model": self.model, "prompt": prompt, "stream": False}
+        if not hasattr(self, "_session") or self._session.closed:
+            self._session = self._aiohttp.ClientSession()
+        async with self._session.post(url, json=payload) as resp:
+            resp.raise_for_status()
+            data = await resp.json()
+            verdict = data.get("response", "").strip().upper()
+            return verdict.startswith("CORRECT")
+
+
 def create_judge(judge_name: str = "claude", model: str = "") -> JudgeAdapter:
-    """Factory for LLM-as-judge scorers. Supports 'claude'. Raises ValueError otherwise."""
+    """Factory for LLM-as-judge scorers. Supports 'claude', 'ollama'."""
     name = judge_name.lower().strip()
     if name == "claude":
         return ClaudeJudge(model=model) if model else ClaudeJudge()
+    if name == "ollama":
+        return OllamaJudge(model=model) if model else OllamaJudge()
     raise ValueError(
-        f"Unknown judge adapter: {judge_name!r}. Supported: 'claude'."
+        f"Unknown judge adapter: {judge_name!r}. Supported: 'claude', 'ollama'."
     )
 
 
