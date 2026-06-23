@@ -142,6 +142,23 @@ def _open_browser(port: int) -> None:
         _eprint(f"Open manually: {url}")
 
 
+def _resolve_chat_port(env: dict[str, str]) -> int:
+    from core.public_serve import DEFAULT_PUBLIC_PORT, pick_public_chat_port
+
+    explicit = "WILLOW_PUBLIC_PORT" in os.environ
+    preferred = int(os.environ.get("WILLOW_PUBLIC_PORT", str(DEFAULT_PUBLIC_PORT)))
+    try:
+        port, skipped = pick_public_chat_port(preferred=preferred, explicit=explicit)
+    except OSError as exc:
+        _eprint(str(exc))
+        _eprint("Stop the other listener or set WILLOW_PUBLIC_PORT to a free port.")
+        sys.exit(1)
+    if skipped is not None:
+        _eprint(f"Port {skipped} is in use — chat server on {port}")
+    env["WILLOW_PUBLIC_PORT"] = str(port)
+    return port
+
+
 def main() -> None:
     _require_python()
 
@@ -161,7 +178,7 @@ def main() -> None:
     _link_public_home(py, env)
     _migrate_and_seed(py, env)
 
-    port = int(os.environ.get("WILLOW_PUBLIC_PORT", "7777"))
+    port = _resolve_chat_port(env)
     _open_browser(port)
 
     _eprint("")
