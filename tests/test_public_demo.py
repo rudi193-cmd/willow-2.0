@@ -2,12 +2,14 @@
 
 from core.public_demo import (
     DEMO_ATOMS,
+    DEMO_PROJECT,
     SUGGESTED_QUESTION,
     _compact_query,
     chat_retrieval,
     demo_banner,
     format_retrieval_reply,
     concierge_greeting,
+    search_demo_memory,
 )
 
 
@@ -68,3 +70,20 @@ def test_demo_atom_pack_has_hero_hook():
 
 def test_compact_query_strips_stop_words_for_hero_question():
     assert _compact_query(SUGGESTED_QUESTION) == "public launch tag"
+
+
+def test_search_demo_memory_never_falls_back_to_global_kb():
+    class _Bridge:
+        def knowledge_search(self, query, project=None, limit=5, exclude_superseded=True):
+            if project == DEMO_PROJECT:
+                return []
+            return [
+                {
+                    "id": "PRIVATE01",
+                    "project": "willow",
+                    "title": "Sean correction",
+                    "summary": "Sean said do not leak operator memory in the public demo.",
+                }
+            ]
+
+    assert search_demo_memory(_Bridge(), "tell me about sean") == []

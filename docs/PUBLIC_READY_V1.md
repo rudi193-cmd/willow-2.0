@@ -22,6 +22,7 @@ Within five minutes: browser opens → Concierge greeting → user asks a seeded
 - Docker Postgres (`docker compose up -d willow-db`) — no bundled `pg_ctl`
 - Retrieval-first chat: *"Here's what I have about that…"* (no Ollama required)
 - Honest framing: **demo memory** until the user builds their own
+- **Isolation:** public chat searches only `PUBDEMO*` seed atoms — never operator fleet memory, even when reusing an existing `willow_20` database
 
 ## What v1 is not
 
