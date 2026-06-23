@@ -4,7 +4,7 @@ willow-launcher.py — Public Ready v1 golden path.
 
   python willow-launcher.py
 
-Starts Docker Postgres, minimal public setup, seeds demo memory, opens browser chat.
+Uses existing Postgres when available; otherwise starts Docker willow-db on a free port.
 """
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def _run(cmd: list[str], *, env: dict | None = None, check: bool = True) -> subp
 
 def _require_docker() -> None:
     if not shutil.which("docker"):
-        _eprint("Docker is required for the public demo. Install Docker and retry.")
+        _eprint("Docker is required when no local Postgres is available. Install Docker and retry.")
         sys.exit(1)
     probe = subprocess.run(
         ["docker", "info"],
@@ -76,31 +76,39 @@ def _launcher_env() -> dict[str, str]:
     return env
 
 
-def _start_docker_db(env: dict[str, str]) -> None:
+def _ensure_postgres(env: dict[str, str]) -> dict[str, str]:
+    from core.public_launcher_pg import resolve_postgres_plan
+
+    plan = resolve_postgres_plan(env)
+    resolved = plan["env"]
+    if plan["mode"] == "existing":
+        host = resolved.get("WILLOW_PG_HOST", "127.0.0.1")
+        port = resolved.get("WILLOW_PG_PORT", "5432")
+        db = resolved.get("WILLOW_PG_DB", "willow_20")
+        user = resolved.get("WILLOW_PG_USER", "willow")
+        _eprint(f"Using existing Postgres at {host}:{port}/{db} (user={user})")
+        return resolved
+
+    _require_docker()
+    publish = plan["publish_port"]
+    if publish != 5432:
+        _eprint(f"Port 5432 is in use — publishing Docker Postgres on host port {publish}")
     _eprint("Starting willow-db (Docker) …")
     compose = shutil.which("docker")
-    _run([compose, "compose", "up", "-d", "willow-db"], env=env)
-    _wait_pg_ready(env, timeout_s=90)
+    _run([compose, "compose", "up", "-d", "willow-db"], env=resolved)
+    _wait_pg_ready(resolved, timeout_s=90)
+    return resolved
 
 
 def _wait_pg_ready(env: dict[str, str], *, timeout_s: int) -> None:
     host = env.get("WILLOW_PG_HOST", "127.0.0.1")
     port = env.get("WILLOW_PG_PORT", "5432")
-    user = env.get("WILLOW_PG_USER", "willow")
     db = env.get("WILLOW_PG_DB", "willow_20")
     deadline = time.time() + timeout_s
     while time.time() < deadline:
-        probe = subprocess.run(
-            [
-                "docker", "compose", "exec", "-T", "willow-db",
-                "pg_isready", "-U", user, "-d", db,
-            ],
-            cwd=str(REPO_ROOT),
-            capture_output=True,
-            text=True,
-            env={**os.environ, **env},
-        )
-        if probe.returncode == 0:
+        from core.public_launcher_pg import try_pg_connect
+
+        if try_pg_connect(env):
             _eprint(f"  ✓ Postgres ready at {host}:{port}/{db}")
             return
         time.sleep(2)
@@ -143,7 +151,6 @@ def _open_browser(port: int) -> None:
 
 def main() -> None:
     _require_python()
-    _require_docker()
 
     if str(REPO_ROOT) not in sys.path:
         sys.path.insert(0, str(REPO_ROOT))
@@ -157,7 +164,7 @@ def main() -> None:
 
     env = _launcher_env()
     py = _ensure_venv()
-    _start_docker_db(env)
+    env = _ensure_postgres(env)
     _link_public_home(py, env)
     _migrate_and_seed(py, env)
 
