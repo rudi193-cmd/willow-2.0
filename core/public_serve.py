@@ -21,8 +21,12 @@ from core.public_demo import (  # noqa: E402
     demo_banner,
     is_first_run,
 )
+from core.public_launcher_pg import host_port_open  # noqa: E402
 
-DEFAULT_PORT = int(os.environ.get("WILLOW_PUBLIC_PORT", "7777"))
+# Grove defaults to 7777 — public chat uses 7788 to avoid colliding on dev machines.
+DEFAULT_PUBLIC_PORT = 7788
+PUBLIC_PORT_CANDIDATES = (7788, 7789, 7877, 8777, 8888)
+DEFAULT_PORT = int(os.environ.get("WILLOW_PUBLIC_PORT", str(DEFAULT_PUBLIC_PORT)))
 _MAX_BODY = 32_768
 
 _PUBLIC_HTML = """<!DOCTYPE html>
@@ -173,12 +177,44 @@ class PublicHandler(http.server.BaseHTTPRequestHandler):
             })
 
 
-def serve(host: str = "127.0.0.1", port: int = DEFAULT_PORT) -> None:
+def pick_public_chat_port(
+    *,
+    preferred: int | None = None,
+    explicit: bool = False,
+) -> tuple[int, int | None]:
+    """
+    Choose a loopback port for the public chat server.
+
+    Returns (port, skipped_busy_port). skipped is set when we fall back from preferred.
+    """
+    want = preferred if preferred is not None else DEFAULT_PUBLIC_PORT
+    if not host_port_open("127.0.0.1", want):
+        return want, None
+    if explicit:
+        raise OSError(f"Port {want} is already in use")
+    for candidate in PUBLIC_PORT_CANDIDATES:
+        if candidate == want:
+            continue
+        if not host_port_open("127.0.0.1", candidate):
+            return candidate, want
+    raise OSError("No free loopback port found for the public chat server")
+
+
+def serve(host: str = "127.0.0.1", port: int | None = None) -> None:
     apply_launcher_env()
     os.environ.setdefault("WILLOW_CONFIG_MODE", "public-fallback")
     repo = _ROOT
     os.environ.setdefault("WILLOW_HOME", str(repo / ".willow" / "generated"))
     os.environ.setdefault("WILLOW_ROOT", str(repo))
+    explicit = "WILLOW_PUBLIC_PORT" in os.environ and port is None
+    if port is None:
+        port, skipped = pick_public_chat_port(explicit=explicit)
+        if skipped is not None:
+            print(
+                f"[public-serve] Port {skipped} is in use — listening on {port}",
+                flush=True,
+            )
+    os.environ["WILLOW_PUBLIC_PORT"] = str(port)
     server = http.server.HTTPServer((host, port), PublicHandler)
     print(f"[public-serve] http://{host}:{port}/", flush=True)
     print(f"[public-serve] {demo_banner()}", flush=True)
@@ -193,6 +229,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Willow public demo HTTP server")
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help=f"Loopback port (default: {DEFAULT_PUBLIC_PORT}, or next free)",
+    )
     args = parser.parse_args()
     serve(args.host, args.port)
