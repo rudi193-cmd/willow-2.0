@@ -44,6 +44,29 @@ def test_resolve_postgres_plan_docker_when_unreachable(monkeypatch):
     assert plan["env"]["WILLOW_PG_PORT"] == str(DOCKER_FALLBACK_HOST_PORT)
 
 
-def test_host_port_open_localhost():
-    # Something is almost always listening on 127.0.0.1:22 or postgres — smoke only.
-    assert isinstance(host_port_open("127.0.0.1", 1), bool)
+def test_resolve_postgres_plan_peer_clears_tcp_auth(monkeypatch):
+    calls = {"n": 0}
+
+    def fake_connect(env):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return False
+        return env.get("WILLOW_PG_HOST") == "" and env.get("WILLOW_PG_PORT") == ""
+
+    monkeypatch.setattr("core.public_launcher_pg.try_pg_connect", fake_connect)
+    monkeypatch.setattr(
+        "core.public_launcher_pg.try_peer_pg",
+        lambda db=None: {"WILLOW_PG_DB": "willow_20", "WILLOW_PG_USER": "dev"},
+    )
+    plan = resolve_postgres_plan(
+        {
+            "WILLOW_PG_DB": "willow_20",
+            "WILLOW_PG_HOST": "127.0.0.1",
+            "WILLOW_PG_PORT": "5432",
+            "WILLOW_PG_PASSWORD": "willow",
+        }
+    )
+    assert plan["mode"] == "existing"
+    assert plan["env"]["WILLOW_PG_HOST"] == ""
+    assert plan["env"]["WILLOW_PG_PORT"] == ""
+    assert plan["env"]["WILLOW_PG_USER"] == "dev"

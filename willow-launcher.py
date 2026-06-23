@@ -77,16 +77,12 @@ def _launcher_env() -> dict[str, str]:
 
 
 def _ensure_postgres(env: dict[str, str]) -> dict[str, str]:
-    from core.public_launcher_pg import resolve_postgres_plan
+    from core.public_launcher_pg import postgres_endpoint_label, resolve_postgres_plan
 
     plan = resolve_postgres_plan(env)
     resolved = plan["env"]
     if plan["mode"] == "existing":
-        host = resolved.get("WILLOW_PG_HOST", "127.0.0.1")
-        port = resolved.get("WILLOW_PG_PORT", "5432")
-        db = resolved.get("WILLOW_PG_DB", "willow_20")
-        user = resolved.get("WILLOW_PG_USER", "willow")
-        _eprint(f"Using existing Postgres at {host}:{port}/{db} (user={user})")
+        _eprint(f"Using existing Postgres at {postgres_endpoint_label(resolved)}")
         return resolved
 
     _require_docker()
@@ -101,15 +97,12 @@ def _ensure_postgres(env: dict[str, str]) -> dict[str, str]:
 
 
 def _wait_pg_ready(env: dict[str, str], *, timeout_s: int) -> None:
-    host = env.get("WILLOW_PG_HOST", "127.0.0.1")
-    port = env.get("WILLOW_PG_PORT", "5432")
-    db = env.get("WILLOW_PG_DB", "willow_20")
+    from core.public_launcher_pg import postgres_endpoint_label, try_pg_connect
+
     deadline = time.time() + timeout_s
     while time.time() < deadline:
-        from core.public_launcher_pg import try_pg_connect
-
         if try_pg_connect(env):
-            _eprint(f"  ✓ Postgres ready at {host}:{port}/{db}")
+            _eprint(f"  ✓ Postgres ready at {postgres_endpoint_label(env)}")
             return
         time.sleep(2)
     _eprint("Postgres did not become ready in time.")

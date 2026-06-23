@@ -3,6 +3,7 @@
 from core.public_demo import (
     DEMO_ATOMS,
     SUGGESTED_QUESTION,
+    _compact_query,
     chat_retrieval,
     demo_banner,
     format_retrieval_reply,
@@ -63,3 +64,7 @@ def test_demo_atom_pack_has_hero_hook():
     titles = {a["title"] for a in DEMO_ATOMS}
     assert "Public launch tag" in titles
     assert len(DEMO_ATOMS) >= 5
+
+
+def test_compact_query_strips_stop_words_for_hero_question():
+    assert _compact_query(SUGGESTED_QUESTION) == "public launch tag"
