@@ -3,7 +3,9 @@
 _RESULT_STRIP_KEYS = frozenset({"response", "sandbox_manifest"})
 """Fields stripped from the Kart result dict in compact output.
 
-- ``response``: always a duplicate of ``stdout`` (set by _normalize_shell_result).
+- ``response``: legacy duplicate of ``stdout``. No longer emitted by
+  _normalize_shell_result (removed at source), but kept here so older stored
+  task rows still compact cleanly.
 - ``sandbox_manifest``: large bwrap config; kept on the stored DB task row for
   audit_verify S-gates; not needed in the facade response.
 """

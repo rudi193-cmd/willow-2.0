@@ -31,7 +31,19 @@ def test_strip_allow_net_directive():
 def test_run_shell_task_echo():
     status, result = run_shell_task("echo kart-unify-ok", timeout=10)
     assert status == "completed"
-    assert "kart-unify-ok" in result.get("response", "")
+    assert "kart-unify-ok" in result.get("stdout", "")
+
+
+def test_shell_result_has_no_response_dup():
+    """`response` was a verbatim copy of `stdout` — it must no longer be emitted.
+
+    Regression for the willow_run/Kart duplicate-output bug: stdout is the
+    single source of truth on every Kart read surface.
+    """
+    status, result = run_shell_task("echo no-dup-please", timeout=10)
+    assert status == "completed"
+    assert "no-dup-please" in result.get("stdout", "")
+    assert "response" not in result
 
 
 def test_run_shell_task_pipeline():
@@ -43,22 +55,23 @@ def test_run_shell_task_pipeline():
 def test_run_shell_task_command_substitution():
     status, result = run_shell_task('echo sub-$(echo xy)', timeout=10)
     assert status == "completed"
-    assert "sub-xy" in result.get("response", "")
+    assert "sub-xy" in result.get("stdout", "")
 
 
 def test_run_shell_task_compound():
     status, result = run_shell_task("echo a; echo b", timeout=10)
     assert status == "completed"
-    assert "a" in result.get("response", "")
-    assert "b" in result.get("response", "")
+    assert "a" in result.get("stdout", "")
+    assert "b" in result.get("stdout", "")
 
 
 def test_run_shell_task_fenced_blocks():
     task = "```bash\necho one\necho two\n```"
     status, result = run_shell_task(task, timeout=10)
     assert status == "completed"
-    assert "one" in result.get("response", "")
-    assert "two" in result.get("response", "")
+    assert "one" in result.get("stdout", "")
+    assert "two" in result.get("stdout", "")
+    assert "response" not in result
     assert result.get("steps") == 1
 
 
@@ -67,7 +80,7 @@ def test_execute_task_row_shell():
     row = {"id": "TEST1234", "task": "echo row-ok", "goal": None}
     status, result = execute_task_row(row, pg, timeout=10)
     assert status == "completed"
-    assert "row-ok" in result.get("response", "")
+    assert "row-ok" in result.get("stdout", "")
 
 
 def test_execute_task_row_workflow_bad_json():

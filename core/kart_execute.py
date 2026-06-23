@@ -62,7 +62,10 @@ def _normalize_shell_result(raw: dict) -> dict:
         "returncode": raw.get("returncode"),
         "stdout": stdout,
         "stderr": stderr,
-        "response": stdout,
+        # NOTE: no "response" key — it was a verbatim duplicate of stdout that
+        # doubled every Kart read surface (kart_task_run / agent_task_status /
+        # stored row / Stop drain). The willow_run facade stripped it, but only
+        # there. Single source of truth is "stdout"; readers fall back to it.
         "elapsed_s": raw.get("elapsed_s"),
         "sandbox": raw.get("sandbox"),
         "provider": "shell",
@@ -146,7 +149,7 @@ def run_shell_task(
             status, result = _run_one_shell(
                 cmd, timeout=timeout, allow_net=allow_net
             )
-            chunk = result.get("response") or result.get("stdout") or ""
+            chunk = result.get("stdout") or ""
             err = result.get("stderr") or result.get("error") or ""
             outputs.append(f"$ {label}\n{chunk}" + (f"\nSTDERR: {err}" if err else ""))
             if status != "completed":
