@@ -13,6 +13,28 @@ DEMO_SOURCE = "public-demo-v1"
 FIRST_RUN_MARKER = ".public-demo-seeded"
 SUGGESTED_QUESTION = "What did we decide about the public launch tag?"
 
+_STOP_WORDS = frozenset({
+    "a", "an", "the", "about", "what", "did", "we", "decide", "how", "when",
+    "where", "why", "is", "are", "do", "does", "i", "you", "me", "my", "your",
+    "to", "for", "of", "on", "in", "and", "or", "that", "this", "it", "be",
+    "was", "were", "have", "has", "had", "can", "could", "would", "should",
+})
+
+
+def _significant_search_terms(query: str) -> list[str]:
+    """Drop stop words so natural-language hero questions still match demo atoms."""
+    words: list[str] = []
+    for raw in query.split():
+        term = raw.strip("?.,!\"'").lower()
+        if len(term) > 2 and term not in _STOP_WORDS:
+            words.append(term)
+    return list(dict.fromkeys(words))
+
+
+def _compact_query(query: str) -> str:
+    terms = _significant_search_terms(query)
+    return " ".join(terms) if terms else query.strip()
+
 DEMO_ATOMS: list[dict[str, Any]] = [
     {
         "id": "PUBDEMO01",
@@ -124,15 +146,28 @@ def seed_demo_atoms(bridge) -> dict[str, Any]:
 
 def search_demo_memory(bridge, query: str, *, limit: int = 5) -> list[dict[str, Any]]:
     """Search demo atoms; prefer project filter, fall back to global keyword search."""
-    rows = bridge.knowledge_search(
-        query,
-        project=DEMO_PROJECT,
-        limit=limit,
-        exclude_superseded=True,
-    )
-    if rows:
-        return rows
-    return bridge.knowledge_search(query, limit=limit, exclude_superseded=True)
+    attempts = [query.strip(), _compact_query(query)]
+    seen: set[str] = set()
+    for attempt in attempts:
+        if not attempt or attempt in seen:
+            continue
+        seen.add(attempt)
+        rows = bridge.knowledge_search(
+            attempt,
+            project=DEMO_PROJECT,
+            limit=limit,
+            exclude_superseded=True,
+        )
+        if rows:
+            return rows
+        rows = bridge.knowledge_search(
+            attempt,
+            limit=limit,
+            exclude_superseded=True,
+        )
+        if rows:
+            return rows
+    return []
 
 
 def format_retrieval_reply(query: str, rows: list[dict[str, Any]]) -> str:
