@@ -31,6 +31,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+import getpass
 from pathlib import Path
 
 from willow.fylgja.willow_home import willow_home
@@ -308,7 +309,7 @@ _willow_last_seen_id: int = 0
 _willow_last_seen_lock = threading.Lock()
 
 _WILLOW_PG_DB   = os.environ.get("WILLOW_PG_DB", "willow_20")
-_WILLOW_PG_USER = os.environ.get("WILLOW_PG_USER", os.environ.get("USER", ""))
+_WILLOW_PG_USER = os.environ.get("WILLOW_PG_USER", getpass.getuser())
 
 
 def _kb_context(prompt: str, limit: int = 3) -> str:
