@@ -1,8 +1,13 @@
 # Open work (fleet backlog)
 
-*Last updated: 2026-06-14 — upstream contributions desk pass.*
+*Last updated: 2026-06-23 — upstream contributions desk pass (live `gh` reconciliation).*
 
 **Strategy:** [`UPSTREAM_CONTRIBUTION_STRATEGY.md`](UPSTREAM_CONTRIBUTION_STRATEGY.md) · type ledger: [`upstream/type_ledger.json`](upstream/type_ledger.json)
+
+> **2026-06-23 state change:** ctxvault #31 **merged**. Six long-stale maintainer-pending PRs
+> batch-closed without merge on 2026-06-15 (~02:09 UTC): awesome-claude-skills #885,
+> mengram #40, python-sdk #2640, ngrok-python #159 / #160 / #161. All currently-open PRs are
+> **maintainer-blocked — nothing is blocked on us.** Green lane is clear; new green-lane work is unblocked.
 
 ## Upstream desk preflight
 
@@ -10,102 +15,69 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 
 | PR | Type | Score | Lane | Next action |
 |----|------|-------|------|-------------|
-| [ctxvault #31](https://github.com/Filippo-Venturini/ctxvault/pull/31) | narrow_bugfix | 9 | green | CI pass; wait for Filippo-Venturini review |
-| [claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | narrow_bugfix | 9 | green | Wait for TerrysPOV re-review (fix pushed) |
-| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | narrow_bugfix | 9 | green | Wait for TerrysPOV re-review (fix pushed) |
-| [claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | narrow_bugfix | 8 | green | CI pass; wait for review |
-| [claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | docs_setup | 8 | green | CI pass; wait for review |
-| [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | mcp_adapter | 2 | red | Merge conflicts + missing labels — rebase or close |
-| [awesome-claude-skills #885](https://github.com/ComposioHQ/awesome-claude-skills/pull/885) | listing_awesome | 6 | yellow | Wait for maintainer merge |
-| [mengram #40](https://github.com/alibaizhanov/mengram/pull/40) | docs_setup | 7 | yellow | Maintainer review (pinged 2026-06-04) |
-| [hermes-agent #40737](https://github.com/NousResearch/hermes-agent/pull/40737) | unsolicited_large_feature | 2 | red | No maintainer signal — do not invest further |
-| [python-sdk #2640](https://github.com/modelcontextprotocol/python-sdk/pull/2640) | narrow_bugfix | 6 | yellow | Maintainer review; megarepo — comment if stale |
-| [ngrok-python #159–161](https://github.com/ngrok/ngrok-python/pulls) | docs_setup / narrow_bugfix | 5 | yellow | Maintainer review |
+| [claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | narrow_bugfix | 8 | green | Fix pushed `0c9cfea`; CHANGES_REQUESTED not yet dismissed (11d silent) — **re-request review** |
+| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | narrow_bugfix | 8 | green | Fix pushed `5a6e633`; CHANGES_REQUESTED not yet dismissed (11d silent) — **re-request review** |
+| [claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | narrow_bugfix | 8 | green | CI green, no review yet — wait |
+| [claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | docs_setup | 8 | green | CI green, no review yet — wait |
+| [mcp-mem0 #18](https://github.com/coleam00/mcp-mem0/pull/18) | narrow_bugfix | 8 | green | Issue-linked (Fixes #3), mergeable, no review — wait |
+| [DontFeedTheAI #8](https://github.com/zeroc00I/DontFeedTheAI/pull/8) | ci_verify | 7 | yellow | CI publish workflow, mergeable, no review — wait (warm maintainer, 2 prior merges) |
+| [PDFMathTranslate #1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) | small_feature | 6 | yellow | Mergeable, no review — wait |
+| [mex #84](https://github.com/mex-memory/mex/pull/84) | mcp_adapter | 6 | yellow | REVIEW_REQUIRED, mergeable — wait |
+| [codejail #309](https://github.com/openedx/codejail/pull/309) | small_feature | 6 | yellow | **CLA gate** — signed 2026-06-18 (rudi193@gmail.com); maintainer `mphilbrick211` active — ping once CLA clears |
+| [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | mcp_adapter | 4 | red | Rebased 2026-06-15; `check-pr-labels` FAILURE is a **maintainer-only label gate** (needs `kind/*` + `release-note`) — code clean, deprioritize |
+| [hermes-agent #40737](https://github.com/NousResearch/hermes-agent/pull/40737) | unsolicited_large_feature | 2 | red | No maintainer signal since 2026-06-08 — do not invest; consider withdrawing |
 
-**Desk rule:** No new upstream PRs while green lanes have maintainer-pending merges, unless a new candidate scores green *and* has no overlapping open PR in the same repo.
+**Desk rule:** No new upstream PRs while green lanes have maintainer-pending merges, unless a new candidate scores green *and* has no overlapping open PR in the same repo. *(2026-06-23: green lane is clear of merge-pending blockers — new green-lane candidates are unblocked.)*
 
-## Upstream PRs — actionable
-
-| PR | Status | Next step |
-|----|--------|-----------|
-| [ctxvault #31](https://github.com/Filippo-Venturini/ctxvault/pull/31) | Tests pass; mergeable/clean; no review yet | Optional: gentle review ping to Filippo-Venturini |
-| [claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | Fix pushed `0c9cfea`; `claude-review` pass; CHANGES_REQUESTED | Wait for TerrysPOV re-review (optional ping) |
-| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | Fix pushed `5a6e633`; `claude-review` pass; CHANGES_REQUESTED | Wait for TerrysPOV re-review (optional ping) |
-| [claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | New; `claude-review` pass; mergeable | Wait for review |
-| [claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | New; `claude-review` pass; mergeable | Wait for review |
-| [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | `mergeable: CONFLICTING`; labels still missing | Rebase onto main or deprioritize |
-
-## Upstream PRs — waiting on maintainers
+## Upstream PRs — actionable (our move)
 
 | PR | Status | Next step |
 |----|--------|-----------|
-| [awesome-claude-skills #885](https://github.com/ComposioHQ/awesome-claude-skills/pull/885) | `ready-to-merge`; mergeable | Maintainer merge |
-| [mengram #40](https://github.com/alibaizhanov/mengram/pull/40) | Pinged 2026-06-04 | Maintainer review |
-| [hermes-agent #40737](https://github.com/NousResearch/hermes-agent/pull/40737) | Open, no comments | Maintainer review |
-| [python-sdk #2640](https://github.com/modelcontextprotocol/python-sdk/pull/2640) | Open, no comments | Maintainer review |
-| [ngrok-python #159–161](https://github.com/ngrok/ngrok-python/pulls) | Rebased May 20; open | Maintainer review |
+| [claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | Fix pushed `0c9cfea`; `claude-review` SUCCESS; review still CHANGES_REQUESTED | Re-request review from TerrysPOV (fix addressed 2026-06-12, undismissed) |
+| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | Fix pushed `5a6e633`; `claude-review` SUCCESS; review still CHANGES_REQUESTED | Re-request review from TerrysPOV (fix addressed 2026-06-12, undismissed) |
+| [codejail #309](https://github.com/openedx/codejail/pull/309) | CLA signed 2026-06-18; maintainer `mphilbrick211` engaged; one CLA check FAILURE | Confirm CLA clears, then nudge `mphilbrick211` / `@moisesgsalas` |
 
-## Upstream outcomes — merged by maintainers
+## Upstream PRs — waiting on maintainers (no move)
 
-*Full auto-updated ledger: [`CONTRIBUTORS.md`](../CONTRIBUTORS.md). Below is the current merged set from that tracker.*
+| PR | Status | Next step |
+|----|--------|-----------|
+| [claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | CI green; mergeable; no review | Maintainer review |
+| [claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | CI green; mergeable; no review | Maintainer review |
+| [mcp-mem0 #18](https://github.com/coleam00/mcp-mem0/pull/18) | Mergeable; issue-linked; no review | Maintainer review |
+| [PDFMathTranslate #1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) | Mergeable; no review | Maintainer review |
+| [mex #84](https://github.com/mex-memory/mex/pull/84) | Mergeable; REVIEW_REQUIRED | Maintainer review |
+| [DontFeedTheAI #8](https://github.com/zeroc00I/DontFeedTheAI/pull/8) | Mergeable; no review | Maintainer review |
+| [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | Code clean; blocked on maintainer label assignment | Maintainer adds labels (or deprioritize) |
+| [hermes-agent #40737](https://github.com/NousResearch/hermes-agent/pull/40737) | Open, no maintainer signal | Maintainer review (red lane — low priority) |
+
+## Upstream outcomes — recently merged by maintainers
+
+*Full auto-updated ledger: [`CONTRIBUTORS.md`](../CONTRIBUTORS.md). Recent merges since last desk pass:*
 
 | PR | Note |
 |----|------|
+| [Filippo-Venturini/ctxvault #31](https://github.com/Filippo-Venturini/ctxvault/pull/31) | Remove stale `vault_config` reindex kwarg — merged 2026-06-17 by Filippo-Venturini |
 | [max-rh/sshelf #3](https://github.com/max-rh/sshelf/pull/3) | Print generated SSH command from CLI |
-| [liatrio-labs/claude-deep-review #5](https://github.com/liatrio-labs/claude-deep-review/pull/5) | Extract `dedup_by_id` into standalone module (merged 2026-06-14) |
+| [liatrio-labs/claude-deep-review #5](https://github.com/liatrio-labs/claude-deep-review/pull/5) | Extract `dedup_by_id` into standalone module |
 | [basicmachines-co/basic-memory #985](https://github.com/basicmachines-co/basic-memory/pull/985) | Promote first project when config default missing from DB |
-| [Emerging-Rule/community #11](https://github.com/Emerging-Rule/community/pull/11) | Creature Lab CS showcase + Neva and Theo science lesson |
+| [Emerging-Rule/community #11](https://github.com/Emerging-Rule/community/pull/11) | Creature Lab CS showcase + science lesson |
 | [manojmallick/sigmap #216](https://github.com/manojmallick/sigmap/pull/216) | Hot-cold cold signatures in bundled MCP server |
-| [Emerging-Rule/community #10](https://github.com/Emerging-Rule/community/pull/10) | Calibration Series (6–10 + Social Studies 6–8) |
 | [alash3al/stash #10](https://github.com/alash3al/stash/pull/10) | Escape LIKE wildcards in namespace path resolution |
-| [alash3al/stash #9](https://github.com/alash3al/stash/pull/9) | Ollama local-first setup + pipeline stage alignment |
-| [Emerging-Rule/community #9](https://github.com/Emerging-Rule/community/pull/9) | AI Literacy 9-12 series + Scribe companion |
-| [Emerging-Rule/community #8](https://github.com/Emerging-Rule/community/pull/8) | AI and Education reading list for teachers |
-| [Emerging-Rule/community #7](https://github.com/Emerging-Rule/community/pull/7) | The Scribe Who Forgot His Dreams — K-12 AI literacy story |
-| [Filippo-Venturini/ctxvault #29](https://github.com/Filippo-Venturini/ctxvault/pull/29) | Expose indexed document text for recovery workflows |
-| [RikyZ90/ShibaClaw #38](https://github.com/RikyZ90/ShibaClaw/pull/38) | Gateway WebSocket protocol contract docs |
-| [smaramwbc/statewave #154](https://github.com/smaramwbc/statewave/pull/154) | `make test-cold` for cold-install verification |
-| [alash3al/stash #8](https://github.com/alash3al/stash/pull/8) | Post-install guide + MCP copy-button fix |
-| [Doorman11991/smallcode #32](https://github.com/Doorman11991/smallcode/pull/32) | Willow dev-methodology skill pack |
-| [basicmachines-co/basic-memory #842](https://github.com/basicmachines-co/basic-memory/pull/842) | Ignore `CancelledError` in background task callback |
-| [basicmachines-co/basic-memory #841](https://github.com/basicmachines-co/basic-memory/pull/841) | Restore `write_note` overwrite schema for external clients |
-| [basicmachines-co/basic-memory #840](https://github.com/basicmachines-co/basic-memory/pull/840) | pgvector image for Postgres compose |
-| [zeroc00I/DontFeedTheAI #5](https://github.com/zeroc00I/DontFeedTheAI/pull/5) | OpenAI-compatible chat completions proxy |
-| [zeroc00I/DontFeedTheAI #4](https://github.com/zeroc00I/DontFeedTheAI/pull/4) | MIT LICENSE file |
-| [manojmallick/sigmap #202](https://github.com/manojmallick/sigmap/pull/202) | Merge hot-cold cache + context-cold into MCP index |
-| [paulkaefer/cowsay-files #34](https://github.com/paulkaefer/cowsay-files/pull/34) | kidcat.cow and billcipher.cow |
-| [manojmallick/sigmap #145](https://github.com/manojmallick/sigmap/pull/145) | Willow adapter for Postgres-backed knowledge store |
-| [manojmallick/sigmap #144](https://github.com/manojmallick/sigmap/pull/144) | Native Python AST extractor |
-| [TensorBlock/awesome-mcp-servers #401](https://github.com/TensorBlock/awesome-mcp-servers/pull/401) | willow-1.7 listing |
 
-## Upstream outcomes — closed without merge
+*(Older merges remain in `CONTRIBUTORS.md`; this table keeps the recent set.)*
+
+## Upstream outcomes — recently closed without merge
 
 | PR | Note |
 |----|------|
-| [basicmachines-co/basic-memory #984](https://github.com/basicmachines-co/basic-memory/pull/984) | Keep search index type in vector hydration (superseded by #985 path) |
-| [basicmachines-co/basic-memory #983](https://github.com/basicmachines-co/basic-memory/pull/983) | Keep search index type in vector hydration (duplicate attempt) |
-| [openclaw/openclaw #90165](https://github.com/openclaw/openclaw/pull/90165) | FTS keyword search should not filter by embedding model |
-| [voidcraft-labs/commcare-nova #57](https://github.com/voidcraft-labs/commcare-nova/pull/57) | Sanitize Long-like values before Firestore writes |
-| [ogham-mcp/ogham-mcp #53](https://github.com/ogham-mcp/ogham-mcp/pull/53) | Memory Tool 6-op conformance CI |
-| [holon-run/holon #1435](https://github.com/holon-run/holon/pull/1435) | Allow Sleep while waiting on background `command_task` |
-| [abhixdd/ghgrab #65](https://github.com/abhixdd/ghgrab/pull/65) | Homebrew formula + agent integration docs |
-| [Gentleman-Programming/engram #399](https://github.com/Gentleman-Programming/engram/pull/399) | Constant-time credential comparisons |
-| [Gentleman-Programming/engram #398](https://github.com/Gentleman-Programming/engram/pull/398) | `scope=personal` search across projects |
-| [NousResearch/hermes-agent #28241](https://github.com/NousResearch/hermes-agent/pull/28241) | Empty credential pool entries in `/model` picker |
-| [NousResearch/hermes-agent #28236](https://github.com/NousResearch/hermes-agent/pull/28236) | `hermes_plugins.*` in gateway.log filter |
-| [NousResearch/hermes-agent #28235](https://github.com/NousResearch/hermes-agent/pull/28235) | Plugin discovery failures → WARNING |
-| [BerriAI/litellm #28193](https://github.com/BerriAI/litellm/pull/28193) | Silence botocore `ModuleNotFoundError` on bedrock/sagemaker |
-| [node9-ai/node9-proxy #172](https://github.com/node9-ai/node9-proxy/pull/172) | Willow sovereign stack sensitive paths in blast |
-| [Textualize/rich #4092](https://github.com/Textualize/rich/pull/4092) | `safe_markup` — escape external content before Rich render |
-| [BerriAI/litellm #26307](https://github.com/BerriAI/litellm/pull/26307) | Custom fine-tuned GGUF via Ollama cookbook |
-| [Textualize/textual #6510](https://github.com/Textualize/textual/pull/6510) | Async `message_feed` with pause/resume |
-| [ollama/ollama #15765](https://github.com/ollama/ollama/pull/15765) | HuggingFace Hub direct GGUF pull pattern |
-| [modelcontextprotocol/python-sdk #2494](https://github.com/modelcontextprotocol/python-sdk/pull/2494) | Postgres-backed MCP server example |
-| [openclaw/openclaw #69792](https://github.com/openclaw/openclaw/pull/69792) | `sap-enforcer` skill |
-| [NousResearch/hermes-agent #11979](https://github.com/NousResearch/hermes-agent/pull/11979) | Willow Kart task queue tool |
-| [openclaw/openclaw #67789](https://github.com/openclaw/openclaw/pull/67789) | `willow-memory-health` ClawHub skill |
+| [ComposioHQ/awesome-claude-skills #885](https://github.com/ComposioHQ/awesome-claude-skills/pull/885) | 10 dev-methodology skills listing — batch-closed 2026-06-15 (was `ready-to-merge`, no maintainer action) |
+| [alibaizhanov/mengram #40](https://github.com/alibaizhanov/mengram/pull/40) | CONTRIBUTING.md docs — batch-closed 2026-06-15 |
+| [modelcontextprotocol/python-sdk #2640](https://github.com/modelcontextprotocol/python-sdk/pull/2640) | Propagate transport exceptions in default message handler — closed 2026-06-15 (megarepo, 20 failing checks) |
+| [ngrok/ngrok-python #159](https://github.com/ngrok/ngrok-python/pull/159) | `--log-level` parameter for `__main__` — batch-closed 2026-06-15 |
+| [ngrok/ngrok-python #160](https://github.com/ngrok/ngrok-python/pull/160) | Type hints reflect awaitable return — batch-closed 2026-06-15 |
+| [ngrok/ngrok-python #161](https://github.com/ngrok/ngrok-python/pull/161) | ngrok + Google Colab example — batch-closed 2026-06-15 |
 
-*38 closed-without-merge PRs total in `CONTRIBUTORS.md`; table above lists the notable recent ones. See the tracker for the full set (JointBERT, th0th, adjoint, moonshine, etc.).*
+*See `CONTRIBUTORS.md` for the full closed-without-merge set (45 total).*
 
 ## Internal
 
