@@ -32,19 +32,22 @@ def test_blocks_ls():
     assert "MCP" in reason or "kart" in reason.lower()
 
 
-def test_warns_git():
+def test_blocks_git():
+    # git via agent Bash has no creds and is the canonical Kart use case — block
+    # on first attempt so the agent routes to Kart immediately (worktree cleanup
+    # is exempted earlier in check_bash_block; see test_allows_worktree_cleanup_git).
     result = check_bash_block("git log --oneline -10")
     assert result is not None
     decision, reason = result
-    assert decision == "warn"
+    assert decision == "block"
     assert "agent_task_submit" in reason or "kart" in reason.lower()
 
 
-def test_warns_gh():
+def test_blocks_gh():
     result = check_bash_block("gh pr list --limit 5")
     assert result is not None
     decision, reason = result
-    assert decision == "warn"
+    assert decision == "block"
     assert "allow_net" in reason.lower()
 
 
@@ -155,10 +158,12 @@ def test_safety_gate_blocks_training_tool_without_consent():
     assert "HS-003" in data["reason"] or "training" in data["reason"].lower()
 
 
-def test_safety_gate_allows_git_bash():
+def test_safety_gate_allows_benign_bash():
+    # Use an allow-listed command (pytest) so the safety gate is what's exercised,
+    # not the workflow guard (git/gh now hard-block on first attempt).
     out = _run_pre_tool({
         "tool_name": "Bash",
-        "tool_input": {"command": "git log --oneline -5"},
+        "tool_input": {"command": "python3 -m pytest tests/ -q"},
         "session_id": "abc123",
     })
     if out.strip():
@@ -333,10 +338,11 @@ def test_count_warn_emitted_at_threshold(tmp_path, monkeypatch):
     # Drive count to threshold - 1
     for _ in range(4):
         _pt._increment_bash_count("s-thresh")
-    # Fifth call crosses threshold=5
+    # Fifth call crosses threshold=5. Use an allow-listed command (pytest) so the
+    # BASH-COUNT nudge is what's emitted, not a workflow block.
     out = _run_pre_tool({
         "tool_name": "Bash",
-        "tool_input": {"command": "git log --oneline -5"},
+        "tool_input": {"command": "python3 -m pytest tests/ -q"},
         "session_id": "s-thresh",
     })
     assert out.strip(), "Expected a warn at threshold crossing"
@@ -353,10 +359,10 @@ def test_count_warn_not_emitted_below_threshold(tmp_path, monkeypatch):
         _pt._increment_bash_count("s-low")
     out = _run_pre_tool({
         "tool_name": "Bash",
-        "tool_input": {"command": "git log --oneline -5"},
+        "tool_input": {"command": "python3 -m pytest tests/ -q"},
         "session_id": "s-low",
     })
-    # No output expected (git is allowed, count=4 < threshold=5)
+    # No output expected (pytest is allow-listed, count=4 < threshold=5)
     if out.strip():
         data = json.loads(out)
         assert data.get("decision") != "block"
@@ -398,21 +404,23 @@ def test_find_blocks_on_first_attempt(tmp_path, monkeypatch):
     assert "Glob(" in data1["reason"]
 
 
-def test_git_warn_escalates_on_second_strike(tmp_path, monkeypatch):
+def test_warn_escalates_to_block_on_second_strike(tmp_path, monkeypatch):
+    # du is still a warn-tier habit (Glob/Kart alternative); use it to exercise the
+    # warn→block escalation now that git/gh/grep/find hard-block on first attempt.
     monkeypatch.setattr(_pt, "_session_rule_strikes_path", lambda sid: tmp_path / f"strikes-{sid}.json")
     monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
-    cmd = "git status -sb"
+    cmd = "du -sh /tmp"
     out1 = _run_pre_tool({
         "tool_name": "Bash",
         "tool_input": {"command": cmd},
-        "session_id": "esc-git",
+        "session_id": "esc-du",
     })
     assert out1.strip()
     assert json.loads(out1)["decision"] == "warn"
     out2 = _run_pre_tool({
         "tool_name": "Bash",
         "tool_input": {"command": cmd},
-        "session_id": "esc-git",
+        "session_id": "esc-du",
     })
     data2 = json.loads(out2)
     assert data2["decision"] == "block"

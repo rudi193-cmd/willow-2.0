@@ -12,17 +12,17 @@ def test_redirect_ls_blocks_to_kart():
     assert "agent_task_submit" in result[1]
 
 
-def test_redirect_git_warns_to_kart():
+def test_redirect_git_blocks_to_kart():
     result = redirect_for_command("git status -sb")
     assert result is not None
-    assert result[0] == "warn"
+    assert result[0] == "block"
     assert "agent_task_submit" in result[1]
 
 
-def test_redirect_gh_warns_to_kart():
+def test_redirect_gh_blocks_to_kart():
     result = redirect_for_command("gh pr view 440")
     assert result is not None
-    assert result[0] == "warn"
+    assert result[0] == "block"
     assert "allow_net" in result[1].lower()
 
 
