@@ -1,9 +1,9 @@
 {
-  "generated": "2026-06-12",
-  "source": "CONTRIBUTORS.md",
+  "generated": "2026-06-23",
+  "source": "CONTRIBUTORS.md + live gh reconciliation",
   "summary": {
-    "merged": 23,
-    "closed": 38,
+    "merged": 24,
+    "closed": 44,
     "open": 11
   },
   "types": {
@@ -24,8 +24,8 @@
     "docs_setup": {
       "description": "Setup guides, post-install docs, Ollama/local-first alignment, protocol docs.",
       "merged": 5,
-      "closed": 2,
-      "merge_rate": 0.71,
+      "closed": 4,
+      "merge_rate": 0.56,
       "examples_merged": [
         "alash3al/stash#8",
         "alash3al/stash#9",
@@ -35,20 +35,23 @@
       ],
       "examples_closed": [
         "Kludex/starlette#3249",
-        "brainqub3/claude_code_RLM#3"
+        "brainqub3/claude_code_RLM#3",
+        "alibaizhanov/mengram#40",
+        "ngrok/ngrok-python#161"
       ],
       "lane": "green"
     },
     "narrow_bugfix": {
       "description": "Single-module fixes for observable broken behavior, ideally linked to an issue.",
-      "merged": 4,
-      "closed": 8,
+      "merged": 5,
+      "closed": 10,
       "merge_rate": 0.33,
       "examples_merged": [
         "alash3al/stash#10",
         "basicmachines-co/basic-memory#841",
         "basicmachines-co/basic-memory#842",
-        "manojmallick/sigmap#216"
+        "manojmallick/sigmap#216",
+        "Filippo-Venturini/ctxvault#31"
       ],
       "examples_closed": [
         "openclaw/openclaw#90165",
@@ -58,7 +61,9 @@
         "NousResearch/hermes-agent#28235",
         "NousResearch/hermes-agent#28236",
         "NousResearch/hermes-agent#28241",
-        "holon-run/holon#1435"
+        "holon-run/holon#1435",
+        "modelcontextprotocol/python-sdk#2640",
+        "ngrok/ngrok-python#160"
       ],
       "lane": "yellow_unless_issue_linked"
     },
@@ -87,25 +92,29 @@
     "small_feature": {
       "description": "Focused feature additions with clear user value and bounded scope.",
       "merged": 3,
-      "closed": 0,
-      "merge_rate": 1.0,
+      "closed": 1,
+      "merge_rate": 0.75,
       "examples_merged": [
         "Filippo-Venturini/ctxvault#29",
         "zeroc00I/DontFeedTheAI#5",
         "Doorman11991/smallcode#32"
+      ],
+      "examples_closed": [
+        "ngrok/ngrok-python#159"
       ],
       "lane": "yellow"
     },
     "listing_awesome": {
       "description": "Add project to awesome/list/registry repos.",
       "merged": 1,
-      "closed": 3,
-      "merge_rate": 0.25,
+      "closed": 4,
+      "merge_rate": 0.2,
       "examples_merged": ["TensorBlock/awesome-mcp-servers#401"],
       "examples_closed": [
         "TensorBlock/awesome-mcp-servers#432",
         "punkpeye/awesome-mcp-servers#5247",
-        "punkpeye/awesome-mcp-servers#4991"
+        "punkpeye/awesome-mcp-servers#4991",
+        "ComposioHQ/awesome-claude-skills#885"
       ],
       "lane": "yellow"
     },
