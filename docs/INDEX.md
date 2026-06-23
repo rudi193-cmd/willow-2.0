@@ -26,6 +26,8 @@ root `../willow.md` as an agent.
 | Beta gate / ops | [`BETA_AUDIT_REPORT.md`](BETA_AUDIT_REPORT.md) |
 | Scheduled jobs / fleet timers | [`SCHEDULED_JOBS.md`](SCHEDULED_JOBS.md) — metabolic (nightly), W8 census (weekly), repo sweep |
 | MCP tool profiles (reduce picker noise) | [`MCP_TOOL_PROFILES.md`](MCP_TOOL_PROFILES.md) |
+| Add a new MCP tool | [`ADD_MCP_TOOL.md`](ADD_MCP_TOOL.md) |
+| Docker Postgres (optional onboarding) | [`../docker-compose.yml`](../docker-compose.yml) |
 
 ---
 

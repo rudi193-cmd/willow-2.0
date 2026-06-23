@@ -185,7 +185,9 @@
 | `apps/pigeon` |
 | `apps/ratatosk` |
 | `apps/star` |
+| `docker-compose.yml` |
 | `docs/.nojekyll` |
+| `docs/ADD_MCP_TOOL.md` |
 | `docs/AGENT_IDENTITY.md` |
 | `docs/LANDING_DESIGN.md` |
 | `docs/MCP_SPEC_COMPLIANCE.md` |
@@ -223,6 +225,7 @@
 | `sap/mcp_guide.py` |
 | `sap/mcp_profiles.py` |
 | `sap/mcp_registry.json` |
+| `sap/security_middleware.py` |
 | `sap/spec` |
 | `sap/willow_run_compact.py` |
 | `seed-windows.py` |

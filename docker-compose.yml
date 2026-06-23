@@ -1,0 +1,23 @@
+# Optional Postgres+pgvector for onboarding — host-run Willow stays portless (stdio MCP).
+# Usage: docker compose up -d willow-db
+# Then: WILLOW_PG_HOST=127.0.0.1 WILLOW_PG_USER=willow WILLOW_PG_PASSWORD=willow WILLOW_PG_DB=willow_20 bash setup.sh
+
+services:
+  willow-db:
+    image: pgvector/pgvector:pg15
+    environment:
+      POSTGRES_USER: willow
+      POSTGRES_PASSWORD: willow
+      POSTGRES_DB: willow_20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U willow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

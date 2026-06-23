@@ -25,6 +25,7 @@ Tool prefixes (14 domains):
 Entry points:
   stdio (default):    python3 sap/sap_mcp.py
   HTTP:               python3 sap/sap_mcp.py --http [--host 127.0.0.1] [--port 6274]
+                        Set WILLOW_MCP_API_KEY when binding beyond loopback.
 
   .mcp.json stdio:    {"command": "python3", "args": ["sap/sap_mcp.py"]}
   .mcp.json HTTP:     {"url": "http://127.0.0.1:6274/mcp"}
@@ -6049,6 +6050,16 @@ def main() -> None:
     args = ap.parse_args()
 
     if args.http:
+        from sap.security_middleware import verify_transport, wrap_streamable_http_app
+
+        verify_transport("http", host=args.host)
+        if os.environ.get("WILLOW_MCP_API_KEY", "").strip():
+            _orig_streamable_http_app = mcp.streamable_http_app
+
+            def _streamable_http_app_with_api_key():
+                return wrap_streamable_http_app(_orig_streamable_http_app())
+
+            mcp.streamable_http_app = _streamable_http_app_with_api_key  # type: ignore[method-assign]
         mcp.run(transport="streamable-http", host=args.host, port=args.port)
     else:
         mcp.run(transport="stdio")
