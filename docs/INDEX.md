@@ -15,7 +15,7 @@ root `../willow.md` as an agent.
 | Agent joining the fleet | root contract: [`../willow.md`](../willow.md) · public snapshot: [`CONTRACT.md`](CONTRACT.md) · [`../sap/ONBOARDING.md`](../sap/ONBOARDING.md) |
 | Upgrading from 1.9 | [`CODE_DIFF_1.9_to_2.0.md`](CODE_DIFF_1.9_to_2.0.md) |
 | What lives at repo root | [`ROOT_LAYOUT.md`](ROOT_LAYOUT.md) |
-| Private config vs public code | [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) · [`PUBLIC_REMOTE_BOOT.md`](PUBLIC_REMOTE_BOOT.md) |
+| Private config vs public code | [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) · [`PUBLIC_REMOTE_BOOT.md`](PUBLIC_REMOTE_BOOT.md) · [`PUBLIC_READY_V1.md`](PUBLIC_READY_V1.md) |
 | Fleet contract (public snapshot) | [`CONTRACT.md`](CONTRACT.md) — sync via `scripts/sync_contract_snapshot.py` |
 | Audits (fleet/system reports) | [`audits/`](audits/) — latest: [`audits/SYSTEM_AUDIT_2026-06-10.md`](audits/SYSTEM_AUDIT_2026-06-10.md) |
 | Open work (curated backlog) | [`OPEN_WORK.md`](OPEN_WORK.md) |

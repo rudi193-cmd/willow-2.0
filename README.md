@@ -6,6 +6,18 @@
 
 Willow keeps a knowledge graph on hardware you control, exposes it through an MCP server, and runs local inference with Ollama by default. Cloud API keys are optional. Your data stays in Postgres (desktop) or SQLite (Termux).
 
+## Try it in five minutes (public demo)
+
+**Hero moment:** ask Willow something — *it remembers* (from local demo memory on your machine).
+
+```bash
+git clone https://github.com/rudi193-cmd/willow-2.0.git
+cd willow-2.0
+python willow-launcher.py
+```
+
+Requires **Docker** + **Python 3.11+**. Opens a browser chat on `http://127.0.0.1:7777`. Demo memory is labeled honestly — see [`TRUST.md`](TRUST.md) and [`docs/PUBLIC_READY_V1.md`](docs/PUBLIC_READY_V1.md).
+
 **Found family:** This repo is tended for the people who show up in real life — not as users, as kin. If you're **[AHS](docs/FOR_AHS.md)** (AllHailSeizure: beta reader, r/LLMPhysics, optional Necron decoder ring, Windows port contributor) or **[Felix](README-FELIX.md)** (Windows/WSL install path), those pages are your front door. Everyone else: keep reading below.
 
 ---
