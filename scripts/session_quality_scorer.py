@@ -18,8 +18,7 @@ Output: ~/.willow/session_quality_report.json
 import json
 import re
 import sys
-from collections import defaultdict
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -49,11 +48,11 @@ def score_session(title: str, body: str) -> dict:
 
     lines = body.split("\n")
 
-    task_mentions = sum(1 for l in lines if TASK_MENTION.search(l))
-    task_completes = sum(1 for l in lines if TASK_COMPLETE.search(l))
-    corrections = sum(1 for l in lines if CORRECTION_SIGNAL.search(l))
-    carryovers = sum(1 for l in lines if CARRYOVER_SIGNAL.search(l))
-    directives = sum(1 for l in lines if DIRECTIVE.search(l))
+    task_mentions = sum(1 for ln in lines if TASK_MENTION.search(ln))
+    task_completes = sum(1 for ln in lines if TASK_COMPLETE.search(ln))
+    corrections = sum(1 for ln in lines if CORRECTION_SIGNAL.search(ln))
+    carryovers = sum(1 for ln in lines if CARRYOVER_SIGNAL.search(ln))
+    directives = sum(1 for ln in lines if DIRECTIVE.search(ln))
 
     completion_rate = task_completes / max(task_mentions, 1)
     # Penalty for corrections (normalized to 0-1, cap at 10)

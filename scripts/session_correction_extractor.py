@@ -13,7 +13,7 @@ Output: ~/.willow/session_dpo_corrections.jsonl
 import json
 import re
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -65,7 +65,7 @@ def extract_from_body(body: str, atom_id: str, session_title: str) -> list[dict]
     if not body:
         return []
 
-    lines = [l.strip() for l in body.split("\n") if l.strip()]
+    lines = [ln.strip() for ln in body.split("\n") if ln.strip()]
     pairs = []
 
     for i, line in enumerate(lines):

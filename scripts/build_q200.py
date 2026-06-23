@@ -109,7 +109,7 @@ def main():
         json.dump(q200, f, indent=2)
 
     print(f"\nQ200 written → {out}")
-    print(f"Top 10:")
+    print("Top 10:")
     for q in q200[:10]:
         print(f"  [{q['category']:10s}] {q['question'][:80]} ({q['freq']}x)")
 
