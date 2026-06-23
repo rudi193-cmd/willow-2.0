@@ -14,8 +14,6 @@ python willow-launcher.py
 
 Within five minutes: browser opens → Concierge greeting → user asks a seeded question → Willow answers from local memory with an honest demo banner.
 
-**Postgres:** the launcher reuses an existing local `willow_20` when reachable (Docker creds or peer auth). If not, it starts `willow-db` via Docker on port 5432, or **55432** when 5432 is already taken (common on developer machines with system Postgres).
-
 ## What v1 is
 
 - Local-first memory demo in the browser (`core/public_serve.py`)
