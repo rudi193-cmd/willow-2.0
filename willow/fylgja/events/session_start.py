@@ -162,6 +162,8 @@ def _scan_hardware() -> tuple[list[str], list[str]]:
         alerts.append(f"thermals: {e}")
 
     try:
+        from core.host_profile import index_hardware_parts, load_host_profile
+
         mem = {}
         for line in Path("/proc/meminfo").read_text().splitlines():
             k, _, v = line.partition(":")
@@ -171,8 +173,17 @@ def _scan_hardware() -> tuple[list[str], list[str]]:
             avail = int(mem["MemAvailable"].split()[0])
             total = int(mem["MemTotal"].split()[0])
             summary.append(f"{round(avail/total*100)}% RAM free")
+        host_parts, host_profile = index_hardware_parts()
+        # RAM/GPU tokens first so agents see capacity before utilization.
+        summary[:0] = host_parts
         (INDEX_DIR / "memory.json").write_text(json.dumps({
-            "timestamp": datetime.now().isoformat(), **mem
+            "timestamp": datetime.now().isoformat(),
+            **mem,
+            "host": host_profile,
+        }, indent=2))
+        (INDEX_DIR / "host.json").write_text(json.dumps({
+            "timestamp": datetime.now().isoformat(),
+            **host_profile,
         }, indent=2))
     except Exception as e:
         alerts.append(f"memory: {e}")

@@ -44,10 +44,6 @@
   "bind_read_only": [
     "/usr",
     "/etc",
-    "/bin",
-    "/lib",
-    "/lib64",
-    "/sbin",
     "/sys",
     "{{HOME}}/github",
     "{{HOME}}/agents",

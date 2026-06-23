@@ -263,9 +263,10 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
         args += [flag, str(host), str(container)]
 
     # On merged-usr systems /bin, /lib, /lib64, /sbin are symlinks → /usr/*.
-    # collect_bind_mounts resolves them to real paths, so the container gets
-    # e.g. /usr/bin but no /bin symlink.  Without /lib64 the ELF interpreter
-    # can't be found and bash/python3 fail with ENOENT.  Re-add the symlinks.
+    # When /usr (or /usr/bin) is already bind-mounted, --symlink usr/bin /bin
+    # fails: "existing destination is usr/bin". PATH includes /usr/bin — skip.
+    mounted = {str(container) for _, container, _ in collect_bind_mounts(root)}
+    usr_mounted = "/usr" in mounted or any(p.startswith("/usr/") for p in mounted)
     _MERGED_USR_LINKS = [
         ("/bin", "usr/bin"),
         ("/sbin", "usr/sbin"),
@@ -276,8 +277,11 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
     ]
     for link_path, target in _MERGED_USR_LINKS:
         p = Path(link_path)
-        if p.is_symlink():
-            args += ["--symlink", target, link_path]
+        if not p.is_symlink():
+            continue
+        if usr_mounted:
+            continue
+        args += ["--symlink", target, link_path]
 
     # S8/KP6b: any configured bind path that is a host symlink resolves away in
     # collect_bind_mounts (dedup by real path), so re-emit each one as --symlink

@@ -343,6 +343,14 @@ def _check_ollama() -> dict:
         return {"running": False}
 
 
+def _check_host() -> dict:
+    try:
+        from core.host_profile import load_host_profile
+        return load_host_profile()
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def _check_metabolic() -> dict:
     from core.metabolic_status import check_metabolic_status
     return check_metabolic_status()
@@ -457,6 +465,7 @@ async def fleet_status(app_id: str) -> dict:
     local_count  = sum(s["count"] for s in local_stats.values()) if local_stats else 0
     pg_stats     = await loop.run_in_executor(_executor, pg.stats) if pg and hasattr(pg, "stats") else {}
     ollama       = await loop.run_in_executor(_executor, _check_ollama)
+    host         = await loop.run_in_executor(_executor, _check_host)
 
     try:
         from sap.core.gate import SAFE_ROOT, PROFESSOR_ROOT, _verify_pgp
@@ -511,6 +520,7 @@ async def fleet_status(app_id: str) -> dict:
     return {
         "local_store": {"collections": len(local_stats), "records": local_count},
         "postgres":    pg_stats if pg_stats else ("not_connected" if pg is None else "connected"),
+        "host":        host,
         "ollama":      ollama,
         "manifests":   manifests,
         "metabolic":   metabolic,

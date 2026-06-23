@@ -2,28 +2,51 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import subprocess
+from pathlib import Path
 
 from willow.fylgja.willow_home import fleet_home
 
 
+def _systemd_user_env() -> dict[str, str]:
+    """Best-effort user-session env for MCP/daemon contexts missing login session."""
+    env = os.environ.copy()
+    if "XDG_RUNTIME_DIR" not in env:
+        try:
+            env["XDG_RUNTIME_DIR"] = f"/run/user/{os.getuid()}"
+        except Exception:
+            pass
+    if "DBUS_SESSION_BUS_ADDRESS" not in env:
+        runtime = env.get("XDG_RUNTIME_DIR", "")
+        if runtime:
+            bus = Path(runtime) / "bus"
+            if bus.is_socket():
+                env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={bus}"
+    return env
+
+
 def _systemd_user_state(unit: str) -> str:
     """Return active | enabled | installed | missing for a user unit."""
+    env = _systemd_user_env()
     try:
         proc = subprocess.run(
             ["systemctl", "--user", "is-active", unit],
             capture_output=True,
             text=True,
             timeout=3,
+            env=env,
         )
-        if proc.returncode == 0 and proc.stdout.strip() == "active":
+        state = (proc.stdout or "").strip()
+        if proc.returncode == 0 and state in ("active", "waiting"):
             return "active"
         proc = subprocess.run(
             ["systemctl", "--user", "is-enabled", unit],
             capture_output=True,
             text=True,
             timeout=3,
+            env=env,
         )
         if proc.returncode == 0:
             return "enabled"
@@ -32,8 +55,12 @@ def _systemd_user_state(unit: str) -> str:
             capture_output=True,
             text=True,
             timeout=3,
+            env=env,
         )
         if unit in (proc.stdout or ""):
+            return "installed"
+        unit_file = Path.home() / ".config/systemd/user" / unit
+        if unit_file.is_file():
             return "installed"
     except Exception:
         pass
