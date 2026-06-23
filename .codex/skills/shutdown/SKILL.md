@@ -23,8 +23,21 @@ Stack position: this skill is the **end-of-session persistence** layer — it ab
 2. **Write the handoff** — this runs early by design: it is the one artifact that must survive
    even if the session dies partway through the steps below.
 
-   a. **Load current state** — call `handoff_latest` to see prior open threads. The flag state
-      from step 1 must appear in the handoff. Do not rely on memory; read SOIL.
+   a. **Load + reconcile current state** — call `handoff_latest` to see prior open threads. The
+      flag state from step 1 must appear in the handoff. Do not rely on memory; read SOIL.
+
+      **PR-thread reconciliation (required, before any thread reaches the draft).** Scan both the
+      prior `open_threads` and the ones you are about to write for PR/issue references
+      (`#NNN`, `PR #NNN`). For each, run `gh pr view <N> --json state,mergedAt` (via Kart —
+      `willow_run allow_net=True`). Then:
+      - **MERGED / CLOSED** → drop the thread. If a merged PR left genuine follow-up work, rewrite
+        the thread to describe *that follow-up*, never the merge itself.
+      - **OPEN** → keep, but refresh the one-line status (draft? checks? mergeable?) from the same
+        `gh pr view` so the next session reads current state, not last session's.
+
+      A handoff must never carry a merged PR forward as "needs merge" — that is the zombie-thread
+      bug (#402, #444, #446, #481 each lingered across sessions this way). Only threads that are
+      still genuinely open survive into 2b.
 
    b. **Draft** — copy [`docs/templates/HANDOFF.template.md`](../../docs/templates/HANDOFF.template.md)
       as the canonical v2 structure:
@@ -212,6 +225,9 @@ before the pipeline runs.
 - "What We Agreed On" = ratified decisions only — include ruled-out options to prevent
   re-litigation. This section is what makes CC CLI sessions legible to the next agent.
 - `open_threads` in the content JSONB is what `handoff_latest` returns. Keep them precise.
+- PR-shaped open threads must be reconciled against live `gh pr view` state in step 2a *before*
+  the handoff is written. Never carry a MERGED or CLOSED PR forward as an open thread — drop it,
+  or rewrite it as the remaining follow-up. This is the step that stops zombie threads.
 - Q17 must be a single concrete next bite, not a project description.
 - Phases 3+4 (atom synthesis + edge linking) only run if `WILLOW_ATOM_EXTRACTION=1`.
 - Stop hook is cleanup-only (depth stack + thread file). Pipeline only runs on explicit /shutdown.
