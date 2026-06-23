@@ -15,14 +15,42 @@ jobs:
 
       - name: Verify tag matches VERSION file
         run: |
+          ref="${GITHUB_REF_NAME}"
+          if [[ "$ref" == *-public ]]; then
+            echo "Public marker tag ${ref} — skip VERSION check"
+            exit 0
+          fi
           ver="$(tr -d '[:space:]' < VERSION)"
-          tag="${GITHUB_REF_NAME#v}"
+          tag="${ref#v}"
           if [ "$tag" != "$ver" ]; then
             echo "::error::Tag v$tag does not match VERSION ($ver)"
             exit 1
           fi
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release (public marker)
+        if: endsWith(github.ref_name, '-public')
+        uses: softprops/action-gh-release@v3
+        with:
+          name: Willow ${{ github.ref_name }}
+          body: |
+            ## Public Ready v1
+
+            **For strangers cloning the repo** — not fleet operators.
+
+            ```bash
+            git clone https://github.com/rudi193-cmd/willow-2.0.git
+            cd willow-2.0
+            python willow-launcher.py
+            ```
+
+            - Local-first demo memory on **http://127.0.0.1:7788** (auto-fallback if busy)
+            - Reuses host Postgres or Docker on 5432 / 55432
+            - Hero test: *What did we decide about the public launch tag?* → `v1.0.0-public`
+
+            See [`docs/PUBLIC_READY_V1.md`](docs/PUBLIC_READY_V1.md) and [`TRUST.md`](TRUST.md).
+
+      - name: Create GitHub Release (calver)
+        if: ${{ !endsWith(github.ref_name, '-public') }}
         uses: softprops/action-gh-release@v3
         with:
           name: Willow ${{ github.ref_name }}

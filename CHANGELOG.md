@@ -6,6 +6,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.0.0-public] - 2026-06-23
+
+**Public Ready v1** — the stranger golden path: `python willow-launcher.py`.
+
+### Added
+
+- **`willow-launcher.py`** — orchestrates Postgres discovery, demo seed, browser, loopback chat
+- **`core/public_demo.py`** — five demo KB atoms, honest demo banner, retrieval-first replies
+- **`core/public_serve.py`** — chat UI on loopback (default port **7788**, auto-fallback)
+- **`core/public_launcher_pg.py`** — reuse host Postgres, peer auth, or Docker on free port
+- **`docs/PUBLIC_READY_V1.md`**, **`TRUST.md`** — spec and privacy framing
+
+### Fixed
+
+- Peer-auth Postgres (`fe_sendauth`) for developer machines with system Postgres on 5432
+- Hero question retrieval via stop-word stripping (no Ollama required)
+- Chat port collision with Grove (7777 vs 7788)
+
 ## [2026.06.7] - 2026-06-15
 
 Reliability & observability release: a per-turn clock contract that ends the recurring local↔UTC date confusion, runtime skill-surface sync plus a CI drift guard, a scheduler for the W8 trust instrument, and the embed-backfill fix that removes the single largest source of Kart failures — all since `v2026.06.6`.
