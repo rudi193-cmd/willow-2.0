@@ -22,7 +22,7 @@ jobs:
           cache-dependency-path: requirements.txt
 
       - name: Install lint tools
-        run: pip install ruff mypy
+        run: pip install ruff==0.15.0 mypy
 
       - name: Ruff (first-party, enforced)
         run: ruff check core sap willow tests scripts
