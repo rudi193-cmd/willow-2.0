@@ -37,7 +37,7 @@ def test_collect_bind_mounts_includes_repo_and_worktrees(repo_root):
         mounts = collect_bind_mounts(repo_root)
         hosts = {str(h) for h, _, _ in mounts}
         assert str(repo_root.resolve()) in hosts
-        assert str(wt.resolve()) in hosts
+        assert str((repo_root / "worktrees").resolve()) in hosts
     finally:
         wt.rmdir()
 
@@ -55,6 +55,26 @@ def test_collect_bind_mounts_resolves_worktree_symlink(repo_root, tmp_path):
         assert str(external.resolve()) in hosts
     finally:
         link.unlink()
+
+
+def test_collect_bind_mounts_parent_covers_in_tree_worktree(repo_root):
+    """In-tree worktrees need no per-child bind — parent worktrees/ rw bind suffices."""
+    wt = repo_root / "worktrees" / "_kart_parent_only"
+    wt.mkdir(parents=True, exist_ok=True)
+    probe = wt / "x"
+    try:
+        mounts = collect_bind_mounts(repo_root)
+        hosts = [str(h) for h, _, _ in mounts]
+        wt_host = str(wt.resolve())
+        worktrees_host = str((repo_root / "worktrees").resolve())
+        assert worktrees_host in hosts
+        assert wt_host not in hosts
+        probe.write_text("ok")
+        assert probe.read_text() == "ok"
+    finally:
+        if probe.is_file():
+            probe.unlink()
+        wt.rmdir()
 
 
 def test_build_bwrap_argv_has_core_flags(repo_root):
