@@ -20,17 +20,17 @@ _SCRIPT = "agent_task_submit(script_body=...) — avoids MCP JSON quote breakage
 
 # shell habit → (decision, redirect message)
 BASH_TO_MCP: list[tuple[str, str, str]] = [
-    (r"^\s*ls(\s|$)", "block", _KART),
-    (r"^\s*(cat|head|tail)\s", "block", "Read · mai_read_file (repo files); shell paths → " + _KART),
+    (r"^\s*ls(\s|$)", "block", f"Glob(pattern='<dir>/*') to list files · soil_list/app_list for Willow data · shell-only → {_KART}"),
+    (r"^\s*(cat|head|tail)\s", "block", f"Read · mai_read_file (repo files) · shell-only → {_KART}"),
     (r"^\s*psql\s", "block", "kb_query · soil_search — Postgres via MCP, not shell"),
     (r"\bsqlite3\b", "block", "soil_get · soil_list · soil_search"),
     (r"^\s*pwd\s*$", "warn", "cwd is in context; fleet_status for roots"),
-    (r"^\s*tree(\s|$)", "warn", f"Glob · {_KART}"),
+    (r"^\s*tree(\s|$)", "block", f"Glob(pattern='<dir>/**') · shell-only → {_KART}"),
     (r"^\s*du(\s|$)", "warn", f"fleet_system_status · {_KART}"),
     (r"^\s*git\s", "warn", f"{_KART} · allow_net=True for push/fetch"),
     (r"^\s*gh\s", "warn", f"{_KART} · allow_net=True"),
-    (r"\bgrep\b", "warn", f"kb_search/soil_search for Willow data; raw repo grep → {_KART}"),
-    (r"\bfind\s", "warn", f"Glob · code_graph_search; raw find → {_KART}"),
+    (r"\bgrep\b", "block", f"Grep(pattern='<regex>', path='<dir>') for repo/code search · kb_search/soil_search for Willow knowledge · shell-only → {_KART}"),
+    (r"\bfind\s", "block", f"Glob(pattern='**/*.py') for files · code_graph_search for symbols · shell-only → {_KART}"),
     (r"(?i)python3?\s+-m\s+(willow|sap|core)\.", "block", "Matching MCP tool — sap/mcp_registry.json"),
     (r"(?i)python3?\s+(-c|--command)\s", "warn", _SCRIPT),
 ]

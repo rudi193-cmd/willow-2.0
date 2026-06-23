@@ -26,6 +26,20 @@ def test_redirect_gh_warns_to_kart():
     assert "allow_net" in result[1].lower()
 
 
+def test_redirect_grep_blocks_and_names_grep_tool():
+    result = redirect_for_command("grep -rn foo willow/")
+    assert result is not None
+    assert result[0] == "block"
+    assert "Grep(" in result[1]
+
+
+def test_redirect_find_blocks_and_names_glob():
+    result = redirect_for_command("find . -name '*.py'")
+    assert result is not None
+    assert result[0] == "block"
+    assert "Glob(" in result[1]
+
+
 def test_format_brief_two_lanes():
     assert "[WILLOW-LANES]" in format_brief()
     assert "willow_find" in format_brief()
