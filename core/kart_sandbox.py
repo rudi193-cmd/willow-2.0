@@ -285,10 +285,8 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
         args += [flag, str(host), str(container)]
 
     # On merged-usr systems /bin, /lib, /lib64, /sbin are symlinks → /usr/*.
-    # When /usr (or /usr/bin) is already bind-mounted, --symlink usr/bin /bin
-    # fails: "existing destination is usr/bin". PATH includes /usr/bin — skip.
-    mounted = {str(container) for _, container, _ in collect_bind_mounts(root)}
-    usr_mounted = "/usr" in mounted or any(p.startswith("/usr/") for p in mounted)
+    # Recreate them in the sandbox so ELF interpreters (e.g. /lib64/ld-linux*.so.2)
+    # resolve — ro-binding /usr alone is not enough for execvp.
     _MERGED_USR_LINKS = [
         ("/bin", "usr/bin"),
         ("/sbin", "usr/sbin"),
@@ -298,10 +296,7 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
         ("/libx32", "usr/libx32"),
     ]
     for link_path, target in _MERGED_USR_LINKS:
-        p = Path(link_path)
-        if not p.is_symlink():
-            continue
-        if usr_mounted:
+        if not Path(link_path).is_symlink():
             continue
         args += ["--symlink", target, link_path]
 
@@ -375,6 +370,14 @@ def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> li
         args += ["--ro-bind", str(_nsswitch), "/etc/nsswitch.conf"]
 
     return args
+
+
+def _sandbox_bash() -> str:
+    """Absolute bash path for bwrap exec (merged-usr has no /bin in the sandbox)."""
+    for candidate in ("/usr/bin/bash", "/bin/bash"):
+        if Path(candidate).is_file():
+            return candidate
+    return "bash"
 
 
 def task_allows_network(task_text: str) -> bool:
@@ -589,7 +592,8 @@ def run_shell(
         }
 
     # Use bash -c so shell operators (&&, |, $(), redirects) work correctly.
-    argv = ["bash", "-c", cmd]
+    bash = _sandbox_bash()
+    argv = [bash, "-c", cmd]
     sandbox = "plain"
     pass_fds: tuple[int, ...] = ()
     status_file = None
@@ -604,7 +608,7 @@ def run_shell(
             fd = status_file.fileno()
             prefix = [prefix[0], "--json-status-fd", str(fd)] + prefix[1:]
             pass_fds = (fd,)
-        full = prefix + argv
+        full = prefix + ["--", bash, "-c", cmd]
         sandbox = "bwrap"
     else:
         full = argv

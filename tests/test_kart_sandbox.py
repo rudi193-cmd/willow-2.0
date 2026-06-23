@@ -5,6 +5,7 @@ import pytest
 
 from core.kart_sandbox import (
     build_bwrap_argv,
+    bwrap_available,
     collect_bind_mounts,
     kart_env,
     load_sandbox_config,
@@ -96,6 +97,16 @@ def test_run_shell_echo(repo_root, monkeypatch):
     assert out["returncode"] == 0
     assert "kart-sandbox-ok" in out["stdout"]
     assert out["sandbox"] == "plain"
+
+
+def test_run_shell_echo_under_bwrap(repo_root):
+    if not bwrap_available():
+        pytest.skip("bwrap not installed")
+    out = run_shell("echo kart-bwrap-ok", timeout=10)
+    assert out.get("sandbox_setup") != "failed", out
+    assert out["returncode"] == 0, out
+    assert "kart-bwrap-ok" in out["stdout"]
+    assert out["sandbox"] == "bwrap"
 
 
 def test_kart_env_repo_root_wins_over_stale_env(repo_root, monkeypatch):
