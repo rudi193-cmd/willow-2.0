@@ -147,7 +147,7 @@ jobs:
   # Branch protection on master requires a check literally named "test".
   test:
     runs-on: ubuntu-latest
-    needs: pytest-matrix
+    needs: [pytest-matrix, lint]
     if: always()
     steps:
       - name: Require pytest matrix green
