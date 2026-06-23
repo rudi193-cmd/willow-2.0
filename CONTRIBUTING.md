@@ -45,8 +45,8 @@ CI enforces:
 
 | Check | Meaning |
 |-------|---------|
-| `lint` | `ruff check core sap willow tests scripts` |
-| `test` | pytest matrix on 3.11 + 3.12 (Postgres service) |
+| `lint` | `ruff check core sap willow tests scripts` (ruff pinned to match pre-commit) |
+| `test` | pytest matrix on 3.11 + 3.12 (Postgres service); **blocked unless `lint` is green** |
 | `path-guard` | legacy path scan |
 
 Report-only in CI (artifacts, not merge blockers yet): mypy, coverage, bandit.
@@ -57,7 +57,7 @@ First-party scope excludes vendored trees (`worktrees/`, `mcp-memory-service/`, 
 
 1. Branch from `master`; keep PRs focused.
 2. Use the [PR template](.github/PULL_REQUEST_TEMPLATE.md).
-3. Ensure required checks **`test`** and **`path-guard`** pass (exact names — branch protection depends on them).
+3. Ensure required checks **`test`** and **`path-guard`** pass (exact names — branch protection depends on them). The `test` gate waits on `lint`; do not add chore lint commits to feature PRs — fix ruff on your branch before push (`bash scripts/lint_first_party.sh`).
 4. Do not commit secrets, `.cursor/settings.local.json`, or machine-specific symlinks; root `willow.md` must remain a public tracked file.
 5. Prefer extending existing patterns over new abstractions.
 
