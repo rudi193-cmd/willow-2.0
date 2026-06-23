@@ -366,27 +366,36 @@ def test_count_warn_not_emitted_below_threshold(tmp_path, monkeypatch):
 # ── Bash warn escalation (behavioral feedback loop) ─────────────────────────────
 
 
-def test_warn_escalates_to_block_on_second_strike(tmp_path, monkeypatch):
+def test_grep_blocks_on_first_attempt(tmp_path, monkeypatch):
+    """grep is a read-only habit with a first-class Grep tool — block immediately,
+    no free first attempt, and name the Grep tool in the redirect so the agent
+    reaches for the right tool without burning a strike."""
     monkeypatch.setattr(_pt, "_session_rule_strikes_path", lambda sid: tmp_path / f"strikes-{sid}.json")
     monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
-    cmd = "grep -r foo ."
     out1 = _run_pre_tool({
         "tool_name": "Bash",
-        "tool_input": {"command": cmd},
-        "session_id": "esc-s1",
+        "tool_input": {"command": "grep -r foo ."},
+        "session_id": "grep-block-s1",
     })
     assert out1.strip()
     data1 = json.loads(out1)
-    assert data1["decision"] == "warn"
-    out2 = _run_pre_tool({
+    assert data1["decision"] == "block"
+    assert "Grep(" in data1["reason"]
+
+
+def test_find_blocks_on_first_attempt(tmp_path, monkeypatch):
+    """find → Glob/code_graph_search; block on first attempt, no free strike."""
+    monkeypatch.setattr(_pt, "_session_rule_strikes_path", lambda sid: tmp_path / f"strikes-{sid}.json")
+    monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
+    out1 = _run_pre_tool({
         "tool_name": "Bash",
-        "tool_input": {"command": cmd},
-        "session_id": "esc-s1",
+        "tool_input": {"command": "find . -name '*.py'"},
+        "session_id": "find-block-s1",
     })
-    assert out2.strip()
-    data2 = json.loads(out2)
-    assert data2["decision"] == "block"
-    assert "ESCALATED" in data2["reason"]
+    assert out1.strip()
+    data1 = json.loads(out1)
+    assert data1["decision"] == "block"
+    assert "Glob(" in data1["reason"]
 
 
 def test_git_warn_escalates_on_second_strike(tmp_path, monkeypatch):
