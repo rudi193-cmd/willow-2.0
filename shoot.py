@@ -341,12 +341,18 @@ def gpg_agent_has_key(fingerprint: str) -> bool:
 
 # ── Vault helpers ─────────────────────────────────────────────────────────────
 
+def _vault_paths() -> "tuple[Path, Path]":
+    """Canonical credential vault paths — the SAME files
+    sap/core/inference.load_credential reads. Keep writer and reader in sync."""
+    secrets = _fleet_home() / "secrets"
+    secrets.mkdir(parents=True, exist_ok=True)
+    return secrets / ".willow_master.key", secrets / ".willow_creds.db"
+
+
 def _vault_init() -> bool:
     try:
         from cryptography.fernet import Fernet
-        home = _fleet_home()
-        key_path   = home / ".master.key"
-        vault_path = home / "vault.db"
+        key_path, vault_path = _vault_paths()
         if not key_path.exists():
             key = Fernet.generate_key()
             key_path.write_bytes(key)
@@ -365,9 +371,7 @@ def _vault_init() -> bool:
 def _vault_write(name: str, env_key: str, value: str) -> bool:
     try:
         from cryptography.fernet import Fernet
-        home = _fleet_home()
-        key_path   = home / ".master.key"
-        vault_path = home / "vault.db"
+        key_path, vault_path = _vault_paths()
         f   = Fernet(key_path.read_bytes().strip())
         enc = f.encrypt(value.encode())
         conn = sqlite3.connect(str(vault_path))
@@ -385,9 +389,7 @@ def _vault_write(name: str, env_key: str, value: str) -> bool:
 def _vault_has_key(name: str) -> bool:
     try:
         from cryptography.fernet import Fernet
-        home = _fleet_home()
-        key_path   = home / ".master.key"
-        vault_path = home / "vault.db"
+        key_path, vault_path = _vault_paths()
         if not vault_path.exists() or not key_path.exists():
             return False
         f    = Fernet(key_path.read_bytes().strip())
