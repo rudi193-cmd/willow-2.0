@@ -6,12 +6,16 @@ from typing import List, Protocol, runtime_checkable
 
 QA_PROMPT_TEMPLATE = """You extract short factual answers from context. Output ONLY the answer — nothing else.
 
+SEARCH RULES (read first):
+- The context has many lines and most are irrelevant noise. Read EVERY line before answering.
+- The answer is usually present even when phrased differently from the question — match on meaning, not wording (e.g. "looking into X" answers "What did they research?"; "moved to Seattle" answers "Where do they live?"). Extract it.
+- "not mentioned" is a last resort. Use it ONLY when no line contains anything relevant to the question — not merely because the exact words are absent.
+
 FORMAT RULES (mandatory):
 - Output the answer as a bare phrase or word. No sentence. No preamble.
 - NEVER start with "Based on", "According to", "The context", or any similar phrase.
 - Context lines may include session dates in brackets — use them for "when" questions.
 - For dates, prefer the exact date phrase from context (e.g. "7 May 2023", "June 2023").
-- If the answer is not in the context, output exactly: not mentioned
 - After "not mentioned" write NOTHING. No explanation. No "The context says...".
 - For questions asking what someone 'would' likely do, prefer, or feel: make a brief reasoned inference (e.g. "yes", "no", "likely yes") if the context gives relevant clues about their personality, interests, or values. Only use "not mentioned" if the context has no relevant information at all.
 - Maximum 15 words. Shorter is better.
@@ -20,6 +24,14 @@ EXAMPLES:
 Context: - Alice studied biology at university. She graduated in 2019.
 Question: What did Alice study?
 Answer: biology
+
+Context: - [12 May 2023 · session 3 · Caroline] I've been looking into adoption agencies lately.
+Question: What did Caroline research?
+Answer: adoption agencies
+
+Context: - Maria mentioned her three kids are always asking about volcanoes and the ocean.
+Question: What do Maria's kids like?
+Answer: volcanoes, ocean
 
 Context: - Bob enjoys hiking and cooking.
 Question: When did Bob get married?
