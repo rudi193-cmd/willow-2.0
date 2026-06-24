@@ -5853,6 +5853,47 @@ async def willow_remember(
     return {"facade": "willow_remember", "kind": kind, "backend": backend, "result": result}
 
 
+async def _willow_run_detached(
+    *,
+    app_id: str,
+    task: str,
+    script_body: str,
+    script_name: str,
+    allow_net: bool,
+) -> dict:
+    """Launch a long job on the detached lane (no daemon timeout). Helper for willow_run."""
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+    try:
+        from willow.fylgja.kart_queue import prepare_task_command
+
+        cmd, script_path = prepare_task_command(
+            task, script_body=script_body, script_name=script_name
+        )
+    except ValueError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": f"prepare task: {e}"}
+
+    from core.kart_task_scan import check_kart_task
+
+    blocked = check_kart_task(cmd, script_body=script_body)
+    if blocked:
+        return blocked
+
+    from core.kart_detached import launch_detached
+
+    handle = await loop.run_in_executor(
+        _executor, lambda: launch_detached(cmd, allow_net=allow_net)
+    )
+    _rl_log_event("task_submit", ref=handle.get("task_id"))
+    if script_path:
+        handle["script_path"] = script_path
+    handle["poll"] = "willow_run(task_id=<task_id>)"
+    return {"facade": "willow_run", "backend": "kart_detached", "submitted": handle}
+
+
 @mcp.tool()
 @sap_gate()
 async def willow_run(
@@ -5864,14 +5905,34 @@ async def willow_run(
     run_now: bool = False,
     allow_net: bool = False,
     agent: str = "kart",
+    detached: bool = False,
 ) -> dict:
-    """Facade: run or inspect local work through Kart."""
+    """Facade: run or inspect local work through Kart.
+
+    detached=True launches the job in a new session with NO timeout, bypassing the
+    kart daemon's 30-min kill (KART_DAEMON_TIMEOUT). Use for genuinely long jobs —
+    benchmark sweeps, full LoCoMo runs, migrations. Returns a task_id immediately;
+    poll progress with willow_run(task_id=...). Ordinary jobs should NOT use this —
+    the daemon timeout is what kills hangs fast.
+    """
     if task_id:
+        loop = asyncio.get_running_loop()
+        from core.kart_detached import detached_status, is_detached
+
+        if await loop.run_in_executor(_executor, is_detached, task_id):
+            result = await loop.run_in_executor(_executor, detached_status, task_id)
+            return {"facade": "willow_run", "backend": "kart_detached", "result": result}
         result = await agent_task_status(app_id=app_id, task_id=task_id)
         return {"facade": "willow_run", "backend": "agent_task_status", "result": result}
     if not task and not script_body:
         result = await agent_task_list(app_id=app_id, agent=agent)
         return {"facade": "willow_run", "backend": "agent_task_list", "result": result}
+
+    if detached:
+        return await _willow_run_detached(
+            app_id=app_id, task=task, script_body=script_body,
+            script_name=script_name, allow_net=allow_net,
+        )
 
     submitted = await agent_task_submit(
         app_id=app_id,
