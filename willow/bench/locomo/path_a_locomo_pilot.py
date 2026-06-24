@@ -242,11 +242,14 @@ async def evaluate_qa(
     semantic: bool,
     llm_model: str = "",
     memory_profile: str = "v2",
+    judge: str = "",
+    judge_model: str = "",
 ) -> Tuple[List[Dict], List[Dict]]:
-    from locomo_llm import create_adapter
+    from locomo_llm import create_adapter, create_judge
 
     max_k = max(top_k)
     adapter = create_adapter(llm, model=llm_model)
+    judge_adapter = create_judge(judge, model=judge_model) if judge else None
     per_question: List[Dict] = []
     hypotheses: List[Dict] = []
 
@@ -269,6 +272,11 @@ async def evaluate_qa(
                 "question_id": qid,
                 "token_f1": f1,
             }
+            if judge_adapter is not None:
+                correct = await judge_adapter.judge(
+                    qa.question, qa.answer, predicted
+                )
+                metrics["judge_correct"] = 1.0 if correct else 0.0
             for k in top_k:
                 metrics[f"recall_at_{k}"] = recall_at_k(retrieved, relevant, k)
                 metrics[f"precision_at_{k}"] = precision_at_k(retrieved, relevant, k)
@@ -282,9 +290,10 @@ async def evaluate_qa(
                 "category": qa.category,
             })
     finally:
-        sess = getattr(adapter, "_session", None)
-        if sess is not None and not sess.closed:
-            await sess.close()
+        for obj in (adapter, judge_adapter):
+            sess = getattr(obj, "_session", None)
+            if sess is not None and not sess.closed:
+                await sess.close()
     return per_question, hypotheses
 
 
@@ -321,7 +330,7 @@ def _run_one(
         per_q, hyps = asyncio.run(
             evaluate_qa(
                 pg, conv, args.top_k, args.llm, use_semantic, llm_model,
-                args.memory_profile,
+                args.memory_profile, args.judge, args.judge_model,
             )
         )
         if hypotheses_out is not None:
@@ -345,6 +354,10 @@ def _run_one(
                 args.claude_model if args.llm == "claude" and args.claude_model
                 else args.ollama_model if args.llm == "ollama"
                 else None
+            ) if args.mode == "qa" else None,
+            "judge": (args.judge or None) if args.mode == "qa" else None,
+            "judge_model": (
+                (args.judge_model or None) if args.judge else None
             ) if args.mode == "qa" else None,
         },
     )
@@ -442,6 +455,17 @@ def main() -> int:
         help="qa mode + --llm ollama: Ollama model tag",
     )
     parser.add_argument("--claude-model", default="", help="qa mode + --llm claude: model id")
+    parser.add_argument(
+        "--judge",
+        default="",
+        help="qa mode: LLM-as-judge scorer (e.g. 'claude') for same-ruler accuracy; "
+        "off by default (token_f1 only)",
+    )
+    parser.add_argument(
+        "--judge-model",
+        default="",
+        help="qa mode + --judge: judge model id (default: ClaudeJudge default)",
+    )
     parser.add_argument("--data-path", default=str(LOCOMO_DATA))
     args = parser.parse_args()
 
@@ -455,6 +479,9 @@ def main() -> int:
         return 1
     if args.merge_json and not args.all:
         print("--merge-json requires --all")
+        return 1
+    if args.judge and args.mode != "qa":
+        print("--judge requires --mode qa")
         return 1
 
     data_path = Path(args.data_path)
