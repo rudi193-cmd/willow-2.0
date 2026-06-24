@@ -64,7 +64,7 @@ class MockAdapter:
 class ClaudeAdapter:
     """Uses anthropic SDK. Import anthropic lazily in __init__."""
 
-    def __init__(self, model: str = "claude-sonnet-4-20250514") -> None:
+    def __init__(self, model: str = "claude-sonnet-4-6") -> None:
         try:
             import anthropic  # noqa: F401
         except ImportError as e:
@@ -114,6 +114,119 @@ class OllamaAdapter:
             resp.raise_for_status()
             data = await resp.json()
             return data.get("response", "").strip()
+
+
+JUDGE_PROMPT_TEMPLATE = """You are grading a question-answering system against a gold answer.
+Decide whether the PREDICTED answer is correct given the GOLD answer.
+
+GRADING RULES:
+- The predicted answer is CORRECT if it conveys the same factual information as the gold
+  answer, even if phrased differently, more verbose, or with extra correct detail.
+- Treat equivalent dates, numbers, names, and paraphrases as matches
+  (e.g. "7 May 2023" == "May 7th, 2023"; "biology" == "she studied biology").
+- The predicted answer is WRONG if it states different facts, contradicts the gold,
+  omits the key fact, or says it is "not mentioned" when the gold gives a real answer.
+- If the gold answer is "not mentioned" (or empty) and the prediction also declines to
+  answer, that is CORRECT.
+
+Output ONLY one word: CORRECT or WRONG. Nothing else.
+
+QUESTION: {question}
+GOLD ANSWER: {gold}
+PREDICTED ANSWER: {predicted}
+
+Verdict:"""
+
+
+def build_judge_prompt(question: str, gold: str, predicted: str) -> str:
+    """Build the LLM-as-judge grading prompt."""
+    return JUDGE_PROMPT_TEMPLATE.format(
+        question=question, gold=gold, predicted=predicted
+    )
+
+
+@runtime_checkable
+class JudgeAdapter(Protocol):
+    async def judge(self, question: str, gold: str, predicted: str) -> bool:
+        ...
+
+
+class ClaudeJudge:
+    """LLM-as-judge using the anthropic SDK. Returns True if predicted is correct.
+
+    This is the LoCoMo-standard scorer the field reports (LLM-judge accuracy),
+    distinct from token_f1 string overlap.
+    """
+
+    def __init__(self, model: str = "claude-sonnet-4-6") -> None:
+        try:
+            import anthropic  # noqa: F401
+        except ImportError as e:
+            raise ImportError(
+                "anthropic package is required for ClaudeJudge. "
+                "Install it with: pip install anthropic"
+            ) from e
+        self.model = model
+        self._anthropic = anthropic
+
+    async def judge(self, question: str, gold: str, predicted: str) -> bool:
+        if not hasattr(self, "_client"):
+            self._client = self._anthropic.AsyncAnthropic()
+        prompt = build_judge_prompt(question, gold, predicted)
+        message = await self._client.messages.create(
+            model=self.model,
+            max_tokens=8,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        verdict = message.content[0].text.strip().upper()
+        return verdict.startswith("CORRECT")
+
+
+class OllamaJudge:
+    """Local LLM-as-judge via Ollama HTTP API. No API key, runs offline.
+
+    A weaker grader than a frontier model, but produces an LLM-judge accuracy
+    signal (vs token_f1 string overlap) entirely local-first. Use a frontier
+    judge (ClaudeJudge) for the publishable competitive number.
+    """
+
+    def __init__(
+        self, model: str = "llama3.1:8b", base_url: str = "http://localhost:11434"
+    ) -> None:
+        try:
+            import aiohttp  # noqa: F401
+        except ImportError as e:
+            raise ImportError(
+                "aiohttp package is required for OllamaJudge. "
+                "Install it with: pip install aiohttp"
+            ) from e
+        self.model = model
+        self.base_url = base_url.rstrip("/")
+        self._aiohttp = aiohttp
+
+    async def judge(self, question: str, gold: str, predicted: str) -> bool:
+        prompt = build_judge_prompt(question, gold, predicted)
+        url = f"{self.base_url}/api/generate"
+        payload = {"model": self.model, "prompt": prompt, "stream": False}
+        if not hasattr(self, "_session") or self._session.closed:
+            self._session = self._aiohttp.ClientSession()
+        async with self._session.post(url, json=payload) as resp:
+            resp.raise_for_status()
+            data = await resp.json()
+            verdict = data.get("response", "").strip().upper()
+            return verdict.startswith("CORRECT")
+
+
+def create_judge(judge_name: str = "claude", model: str = "") -> JudgeAdapter:
+    """Factory for LLM-as-judge scorers. Supports 'claude', 'ollama'."""
+    name = judge_name.lower().strip()
+    if name == "claude":
+        return ClaudeJudge(model=model) if model else ClaudeJudge()
+    if name == "ollama":
+        return OllamaJudge(model=model) if model else OllamaJudge()
+    raise ValueError(
+        f"Unknown judge adapter: {judge_name!r}. Supported: 'claude', 'ollama'."
+    )
 
 
 def create_adapter(llm_name: str, model: str = "") -> LLMAdapter:
