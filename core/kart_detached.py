@@ -31,14 +31,14 @@ from pathlib import Path
 
 
 def detached_root() -> Path:
-    """Registry dir for detached jobs: ``$WILLOW_HOME/kart-detached`` (~/.willow)."""
-    try:
-        from willow.fylgja.willow_home import willow_home
+    """Registry dir for detached jobs: ``<willow_home>/kart-detached``.
 
-        base = Path(willow_home())
-    except Exception:
-        base = Path(os.environ.get("WILLOW_HOME", os.path.expanduser("~/.willow")))
-    d = base / "kart-detached"
+    Uses the canonical willow_home() resolver (honors WILLOW_HOME / public
+    fallback) rather than a hardcoded home path.
+    """
+    from willow.fylgja.willow_home import willow_home
+
+    d = Path(willow_home()) / "kart-detached"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
