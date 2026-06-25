@@ -8,13 +8,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from core.lock_ttl import lock_is_live
+
 WCE_INTERVAL_DAYS = float(os.environ.get("WCE_INTERVAL_DAYS", "7"))
 
 
 def wce_conditions(app_id: str, store) -> dict[str, Any]:
-    """Return whether the weekly WCE witness should run for *app_id*."""
+    """Return whether the weekly WCE witness should run for *app_id*.
+
+    A stale lock (crashed witness, older than the TTL) is ignored so the weekly
+    run self-heals rather than blocking forever.
+    """
     state = store.get(f"{app_id}/wce", "state") or {}
-    if state.get("locked"):
+    if lock_is_live(state):
         return {
             "should_run": False,
             "locked": True,

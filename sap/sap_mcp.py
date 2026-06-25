@@ -3482,9 +3482,12 @@ async def dream_run(app_id: str, force: bool = False) -> dict:
         now = datetime.now(timezone.utc)
         now_iso = now.isoformat()
 
-        # Check lock and conditions
+        # Check lock and conditions. A stale lock (crashed run past the TTL) is
+        # ignored so dream_run reclaims it instead of refusing forever.
+        from core.lock_ttl import lock_is_live
+
         dream_state = store.get(f"{app_id}/dream", "state") or {}
-        if dream_state.get("locked") and not force:
+        if lock_is_live(dream_state) and not force:
             return {"error": "dream already running (locked). Pass force=true to override."}
 
         if not force:
