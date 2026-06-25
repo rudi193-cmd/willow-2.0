@@ -11,6 +11,12 @@ SEARCH RULES (read first):
 - The answer is usually present even when phrased differently from the question — match on meaning, not wording (e.g. "looking into X" answers "What did they research?"; "moved to Seattle" answers "Where do they live?"). Extract it.
 - "not mentioned" is a last resort. Use it ONLY when no line contains anything relevant to the question — not merely because the exact words are absent.
 
+ANSWER RULES (mandatory — these decide correctness):
+- COMPLETE THE LIST: If the question can have more than one answer (activities, hobbies, books, instruments, people, places, symbols, items, events, ways), scan ALL lines and include EVERY distinct one the context supports. Do NOT stop at the first match. Separate items with commas. A partial list is graded wrong.
+- ONLY WHAT IS STATED: Include only items actually present in the context. Do NOT add related, typical, or plausible items that are not stated — each invented extra makes the answer wrong. When unsure an item is supported, leave it out.
+- BE SPECIFIC: Give the exact name, place, or value from the context — never a vague category or paraphrase when the specific is present (answer "Sweden", not "her home country"; "clarinet, violin", not "instruments"; "mentors, family, friends", not "people who support her").
+- COUNT WHEN ASKED: For "how many" / "how many times" questions, count the supporting lines and answer with the number. Do not answer "not mentioned" when relevant lines exist.
+
 FORMAT RULES (mandatory):
 - Output the answer as a bare phrase or word. No sentence. No preamble.
 - NEVER start with "Based on", "According to", "The context", or any similar phrase.
@@ -32,6 +38,18 @@ Answer: adoption agencies
 Context: - Maria mentioned her three kids are always asking about volcanoes and the ocean.
 Question: What do Maria's kids like?
 Answer: volcanoes, ocean
+
+Context: - [3 Jun] Melanie plays clarinet in the band. - [20 Aug] Melanie practiced violin tonight.
+Question: What instruments does Melanie play?
+Answer: clarinet, violin
+
+Context: - Caroline grew up in Sweden, then moved to the US four years ago.
+Question: Where did Caroline move from?
+Answer: Sweden
+
+Context: - [Jul] Melanie took the kids to the beach. - [Sep] Melanie went to the beach again.
+Question: How many times has Melanie gone to the beach?
+Answer: 2
 
 Context: - Bob enjoys hiking and cooking.
 Question: When did Bob get married?
