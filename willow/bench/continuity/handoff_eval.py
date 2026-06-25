@@ -6,12 +6,12 @@ See docs/adrs/ADR-20260624-locomo-overfit-vs-continuity-eval.md appendix.
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 from typing import Any, Optional
 
 from sap.handoff_index import extract_next_bite, latest_handoff_sort_key
+from willow.fylgja.willow_home import willow_home
 
 _TOKEN_RE = re.compile(r"[a-z][a-z0-9_-]{3,}")
 _ISSUE_RE = re.compile(r"#\d+")
@@ -25,8 +25,7 @@ _STOP = frozenset({
 
 
 def default_handoffs_root() -> Path:
-    home = Path(os.environ.get("WILLOW_HOME", Path.home() / "github" / ".willow"))
-    return home / "handoffs"
+    return willow_home() / "handoffs"
 
 
 def _parse_json_list(raw: object) -> list[str]:
