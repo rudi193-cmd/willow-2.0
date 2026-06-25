@@ -3,7 +3,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from core.wce_state import extract_wce_metrics, format_wce_summary_line, wce_conditions
+from core.wce_state import (
+    _resolve_cold_recall_mode,
+    extract_wce_metrics,
+    format_wce_summary_line,
+    wce_conditions,
+)
 
 
 class _FakeStore:
@@ -50,5 +55,39 @@ def test_extract_wce_metrics_builds_vector():
     metrics = extract_wce_metrics(payload)
     assert metrics["thread_recall_mean"] == 0.63
     assert metrics["cold_relevant_recall"] == 0.19
+    assert metrics["weight_mode"] == "log"
     line = format_wce_summary_line(metrics)
     assert "thread=0.63" in line
+    assert "cold_rec=0.19" in line
+    assert "mode=log" in line
+
+
+def test_extract_wce_metrics_variant_labels_cap():
+    """Post-#512 payloads use variant_labels + weight_cap, not weight_modes."""
+    payload = {
+        "timestamp": "20260625T044815Z",
+        "handoff": {"summary": {"thread_recall_mean": 0.69}},
+        "cold_recall": {
+            "config": {"variant_labels": ["cap"], "weight_cap": 1.4},
+            "summary": {
+                "by_mode": {
+                    "cap": {
+                        "cold_relevant_recall": 0.1863,
+                        "warm_relevant_recall": 0.4661,
+                    },
+                }
+            },
+        },
+    }
+    metrics = extract_wce_metrics(payload)
+    assert metrics["weight_mode"] == "cap"
+    assert metrics["weight_cap"] == 1.4
+    assert metrics["cold_relevant_recall"] == 0.1863
+    line = format_wce_summary_line(metrics)
+    assert "cold_rec=0.19" in line
+    assert "mode=cap@1.4" in line
+
+
+def test_resolve_cold_recall_mode_from_by_mode_only():
+    cold = {"summary": {"by_mode": {"off": {"cold_relevant_recall": 0.2}}}}
+    assert _resolve_cold_recall_mode(cold) == "off"
