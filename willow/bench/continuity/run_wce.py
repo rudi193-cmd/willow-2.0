@@ -42,6 +42,7 @@ Usage
   python3 willow/bench/continuity/run_wce.py --tasks thread_recall,next_bite --agent willow
   python3 willow/bench/continuity/run_wce.py --tasks surfacing_precision,decision_persistence,staleness --agent willow
   python3 willow/bench/continuity/run_wce.py --tasks all --agent willow --ablate
+  python3 willow/bench/continuity/run_wce.py --tasks cold_recall --cap-sweep 1.0,1.3,1.5,1.8,2.0
 
 Output
 ------
@@ -58,6 +59,7 @@ import argparse
 import json
 import os
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -71,7 +73,12 @@ sys.path.insert(0, str(WILLOW_ROOT))
 
 from core.pg_bridge import PgBridge  # noqa: E402
 from core.embedder import embed  # noqa: E402
-from willow.ranking.hybrid import WEIGHT_MODES, hybrid_search  # noqa: E402
+from willow.ranking.hybrid import (  # noqa: E402
+    DEFAULT_COSINE_BYPASS,
+    DEFAULT_WEIGHT_CAP,
+    WEIGHT_MODES,
+    hybrid_search,
+)
 
 import psycopg2.extras  # noqa: E402
 
@@ -167,6 +174,121 @@ def _recall_metrics(
     }
 
 
+# ── Weight-mode / cap-sweep variants ───────────────────────────────────────────
+
+@dataclass(frozen=True)
+class WeightVariant:
+    label: str
+    weight_mode: str = "log"
+    weight_col: bool = True
+    weight_cap: float = DEFAULT_WEIGHT_CAP
+    cosine_bypass: float = DEFAULT_COSINE_BYPASS
+
+
+def _parse_float_list(raw: str) -> list[float]:
+    if not raw.strip():
+        return []
+    return [float(part.strip()) for part in raw.split(",") if part.strip()]
+
+
+def build_weight_variants(
+    *,
+    ablate: bool,
+    weight_mode: str,
+    cap_sweep: list[float],
+    weight_cap: float,
+    cosine_bypass: float,
+) -> list[WeightVariant]:
+    """Build WCE retrieval variants. cap_sweep adds log/off baselines + cap@<value> rows."""
+    if cap_sweep:
+        variants = [
+            WeightVariant("log", weight_mode="log", weight_cap=weight_cap, cosine_bypass=cosine_bypass),
+            WeightVariant("off", weight_mode="full", weight_col=False),
+        ]
+        for cap in cap_sweep:
+            variants.append(
+                WeightVariant(
+                    f"cap@{cap:g}",
+                    weight_mode="cap",
+                    weight_cap=cap,
+                    cosine_bypass=cosine_bypass,
+                )
+            )
+        if ablate:
+            variants = [
+                WeightVariant("full", weight_mode="full", weight_cap=weight_cap, cosine_bypass=cosine_bypass),
+                *variants,
+                WeightVariant(
+                    "cosine_bypass",
+                    weight_mode="cosine_bypass",
+                    weight_cap=weight_cap,
+                    cosine_bypass=cosine_bypass,
+                ),
+            ]
+        return variants
+    if ablate:
+        return [
+            WeightVariant(
+                mode,
+                weight_mode=mode,
+                weight_col=(mode != "off"),
+                weight_cap=weight_cap,
+                cosine_bypass=cosine_bypass,
+            )
+            for mode in WEIGHT_MODES
+        ]
+    return [
+        WeightVariant(
+            weight_mode,
+            weight_mode=weight_mode,
+            weight_cap=weight_cap,
+            cosine_bypass=cosine_bypass,
+        )
+    ]
+
+
+def pick_knee_cap(
+    by_mode: dict[str, dict[str, Any]],
+    *,
+    baseline: str = "log",
+    min_warm: Optional[float] = None,
+    warm_tolerance: float = 0.035,
+) -> dict[str, Any]:
+    """Best cap@ value: max cold recall among cap sweeps that keep warm near baseline."""
+    base = by_mode.get(baseline) or {}
+    base_warm = base.get("warm_relevant_recall")
+    floor = min_warm
+    if floor is None and base_warm is not None:
+        floor = float(base_warm) - warm_tolerance
+    candidates: list[tuple[float, float, float, str]] = []
+    for label, metrics in by_mode.items():
+        if not label.startswith("cap@"):
+            continue
+        cold = metrics.get("cold_relevant_recall")
+        warm = metrics.get("warm_relevant_recall")
+        if cold is None or warm is None:
+            continue
+        if floor is not None and float(warm) < floor:
+            continue
+        try:
+            cap_val = float(label.split("@", 1)[1])
+        except (IndexError, ValueError):
+            continue
+        candidates.append((float(cold), float(warm), cap_val, label))
+    if not candidates:
+        return {"knee": None, "reason": "no_cap_variant_meets_warm_floor", "warm_floor": floor}
+    candidates.sort(key=lambda row: (-row[0], -row[1]))
+    best = candidates[0]
+    return {
+        "knee": best[3],
+        "weight_cap": best[2],
+        "cold_relevant_recall": round(best[0], 4),
+        "warm_relevant_recall": round(best[1], 4),
+        "baseline": baseline,
+        "warm_floor": floor,
+    }
+
+
 # ── Per-query evaluation ───────────────────────────────────────────────────────
 
 def evaluate_query(
@@ -180,7 +302,7 @@ def evaluate_query(
     cold_visit_max: int,
     cold_age_days: float,
     project: Optional[str],
-    weight_modes: list[str],
+    weight_variants: list[WeightVariant],
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     qtext = query["query"]
@@ -205,13 +327,15 @@ def evaluate_query(
     relevant_ids = {r["id"] for r in relevant}
 
     by_mode: dict[str, dict[str, Any]] = {}
-    for mode in weight_modes:
-        use_weight = mode != "off"
+    for var in weight_variants:
         hits = hybrid_search(
             qtext, pg, limit=qk, project=project,
-            weight_col=use_weight, weight_mode=mode if use_weight else "full",
+            weight_col=var.weight_col,
+            weight_mode=var.weight_mode if var.weight_col else "full",
+            weight_cap=var.weight_cap,
+            cosine_bypass=var.cosine_bypass,
         )
-        by_mode[mode] = _recall_metrics(
+        by_mode[var.label] = _recall_metrics(
             [h["id"] for h in hits],
             k=qk,
             cold_ids=cold_ids,
@@ -219,22 +343,25 @@ def evaluate_query(
             relevant_ids=relevant_ids,
         )
 
-    baseline = by_mode.get("full", {})
-    best_mode = weight_modes[0]
+    labels = [v.label for v in weight_variants]
+    baseline_label = "full" if "full" in by_mode else labels[0]
+    baseline = by_mode.get(baseline_label, {})
+    best_mode = labels[0]
     best_cr = baseline.get("cold_relevant_recall")
     lift_vs_full: Optional[float] = None
-    if "full" in by_mode and len(weight_modes) > 1:
-        for mode in weight_modes:
-            if mode == "full":
-                continue
-            cr = by_mode[mode].get("cold_relevant_recall")
-            if cr is not None and best_cr is not None and cr > best_cr:
-                best_cr = cr
-                best_mode = mode
+    if "full" in by_mode and "off" in by_mode:
         cr_full = by_mode["full"].get("cold_relevant_recall")
-        cr_off = by_mode.get("off", {}).get("cold_relevant_recall")
+        cr_off = by_mode["off"].get("cold_relevant_recall")
         if cr_full is not None and cr_off is not None:
             lift_vs_full = cr_off - cr_full
+    if len(labels) > 1:
+        for label in labels:
+            if label == baseline_label:
+                continue
+            cr = by_mode[label].get("cold_relevant_recall")
+            if cr is not None and best_cr is not None and cr > best_cr:
+                best_cr = cr
+                best_mode = label
 
     return {
         "id": query["id"],
@@ -265,7 +392,7 @@ def _fmt_score(x: object, *, decimals: int = 2) -> str:
     return "  - " if decimals == 2 else "    -   "
 
 
-def aggregate(results: list[dict[str, Any]], weight_modes: list[str]) -> dict[str, Any]:
+def aggregate(results: list[dict[str, Any]], variant_labels: list[str]) -> dict[str, Any]:
     scored = [r for r in results if "error" not in r and r["n_cold_relevant"] > 0]
     out: dict[str, Any] = {
         "queries_total": len(results),
@@ -276,18 +403,18 @@ def aggregate(results: list[dict[str, Any]], weight_modes: list[str]) -> dict[st
         "queries_embed_failed": sum(1 for r in results if r.get("error") == "embed_failed"),
         "by_mode": {},
     }
-    for mode in weight_modes:
-        cold = [r["modes"][mode]["cold_relevant_recall"] for r in scored if mode in r.get("modes", {})]
-        warm = [r["modes"][mode]["warm_relevant_recall"] for r in scored if mode in r.get("modes", {})]
-        rel = [r["modes"][mode]["relevant_recall"] for r in scored if mode in r.get("modes", {})]
-        prec = [r["modes"][mode]["surfacing_precision"] for r in scored if mode in r.get("modes", {})]
-        out["by_mode"][mode] = {
+    for label in variant_labels:
+        cold = [r["modes"][label]["cold_relevant_recall"] for r in scored if label in r.get("modes", {})]
+        warm = [r["modes"][label]["warm_relevant_recall"] for r in scored if label in r.get("modes", {})]
+        rel = [r["modes"][label]["relevant_recall"] for r in scored if label in r.get("modes", {})]
+        prec = [r["modes"][label]["surfacing_precision"] for r in scored if label in r.get("modes", {})]
+        out["by_mode"][label] = {
             "cold_relevant_recall": _mean(cold),
             "warm_relevant_recall": _mean(warm),
             "relevant_recall": _mean(rel),
             "surfacing_precision": _mean(prec),
         }
-    if "full" in weight_modes and "off" in weight_modes:
+    if "full" in variant_labels and "off" in variant_labels:
         lifts = [
             (r["modes"]["off"]["cold_relevant_recall"] or 0)
             - (r["modes"]["full"]["cold_relevant_recall"] or 0)
@@ -455,10 +582,18 @@ def main() -> int:
     ap.add_argument("--cosine-floor", type=float, default=0.5, help="min cosine to count as relevant")
     ap.add_argument("--cold-visit-max", type=int, default=1, help="visit_count <= this is cold")
     ap.add_argument("--cold-age-days", type=float, default=30.0, help="last_visited older than this is cold")
-    ap.add_argument("--weight-mode", default="log", choices=WEIGHT_MODES,
-                    help="single retrieval weight mode (default: log = live after fix)")
+    ap.add_argument("--weight-mode", default="cap", choices=WEIGHT_MODES,
+                    help="single retrieval weight mode (default: cap = live WCE knee)")
+    ap.add_argument("--weight-cap", type=float, default=DEFAULT_WEIGHT_CAP,
+                    help="weight_cap for cap/cosine_bypass modes (default: hybrid DEFAULT_WEIGHT_CAP)")
+    ap.add_argument("--cosine-bypass", type=float, default=DEFAULT_COSINE_BYPASS,
+                    help="cosine floor for cosine_bypass mode")
+    ap.add_argument("--cap-sweep", default="",
+                    help="comma-separated cap values — runs log+off baselines and cap@<v> each")
     ap.add_argument("--ablate", action="store_true",
-                    help="run all weight modes and print comparison table")
+                    help="run all weight modes (or add full+cosine_bypass when --cap-sweep set)")
+    ap.add_argument("--min-warm", type=float, default=None,
+                    help="knee picker: minimum warm recall (default: log warm - 0.035)")
     ap.add_argument("--no-write", action="store_true", help="skip writing the run JSON")
     ap.add_argument("--output", default="", help="write JSON to this path (default: runs/wce_<timestamp>.json)")
     args = ap.parse_args()
@@ -503,7 +638,17 @@ def main() -> int:
             print(f"\nWrote {out}")
         return 0
 
-    weight_modes = list(WEIGHT_MODES) if args.ablate else [args.weight_mode]
+    cap_sweep = _parse_float_list(args.cap_sweep)
+    if cap_sweep and not args.ablate and args.weight_mode != "log":
+        print("Note: --cap-sweep uses log as baseline; --weight-mode ignored.", file=sys.stderr)
+    weight_variants = build_weight_variants(
+        ablate=args.ablate,
+        weight_mode=args.weight_mode,
+        cap_sweep=cap_sweep,
+        weight_cap=args.weight_cap,
+        cosine_bypass=args.cosine_bypass,
+    )
+    variant_labels = [v.label for v in weight_variants]
 
     spec = json.loads(Path(args.queries).read_text(encoding="utf-8"))
     default_k = int(spec.get("default_k", args.k))
@@ -520,19 +665,27 @@ def main() -> int:
         "cold_visit_max": args.cold_visit_max,
         "cold_age_days": args.cold_age_days,
         "project": args.project,
-        "weight_modes": weight_modes,
+        "weight_cap": args.weight_cap,
+        "cosine_bypass": args.cosine_bypass,
+        "cap_sweep": cap_sweep,
+        "variant_labels": variant_labels,
     }
 
     results: list[dict[str, Any]] = []
     with PgBridge() as pg:
-        eval_cfg = {k: v for k, v in config.items() if k != "weight_modes"}
+        eval_cfg = {
+            k: v for k, v in config.items()
+            if k not in ("variant_labels", "cap_sweep", "weight_cap", "cosine_bypass")
+        }
         for q in queries:
-            results.append(evaluate_query(pg, q, weight_modes=weight_modes, **eval_cfg))
+            results.append(evaluate_query(pg, q, weight_variants=weight_variants, **eval_cfg))
 
-    summary = aggregate(results, weight_modes)
+    summary = aggregate(results, variant_labels)
+    knee = pick_knee_cap(summary["by_mode"], baseline="log", min_warm=args.min_warm) if cap_sweep else {}
     payload["cold_recall"] = {
         "config": config,
         "summary": summary,
+        "knee": knee,
         "results": results,
     }
 
@@ -541,24 +694,33 @@ def main() -> int:
     print(f"  config: k={config['k']} oracle_n={config['oracle_n']} "
           f"cosine_floor={config['cosine_floor']} "
           f"cold(visit<={config['cold_visit_max']}, age>={config['cold_age_days']}d)")
-    if args.ablate:
-        hdr = f"  {'mode':16} {'cold_rec':>9} {'warm_rec':>9} {'rel_rec':>9} {'precision':>9}"
+    multi_variant = len(variant_labels) > 1
+    if multi_variant:
+        col_w = max(16, max(len(lbl) for lbl in variant_labels) + 1)
+        hdr = f"  {'mode':<{col_w}} {'cold_rec':>9} {'warm_rec':>9} {'rel_rec':>9} {'precision':>9}"
         print(hdr)
-        for mode in weight_modes:
-            m = summary["by_mode"].get(mode, {})
-            print(f"  {mode:16} {_fmt_score(m.get('cold_relevant_recall'), decimals=3):>9} "
+        for label in variant_labels:
+            m = summary["by_mode"].get(label, {})
+            print(f"  {label:<{col_w}} {_fmt_score(m.get('cold_relevant_recall'), decimals=3):>9} "
                   f"{_fmt_score(m.get('warm_relevant_recall'), decimals=3):>9} "
                   f"{_fmt_score(m.get('relevant_recall'), decimals=3):>9} "
                   f"{_fmt_score(m.get('surfacing_precision'), decimals=3):>9}")
+        if knee.get("knee"):
+            print(
+                f"\n  knee: {knee['knee']}  cold={knee['cold_relevant_recall']}  "
+                f"warm={knee['warm_relevant_recall']}  (floor warm>={knee.get('warm_floor')})"
+            )
+        elif cap_sweep and knee.get("reason"):
+            print(f"\n  knee: none ({knee['reason']})", file=sys.stderr)
     else:
-        mode = weight_modes[0]
-        print(f"  mode={mode}")
+        label = variant_labels[0]
+        print(f"  mode={label}")
         print(f"  {'query':28} {'n_cold':>6} {'cold':>6} {'warm':>6} {'prec':>6}")
         for r in results:
             if "error" in r:
                 print(f"  {r['id'][:28]:28} {'ERR':>6} {r['error']}")
                 continue
-            m = r["modes"][mode]
+            m = r["modes"][label]
             print(f"  {r['id'][:28]:28} {r['n_cold_relevant']:>6} "
                   f"{_fmt_score(m['cold_relevant_recall']):>6} "
                   f"{_fmt_score(m['warm_relevant_recall']):>6} "
