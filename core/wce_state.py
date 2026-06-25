@@ -67,6 +67,23 @@ def queue_wce_task(
     return pg.submit_task(cmd, submitted_by=submitted_by, agent="kart")
 
 
+def _resolve_cold_recall_mode(cold: dict[str, Any]) -> str:
+    """Pick the live ranking mode from a cold_recall section."""
+    config = cold.get("config") or {}
+    declared = config.get("weight_modes") or config.get("variant_labels") or []
+    if len(declared) == 1:
+        return str(declared[0])
+    by_mode = (cold.get("summary") or {}).get("by_mode") or {}
+    if len(by_mode) == 1:
+        return next(iter(by_mode))
+    if by_mode:
+        for pref in ("cap", "log", "off"):
+            if pref in by_mode:
+                return pref
+        return sorted(by_mode)[0]
+    return "log"
+
+
 def extract_wce_metrics(payload: dict[str, Any]) -> dict[str, Any]:
     """Compact metric vector from a full WCE run payload."""
     metrics: dict[str, Any] = {"timestamp": payload.get("timestamp")}
@@ -88,14 +105,15 @@ def extract_wce_metrics(payload: dict[str, Any]) -> dict[str, Any]:
     cold = payload.get("cold_recall") or {}
     cs = cold.get("summary") or {}
     config = cold.get("config") or {}
-    modes = config.get("weight_modes") or ["log"]
-    mode = modes[0] if len(modes) == 1 else "log"
+    mode = _resolve_cold_recall_mode(cold)
     by_mode = cs.get("by_mode") or {}
     live = by_mode.get(mode) or {}
     for key in ("cold_relevant_recall", "warm_relevant_recall", "surfacing_precision"):
         if live.get(key) is not None:
             metrics[key if key != "surfacing_precision" else "retrieval_precision"] = live.get(key)
     metrics["weight_mode"] = mode
+    if config.get("weight_cap") is not None:
+        metrics["weight_cap"] = config.get("weight_cap")
     return metrics
 
 
@@ -112,4 +130,11 @@ def format_wce_summary_line(metrics: dict[str, Any]) -> str:
     for label, val in pairs:
         if isinstance(val, (int, float)):
             parts.append(f"{label}={val:.2f}")
+    mode = metrics.get("weight_mode")
+    if mode:
+        cap = metrics.get("weight_cap")
+        if mode == "cap" and cap is not None:
+            parts.append(f"mode=cap@{cap}")
+        else:
+            parts.append(f"mode={mode}")
     return " · ".join(parts)
