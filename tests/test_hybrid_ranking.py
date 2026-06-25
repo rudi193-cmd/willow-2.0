@@ -20,6 +20,7 @@ from willow.ranking.hybrid import (
     _build_bm25,
     _bm25_search,
     _rrf_fuse,
+    _retrieval_weight_factor,
     _apply_lexical_coverage_bias,
     temporal_rerank,
     hybrid_search,
@@ -209,6 +210,52 @@ class TestRrfFuse:
         fused = _rrf_fuse([[a]])
         expected = 1.0 / (60 + 0 + 1)  # rank=0, k=60
         assert abs(fused[0]["_rrf_score"] - expected) < 1e-9
+
+    def test_log_mode_dampens_heavy_weight(self):
+        heavy = _atom("HEAVY", weight=4.0)
+        light = _atom("LIGHT", weight=1.0)
+        fused_full = _rrf_fuse([[heavy], [light]], weight_mode="full")
+        fused_log = _rrf_fuse([[heavy], [light]], weight_mode="log")
+        assert fused_full[0]["id"] == "HEAVY"
+        assert fused_log[0]["_rrf_score"] < fused_full[0]["_rrf_score"]
+
+    def test_cap_mode_clamps_weight(self):
+        heavy = _atom("HEAVY", weight=4.0)
+        fused = _rrf_fuse([[heavy]], weight_mode="cap", weight_cap=2.0)
+        base = 1.0 / 61
+        assert abs(fused[0]["_rrf_score"] - base * 2.0) < 1e-9
+
+    def test_cosine_bypass_ignores_weight_when_similar(self):
+        cold = _atom("COLD", weight=4.0)
+        cold["_cosine_sim"] = 0.7
+        warm = _atom("WARM", weight=1.0)
+        fused_full = _rrf_fuse([[cold], [warm]], weight_mode="full")
+        fused_bypass = _rrf_fuse(
+            [[cold], [warm]],
+            weight_mode="cosine_bypass",
+            weight_cap=2.0,
+            cosine_bypass=0.55,
+        )
+        assert fused_full[0]["id"] == "COLD"
+        # Bypass removes the 4x weight advantage on the high-cosine atom
+        full_ratio = fused_full[0]["_rrf_score"] / fused_full[1]["_rrf_score"]
+        bypass_ratio = fused_bypass[0]["_rrf_score"] / fused_bypass[1]["_rrf_score"]
+        assert bypass_ratio < full_ratio
+
+
+class TestRetrievalWeightFactor:
+    def test_off_returns_one(self):
+        assert _retrieval_weight_factor(_atom("A", weight=5.0), "off") == 1.0
+
+    def test_log_dampening(self):
+        assert _retrieval_weight_factor(_atom("A", weight=1.0), "log") == 1.0
+        assert _retrieval_weight_factor(_atom("A", weight=2.0), "log") > 1.0
+        assert _retrieval_weight_factor(_atom("A", weight=4.0), "log") < 4.0
+
+    def test_cosine_bypass_high_sim(self):
+        row = _atom("A", weight=4.0)
+        row["_cosine_sim"] = 0.6
+        assert _retrieval_weight_factor(row, "cosine_bypass", cosine_bypass=0.55) == 1.0
 
 
 class TestLexicalCoverageBias:

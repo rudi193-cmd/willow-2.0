@@ -1,0 +1,18 @@
+{
+  "_comment": "WCE cold-relevant recall probe query set. Real Willow continuity topics drawn from the session corpus and handoffs. Recency-blind cosine is the relevance oracle; these are the questions a returning session would actually ask. OPEN (handoff Q): real session topics vs hand-picked scenarios — this v1 is hand-picked real topics; revisit with mined session topics. k = top-k cutoff for retrieval recall.",
+  "default_k": 10,
+  "queries": [
+    {"id": "ranking-feedback-loop", "query": "why does the live ranker bury cold but relevant memory recency feedback loop weight multiplier", "k": 10},
+    {"id": "locomo-bottleneck", "query": "LoCoMo bottleneck is the answerer not retrieval recall saturated", "k": 10},
+    {"id": "continuity-eval-design", "query": "Willow Continuity Eval WCE cold-relevant recall probe design", "k": 10},
+    {"id": "detached-kart-lane", "query": "detached Kart lane no timeout long running benchmark job", "k": 10},
+    {"id": "handoff-continuity", "query": "session handoff continuity what the next session needs open threads next bite", "k": 10},
+    {"id": "signal-weight-null", "query": "NULL-safe signal weight norn pass promotion fix", "k": 10},
+    {"id": "metabolic-consecration", "query": "fleet status metabolic consecration flag under-report host Kart", "k": 10},
+    {"id": "temporal-band-floor", "query": "temporal band date-anchored retrieval floor bitemporal validity", "k": 10},
+    {"id": "grove-gate-chokepoint", "query": "Grove gate fleet chokepoint health LISTEN NOTIFY monitor", "k": 10},
+    {"id": "mem-check-dedup", "query": "mem_check redundant contradiction gate before kb_ingest dedup", "k": 10},
+    {"id": "norn-demote-stale", "query": "norn pass demote stale atoms decay cadence weight recalculation", "k": 10},
+    {"id": "asyncanthropic-leak", "query": "AsyncAnthropic client not closed event loop closed leak locomo_llm", "k": 10}
+  ]
+}

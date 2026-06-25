@@ -36,6 +36,9 @@ willow/fylgja/config/settings.local.json
 .willow/fleet_gold_benchmark.json
 .mcp.json.bak
 
+# WCE benchmark run artifacts — generated per run, not for version control
+willow/bench/continuity/runs/
+
 # Runtime logs — generated at runtime, not for version control
 sap/log/*.jsonl
 sap/log/*.md

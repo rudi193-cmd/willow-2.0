@@ -90,6 +90,9 @@ class MockAdapter:
             return "not mentioned"
         return context[0]
 
+    async def aclose(self) -> None:
+        return None
+
 
 class ClaudeAdapter:
     """Uses anthropic SDK. Import anthropic lazily in __init__."""
@@ -115,6 +118,12 @@ class ClaudeAdapter:
             messages=[{"role": "user", "content": prompt}],
         )
         return message.content[0].text.strip()
+
+    async def aclose(self) -> None:
+        client = getattr(self, "_client", None)
+        if client is not None and not getattr(client, "is_closed", True):
+            await client.close()
+        self._client = None  # type: ignore[attr-defined]
 
 
 class OllamaAdapter:
@@ -144,6 +153,11 @@ class OllamaAdapter:
             resp.raise_for_status()
             data = await resp.json()
             return data.get("response", "").strip()
+
+    async def aclose(self) -> None:
+        sess = getattr(self, "_session", None)
+        if sess is not None and not sess.closed:
+            await sess.close()
 
 
 JUDGE_PROMPT_TEMPLATE = """You are grading a question-answering system against a gold answer.
@@ -211,6 +225,12 @@ class ClaudeJudge:
         verdict = message.content[0].text.strip().upper()
         return verdict.startswith("CORRECT")
 
+    async def aclose(self) -> None:
+        client = getattr(self, "_client", None)
+        if client is not None and not getattr(client, "is_closed", True):
+            await client.close()
+        self._client = None  # type: ignore[attr-defined]
+
 
 class OllamaJudge:
     """Local LLM-as-judge via Ollama HTTP API. No API key, runs offline.
@@ -245,6 +265,11 @@ class OllamaJudge:
             data = await resp.json()
             verdict = data.get("response", "").strip().upper()
             return verdict.startswith("CORRECT")
+
+    async def aclose(self) -> None:
+        sess = getattr(self, "_session", None)
+        if sess is not None and not sess.closed:
+            await sess.close()
 
 
 def create_judge(judge_name: str = "claude", model: str = "") -> JudgeAdapter:

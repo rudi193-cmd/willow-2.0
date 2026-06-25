@@ -41,6 +41,11 @@ RRF_K: int = 60          # standard RRF constant from Cormack et al. 2009
 WIDE_K: int = 30         # candidates per ranker before fusion
 MAX_CONTENT_CHARS: int = 8000  # nomic context window guard
 
+# Retrieval weight modes — promotion signal applied post-RRF (see _retrieval_weight_factor).
+WEIGHT_MODES: tuple[str, ...] = ("full", "off", "log", "cap", "cosine_bypass")
+DEFAULT_WEIGHT_CAP: float = 2.0
+DEFAULT_COSINE_BYPASS: float = 0.55
+
 # ── Tokenizer (mirrors claude-echoes _tokenize) ───────────────────────────────
 
 _TOK_RE = re.compile(r"[a-z0-9]+")
@@ -287,12 +292,51 @@ def _bm25_search(
     return [candidates[i] for i in ranked[:wide_k] if scores[i] > 0.0]
 
 
+# ── Retrieval weight (post-RRF promotion signal) ────────────────────────────
+
+def _retrieval_weight_factor(
+    row: dict,
+    mode: str,
+    *,
+    weight_cap: float = DEFAULT_WEIGHT_CAP,
+    cosine_bypass: float = DEFAULT_COSINE_BYPASS,
+) -> float:
+    """
+    Map stored atom.weight → retrieval multiplier.
+
+    Modes (WCE-validated candidates for the rich-get-richer burial):
+      full           — linear weight (live default)
+      off            — recency-blind RRF
+      log            — 1 + ln(weight); dampens tail without zeroing promotion
+      cap            — min(weight, weight_cap); clamps the heavy tail
+      cosine_bypass  — high _cosine_sim atoms ignore weight; others capped
+    """
+    if mode == "off":
+        return 1.0
+    w = float(row.get("weight") or 1.0)
+    if mode == "full":
+        return w
+    if mode == "log":
+        return 1.0 + math.log(max(w, 1.0))
+    if mode == "cap":
+        return min(w, weight_cap)
+    if mode == "cosine_bypass":
+        cos = row.get("_cosine_sim")
+        if cos is not None and float(cos) >= cosine_bypass:
+            return 1.0
+        return min(w, weight_cap)
+    raise ValueError(f"unknown weight_mode: {mode!r}; expected one of {WEIGHT_MODES}")
+
+
 # ── RRF fusion ────────────────────────────────────────────────────────────────
 
 def _rrf_fuse(
     ranked_lists: list[list[dict]],
     k: int = RRF_K,
     weight_col: bool = True,
+    weight_mode: str = "full",
+    weight_cap: float = DEFAULT_WEIGHT_CAP,
+    cosine_bypass: float = DEFAULT_COSINE_BYPASS,
 ) -> list[dict]:
     """
     Reciprocal Rank Fusion over N ranked lists.
@@ -300,28 +344,35 @@ def _rrf_fuse(
     RRF score(doc) = Σ_i  1 / (k + rank_i)
     where rank_i is the 1-indexed position of doc in list i.
 
-    If weight_col=True, the atom's `weight` field (default 1.0) is applied
-    as a multiplier on the final fused score. This lets Willow's existing
-    weight-based promotion continue to function.
+    If weight_col=True (default), atom.weight is mapped through weight_mode and
+    applied as a post-RRF multiplier. weight_col=False forces mode "off".
 
     Returns all unique docs sorted by fused score descending.
     """
+    mode = "off" if not weight_col else weight_mode
     scores: dict[str, dict] = {}
 
     for ranked in ranked_lists:
         for rank, row in enumerate(ranked):
             doc_id = row["id"]
             if doc_id not in scores:
-                scores[doc_id] = {"row": row, "rrf": 0.0}
+                scores[doc_id] = {"row": dict(row), "rrf": 0.0}
+            else:
+                new_cos = row.get("_cosine_sim")
+                if new_cos is not None:
+                    old_cos = scores[doc_id]["row"].get("_cosine_sim")
+                    if old_cos is None or float(new_cos) > float(old_cos):
+                        scores[doc_id]["row"]["_cosine_sim"] = new_cos
             scores[doc_id]["rrf"] += 1.0 / (k + rank + 1)
 
     results = []
     for doc_id, entry in scores.items():
         row = entry["row"]
         rrf = entry["rrf"]
-        if weight_col:
-            w = float(row.get("weight") or 1.0)
-            rrf *= w
+        if mode != "off":
+            rrf *= _retrieval_weight_factor(
+                row, mode, weight_cap=weight_cap, cosine_bypass=cosine_bypass,
+            )
         results.append({**row, "_rrf_score": rrf})
 
     results.sort(key=lambda r: -r["_rrf_score"])
@@ -471,6 +522,10 @@ def hybrid_search(
     tier: Optional[str] = None,
     exclude_search_noise: bool = True,
     exclude_superseded: bool = True,
+    weight_col: bool = True,
+    weight_mode: str = "log",
+    weight_cap: float = DEFAULT_WEIGHT_CAP,
+    cosine_bypass: float = DEFAULT_COSINE_BYPASS,
 ) -> list[dict]:
     """
     Hybrid pgvector cosine + BM25 keyword search with RRF fusion.
@@ -519,6 +574,17 @@ def hybrid_search(
     temporal_weight : float
         Blend factor for temporal score (default 0.15, matches claude-echoes
         optimal benchmark config).
+    weight_col : bool
+        If True (default, live behavior), apply post-RRF weight multiplier per
+        weight_mode. False forces mode "off" (WCE counterfactual).
+    weight_mode : str
+        How atom.weight maps to retrieval multiplier: full | off | log | cap |
+        cosine_bypass. Default "log" dampens the weight tail (WCE-validated);
+        pass "full" to restore pre-fix linear behavior.
+    weight_cap : float
+        Cap for "cap" and "cosine_bypass" modes (default 2.0).
+    cosine_bypass : float
+        Min _cosine_sim to ignore weight in cosine_bypass mode (default 0.55).
 
     Returns
     -------
@@ -573,7 +639,10 @@ def hybrid_search(
                                    exclude_superseded=exclude_superseded)
 
     # --- RRF fusion ---
-    fused = _rrf_fuse(ranked_lists, k=rrf_k, weight_col=True)
+    fused = _rrf_fuse(
+        ranked_lists, k=rrf_k, weight_col=weight_col, weight_mode=weight_mode,
+        weight_cap=weight_cap, cosine_bypass=cosine_bypass,
+    )
     fused = _apply_lexical_coverage_bias(fused, query_tokens)
 
     # --- Temporal re-ranking ---
