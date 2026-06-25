@@ -18,7 +18,8 @@ enables the fleet units with `systemctl --user`. All timers set
 
 **Enablement:** `setup.sh` enables `willow-metabolic.socket` (on-demand Norn pass),
 `willow-metabolic.timer` (nightly `03:00`), `willow-w8-census.timer`, and
-`willow-wce.timer`. One-shot consecration on an existing install: `scripts/consecrate_metabolic.sh` (copies units,
+`willow-wce.timer`. WCE timer only (existing install): `scripts/install_wce_timer.sh`.
+One-shot consecration on an existing install: `scripts/consecrate_metabolic.sh` (copies units,
 enables socket+timer, runs first Norn pass). Other units, including
 `repo-fleet-sweep.timer`, are linked and can be enabled on demand with
 `systemctl --user enable --now <unit>`. Inspect live schedules with
