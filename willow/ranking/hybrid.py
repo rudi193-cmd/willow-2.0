@@ -178,6 +178,7 @@ def _pgvector_search_raw(
     tier: Optional[str] = None,
     exclude_search_noise: bool = True,
     exclude_superseded: bool = True,
+    source_types: Optional[list[str]] = None,
 ) -> list[dict]:
     """Clean wrapper around the ANN search to avoid param duplication."""
     vec_str = str(query_vec)
@@ -192,6 +193,9 @@ def _pgvector_search_raw(
     if fork_id:
         filters.append("fork_id = %s")
         where_params.append(fork_id)
+    if source_types:
+        filters.append("source_type = ANY(%s)")
+        where_params.append(list(source_types))
     pg._knowledge_retrieval_filters(
         filters,
         where_params,
@@ -227,6 +231,7 @@ def _bm25_search(
     tier: Optional[str] = None,
     exclude_search_noise: bool = True,
     exclude_superseded: bool = True,
+    source_types: Optional[list[str]] = None,
 ) -> list[dict]:
     """
     BM25 search over knowledge table.
@@ -251,6 +256,9 @@ def _bm25_search(
     if fork_id:
         filters.append("fork_id = %s")
         params.append(fork_id)
+    if source_types:
+        filters.append("source_type = ANY(%s)")
+        params.append(list(source_types))
     pg._knowledge_retrieval_filters(
         filters,
         params,
@@ -522,6 +530,7 @@ def hybrid_search(
     tier: Optional[str] = None,
     exclude_search_noise: bool = True,
     exclude_superseded: bool = True,
+    source_types: Optional[list[str]] = None,
     weight_col: bool = True,
     weight_mode: str = "cap",
     weight_cap: float = DEFAULT_WEIGHT_CAP,
@@ -585,6 +594,10 @@ def hybrid_search(
         Cap for "cap" and "cosine_bypass" modes (default 2.0).
     cosine_bypass : float
         Min _cosine_sim to ignore weight in cosine_bypass mode (default 0.55).
+    source_types : list[str], optional
+        If set, restrict both retrieval legs to atoms whose `source_type` is in
+        this allow-list. Used by the WCE memory-layer ablation to attribute cold
+        recall to specific memory layers (handoff / KB / external).
 
     Returns
     -------
@@ -607,6 +620,7 @@ def hybrid_search(
                 tier=tier,
                 exclude_search_noise=exclude_search_noise,
                 exclude_superseded=exclude_superseded,
+                source_types=source_types,
             )
             if vec_rows:
                 ranked_lists.append(vec_rows)
@@ -622,6 +636,7 @@ def hybrid_search(
                 tier=tier,
                 exclude_search_noise=exclude_search_noise,
                 exclude_superseded=exclude_superseded,
+                source_types=source_types,
             )
             if bm25_rows:
                 ranked_lists.append(bm25_rows)
