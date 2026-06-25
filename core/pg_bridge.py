@@ -1468,7 +1468,12 @@ class PgBridge:
                                    fields: Optional[list] = None,
                                    tier: Optional[str] = None,
                                    exclude_search_noise: bool = True,
-                                   exclude_superseded: bool = True) -> list:
+                                   exclude_superseded: bool = True,
+                                   continuity: bool = False) -> list:
+        source_types = None
+        if continuity:
+            from willow.ranking.continuity_pool import resolve_continuity_source_types
+            source_types = resolve_continuity_source_types()
         try:
             from willow.ranking.hybrid import hybrid_search
 
@@ -1481,6 +1486,7 @@ class PgBridge:
                 tier=tier,
                 exclude_search_noise=exclude_search_noise,
                 exclude_superseded=exclude_superseded,
+                source_types=source_types,
             )
             if hybrid:
                 return self._knowledge_shape_rows(

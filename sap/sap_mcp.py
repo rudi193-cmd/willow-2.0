@@ -923,14 +923,19 @@ async def kb_search(
     fields:            list = None,
     tier:              str  = "",
     expand_neighbors:  bool = True,
+    continuity:        bool = False,
 ) -> dict:
     """Search Willow's Postgres knowledge graph before building anything.
     Returns atoms by title and summary. Search first — another agent may have already
     solved or decided this. Use kb_get to fetch the full atom.
     tier: filter to frontier|contested|canonical|superseded (omit for all tiers).
     expand_neighbors: one-hop graph expansion via public.edges (default on).
+    continuity=True uses the curated B2-minus-intake retrieval pool (boot/cold-recovery).
     semantic=True uses the hybrid pgvector+BM25 RRF hot path when available."""
-    logger.info("[w2] kb_search app_id=%s q=%r semantic=%s tier=%r", app_id, query, semantic, tier)
+    logger.info(
+        "[w2] kb_search app_id=%s q=%r semantic=%s tier=%r continuity=%s",
+        app_id, query, semantic, tier, continuity,
+    )
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
@@ -941,7 +946,7 @@ async def kb_search(
             try:
                 knowledge = pg.knowledge_search_semantic(
                     query, limit=limit, include_embedding=include_embedding,
-                    fields=fields, tier=tier_filter,
+                    fields=fields, tier=tier_filter, continuity=continuity,
                 )
                 jeles    = pg.search_jeles_semantic(query, limit=limit // 2)
                 opus     = pg.search_opus_semantic(query, limit=limit // 2)
