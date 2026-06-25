@@ -3638,6 +3638,55 @@ async def dream_schedule(
     return await loop.run_in_executor(_executor, _schedule)
 
 
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def wce_check(app_id: str) -> dict:
+    """Check whether the weekly WCE witness is due for this agent.
+    Conditions: WCE_INTERVAL_DAYS (default 7) since last run in SOIL {agent}/wce/state.
+    Returns {should_run, days_since_run, last_run_at, interval_days}."""
+    logger.info("[w2] wce_check app_id=%s", app_id)
+    loop = asyncio.get_running_loop()
+
+    def _check():
+        from core.wce_state import wce_conditions
+        return wce_conditions(app_id, store)
+
+    return await loop.run_in_executor(_executor, _check)
+
+
+@mcp.tool()
+@sap_gate(write=True)
+async def wce_schedule(
+    app_id: str,
+    force: bool = False,
+    check_first: bool = True,
+    pair_limit: int = 0,
+) -> dict:
+    """Queue scripts/wce_witness.py as a Kart task. Returns task_id.
+    check_first=True (default) skips queue unless wce_check says should_run.
+    Call kart_task_run() afterwards or let Kart poll. Requires Postgres + Ollama (# allow_net)."""
+    logger.info("[w2] wce_schedule app_id=%s force=%s check_first=%s", app_id, force, check_first)
+    if not pg:
+        return _no_pg()
+    loop = asyncio.get_running_loop()
+
+    def _schedule():
+        from core.wce_state import queue_wce_task, wce_conditions
+
+        if check_first and not force:
+            check = wce_conditions(app_id, store)
+            if not check.get("should_run"):
+                return {"status": "skipped", "wce_check": check}
+        task_id = queue_wce_task(
+            pg, app_id, submitted_by=app_id, force=force, pair_limit=pair_limit,
+        )
+        if not task_id:
+            return {"error": "failed to submit task"}
+        return {"task_id": task_id, "status": "queued", "app_id": app_id, "force": force}
+
+    return await loop.run_in_executor(_executor, _schedule)
+
+
 # ── Tools — intelligence passes (P4.1/P4.2/P4.3) ─────────────────────────────
 
 @mcp.tool()

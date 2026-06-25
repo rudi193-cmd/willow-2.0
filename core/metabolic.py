@@ -470,6 +470,7 @@ def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> di
         try:
             from core import soil as _soil
             from core.dream_state import dream_conditions, queue_dream_task
+            from core.wce_state import queue_wce_task, wce_conditions
             from core.pg_bridge import PgBridge
 
             _pg = PgBridge()
@@ -478,10 +479,15 @@ def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> di
             if _dream.get("should_dream"):
                 task_id = queue_dream_task(_pg, "willow", submitted_by="norn_pass")
                 report["dream_scheduled"] = {"task_id": task_id, "status": "queued" if task_id else "failed"}
+            _wce = wce_conditions("willow", _soil)
+            report["wce_check"] = _wce
+            if _wce.get("should_run"):
+                task_id = queue_wce_task(_pg, "willow", submitted_by="norn_pass")
+                report["wce_scheduled"] = {"task_id": task_id, "status": "queued" if task_id else "failed"}
             _pg.close()
         except Exception as _de:
             import sys as _sys
-            print(f"[norn] dream schedule error: {_de}", file=_sys.stderr)
+            print(f"[norn] dream/wce schedule error: {_de}", file=_sys.stderr)
             report["dream_schedule_error"] = str(_de)
 
         write_briefing(report)
