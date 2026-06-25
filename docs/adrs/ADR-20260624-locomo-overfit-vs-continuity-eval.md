@@ -9,7 +9,7 @@ Read with mai_read_file; write with mai_write_file; do not use IDE Read/Write on
 
 **b17:** ADRTL · ΔΣ=42
 
-**Status:** proposed
+**Status:** accepted
 **Date:** 2026-06-24
 **Deciders:** USER (Sean) + agents: willow (persona Hanuman)
 **Related:** [ADR-0005](../adr/ADR-0005-dependency-aware-retrieval.md) · [ADR-0007](../adr/ADR-0007-continuity-adversarial-tests.md)
@@ -118,6 +118,9 @@ cousin of ADR-0007's T2 (contradiction).
   fidelity) over the existing `handoffs/{agent}/` v2 corpus — both extractable from the handoff
   machine-block. Location: `willow/bench/continuity/`.
 - Verification command (MVP, once built): `python willow/bench/continuity/run_wce.py --agent willow --tasks thread_recall,next_bite`
+- WCE MVP shipped in PRs #506–#510 (2026-06-25): `run_wce.py` full task vector, weekly witness
+  (`scripts/wce_witness.py`), systemd timer (`willow-wce.timer`), baseline run `20260625T042031Z`.
+  One-shot timer install on existing hosts: `scripts/install_wce_timer.sh`.
 
 ## Supersedes
 
