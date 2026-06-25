@@ -322,6 +322,7 @@ print(json.dumps({
 
     wce)
         echo "Willow 2.0 — WCE weekly continuity eval witness"
+        shift
         WILLOW_PG_DB="${WILLOW_PG_DB}" exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/scripts/wce_witness.py" --check-first "$@"
         ;;
 
