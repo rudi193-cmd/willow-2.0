@@ -91,12 +91,18 @@ def cosine_oracle(
     *,
     project: Optional[str],
     oracle_pool: int,
+    source_types: Optional[list[str]] = None,
 ) -> list[dict[str, Any]]:
     """
     Score every visible atom by raw cosine to query_vec — no weight, no recency.
-    Returns the top `oracle_pool` rows (id, title, visit_count, last_visited,
-    created_at, cosine) ordered by cosine descending. Visibility filters mirror
-    hybrid_search defaults so an unretrievable atom is never called relevant.
+    Returns the top `oracle_pool` rows (id, title, source_type, visit_count,
+    last_visited, created_at, cosine) ordered by cosine descending. Visibility
+    filters mirror hybrid_search defaults so an unretrievable atom is never
+    called relevant.
+
+    `source_types`, when set, restricts the oracle corpus to those source_types —
+    the memory-layer ablation uses it to define the relevant set over the
+    non-LoCoMo "full stack" (B3*) rather than the whole contaminated table.
     """
     vec_str = str(query_vec)
     filters = [
@@ -109,13 +115,16 @@ def cosine_oracle(
     if project:
         filters.append("project = %s")
         params.append(project)
+    if source_types:
+        filters.append("source_type = ANY(%s)")
+        params.append(list(source_types))
     where = " AND ".join(filters)
     params.append(oracle_pool)
 
     pg._ensure_conn()
     with pg.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute(
-            "SELECT id, title, visit_count, last_visited, created_at, valid_at,"
+            "SELECT id, title, source_type, visit_count, last_visited, created_at, valid_at,"
             " 1 - (embedding <=> %s::vector) AS cosine"
             f" FROM knowledge WHERE {where}"
             " ORDER BY embedding <=> %s::vector ASC LIMIT %s",
@@ -287,6 +296,167 @@ def pick_knee_cap(
         "baseline": baseline,
         "warm_floor": floor,
     }
+
+
+# ── Memory-layer ablation (B0–B3): attribute cold recall to memory layers ──────
+#
+# Cumulative source_type allow-lists over the knowledge table. Each layer adds
+# sources to the one before it, so the marginal cold-recall lift B(i-1)→B(i)
+# attributes recall to the layer that was added. The relevant/cold set is fixed
+# once over the full non-LoCoMo stack (B3*), then the live ranker's retrieval
+# pool is restricted per layer — same target atoms, widening haystack.
+#
+# B3 "full stack" is every embedded source_type EXCEPT the benchmark/LoCoMo eval
+# atoms that dominate and contaminate the knowledge table (operator decision
+# 2026-06-25: "knowledge minus LoCoMo").
+
+LAYER_HANDOFF = ["session", "session_promote", "hook_stop", "handoff"]
+LAYER_KB_ADD = [
+    "mcp", "revelation", "intake", "seed", "dark_matter",
+    "agent-synthesis", "community_detection", "mycorrhizal",
+    "norn_pass", "drift-resolve", "nest-seed", "discovered_pattern", "think_map",
+]
+LAYER_EXTERNAL_ADD = [
+    "external", "fetched", "literature", "web_search",
+    "ai_news", "repo_doc", "public-demo",
+]
+# Excluded from B3 "full stack" — LoCoMo / benchmark eval contamination.
+LAYER_EXCLUDE_FROM_FULL = {"benchmark"}
+
+
+def _all_embedded_source_types(pg: PgBridge, *, exclude: set[str]) -> list[str]:
+    """Distinct source_types with at least one embedded, valid atom, minus `exclude`."""
+    pg._ensure_conn()
+    with pg.conn.cursor() as cur:
+        cur.execute(
+            "SELECT DISTINCT source_type FROM knowledge"
+            " WHERE embedding IS NOT NULL AND invalid_at IS NULL"
+            " AND source_type IS NOT NULL"
+        )
+        return sorted(r[0] for r in cur.fetchall() if r[0] not in exclude)
+
+
+def build_memory_layers(pg: PgBridge) -> list[tuple[str, list[str]]]:
+    """Cumulative (label, source_types) layers B0→B3 for the ablation."""
+    handoff = list(dict.fromkeys(LAYER_HANDOFF))
+    kb = list(dict.fromkeys(handoff + LAYER_KB_ADD))
+    external = list(dict.fromkeys(kb + LAYER_EXTERNAL_ADD))
+    full = list(dict.fromkeys(external + _all_embedded_source_types(pg, exclude=LAYER_EXCLUDE_FROM_FULL)))
+    return [
+        ("B0_handoff", handoff),
+        ("B1_kb", kb),
+        ("B2_external", external),
+        ("B3_full", full),
+    ]
+
+
+def evaluate_query_layers(
+    pg: PgBridge,
+    query: dict[str, Any],
+    *,
+    k: int,
+    oracle_n: int,
+    oracle_pool: int,
+    cosine_floor: float,
+    cold_visit_max: int,
+    cold_age_days: float,
+    project: Optional[str],
+    layers: list[tuple[str, list[str]]],
+    oracle_source_types: list[str],
+) -> dict[str, Any]:
+    """Cold-relevant recall per memory layer for one query (fixed oracle, live cap ranker)."""
+    now = datetime.now(timezone.utc)
+    qtext = query["query"]
+    qk = int(query.get("k", k))
+
+    qvec = embed(qtext)
+    if qvec is None:
+        return {"id": query["id"], "query": qtext, "error": "embed_failed"}
+
+    oracle = cosine_oracle(
+        pg, qvec, project=project, oracle_pool=oracle_pool,
+        source_types=oracle_source_types,
+    )
+    relevant = [r for r in oracle[:oracle_n] if float(r["cosine"]) >= cosine_floor]
+    cold_relevant = [
+        r for r in relevant
+        if is_cold(r, now, cold_visit_max=cold_visit_max, cold_age_days=cold_age_days)
+    ]
+    warm_relevant = [
+        r for r in relevant
+        if is_warm(r, now, cold_visit_max=cold_visit_max, cold_age_days=cold_age_days)
+    ]
+    cold_ids = {r["id"] for r in cold_relevant}
+    warm_ids = {r["id"] for r in warm_relevant}
+    relevant_ids = {r["id"] for r in relevant}
+
+    # Attribute the cold-relevant target atoms to the layer they live in.
+    cold_by_source: dict[str, int] = {}
+    for r in cold_relevant:
+        st = r.get("source_type") or "(null)"
+        cold_by_source[st] = cold_by_source.get(st, 0) + 1
+
+    by_layer: dict[str, dict[str, Any]] = {}
+    for label, stypes in layers:
+        hits = hybrid_search(qtext, pg, limit=qk, project=project, source_types=stypes)
+        by_layer[label] = _recall_metrics(
+            [h["id"] for h in hits],
+            k=qk,
+            cold_ids=cold_ids,
+            warm_ids=warm_ids,
+            relevant_ids=relevant_ids,
+        )
+
+    return {
+        "id": query["id"],
+        "query": qtext,
+        "k": qk,
+        "n_relevant": len(relevant),
+        "n_cold_relevant": len(cold_relevant),
+        "n_warm_relevant": len(warm_relevant),
+        "cosine_top": round(float(oracle[0]["cosine"]), 4) if oracle else None,
+        "cold_by_source": cold_by_source,
+        "layers": by_layer,
+    }
+
+
+def aggregate_layers(results: list[dict[str, Any]], layer_labels: list[str]) -> dict[str, Any]:
+    """Mean cold/warm/relevant recall per layer + marginal cold lift + cold source mix."""
+    scored = [r for r in results if "error" not in r and r["n_cold_relevant"] > 0]
+    out: dict[str, Any] = {
+        "queries_total": len(results),
+        "queries_scored": len(scored),
+        "queries_no_cold_relevant": sum(
+            1 for r in results if "error" not in r and r["n_cold_relevant"] == 0
+        ),
+        "queries_embed_failed": sum(1 for r in results if r.get("error") == "embed_failed"),
+        "by_layer": {},
+    }
+    for label in layer_labels:
+        cold = [r["layers"][label]["cold_relevant_recall"] for r in scored if label in r.get("layers", {})]
+        warm = [r["layers"][label]["warm_relevant_recall"] for r in scored if label in r.get("layers", {})]
+        rel = [r["layers"][label]["relevant_recall"] for r in scored if label in r.get("layers", {})]
+        out["by_layer"][label] = {
+            "cold_relevant_recall": _mean(cold),
+            "warm_relevant_recall": _mean(warm),
+            "relevant_recall": _mean(rel),
+        }
+    marginal: dict[str, Optional[float]] = {}
+    prev: Optional[float] = None
+    prev_label: Optional[str] = None
+    for label in layer_labels:
+        cur = out["by_layer"][label]["cold_relevant_recall"]
+        if prev is not None and cur is not None:
+            marginal[f"{prev_label}->{label}"] = round(cur - prev, 4)
+        prev = cur
+        prev_label = label
+    out["marginal_cold_lift"] = marginal
+    dist: dict[str, int] = {}
+    for r in scored:
+        for st, n in (r.get("cold_by_source") or {}).items():
+            dist[st] = dist.get(st, 0) + n
+    out["cold_source_distribution"] = dict(sorted(dist.items(), key=lambda kv: -kv[1]))
+    return out
 
 
 # ── Per-query evaluation ───────────────────────────────────────────────────────
@@ -562,6 +732,84 @@ def _run_handoff_report(
     return payload
 
 
+def _run_layer_ablation(
+    args: argparse.Namespace,
+    queries: list[dict[str, Any]],
+    default_k: int,
+    payload: dict[str, Any],
+    timestamp: str,
+) -> int:
+    """Memory-layer ablation B0-B3: where does cold-relevant recall come from?"""
+    k = args.k or default_k
+    results: list[dict[str, Any]] = []
+    with PgBridge() as pg:
+        layers = build_memory_layers(pg)
+        layer_labels = [label for label, _ in layers]
+        oracle_source_types = layers[-1][1]  # B3 full non-LoCoMo stack
+        for q in queries:
+            results.append(
+                evaluate_query_layers(
+                    pg, q,
+                    k=k,
+                    oracle_n=args.oracle_n,
+                    oracle_pool=args.oracle_pool,
+                    cosine_floor=args.cosine_floor,
+                    cold_visit_max=args.cold_visit_max,
+                    cold_age_days=args.cold_age_days,
+                    project=args.project,
+                    layers=layers,
+                    oracle_source_types=oracle_source_types,
+                )
+            )
+
+    summary = aggregate_layers(results, layer_labels)
+    config = {
+        "k": k,
+        "oracle_n": args.oracle_n,
+        "oracle_pool": args.oracle_pool,
+        "cosine_floor": args.cosine_floor,
+        "cold_visit_max": args.cold_visit_max,
+        "cold_age_days": args.cold_age_days,
+        "project": args.project,
+        "layer_labels": layer_labels,
+        "layer_source_types": {label: stypes for label, stypes in layers},
+    }
+    payload["layer_ablation"] = {
+        "config": config,
+        "summary": summary,
+        "results": results,
+    }
+
+    # ── Human-readable report ──
+    print("\nWCE — memory-layer ablation (B0-B3, live cap ranker)")
+    print(f"  config: k={k} oracle_n={args.oracle_n} cosine_floor={args.cosine_floor} "
+          f"cold(visit<={args.cold_visit_max}, age>={args.cold_age_days}d)")
+    print(f"  oracle corpus: full non-LoCoMo stack ({len(oracle_source_types)} source_types)")
+    print(f"  queries scored: {summary['queries_scored']}/{summary['queries_total']} "
+          f"(no cold-relevant: {summary['queries_no_cold_relevant']})")
+    print(f"  {'layer':<14} {'cold_rec':>9} {'warm_rec':>9} {'rel_rec':>9} {'marg_cold':>10}")
+    marg = summary["marginal_cold_lift"]
+    prev_label: Optional[str] = None
+    for label in layer_labels:
+        m = summary["by_layer"].get(label, {})
+        mk = f"{prev_label}->{label}"
+        marg_s = _fmt_score(marg.get(mk), decimals=3) if prev_label else "    -   "
+        print(f"  {label:<14} {_fmt_score(m.get('cold_relevant_recall'), decimals=3):>9} "
+              f"{_fmt_score(m.get('warm_relevant_recall'), decimals=3):>9} "
+              f"{_fmt_score(m.get('relevant_recall'), decimals=3):>9} {marg_s:>10}")
+        prev_label = label
+    if summary["cold_source_distribution"]:
+        mix = ", ".join(f"{st}={n}" for st, n in summary["cold_source_distribution"].items())
+        print(f"  cold-relevant atoms by source: {mix}")
+
+    if not args.no_write:
+        RUNS_DIR.mkdir(parents=True, exist_ok=True)
+        out = Path(args.output) if args.output else RUNS_DIR / f"wce_layers_{timestamp}.json"
+        out.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+        print(f"\nWrote {out}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Willow Continuity Eval (WCE).")
     ap.add_argument("--tasks", default="cold_recall",
@@ -594,6 +842,9 @@ def main() -> int:
                     help="run all weight modes (or add full+cosine_bypass when --cap-sweep set)")
     ap.add_argument("--min-warm", type=float, default=None,
                     help="knee picker: minimum warm recall (default: log warm - 0.035)")
+    ap.add_argument("--layer-ablate", action="store_true",
+                    help="memory-layer ablation B0-B3: attribute cold recall to handoff/KB/external "
+                         "layers (fixed non-LoCoMo oracle, live cap ranker per layer)")
     ap.add_argument("--no-write", action="store_true", help="skip writing the run JSON")
     ap.add_argument("--output", default="", help="write JSON to this path (default: runs/wce_<timestamp>.json)")
     args = ap.parse_args()
@@ -656,6 +907,9 @@ def main() -> int:
     if not queries:
         print("No queries found.", file=sys.stderr)
         return 2
+
+    if args.layer_ablate:
+        return _run_layer_ablation(args, queries, default_k, payload, timestamp)
 
     config = {
         "k": args.k or default_k,
