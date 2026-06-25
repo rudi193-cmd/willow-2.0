@@ -257,6 +257,12 @@ def _mean(values: list[float]) -> Optional[float]:
     return round(sum(vals) / len(vals), 4) if vals else None
 
 
+def _fmt_score(x: object, *, decimals: int = 2) -> str:
+    if isinstance(x, (int, float)):
+        return f"{x:.{decimals}f}"
+    return "  - " if decimals == 2 else "    -   "
+
+
 def aggregate(results: list[dict[str, Any]], weight_modes: list[str]) -> dict[str, Any]:
     scored = [r for r in results if "error" not in r and r["n_cold_relevant"] > 0]
     out: dict[str, Any] = {
@@ -357,10 +363,10 @@ def main() -> int:
         print(hdr)
         for mode in weight_modes:
             m = summary["by_mode"].get(mode, {})
-            def f(x): return f"{x:.3f}" if isinstance(x, (int, float)) else "    -   "
-            print(f"  {mode:16} {f(m.get('cold_relevant_recall')):>9} "
-                  f"{f(m.get('warm_relevant_recall')):>9} {f(m.get('relevant_recall')):>9} "
-                  f"{f(m.get('surfacing_precision')):>9}")
+            print(f"  {mode:16} {_fmt_score(m.get('cold_relevant_recall'), decimals=3):>9} "
+                  f"{_fmt_score(m.get('warm_relevant_recall'), decimals=3):>9} "
+                  f"{_fmt_score(m.get('relevant_recall'), decimals=3):>9} "
+                  f"{_fmt_score(m.get('surfacing_precision'), decimals=3):>9}")
     else:
         mode = weight_modes[0]
         print(f"  mode={mode}")
@@ -370,10 +376,10 @@ def main() -> int:
                 print(f"  {r['id'][:28]:28} {'ERR':>6} {r['error']}")
                 continue
             m = r["modes"][mode]
-            fmt = lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "  - "
             print(f"  {r['id'][:28]:28} {r['n_cold_relevant']:>6} "
-                  f"{fmt(m['cold_relevant_recall']):>6} {fmt(m['warm_relevant_recall']):>6} "
-                  f"{fmt(m['surfacing_precision']):>6}")
+                  f"{_fmt_score(m['cold_relevant_recall']):>6} "
+                  f"{_fmt_score(m['warm_relevant_recall']):>6} "
+                  f"{_fmt_score(m['surfacing_precision']):>6}")
 
     print("\nAggregate:")
     for key, val in summary.items():
