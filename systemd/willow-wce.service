@@ -1,0 +1,13 @@
+[Unit]
+Description=Willow WCE Witness — Willow Continuity Eval weekly run
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+
+[Service]
+Type=oneshot
+Environment=WILLOW_ROOT=%h/github/willow-2.0
+Environment=WILLOW_STORE_ROOT=%h/.willow/store
+Environment=WILLOW_PG_DB=willow_20
+ExecStart=%h/github/willow-2.0/willow.sh wce
+
+[Install]
+WantedBy=default.target

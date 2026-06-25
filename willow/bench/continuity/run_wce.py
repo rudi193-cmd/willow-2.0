@@ -460,6 +460,7 @@ def main() -> int:
     ap.add_argument("--ablate", action="store_true",
                     help="run all weight modes and print comparison table")
     ap.add_argument("--no-write", action="store_true", help="skip writing the run JSON")
+    ap.add_argument("--output", default="", help="write JSON to this path (default: runs/wce_<timestamp>.json)")
     args = ap.parse_args()
 
     try:
@@ -497,7 +498,7 @@ def main() -> int:
     if "cold_recall" not in task_list:
         if not args.no_write:
             RUNS_DIR.mkdir(parents=True, exist_ok=True)
-            out = RUNS_DIR / f"wce_{timestamp}.json"
+            out = Path(args.output) if args.output else RUNS_DIR / f"wce_{timestamp}.json"
             out.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
             print(f"\nWrote {out}")
         return 0
@@ -571,7 +572,7 @@ def main() -> int:
 
     if not args.no_write:
         RUNS_DIR.mkdir(parents=True, exist_ok=True)
-        out = RUNS_DIR / f"wce_{timestamp}.json"
+        out = Path(args.output) if args.output else RUNS_DIR / f"wce_{timestamp}.json"
         out.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
         print(f"\nWrote {out}")
 

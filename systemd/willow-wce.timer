@@ -1,0 +1,11 @@
+[Unit]
+Description=Willow WCE Witness — weekly continuity eval heartbeat
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+
+[Timer]
+OnCalendar=Mon *-*-* 05:00:00
+Persistent=true
+Unit=willow-wce.service
+
+[Install]
+WantedBy=timers.target

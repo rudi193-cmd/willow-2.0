@@ -271,6 +271,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
     }),
     "soul": frozenset({
         "tension_scan", "dream_check", "dream_run", "dream_schedule",
+        "wce_check", "wce_schedule",
     }),
     "code_graph": frozenset({
         "code_graph_index", "code_graph_search", "code_graph_explain",

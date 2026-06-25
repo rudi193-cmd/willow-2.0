@@ -131,6 +131,8 @@
     "dream_check":        {"group": "soul",   "description": "Check whether AutoDream synthesis conditions are met."},
     "dream_run":          {"group": "soul",   "description": "Run AutoDream — tension scan → pattern synthesis via mistral:7b → dream KB atom. Call dream_check first unless force=true."},
     "dream_schedule":     {"group": "soul",   "description": "Queue auto_dream.py as a Kart task. check_first skips unless dream_check says should_dream; call kart_task_run after."},
+    "wce_check":          {"group": "bench",  "description": "Check whether weekly WCE witness is due (default 7d since last SOIL wce/state)."},
+    "wce_schedule":       {"group": "bench",  "description": "Queue wce_witness.py as a Kart task. check_first skips unless wce_check says should_run; call kart_task_run after."},
 
     "nest_scan":          {"group": "nest",   "description": "Scan the Nest intake queue for pending items."},
     "nest_queue":         {"group": "nest",   "description": "Add an item to the Nest intake queue."},
