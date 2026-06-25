@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from core.lock_ttl import lock_is_live
+
 
 def dream_conditions(
     app_id: str,
@@ -14,9 +16,11 @@ def dream_conditions(
     """Return whether AutoDream should run for *app_id*.
 
     Gates: 24h+ since last dream AND 5+ willow.runs sessions since last dream.
+    A stale lock (crashed run, older than the TTL) is ignored so the routine
+    self-heals rather than blocking forever.
     """
     dream_state = store.get(f"{app_id}/dream", "state") or {}
-    if dream_state.get("locked"):
+    if lock_is_live(dream_state):
         return {
             "should_dream": False,
             "locked": True,

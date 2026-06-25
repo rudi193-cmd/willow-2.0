@@ -142,7 +142,15 @@ def main() -> int:
 
     if not args.dry_run:
         state = soil.get(f"{args.agent}/wce", "state") or {}
-        soil.put(f"{args.agent}/wce", "state", {**state, "locked": True})
+        soil.put(
+            f"{args.agent}/wce",
+            "state",
+            {
+                **state,
+                "locked": True,
+                "lock_acquired_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     runs_dir = REPO / "willow" / "bench" / "continuity" / "runs"

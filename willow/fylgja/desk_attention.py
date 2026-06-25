@@ -99,10 +99,12 @@ def _dream_due(agent: str = "") -> bool:
             "WILLOW_STORE_ROOT",
             str(resolve_store_root(Path(__file__).resolve().parents[2])),
         )
+        from core.lock_ttl import lock_is_live
+
         store = get_store_port(root=root)
         who = (agent or os.environ.get("WILLOW_AGENT") or "willow").strip()
         dream_state = store.get(f"{who}/dream", "state") or {}
-        if dream_state.get("locked"):
+        if lock_is_live(dream_state):
             return False
         last_str = dream_state.get("last_dream_at", "")
         if not last_str:
