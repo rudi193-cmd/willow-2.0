@@ -43,7 +43,7 @@ MAX_CONTENT_CHARS: int = 8000  # nomic context window guard
 
 # Retrieval weight modes — promotion signal applied post-RRF (see _retrieval_weight_factor).
 WEIGHT_MODES: tuple[str, ...] = ("full", "off", "log", "cap", "cosine_bypass")
-DEFAULT_WEIGHT_CAP: float = 2.0
+DEFAULT_WEIGHT_CAP: float = 1.4  # WCE cap-sweep knee (20260625T043656Z): cold 0.180 vs log 0.150
 DEFAULT_COSINE_BYPASS: float = 0.55
 
 # ── Tokenizer (mirrors claude-echoes _tokenize) ───────────────────────────────
@@ -523,7 +523,7 @@ def hybrid_search(
     exclude_search_noise: bool = True,
     exclude_superseded: bool = True,
     weight_col: bool = True,
-    weight_mode: str = "log",
+    weight_mode: str = "cap",
     weight_cap: float = DEFAULT_WEIGHT_CAP,
     cosine_bypass: float = DEFAULT_COSINE_BYPASS,
 ) -> list[dict]:
@@ -579,8 +579,8 @@ def hybrid_search(
         weight_mode. False forces mode "off" (WCE counterfactual).
     weight_mode : str
         How atom.weight maps to retrieval multiplier: full | off | log | cap |
-        cosine_bypass. Default "log" dampens the weight tail (WCE-validated);
-        pass "full" to restore pre-fix linear behavior.
+        cosine_bypass. Default "cap" with weight_cap=1.4 (WCE knee 2026-06-25);
+        pass "log" or "full" for counterfactuals.
     weight_cap : float
         Cap for "cap" and "cosine_bypass" modes (default 2.0).
     cosine_bypass : float
