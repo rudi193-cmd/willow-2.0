@@ -40,6 +40,7 @@ Usage
   python3 willow/bench/continuity/run_wce.py --k 10 --oracle-n 20 --cosine-floor 0.5
   python3 willow/bench/continuity/run_wce.py --cold-visit-max 1 --cold-age-days 30
   python3 willow/bench/continuity/run_wce.py --tasks thread_recall,next_bite --agent willow
+  python3 willow/bench/continuity/run_wce.py --tasks surfacing_precision,decision_persistence,staleness --agent willow
   python3 willow/bench/continuity/run_wce.py --tasks all --agent willow --ablate
 
 Output
@@ -301,7 +302,15 @@ def aggregate(results: list[dict[str, Any]], weight_modes: list[str]) -> dict[st
 
 # ── CLI ─────────────────────────────────────────────────────────────────────────
 
-WCE_TASKS = ("cold_recall", "thread_recall", "next_bite", "all")
+WCE_TASKS = (
+    "cold_recall",
+    "thread_recall",
+    "next_bite",
+    "surfacing_precision",
+    "decision_persistence",
+    "staleness",
+    "all",
+)
 
 
 def _parse_tasks(raw: str) -> list[str]:
@@ -309,18 +318,56 @@ def _parse_tasks(raw: str) -> list[str]:
     if not tasks:
         return ["cold_recall"]
     if "all" in tasks:
-        return ["cold_recall", "thread_recall", "next_bite"]
+        return [
+            "cold_recall",
+            "thread_recall",
+            "next_bite",
+            "surfacing_precision",
+            "decision_persistence",
+            "staleness",
+        ]
     unknown = [t for t in tasks if t not in WCE_TASKS]
     if unknown:
         raise SystemExit(f"Unknown task(s): {unknown}. Valid: {', '.join(WCE_TASKS)}")
     return tasks
 
 
-def _run_handoff_report(agent: str, tasks: list[str], pair_limit: int) -> dict[str, Any]:
+def _run_handoff_report(
+    agent: str,
+    tasks: list[str],
+    pair_limit: int,
+    *,
+    max_threads: int = 5,
+    max_atoms: int = 3,
+) -> dict[str, Any]:
     from willow.bench.continuity.handoff_eval import run_handoff_tasks
 
-    handoff_tasks = [t for t in tasks if t in ("thread_recall", "next_bite")]
-    payload = run_handoff_tasks(agent, tasks=handoff_tasks, pair_limit=pair_limit)
+    handoff_tasks = [
+        t for t in tasks
+        if t in (
+            "thread_recall",
+            "next_bite",
+            "surfacing_precision",
+            "decision_persistence",
+            "staleness",
+        )
+    ]
+    pg = None
+    if any(t in handoff_tasks for t in ("surfacing_precision", "staleness")):
+        pg = PgBridge()
+        pg.__enter__()
+    try:
+        payload = run_handoff_tasks(
+            agent,
+            tasks=handoff_tasks,
+            pair_limit=pair_limit,
+            pg=pg,
+            max_threads=max_threads,
+            max_atoms=max_atoms,
+        )
+    finally:
+        if pg is not None:
+            pg.__exit__(None, None, None)
     summary = payload["summary"]
 
     print("\nWCE — handoff continuity (session pairs N → N+1)")
@@ -347,16 +394,59 @@ def _run_handoff_report(agent: str, tasks: list[str], pair_limit: int) -> dict[s
                 pair = "…" + pair[-51:]
             print(f"  {pair:52} {'yes' if nb['hit'] else 'no':>5}")
         print(f"  next_bite_hit_rate: {summary.get('next_bite_hit_rate')}")
+    if "surfacing_precision" in handoff_tasks:
+        print(f"\n  {'pair':52} {'prec':>7} {'surf':>5} {'used':>5}")
+        for row in payload["pairs"]:
+            sp = row.get("surfacing_precision") or {}
+            if sp.get("precision") is None:
+                continue
+            pair = row["pair"]
+            if len(pair) > 52:
+                pair = "…" + pair[-51:]
+            print(f"  {pair:52} {sp['precision']:>7.2f} {sp.get('n_surfaced', 0):>5} {sp.get('n_used', 0):>5}")
+        print(f"  surfacing_precision_mean: {summary.get('surfacing_precision_mean')}")
+    if "decision_persistence" in handoff_tasks:
+        print(f"\n  {'pair':52} {'re-lit':>7} {'n_agr':>5}")
+        for row in payload["pairs"]:
+            dp = row.get("decision_persistence") or {}
+            if dp.get("relitigation_rate") is None:
+                continue
+            pair = row["pair"]
+            if len(pair) > 52:
+                pair = "…" + pair[-51:]
+            print(f"  {pair:52} {dp['relitigation_rate']:>7.2f} {dp.get('n_agreements', 0):>5}")
+        print(f"  relitigation_rate_mean: {summary.get('relitigation_rate_mean')}")
+    if "staleness" in handoff_tasks:
+        print(f"\n  {'pair':52} {'flag':>7} {'acted':>7} {'n_ss':>5}")
+        for row in payload["pairs"]:
+            st = row.get("staleness") or {}
+            if st.get("stale_flag_rate") is None and st.get("n_superseded", 0) == 0:
+                continue
+            pair = row["pair"]
+            if len(pair) > 52:
+                pair = "…" + pair[-51:]
+            flag = st.get("stale_flag_rate")
+            acted = st.get("acted_on_stale_rate")
+            flag_s = f"{flag:.2f}" if isinstance(flag, (int, float)) else "  -"
+            acted_s = f"{acted:.2f}" if isinstance(acted, (int, float)) else "  -"
+            print(f"  {pair:52} {flag_s:>7} {acted_s:>7} {st.get('n_superseded', 0):>5}")
+        print(f"  stale_flag_rate_mean: {summary.get('stale_flag_rate_mean')}")
+        print(f"  acted_on_stale_rate_mean: {summary.get('acted_on_stale_rate_mean')}")
     return payload
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Willow Continuity Eval (WCE).")
     ap.add_argument("--tasks", default="cold_recall",
-                    help="comma-separated: cold_recall, thread_recall, next_bite, all")
+                    help="comma-separated: cold_recall, thread_recall, next_bite, "
+                         "surfacing_precision, decision_persistence, staleness, all")
     ap.add_argument("--agent", default="willow", help="agent id for handoff tasks")
     ap.add_argument("--pair-limit", type=int, default=0,
                     help="max consecutive handoff pairs to score (0 = all)")
+    ap.add_argument("--boot-max-threads", type=int, default=5,
+                    help="surfacing_precision: max open threads counted as boot clutter")
+    ap.add_argument("--boot-max-atoms", type=int, default=3,
+                    help="surfacing_precision: max atom IDs counted as boot clutter")
     ap.add_argument("--queries", default=str(DEFAULT_QUERIES))
     ap.add_argument("--project", default=None, help="restrict to a single project (default: all)")
     ap.add_argument("--k", type=int, default=10, help="top-k retrieval cutoff")
@@ -386,8 +476,23 @@ def main() -> int:
         "agent": args.agent,
     }
 
-    if "thread_recall" in task_list or "next_bite" in task_list:
-        payload["handoff"] = _run_handoff_report(args.agent, task_list, args.pair_limit)
+    if any(
+        t in task_list
+        for t in (
+            "thread_recall",
+            "next_bite",
+            "surfacing_precision",
+            "decision_persistence",
+            "staleness",
+        )
+    ):
+        payload["handoff"] = _run_handoff_report(
+            args.agent,
+            task_list,
+            args.pair_limit,
+            max_threads=args.boot_max_threads,
+            max_atoms=args.boot_max_atoms,
+        )
 
     if "cold_recall" not in task_list:
         if not args.no_write:

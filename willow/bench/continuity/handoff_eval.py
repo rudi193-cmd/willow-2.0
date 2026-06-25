@@ -1,4 +1,4 @@
-"""WCE handoff-pair tasks — thread recall and next-bite fidelity.
+"""WCE handoff-pair tasks — thread recall, next-bite, surfacing, staleness, decisions.
 
 Measures session N → N+1 continuity from v2 handoff markdown (no LLM judge).
 See docs/adrs/ADR-20260624-locomo-overfit-vs-continuity-eval.md appendix.
@@ -16,6 +16,12 @@ from willow.fylgja.willow_home import willow_home
 _TOKEN_RE = re.compile(r"[a-z][a-z0-9_-]{3,}")
 _ISSUE_RE = re.compile(r"#\d+")
 _PR_RE = re.compile(r"\bpr\s*#?\d+\b", re.I)
+_ATOM_ID_RE = re.compile(r"\b([A-F0-9]{8})\b")
+_STALE_MARKERS_RE = re.compile(
+    r"\b(stale|superseded|outdated|obsolete|no longer|was wrong|incorrect|"
+    r"unverified|supersede|deprecated|invalidated)\b",
+    re.I,
+)
 _STOP = frozenset({
     "that", "this", "with", "from", "have", "will", "been", "were", "they",
     "what", "when", "then", "than", "into", "only", "also", "still", "next",
@@ -105,15 +111,23 @@ def load_handoffs(agent: str, handoffs_root: Optional[Path] = None) -> list[dict
         questions = _parse_json_list(parsed.get("questions"))
         summary = str(parsed.get("summary") or "")
         open_threads = _parse_json_list(parsed.get("open_threads"))
+        agreements = _parse_json_list(parsed.get("agreements"))
+        atom_ids = _ATOM_ID_RE.findall(content.upper())
+        deduped_atoms: list[str] = []
+        for aid in atom_ids:
+            if aid not in deduped_atoms:
+                deduped_atoms.append(aid)
         rows.append({
             "filename": path.name,
             "date": parsed.get("handoff_date") or "",
             "summary": summary,
             "open_threads": open_threads,
+            "agreements": agreements,
             "questions": questions,
             "what_was_done": _extract_bullets(content, ("## What Was Done", "**What Was Done**")),
             "understand": _extract_paragraph(content, "## What I Now Understand"),
             "next_bite": extract_next_bite(questions, summary),
+            "surfaced_atom_ids": deduped_atoms[:10],
             "mtime": path.stat().st_mtime,
         })
     return rows
@@ -178,12 +192,177 @@ def evaluate_next_bite(n: dict[str, Any], n1: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def boot_surfaced_items(
+    n: dict[str, Any],
+    *,
+    max_threads: int = 5,
+    max_atoms: int = 3,
+    ledger_atom_ids: Optional[list[str]] = None,
+) -> list[dict[str, str]]:
+    """Bounded boot surfacing proxy: ≤5 threads + top-3 atoms."""
+    items: list[dict[str, str]] = []
+    for thread in (n.get("open_threads") or [])[:max_threads]:
+        text = str(thread).strip()
+        if text:
+            items.append({"kind": "thread", "text": text})
+    atom_ids = list(ledger_atom_ids or [])[:max_atoms]
+    if len(atom_ids) < max_atoms:
+        for aid in (n.get("surfaced_atom_ids") or []):
+            if aid not in atom_ids:
+                atom_ids.append(aid)
+            if len(atom_ids) >= max_atoms:
+                break
+    for aid in atom_ids[:max_atoms]:
+        items.append({"kind": "atom", "text": aid})
+    return items
+
+
+def _item_used(item: dict[str, str], n1: dict[str, Any]) -> bool:
+    corpus = n_plus_one_corpus(n1)
+    text = item.get("text") or ""
+    if item.get("kind") == "atom":
+        if text and text.upper() in corpus.upper():
+            return True
+    return texts_overlap(text, corpus)
+
+
+def evaluate_surfacing_precision(
+    n: dict[str, Any],
+    n1: dict[str, Any],
+    *,
+    max_threads: int = 5,
+    max_atoms: int = 3,
+    ledger_atom_ids: Optional[list[str]] = None,
+) -> dict[str, Any]:
+    surfaced = boot_surfaced_items(
+        n, max_threads=max_threads, max_atoms=max_atoms, ledger_atom_ids=ledger_atom_ids,
+    )
+    if not surfaced:
+        return {
+            "precision": None,
+            "n_surfaced": 0,
+            "n_used": 0,
+            "surfaced": [],
+            "used": [],
+            "unused": [],
+        }
+    used = [item for item in surfaced if _item_used(item, n1)]
+    unused = [item for item in surfaced if item not in used]
+    precision = len(used) / len(surfaced)
+    return {
+        "precision": round(precision, 4),
+        "n_surfaced": len(surfaced),
+        "n_used": len(used),
+        "surfaced": surfaced,
+        "used": used,
+        "unused": unused,
+    }
+
+
+def _n1_work_questions(n1: dict[str, Any]) -> list[str]:
+    """Questions from N+1 excluding Q17 (next-bite prompt)."""
+    qs = [str(q).strip() for q in (n1.get("questions") or []) if str(q).strip()]
+    if len(qs) <= 1:
+        return qs
+    last = qs[-1].lower()
+    if "next" in last and "bite" in last:
+        return qs[:-1]
+    return qs
+
+
+def evaluate_decision_persistence(n: dict[str, Any], n1: dict[str, Any]) -> dict[str, Any]:
+    agreements = [str(a).strip() for a in (n.get("agreements") or []) if str(a).strip()]
+    if not agreements:
+        return {
+            "relitigation_rate": None,
+            "n_agreements": 0,
+            "relitigated": [],
+            "persisted": [],
+        }
+    done_corpus = "\n".join(n1.get("what_was_done") or [])
+    questions = _n1_work_questions(n1)
+    question_corpus = "\n".join(questions)
+    relitigated: list[str] = []
+    persisted: list[str] = []
+    for agreement in agreements:
+        executed = texts_overlap(agreement, done_corpus)
+        reasked = bool(questions) and texts_overlap(agreement, question_corpus)
+        if reasked and not executed:
+            relitigated.append(agreement)
+        else:
+            persisted.append(agreement)
+    rate = len(relitigated) / len(agreements)
+    return {
+        "relitigation_rate": round(rate, 4),
+        "n_agreements": len(agreements),
+        "relitigated": relitigated,
+        "persisted": persisted,
+    }
+
+
+def _atom_topic_text(atom: dict[str, Any]) -> str:
+    return f"{atom.get('title') or ''} {atom.get('summary') or ''}".strip()
+
+
+def _atom_mentioned(atom: dict[str, Any], corpus: str) -> bool:
+    aid = str(atom.get("id") or "").upper()
+    if aid and aid in corpus.upper():
+        return True
+    topic = _atom_topic_text(atom)
+    return bool(topic) and texts_overlap(topic, corpus)
+
+
+def evaluate_staleness_surfacing(
+    n1: dict[str, Any],
+    superseded_atoms: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if not superseded_atoms:
+        return {
+            "stale_flag_rate": None,
+            "acted_on_stale_rate": None,
+            "n_superseded": 0,
+            "n_mentioned": 0,
+            "flagged": [],
+            "acted_on": [],
+            "silent": [],
+        }
+    corpus = n_plus_one_corpus(n1)
+    flagged: list[str] = []
+    acted_on: list[str] = []
+    silent: list[str] = []
+    for atom in superseded_atoms:
+        topic = _atom_topic_text(atom)
+        if not _atom_mentioned(atom, corpus):
+            silent.append(str(atom.get("id") or topic[:40]))
+            continue
+        aid = str(atom.get("id") or "")
+        if _STALE_MARKERS_RE.search(corpus):
+            flagged.append(aid or topic[:40])
+        else:
+            acted_on.append(aid or topic[:40])
+    mentioned = len(flagged) + len(acted_on)
+    stale_flag_rate = (len(flagged) / mentioned) if mentioned else None
+    acted_on_stale_rate = (len(acted_on) / mentioned) if mentioned else None
+    return {
+        "stale_flag_rate": round(stale_flag_rate, 4) if stale_flag_rate is not None else None,
+        "acted_on_stale_rate": round(acted_on_stale_rate, 4) if acted_on_stale_rate is not None else None,
+        "n_superseded": len(superseded_atoms),
+        "n_mentioned": mentioned,
+        "flagged": flagged,
+        "acted_on": acted_on,
+        "silent": silent,
+    }
+
+
 def run_handoff_tasks(
     agent: str,
     *,
     tasks: list[str],
     handoffs_root: Optional[Path] = None,
     pair_limit: int = 0,
+    pg: Any = None,
+    max_threads: int = 5,
+    max_atoms: int = 3,
 ) -> dict[str, Any]:
     handoffs = load_handoffs(agent, handoffs_root)
     pairs = consecutive_pairs(handoffs)
@@ -193,6 +372,15 @@ def run_handoff_tasks(
     results_list: list[dict[str, Any]] = []
     thread_results: list[dict[str, Any]] = []
     bite_results: list[dict[str, Any]] = []
+    precision_results: list[dict[str, Any]] = []
+    decision_results: list[dict[str, Any]] = []
+    staleness_results: list[dict[str, Any]] = []
+
+    kb_helpers = None
+    if pg is not None and any(t in tasks for t in ("surfacing_precision", "staleness")):
+        from willow.bench.continuity import kb_eval as _kb_eval
+
+        kb_helpers = _kb_eval
 
     for n, n1 in pairs:
         pair_id = f"{n.get('filename')} -> {n1.get('filename')}"
@@ -205,6 +393,28 @@ def run_handoff_tasks(
             nb = evaluate_next_bite(n, n1)
             row["next_bite"] = nb
             bite_results.append(nb)
+        if "surfacing_precision" in tasks:
+            ledger_ids: list[str] = []
+            if kb_helpers and pg is not None:
+                t_n, _ = kb_helpers.pair_time_bounds(n, n1)
+                ledger_ids = kb_helpers.ledger_atoms_written(pg, project=agent, before=t_n, limit=max_atoms)
+            sp = evaluate_surfacing_precision(
+                n, n1, max_threads=max_threads, max_atoms=max_atoms, ledger_atom_ids=ledger_ids,
+            )
+            row["surfacing_precision"] = sp
+            precision_results.append(sp)
+        if "decision_persistence" in tasks:
+            dp = evaluate_decision_persistence(n, n1)
+            row["decision_persistence"] = dp
+            decision_results.append(dp)
+        if "staleness" in tasks:
+            superseded: list[dict[str, Any]] = []
+            if kb_helpers and pg is not None:
+                t_n, t_n1 = kb_helpers.pair_time_bounds(n, n1)
+                superseded = kb_helpers.superseded_between(pg, valid_at=t_n, invalid_before=t_n1)
+            st = evaluate_staleness_surfacing(n1, superseded)
+            row["staleness"] = st
+            staleness_results.append(st)
         results_list.append(row)
 
     def _mean(vals: list[Optional[float]]) -> Optional[float]:
@@ -224,5 +434,19 @@ def run_handoff_tasks(
         hits = [1.0 if r.get("hit") else 0.0 for r in bite_results if r.get("hit") is not None]
         summary["next_bite_hit_rate"] = _mean(hits)
         summary["next_bite_pairs_scored"] = len(hits)
+    if "surfacing_precision" in tasks:
+        precs = [r["precision"] for r in precision_results if r.get("precision") is not None]
+        summary["surfacing_precision_mean"] = _mean(precs)
+        summary["surfacing_precision_pairs_scored"] = len(precs)
+    if "decision_persistence" in tasks:
+        rates = [r["relitigation_rate"] for r in decision_results if r.get("relitigation_rate") is not None]
+        summary["relitigation_rate_mean"] = _mean(rates)
+        summary["decision_persistence_pairs_scored"] = len(rates)
+    if "staleness" in tasks:
+        flag_rates = [r["stale_flag_rate"] for r in staleness_results if r.get("stale_flag_rate") is not None]
+        summary["stale_flag_rate_mean"] = _mean(flag_rates)
+        acted = [r["acted_on_stale_rate"] for r in staleness_results if r.get("acted_on_stale_rate") is not None]
+        summary["acted_on_stale_rate_mean"] = _mean(acted)
+        summary["staleness_pairs_scored"] = len(flag_rates)
 
     return {"summary": summary, "pairs": results_list}

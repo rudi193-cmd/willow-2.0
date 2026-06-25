@@ -7,7 +7,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from willow.bench.continuity.handoff_eval import (
+    boot_surfaced_items,
+    evaluate_decision_persistence,
     evaluate_next_bite,
+    evaluate_staleness_surfacing,
+    evaluate_surfacing_precision,
     evaluate_thread_recall,
     signatures,
     texts_overlap,
@@ -63,3 +67,84 @@ def test_next_bite_hit_when_n1_executes_bite():
 def test_texts_overlap_requires_shared_signature():
     assert texts_overlap("detached Kart lane", "shipped detached lane via PR #503")
     assert not texts_overlap("unrelated topic entirely", "something else")
+
+
+def test_boot_surfaced_items_caps_threads_and_atoms():
+    n = {
+        "open_threads": [f"thread-{i}" for i in range(8)],
+        "surfaced_atom_ids": [f"{i:08X}" for i in range(5)],
+    }
+    items = boot_surfaced_items(n, max_threads=5, max_atoms=3)
+    assert sum(1 for i in items if i["kind"] == "thread") == 5
+    assert sum(1 for i in items if i["kind"] == "atom") == 3
+
+
+def test_surfacing_precision_counts_used_boot_items():
+    n = {
+        "open_threads": ["Merge PR #507 WCE handoff tasks", "HomeGrid deferred"],
+        "surfaced_atom_ids": ["DEADBEEF", "CAFEBABE"],
+    }
+    n1 = {
+        "understand": "Merged PR #507 with handoff continuity metrics.",
+        "summary": "",
+        "what_was_done": [],
+        "open_threads": [],
+    }
+    result = evaluate_surfacing_precision(n, n1, max_threads=5, max_atoms=3)
+    assert result["n_surfaced"] == 4
+    assert result["n_used"] >= 1
+    assert result["precision"] is not None
+    assert result["precision"] > 0
+
+
+def test_decision_persistence_flags_reask_without_execution():
+    n = {"agreements": ["Use detached Kart lane for long benchmark jobs"]}
+    n1 = {
+        "questions": ["Should we use detached Kart for benchmarks?", "What is the next single bite?"],
+        "what_was_done": [],
+        "understand": "",
+        "summary": "",
+    }
+    result = evaluate_decision_persistence(n, n1)
+    assert result["relitigation_rate"] == 1.0
+    assert len(result["relitigated"]) == 1
+
+
+def test_decision_persistence_passes_when_executed():
+    n = {"agreements": ["Use detached Kart lane for long benchmark jobs"]}
+    n1 = {
+        "questions": ["What is the next single bite?"],
+        "what_was_done": ["Shipped detached Kart lane for long benchmark jobs"],
+        "understand": "",
+        "summary": "",
+    }
+    result = evaluate_decision_persistence(n, n1)
+    assert result["relitigation_rate"] == 0.0
+
+
+def test_staleness_flags_when_corpus_marks_stale():
+    n1 = {
+        "understand": "Atom DEADBEEF is superseded — use the closure atom instead.",
+        "summary": "",
+        "what_was_done": [],
+        "open_threads": [],
+    }
+    atoms = [{"id": "DEADBEEF", "title": "GAP1 still open", "summary": "fleet status metabolic"}]
+    result = evaluate_staleness_surfacing(n1, atoms)
+    assert result["n_mentioned"] == 1
+    assert result["stale_flag_rate"] == 1.0
+    assert result["acted_on_stale_rate"] == 0.0
+
+
+def test_staleness_acted_on_without_flag():
+    n1 = {
+        "understand": "GAP1 is still open on fleet metabolic consecration.",
+        "summary": "",
+        "what_was_done": [],
+        "open_threads": [],
+    }
+    atoms = [{"id": "DEADBEEF", "title": "GAP1 still open", "summary": "fleet status metabolic"}]
+    result = evaluate_staleness_surfacing(n1, atoms)
+    assert result["n_mentioned"] == 1
+    assert result["stale_flag_rate"] == 0.0
+    assert result["acted_on_stale_rate"] == 1.0
