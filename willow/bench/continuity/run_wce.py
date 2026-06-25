@@ -39,7 +39,8 @@ Usage
   python3 willow/bench/continuity/run_wce.py
   python3 willow/bench/continuity/run_wce.py --k 10 --oracle-n 20 --cosine-floor 0.5
   python3 willow/bench/continuity/run_wce.py --cold-visit-max 1 --cold-age-days 30
-  python3 willow/bench/continuity/run_wce.py --queries path/to/queries.json --project willow
+  python3 willow/bench/continuity/run_wce.py --tasks thread_recall,next_bite --agent willow
+  python3 willow/bench/continuity/run_wce.py --tasks all --agent willow --ablate
 
 Output
 ------
@@ -300,8 +301,62 @@ def aggregate(results: list[dict[str, Any]], weight_modes: list[str]) -> dict[st
 
 # ── CLI ─────────────────────────────────────────────────────────────────────────
 
+WCE_TASKS = ("cold_recall", "thread_recall", "next_bite", "all")
+
+
+def _parse_tasks(raw: str) -> list[str]:
+    tasks = [t.strip() for t in raw.split(",") if t.strip()]
+    if not tasks:
+        return ["cold_recall"]
+    if "all" in tasks:
+        return ["cold_recall", "thread_recall", "next_bite"]
+    unknown = [t for t in tasks if t not in WCE_TASKS]
+    if unknown:
+        raise SystemExit(f"Unknown task(s): {unknown}. Valid: {', '.join(WCE_TASKS)}")
+    return tasks
+
+
+def _run_handoff_report(agent: str, tasks: list[str], pair_limit: int) -> dict[str, Any]:
+    from willow.bench.continuity.handoff_eval import run_handoff_tasks
+
+    handoff_tasks = [t for t in tasks if t in ("thread_recall", "next_bite")]
+    payload = run_handoff_tasks(agent, tasks=handoff_tasks, pair_limit=pair_limit)
+    summary = payload["summary"]
+
+    print("\nWCE — handoff continuity (session pairs N → N+1)")
+    print(f"  agent={agent}  handoffs={summary['handoffs_loaded']}  pairs={summary['pairs_evaluated']}")
+    if "thread_recall" in handoff_tasks:
+        print(f"  {'pair':52} {'recall':>7} {'n_thr':>5}")
+        for row in payload["pairs"]:
+            tr = row.get("thread_recall") or {}
+            if tr.get("recall") is None:
+                continue
+            pair = row["pair"]
+            if len(pair) > 52:
+                pair = "…" + pair[-51:]
+            print(f"  {pair:52} {tr['recall']:>7.2f} {tr.get('n_threads', 0):>5}")
+        print(f"  thread_recall_mean: {summary.get('thread_recall_mean')}")
+    if "next_bite" in handoff_tasks:
+        print(f"\n  {'pair':52} {'hit':>5}")
+        for row in payload["pairs"]:
+            nb = row.get("next_bite") or {}
+            if nb.get("hit") is None:
+                continue
+            pair = row["pair"]
+            if len(pair) > 52:
+                pair = "…" + pair[-51:]
+            print(f"  {pair:52} {'yes' if nb['hit'] else 'no':>5}")
+        print(f"  next_bite_hit_rate: {summary.get('next_bite_hit_rate')}")
+    return payload
+
+
 def main() -> int:
-    ap = argparse.ArgumentParser(description="WCE cold-relevant recall probe.")
+    ap = argparse.ArgumentParser(description="Willow Continuity Eval (WCE).")
+    ap.add_argument("--tasks", default="cold_recall",
+                    help="comma-separated: cold_recall, thread_recall, next_bite, all")
+    ap.add_argument("--agent", default="willow", help="agent id for handoff tasks")
+    ap.add_argument("--pair-limit", type=int, default=0,
+                    help="max consecutive handoff pairs to score (0 = all)")
     ap.add_argument("--queries", default=str(DEFAULT_QUERIES))
     ap.add_argument("--project", default=None, help="restrict to a single project (default: all)")
     ap.add_argument("--k", type=int, default=10, help="top-k retrieval cutoff")
@@ -316,6 +371,31 @@ def main() -> int:
                     help="run all weight modes and print comparison table")
     ap.add_argument("--no-write", action="store_true", help="skip writing the run JSON")
     args = ap.parse_args()
+
+    try:
+        task_list = _parse_tasks(args.tasks)
+    except SystemExit as exc:
+        print(exc, file=sys.stderr)
+        return 2
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    payload: dict[str, Any] = {
+        "benchmark": "wce",
+        "timestamp": timestamp,
+        "tasks": task_list,
+        "agent": args.agent,
+    }
+
+    if "thread_recall" in task_list or "next_bite" in task_list:
+        payload["handoff"] = _run_handoff_report(args.agent, task_list, args.pair_limit)
+
+    if "cold_recall" not in task_list:
+        if not args.no_write:
+            RUNS_DIR.mkdir(parents=True, exist_ok=True)
+            out = RUNS_DIR / f"wce_{timestamp}.json"
+            out.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+            print(f"\nWrote {out}")
+        return 0
 
     weight_modes = list(WEIGHT_MODES) if args.ablate else [args.weight_mode]
 
@@ -344,10 +424,7 @@ def main() -> int:
             results.append(evaluate_query(pg, q, weight_modes=weight_modes, **eval_cfg))
 
     summary = aggregate(results, weight_modes)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    payload = {
-        "benchmark": "wce-cold-relevant-recall",
-        "timestamp": timestamp,
+    payload["cold_recall"] = {
         "config": config,
         "summary": summary,
         "results": results,
