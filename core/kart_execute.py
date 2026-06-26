@@ -19,6 +19,7 @@ _ROUTINE_FIRE_URL = "https://api.anthropic.com/v1/claude_code/routines/{routine_
 _ROUTINE_BETA = "experimental-cc-routine-2026-04-01"
 _DEFAULT_WORKFLOW_MODEL = os.environ.get("KART_WORKFLOW_MODEL", "mistral:7b")
 _ALLOW_NET_LINE = "# allow_net"
+_ALLOW_LOCALHOST_LINE = "# allow_localhost"
 _FENCE_RE = re.compile(r"```(bash|sh|python3?|python)?\n?(.*?)```", re.DOTALL)
 
 
@@ -29,15 +30,15 @@ def kart_timeout(context: str = "poll") -> int:
 
 
 def _strip_allow_net_directive(task_text: str) -> tuple[str, bool]:
-    from core.kart_sandbox import task_allows_network
+    """Backward-compatible wrapper — returns (cmd, allow_net) only."""
+    body, allow_net, _ = _parse_task_network_directives(task_text)
+    return body, allow_net
 
-    allow_net = task_allows_network(task_text)
-    lines = [
-        line
-        for line in task_text.splitlines()
-        if line.strip() != _ALLOW_NET_LINE
-    ]
-    return "\n".join(lines).strip(), allow_net
+
+def _parse_task_network_directives(task_text: str) -> tuple[str, bool, bool]:
+    from core.kart_sandbox import parse_task_network
+
+    return parse_task_network(task_text)
 
 
 def trim_task_result(result, status: str = ""):
@@ -104,6 +105,7 @@ def _run_one_shell(
     *,
     timeout: int,
     allow_net: bool,
+    allow_localhost: bool,
 ) -> tuple[str, dict]:
     from core.kart_sandbox import bwrap_available, run_shell_result_for_task, use_bwrap
 
@@ -111,7 +113,10 @@ def _run_one_shell(
         return "failed", {"error": "bwrap not found — install bubblewrap"}
 
     status, result = run_shell_result_for_task(
-        cmd, timeout=timeout, allow_net=allow_net
+        cmd,
+        timeout=timeout,
+        allow_net=allow_net,
+        allow_localhost=allow_localhost,
     )
     return status, _normalize_shell_result(result)
 
@@ -130,7 +135,7 @@ def run_shell_task(
         return "failed", blocked
 
     timeout = timeout if timeout is not None else kart_timeout(context)
-    cmd_body, allow_net = _strip_allow_net_directive(task_text)
+    cmd_body, allow_net, allow_localhost = _parse_task_network_directives(task_text)
     blocks = _iter_fenced_blocks(cmd_body)
 
     if blocks:
@@ -147,7 +152,10 @@ def run_shell_task(
             else:
                 cmd = body
             status, result = _run_one_shell(
-                cmd, timeout=timeout, allow_net=allow_net
+                cmd,
+                timeout=timeout,
+                allow_net=allow_net,
+                allow_localhost=allow_localhost,
             )
             chunk = result.get("stdout") or ""
             err = result.get("stderr") or result.get("error") or ""
@@ -173,7 +181,10 @@ def run_shell_task(
         return "failed", {"error": "empty command"}
 
     status, result = _run_one_shell(
-        cmd_body, timeout=timeout, allow_net=allow_net
+        cmd_body,
+        timeout=timeout,
+        allow_net=allow_net,
+        allow_localhost=allow_localhost,
     )
     result["steps"] = 1
     return status, result

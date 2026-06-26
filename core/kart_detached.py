@@ -96,6 +96,7 @@ def launch_detached(
     *,
     task_id: str | None = None,
     allow_net: bool = False,
+    allow_localhost: bool = False,
     cwd: str | None = None,
 ) -> dict:
     """Launch ``cmd`` (a full bash command string) as a detached, un-timed-out job.
@@ -119,12 +120,14 @@ def launch_detached(
     sup_path = d / "supervise.py"
 
     bash = _sandbox_bash()
-    run_env = kart_env(allow_net=allow_net)
+    run_env = kart_env(allow_net=allow_net, allow_localhost=allow_localhost)
     repo = str(willow_repo_root() or Path.cwd())
     job_cwd = cwd or repo
 
     if use_bwrap():
-        argv = build_bwrap_argv(allow_net=allow_net) + ["--", bash, "-c", cmd]
+        argv = build_bwrap_argv(
+            allow_net=allow_net, allow_localhost=allow_localhost
+        ) + ["--", bash, "-c", cmd]
         sandbox = "bwrap"
     else:
         argv = [bash, "-c", cmd]
@@ -160,6 +163,7 @@ def launch_detached(
                 "supervisor_pid": proc.pid,
                 "started": time.time(),
                 "allow_net": allow_net,
+                "allow_localhost": allow_localhost and not allow_net,
                 "sandbox": sandbox,
                 "cwd": job_cwd,
                 "cmd": cmd[:1000],

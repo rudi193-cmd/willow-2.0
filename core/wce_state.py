@@ -69,7 +69,7 @@ def queue_wce_task(
         cmd_parts.append("--force")
     if pair_limit:
         cmd_parts.append(f"--pair-limit={pair_limit}")
-    cmd = " ".join(cmd_parts) + "\n# allow_net"
+    cmd = " ".join(cmd_parts) + "\n# allow_localhost"
     return pg.submit_task(cmd, submitted_by=submitted_by, agent="kart")
 
 

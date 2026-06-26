@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 os.environ.setdefault("WILLOW_PG_DB", "willow_20_test")
 
 from core.kart_execute import (  # noqa: E402
+    _parse_task_network_directives,
     _strip_allow_net_directive,
     execute_task_row,
     run_shell_task,
@@ -26,6 +27,14 @@ def test_strip_allow_net_directive():
     body, allow = _strip_allow_net_directive(text)
     assert body == "echo hi"
     assert allow is True
+
+
+def test_parse_task_network_localhost_directive():
+    text = "echo hi\n# allow_localhost\n"
+    body, allow_net, allow_localhost = _parse_task_network_directives(text)
+    assert body == "echo hi"
+    assert allow_net is False
+    assert allow_localhost is True
 
 
 def test_run_shell_task_echo():
@@ -96,6 +105,8 @@ def test_run_one_shell_fails_when_bwrap_required_but_missing(monkeypatch):
     monkeypatch.setattr("core.kart_sandbox.bwrap_available", lambda: False)
     from core.kart_execute import _run_one_shell
 
-    status, result = _run_one_shell("echo hi", timeout=5, allow_net=False)
+    status, result = _run_one_shell(
+        "echo hi", timeout=5, allow_net=False, allow_localhost=False
+    )
     assert status == "failed"
     assert "bwrap" in result.get("error", "").lower()

@@ -47,6 +47,16 @@ Do **not** paste huge escaped one-liners into `task=` when `script_body` is avai
 
 Shell tasks use **full-string** `bash -c` via `kart_sandbox.run_shell` (pipelines, `;`, `$()` work). Use fenced ` ```bash ` blocks only when splitting multiple explicit steps.
 
+## Network tiers
+
+| Tier | How | Use for |
+|------|-----|---------|
+| isolated (default) | no directive | git, pytest, most shell |
+| localhost | `allow_localhost=True` or `# allow_localhost` | Ollama embeds on 127.0.0.1 — no credentials mounted |
+| full | `allow_net=True` or `# allow_net` | git push, `gh`, curl, external APIs |
+
+`allow_localhost` shares the host network namespace so loopback services (Ollama `:11434`) work inside bwrap, but still strips credential env vars and does not bind `~/.netrc` / `~/.config/gh`. Prefer it over `allow_net` for WCE, AutoDream, and other embed-only jobs.
+
 ## allow_net
 
 `agent_task_submit(..., allow_net=True)` for git push, `gh`, curl, etc.

@@ -9,9 +9,11 @@ from core.kart_sandbox import (
     collect_bind_mounts,
     kart_env,
     load_sandbox_config,
+    parse_task_network,
     run_shell,
     run_shell_result_for_task,
     sandbox_manifest,
+    task_allows_localhost,
     task_allows_network,
     unreachable_notes,
     willow_repo_root,
@@ -89,6 +91,49 @@ def test_build_bwrap_argv_has_core_flags(repo_root):
 def test_task_allows_network_directive():
     assert task_allows_network("python3 /tmp/x.py\n# allow_net\n")
     assert not task_allows_network("python3 /tmp/x.py")
+
+
+def test_task_allows_localhost_directive():
+    assert task_allows_localhost("python3 /tmp/x.py\n# allow_localhost\n")
+    assert not task_allows_localhost("python3 /tmp/x.py")
+
+
+def test_parse_task_network_strips_both_directives():
+    text = "echo hi\n# allow_localhost\n"
+    body, allow_net, allow_localhost = parse_task_network(text)
+    assert body == "echo hi"
+    assert allow_net is False
+    assert allow_localhost is True
+
+
+def test_build_bwrap_argv_localhost_omits_unshare_net(repo_root):
+    argv = build_bwrap_argv(allow_localhost=True, root=repo_root)
+    assert "--unshare-net" not in argv
+
+
+def test_build_bwrap_argv_isolated_has_unshare_net(repo_root):
+    argv = build_bwrap_argv(allow_net=False, allow_localhost=False, root=repo_root)
+    assert "--unshare-net" in argv
+
+
+def test_gapb_credentials_stripped_with_localhost(repo_root, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "secret-a")
+    env = kart_env(repo_root, allow_localhost=True)
+    assert "ANTHROPIC_API_KEY" not in env
+    assert env.get("WILLOW_KART_ALLOW_LOCALHOST") == "1"
+
+
+def test_gapb_localhost_has_no_credential_binds(repo_root):
+    argv = build_bwrap_argv(allow_localhost=True, root=repo_root)
+    home = str(Path.home())
+    assert f"{home}/.netrc" not in argv
+    assert f"{home}/.config/gh" not in argv
+
+
+def test_sandbox_manifest_network_mode_localhost(repo_root):
+    m = sandbox_manifest(allow_localhost=True, root=repo_root)
+    assert m["network_mode"] == "localhost"
+    assert m["allow_localhost"] is True
 
 
 def test_run_shell_echo(repo_root, monkeypatch):
