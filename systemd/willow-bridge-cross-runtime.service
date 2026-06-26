@@ -1,0 +1,13 @@
+[Unit]
+Description=Willow cross-runtime handoff bridge rebuild
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+
+[Service]
+Type=oneshot
+Environment=WILLOW_ROOT=%h/github/willow-2.0
+Environment=WILLOW_HOME=%h/github/.willow
+Environment=WILLOW_AGENT_NAME=willow
+ExecStart=%h/github/willow-2.0/willow.sh bridge-cross-runtime
+
+[Install]
+WantedBy=default.target
