@@ -120,6 +120,8 @@ def extract_wce_metrics(payload: dict[str, Any]) -> dict[str, Any]:
     metrics["weight_mode"] = mode
     if config.get("weight_cap") is not None:
         metrics["weight_cap"] = config.get("weight_cap")
+    if config.get("continuity_pool"):
+        metrics["continuity_pool"] = config.get("continuity_pool")
     return metrics
 
 
@@ -143,4 +145,7 @@ def format_wce_summary_line(metrics: dict[str, Any]) -> str:
             parts.append(f"mode=cap@{cap}")
         else:
             parts.append(f"mode={mode}")
+    pool = metrics.get("continuity_pool")
+    if pool and pool != "full":
+        parts.append(f"pool={pool}")
     return " · ".join(parts)

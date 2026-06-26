@@ -79,6 +79,7 @@ from willow.ranking.hybrid import (  # noqa: E402
     WEIGHT_MODES,
     hybrid_search,
 )
+from willow.ranking.continuity_pool import resolve_continuity_source_types  # noqa: E402
 
 import psycopg2.extras  # noqa: E402
 
@@ -473,6 +474,7 @@ def evaluate_query(
     cold_age_days: float,
     project: Optional[str],
     weight_variants: list[WeightVariant],
+    source_types: Optional[list[str]] = None,
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     qtext = query["query"]
@@ -504,6 +506,7 @@ def evaluate_query(
             weight_mode=var.weight_mode if var.weight_col else "full",
             weight_cap=var.weight_cap,
             cosine_bypass=var.cosine_bypass,
+            source_types=source_types,
         )
         by_mode[var.label] = _recall_metrics(
             [h["id"] for h in hits],
@@ -845,6 +848,8 @@ def main() -> int:
     ap.add_argument("--layer-ablate", action="store_true",
                     help="memory-layer ablation B0-B3: attribute cold recall to handoff/KB/external "
                          "layers (fixed non-LoCoMo oracle, live cap ranker per layer)")
+    ap.add_argument("--full-pool", action="store_true",
+                    help="live retrieval uses full source-type table (default: curated B2-minus-intake)")
     ap.add_argument("--no-write", action="store_true", help="skip writing the run JSON")
     ap.add_argument("--output", default="", help="write JSON to this path (default: runs/wce_<timestamp>.json)")
     args = ap.parse_args()
@@ -911,6 +916,7 @@ def main() -> int:
     if args.layer_ablate:
         return _run_layer_ablation(args, queries, default_k, payload, timestamp)
 
+    retrieval_source_types = None if args.full_pool else resolve_continuity_source_types()
     config = {
         "k": args.k or default_k,
         "oracle_n": args.oracle_n,
@@ -923,16 +929,28 @@ def main() -> int:
         "cosine_bypass": args.cosine_bypass,
         "cap_sweep": cap_sweep,
         "variant_labels": variant_labels,
+        "continuity_pool": "full" if args.full_pool else "curated",
+        "retrieval_source_types": retrieval_source_types,
     }
 
     results: list[dict[str, Any]] = []
     with PgBridge() as pg:
         eval_cfg = {
             k: v for k, v in config.items()
-            if k not in ("variant_labels", "cap_sweep", "weight_cap", "cosine_bypass")
+            if k not in (
+                "variant_labels", "cap_sweep", "weight_cap", "cosine_bypass",
+                "continuity_pool", "retrieval_source_types",
+            )
         }
         for q in queries:
-            results.append(evaluate_query(pg, q, weight_variants=weight_variants, **eval_cfg))
+            results.append(
+                evaluate_query(
+                    pg, q,
+                    weight_variants=weight_variants,
+                    source_types=retrieval_source_types,
+                    **eval_cfg,
+                )
+            )
 
     summary = aggregate(results, variant_labels)
     knee = pick_knee_cap(summary["by_mode"], baseline="log", min_warm=args.min_warm) if cap_sweep else {}
@@ -945,6 +963,9 @@ def main() -> int:
 
     # ── Human-readable report ──
     print("\nWCE — cold-relevant recall probe")
+    pool_note = config.get("continuity_pool", "curated")
+    n_types = len(config.get("retrieval_source_types") or [])
+    print(f"  retrieval pool: {pool_note}" + (f" ({n_types} source_types)" if n_types else ""))
     print(f"  config: k={config['k']} oracle_n={config['oracle_n']} "
           f"cosine_floor={config['cosine_floor']} "
           f"cold(visit<={config['cold_visit_max']}, age>={config['cold_age_days']}d)")

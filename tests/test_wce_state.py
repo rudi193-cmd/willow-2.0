@@ -91,3 +91,16 @@ def test_extract_wce_metrics_variant_labels_cap():
 def test_resolve_cold_recall_mode_from_by_mode_only():
     cold = {"summary": {"by_mode": {"off": {"cold_relevant_recall": 0.2}}}}
     assert _resolve_cold_recall_mode(cold) == "off"
+
+
+def test_format_wce_summary_includes_curated_pool():
+    metrics = {
+        "timestamp": "20260625T120000Z",
+        "cold_relevant_recall": 0.24,
+        "weight_mode": "cap",
+        "weight_cap": 1.4,
+        "continuity_pool": "curated",
+    }
+    line = format_wce_summary_line(metrics)
+    assert "pool=curated" in line
+    assert "mode=cap@1.4" in line
