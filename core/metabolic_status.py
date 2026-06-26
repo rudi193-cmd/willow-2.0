@@ -7,7 +7,7 @@ import sqlite3
 import subprocess
 from pathlib import Path
 
-from willow.fylgja.willow_home import fleet_home
+from willow.fylgja.willow_home import metabolic_fleet_home
 
 
 def _systemd_user_env() -> dict[str, str]:
@@ -76,11 +76,10 @@ def check_metabolic_status() -> dict:
         "consecrated": False,
     }
 
-    # The nightly briefing is a fleet-global artifact written to the fleet home store
-    # by the norn pass. Read it from fleet_home() — NOT resolve_store_root() — so a
-    # per-workspace WILLOW_STORE_ROOT override (repo-local SOIL isolation) does not
-    # make the probe look in an empty local store and under-report consecration.
-    briefings_db = fleet_home() / "store" / "briefings" / "daily.db"
+    # Fleet-global artifacts: use metabolic_fleet_home() so a repo-local
+    # WILLOW_HOME override (public-fallback MCP) does not hide briefings.
+    home = metabolic_fleet_home()
+    briefings_db = home / "store" / "briefings" / "daily.db"
     if briefings_db.exists():
         try:
             conn = sqlite3.connect(str(briefings_db))
@@ -93,7 +92,7 @@ def check_metabolic_status() -> dict:
         except Exception:
             pass
 
-    socket_path = fleet_home() / "metabolic.sock"
+    socket_path = home / "metabolic.sock"
     socket_state = _systemd_user_state("willow-metabolic.socket")
     if socket_state == "active" or socket_path.exists():
         result["socket"] = "active"
