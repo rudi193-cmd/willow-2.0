@@ -78,6 +78,13 @@ def _store_root() -> Path:
 
 # ── Version ───────────────────────────────────────────────────────────────────
 from core.version import VERSION
+from core.code_version import boot_sha as _boot_sha, staleness as _code_staleness
+
+# Stamp the commit this process started on, at import time, before any PR merged
+# after startup can advance HEAD under the running server. fleet_status compares
+# this to the live HEAD so a server running stale code is visible without anyone
+# having to remember a restart (the trap behind dream_state/SOIL/ledger drift).
+_boot_sha()
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -445,11 +452,29 @@ def _hot_reload(target: str = "all") -> dict:
         except Exception as e:
             errors.append(f"safe_agents: {e}")
 
-    return {
+    # Honesty: hot reload only re-imports the whitelist above. Core modules
+    # (dream_state, run_ledger, …) and the facade tool bodies in this file are
+    # NOT swapped — only a full process restart loads them. Surface that plus the
+    # live staleness so the caller is not misled into thinking a merged fix to
+    # one of those is now live.
+    stale = _code_staleness()
+    out = {
         "status":   "reloaded" if not errors else "partial",
         "reloaded": reloaded,
         "errors":   errors if errors else None,
+        "code_version": stale,
+        "not_hot_swappable": (
+            "core.* modules (dream_state, run_ledger, kart_worker, …) and the "
+            "sap_mcp facade tool bodies are NOT reloaded here — only fleet_restart "
+            "(full process exit) loads them."
+        ),
     }
+    if stale.get("stale"):
+        out["warning"] = (
+            "on-disk code is ahead of the running process — fleet_reload cannot "
+            "activate changes outside its module whitelist; run fleet_restart."
+        )
+    return out
 
 
 # ── Tools — fleet_ domain ─────────────────────────────────────────────────────
@@ -530,6 +555,7 @@ async def fleet_status(app_id: str) -> dict:
         "frank_ledger": frank_ledger,
         "gate_mode":   _gm,
         "gate_hostname_check": _ghd,
+        "code_version": _code_staleness(),
         "mode":        "portless",
     }
 
