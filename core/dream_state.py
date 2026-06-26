@@ -44,14 +44,24 @@ def dream_conditions(
         try:
             pg._ensure_conn()
             with pg.conn.cursor() as cur:
+                # Count real sessions only. Kart shell tasks also open willow.runs
+                # rows (purpose='kart:...', one per task) and currently land with a
+                # NULL parent_run_id because the kart-worker daemon cannot see the
+                # session's run file — so they masquerade as top-level sessions and
+                # inflate this count ~16x. Exclude them so the dream gate counts
+                # boots, not shell commands. See flag dream-kart-runs-pollution.
                 if last_str:
                     cur.execute(
-                        "SELECT COUNT(*) FROM willow.runs WHERE initiator=%s AND started_at > %s",
+                        "SELECT COUNT(*) FROM willow.runs "
+                        "WHERE initiator=%s AND started_at > %s "
+                        "AND (purpose IS NULL OR purpose NOT LIKE 'kart:%%')",
                         (app_id, last_str),
                     )
                 else:
                     cur.execute(
-                        "SELECT COUNT(*) FROM willow.runs WHERE initiator=%s",
+                        "SELECT COUNT(*) FROM willow.runs "
+                        "WHERE initiator=%s "
+                        "AND (purpose IS NULL OR purpose NOT LIKE 'kart:%%')",
                         (app_id,),
                     )
                 row = cur.fetchone()
