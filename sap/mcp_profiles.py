@@ -46,6 +46,7 @@ _MINIMAL = _ALWAYS | {
     "handoff_latest",
     "mai_read_file",
     "kb_search",
+    "kb_startup_continuity",
     "kb_get",
     "grove_inbox",
     "agent_task_submit",

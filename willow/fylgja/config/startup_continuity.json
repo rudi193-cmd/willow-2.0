@@ -1,5 +1,6 @@
 {
   "b17": "STCN0",
+  "continuity": true,
   "kb_searches": [
     {"query": "mcp.json willow grove openclaw manifest signing", "limit": 6},
     {"query": "willow_memory_check SessionStart restart-server", "limit": 6},
