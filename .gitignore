@@ -111,3 +111,4 @@ docs/api/
 willow/bench/locomo/external_runs/
 willow/bench/locomo/data/
 handoffs/
+unsloth_compiled_cache/
