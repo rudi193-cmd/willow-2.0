@@ -373,9 +373,9 @@ def test_count_warn_not_emitted_below_threshold(tmp_path, monkeypatch):
 
 
 def test_grep_blocks_on_first_attempt(tmp_path, monkeypatch):
-    """grep is a read-only habit with a first-class Grep tool — block immediately,
-    no free first attempt, and name the Grep tool in the redirect so the agent
-    reaches for the right tool without burning a strike."""
+    """grep is a read-only habit — block immediately, no free first attempt, and
+    name a tool that exists in the session (NOT native Grep, which is absent under
+    the Willow MCP profile) so the agent routes right without burning a strike."""
     monkeypatch.setattr(_pt, "_session_rule_strikes_path", lambda sid: tmp_path / f"strikes-{sid}.json")
     monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
     out1 = _run_pre_tool({
@@ -386,11 +386,15 @@ def test_grep_blocks_on_first_attempt(tmp_path, monkeypatch):
     assert out1.strip()
     data1 = json.loads(out1)
     assert data1["decision"] == "block"
-    assert "Grep(" in data1["reason"]
+    reason = data1["reason"]
+    assert "Grep(" not in reason
+    assert "willow_find" in reason or "code_graph_search" in reason
+    assert "willow_run" in reason or "agent_task_submit" in reason
 
 
 def test_find_blocks_on_first_attempt(tmp_path, monkeypatch):
-    """find → Glob/code_graph_search; block on first attempt, no free strike."""
+    """find → code_graph_search/willow_find/Kart; block on first attempt, no free
+    strike, and never name native Glob (absent under the Willow MCP profile)."""
     monkeypatch.setattr(_pt, "_session_rule_strikes_path", lambda sid: tmp_path / f"strikes-{sid}.json")
     monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
     out1 = _run_pre_tool({
@@ -401,7 +405,10 @@ def test_find_blocks_on_first_attempt(tmp_path, monkeypatch):
     assert out1.strip()
     data1 = json.loads(out1)
     assert data1["decision"] == "block"
-    assert "Glob(" in data1["reason"]
+    reason = data1["reason"]
+    assert "Glob(" not in reason
+    assert "code_graph_search" in reason or "willow_find" in reason
+    assert "willow_run" in reason or "agent_task_submit" in reason
 
 
 def test_warn_escalates_to_block_on_second_strike(tmp_path, monkeypatch):

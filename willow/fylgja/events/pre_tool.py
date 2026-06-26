@@ -193,8 +193,9 @@ BASH_BLOCKS = [
      "grep detected. Prefer MCP over shell grep — it searches indexed content without a subprocess. "
      "→ kb_search({app_id, query}) · code_graph_search({query}) · soil_search({collection, query})"),
     (r"\bfind\s", "warn",
-     "find detected. Prefer MCP: code_graph_search or Glob for file discovery. "
-     "→ Glob({pattern: '<dir>/**/*.py'}) · code_graph_search({query: '<symbol>'})"),
+     "find detected. Prefer MCP for code/file discovery. "
+     "→ code_graph_search({query: '<symbol>'}) · willow_find(scope=code) · "
+     "file enumeration → willow_run(script_body=...) / Kart"),
     (r"^\s*bash\s+", "warn",
      "bash <script> detected. Prefer Kart for script execution. "
      "→ agent_task_submit(app_id, task='bash scripts/foo.sh') + kart_task_run(app_id)"),
