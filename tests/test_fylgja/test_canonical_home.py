@@ -5,6 +5,7 @@ from willow.fylgja.agents_cli import cmd_check
 from willow.fylgja.install_project import export_home_mcp, install_codex, render_mcp_config
 from willow.fylgja.willow_home import (
     fleet_home,
+    metabolic_fleet_home,
     resolve_secrets_path,
     resolve_store_root,
     willow_home,
@@ -87,6 +88,41 @@ def test_willow_home_resolvers(tmp_path, monkeypatch):
     (wh / "secrets.sh").write_text("# test\n", encoding="utf-8")
     assert resolve_secrets_path() == wh / "secrets.sh"
     assert willow_home_alias() == Path.home() / ".willow"
+
+
+def test_metabolic_fleet_home_prefers_private_when_config_on_disk(
+    tmp_path, monkeypatch
+):
+    generated = tmp_path / "generated"
+    generated.mkdir()
+    private = tmp_path / "private"
+    private.mkdir()
+    (private / "willow.md").write_text("private\n", encoding="utf-8")
+
+    monkeypatch.setenv("WILLOW_HOME", str(generated))
+    monkeypatch.setenv("WILLOW_CONFIG_MODE", "public-fallback")
+    monkeypatch.setattr(
+        "willow.fylgja.willow_home.private_home", lambda: private
+    )
+    monkeypatch.setattr(
+        "willow.fylgja.willow_home.private_config_available", lambda: True
+    )
+
+    assert fleet_home() == generated.resolve()
+    assert metabolic_fleet_home() == private
+
+
+def test_metabolic_fleet_home_follows_fleet_home_without_private_config(
+    tmp_path, monkeypatch
+):
+    generated = tmp_path / "generated"
+    generated.mkdir()
+    monkeypatch.setenv("WILLOW_HOME", str(generated))
+    monkeypatch.setattr(
+        "willow.fylgja.willow_home.private_config_available", lambda: False
+    )
+
+    assert metabolic_fleet_home() == generated.resolve()
 
 
 def test_render_mcp_includes_grove_fields(tmp_path):

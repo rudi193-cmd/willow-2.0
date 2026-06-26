@@ -64,6 +64,19 @@ def fleet_home(package_root: Path | None = None) -> Path:
     return generated_home(package_root)
 
 
+def metabolic_fleet_home(package_root: Path | None = None) -> Path:
+    """Home for fleet-global metabolic artifacts (briefings, socket).
+
+    ``WILLOW_HOME`` may point at the repo-local generated pack for vendored
+    public-fallback MCP configs (``.cursor/mcp.json``) while the operator's
+    private fleet home still holds nightly briefings. When private config
+    exists on disk, always probe there — same rule as #466 for store-root.
+    """
+    if private_config_available():
+        return private_home()
+    return fleet_home(package_root)
+
+
 def config_mode(package_root: Path | None = None) -> str:
     forced = os.environ.get("WILLOW_CONFIG_MODE", "").strip().lower()
     if forced in ("private-config", "public-fallback", "degraded"):
