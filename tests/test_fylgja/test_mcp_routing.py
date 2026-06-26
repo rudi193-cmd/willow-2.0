@@ -26,18 +26,36 @@ def test_redirect_gh_blocks_to_kart():
     assert "allow_net" in result[1].lower()
 
 
-def test_redirect_grep_blocks_and_names_grep_tool():
+def test_redirect_grep_routes_to_available_tools():
     result = redirect_for_command("grep -rn foo willow/")
     assert result is not None
     assert result[0] == "block"
-    assert "Grep(" in result[1]
+    # Must NOT point at native Grep/Glob — absent under the Willow MCP profile,
+    # which sends agents to a tool the session lacks and they bounce to Bash.
+    assert "Grep(" not in result[1]
+    assert "Glob(" not in result[1]
+    # Must name lanes that always exist when this redirect fires.
+    assert "willow_find" in result[1] or "code_graph_search" in result[1]
+    assert "willow_run" in result[1] or "agent_task_submit" in result[1]
 
 
-def test_redirect_find_blocks_and_names_glob():
+def test_redirect_find_routes_to_available_tools():
     result = redirect_for_command("find . -name '*.py'")
     assert result is not None
     assert result[0] == "block"
-    assert "Glob(" in result[1]
+    assert "Glob(" not in result[1]
+    assert "code_graph_search" in result[1] or "willow_find" in result[1]
+    assert "willow_run" in result[1] or "agent_task_submit" in result[1]
+
+
+def test_no_redirect_names_native_grep_or_glob():
+    """Regression: no BASH_TO_MCP hint may steer to native Grep/Glob — they are
+    not in the Willow MCP profile this redirect runs under."""
+    from willow.fylgja.mcp_routing import BASH_TO_MCP
+
+    for _pattern, _decision, hint in BASH_TO_MCP:
+        assert "Grep(" not in hint, hint
+        assert "Glob(" not in hint, hint
 
 
 def test_format_brief_two_lanes():

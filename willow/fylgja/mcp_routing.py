@@ -17,20 +17,25 @@ _REGISTRY_PATH = Path(__file__).resolve().parents[2] / "sap" / "mcp_registry.jso
 
 _KART = "agent_task_submit → kart_task_run (see /kart)"
 _SCRIPT = "agent_task_submit(script_body=...) — avoids MCP JSON quote breakage"
+# Always-available shell fallback when no Willow tool fits. Native Grep/Glob are
+# NOT in the Willow MCP profile (this redirect only fires when Willow enforcement
+# is active), so pointing at them sends agents to a tool the session lacks — they
+# bounce back to Bash and the block counter climbs. Route to lanes that exist.
+_RUN = f"{_KART} or willow_run(script_body=...)"
 
 # shell habit → (decision, redirect message)
 BASH_TO_MCP: list[tuple[str, str, str]] = [
-    (r"^\s*ls(\s|$)", "block", f"Glob(pattern='<dir>/*') to list files · soil_list/app_list for Willow data · shell-only → {_KART}"),
+    (r"^\s*ls(\s|$)", "block", f"soil_list/app_list for Willow data · filesystem listing → {_RUN}"),
     (r"^\s*(cat|head|tail)\s", "block", f"Read · mai_read_file (repo files) · shell-only → {_KART}"),
     (r"^\s*psql\s", "block", "kb_query · soil_search — Postgres via MCP, not shell"),
     (r"\bsqlite3\b", "block", "soil_get · soil_list · soil_search"),
     (r"^\s*pwd\s*$", "warn", "cwd is in context; fleet_status for roots"),
-    (r"^\s*tree(\s|$)", "block", f"Glob(pattern='<dir>/**') · shell-only → {_KART}"),
+    (r"^\s*tree(\s|$)", "block", f"directory tree → {_RUN}"),
     (r"^\s*du(\s|$)", "warn", f"fleet_system_status · {_KART}"),
     (r"^\s*git\s", "block", f"{_KART} · allow_net=True for push/fetch — agent Bash has no git creds"),
     (r"^\s*gh\s", "block", f"{_KART} · allow_net=True — agent Bash has no gh creds"),
-    (r"\bgrep\b", "block", f"Grep(pattern='<regex>', path='<dir>') for repo/code search · kb_search/soil_search for Willow knowledge · shell-only → {_KART}"),
-    (r"\bfind\s", "block", f"Glob(pattern='**/*.py') for files · code_graph_search for symbols · shell-only → {_KART}"),
+    (r"\bgrep\b", "block", f"willow_find(scope=code) · code_graph_search for code · kb_search/soil_search for Willow knowledge · raw text → {_RUN}"),
+    (r"\bfind\s", "block", f"code_graph_search · willow_find(scope=code) for code · file enumeration → {_RUN}"),
     (r"(?i)python3?\s+-m\s+(willow|sap|core)\.", "block", "Matching MCP tool — sap/mcp_registry.json"),
     (r"(?i)python3?\s+(-c|--command)\s", "warn", _SCRIPT),
 ]
