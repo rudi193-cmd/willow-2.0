@@ -39,12 +39,9 @@ def test_silent_startup_reads_session_id_key():
             return {"error": "not_found"}
         return {}
 
-    # _run_silent_startup also reads the cross-runtime bridge directly from disk
-    # (willow.fylgja.cross_runtime.read_bridge), which bypasses the patched
-    # ss.call. Without mocking it the test leaks the real local bridge's next_bite
-    # and fails outside a clean CI env. Force an empty bridge so the composite
-    # store path under test is what drives next_bite.
-    with patch("willow.fylgja.cross_runtime.read_bridge", return_value={}):
+    # _run_silent_startup calls ensure_fresh_bridge (not read_bridge directly).
+    # Without mocking it, CI runs build_bridge() and leaks a real next_bite.
+    with patch("willow.fylgja.cross_runtime.ensure_fresh_bridge", return_value={}):
         with patch.object(ss, "call", fake_call):
             with patch.object(ss, "AGENT", "hanuman"):
                 result = ss._run_silent_startup("abcdef1234567890")
