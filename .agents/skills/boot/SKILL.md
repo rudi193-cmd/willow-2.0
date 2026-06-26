@@ -143,7 +143,7 @@ Empty → skip. Surface count in boot report.
 `ledger_read(project=<agent>, limit=3)` — use the fleet agent id (`WILLOW_AGENT_NAME` / `active-agent`), not the OS username. Newest entry `content.atoms_written` → priority IDs to skim.
 
 **12. KB continuity + registry orientation** *(parallel)*
-Read `willow/fylgja/config/startup_continuity.json` — run each `kb_searches[]` entry in parallel. Skim titles/summaries — full atom only if tied to open flag or handoff gap. All empty → skip.
+`kb_startup_continuity(app_id=<boot agent>)` — curated-pool batch from `startup_continuity.json`. Skim `results[].top`; `kb_get` only if tied to open flag or handoff gap. All empty → skip.
 
 Also orient against these registries if not already loaded this session:
 

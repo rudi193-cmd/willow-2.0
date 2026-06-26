@@ -150,7 +150,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
         "soil_list", "soil_search_all",
     }),
     "postgres_read": frozenset({
-        "kb_search", "kb_query", "kb_at", "kb_get",
+        "kb_search", "kb_startup_continuity", "kb_query", "kb_at", "kb_get",
         "fleet_agents", "fleet_status", "fleet_system_status",
         "fleet_identity_status", "fleet_governance", "mem_check",
         "handoff_latest", "handoff_search",
@@ -236,7 +236,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
     # Combined read: postgres_read + store_read + safe_manifest_read.
     # Used by SAFE partition manifests (e.g. Willow-dashboard).
     "willow_kb_read": frozenset({
-        "kb_search", "kb_query", "kb_at", "kb_get",
+        "kb_search", "kb_startup_continuity", "kb_query", "kb_at", "kb_get",
         "fleet_agents", "fleet_status", "fleet_system_status",
         "fleet_governance", "mem_check",
         "handoff_latest", "handoff_search",

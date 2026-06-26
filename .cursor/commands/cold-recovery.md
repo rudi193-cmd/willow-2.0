@@ -70,7 +70,7 @@ Also use (no MCP required):
 Add only if Step 2 pointer requires verification:
 ```
 gh pr view <n> --json state
-kb_search(app_id=<agent>, query=<topic>, limit=5)
+kb_search(app_id=<agent>, query=<topic>, limit=5, continuity=true)
 Grep session JSONL for closing exchange
 ```
 
@@ -123,7 +123,7 @@ One search per active topic. Record thread id/title, where it lives, one-line st
 | Tool / source | Query pattern |
 |---------------|---------------|
 | `handoff_search(app_id, query=<topic>, limit=5)` | Project names from user message or Step 1 |
-| `kb_search(app_id, query=<topic>, limit=5)` | Canonical decisions only |
+| `kb_search(app_id, query=<topic>, limit=5, continuity=true)` | Canonical decisions only |
 | Grep `$WILLOW_HOME/handoffs/<agent>/` | Filename + summary match |
 | Grep `~/.claude/projects/` session JSONL | Session ids tied to topic |
 

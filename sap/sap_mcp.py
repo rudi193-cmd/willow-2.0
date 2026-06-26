@@ -1001,6 +1001,69 @@ async def kb_search(
     return await loop.run_in_executor(_executor, _search)
 
 
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def kb_startup_continuity(
+    app_id: str,
+    limit: int = 0,
+) -> dict:
+    """Run boot/cold-recovery KB continuity searches from startup_continuity.json.
+
+    Each query uses continuity=True (curated B2-minus-intake pool) unless an entry
+    sets continuity=false. Skim titles/summaries; kb_get only when tied to a gap.
+    limit>0 caps every entry; default uses per-entry limits from the config."""
+    from willow.fylgja.startup_continuity import iter_kb_searches, load_config
+
+    logger.info("[w2] kb_startup_continuity app_id=%s limit=%s", app_id, limit)
+    try:
+        cfg = load_config()
+        entries = iter_kb_searches(cfg)
+    except Exception as exc:
+        return {"error": "config_load_failed", "reason": str(exc)[:200]}
+
+    async def _one(entry: dict) -> dict:
+        q = entry["query"]
+        entry_limit = int(entry.get("limit") or 6)
+        use_limit = limit if limit > 0 else entry_limit
+        semantic = bool(entry.get("semantic", True))
+        continuity = bool(entry.get("continuity", True))
+        tier = str(entry.get("tier") or "")
+        result = await kb_search(
+            app_id=app_id,
+            query=q,
+            limit=use_limit,
+            semantic=semantic,
+            tier=tier,
+            expand_neighbors=True,
+            continuity=continuity,
+        )
+        hits = result.get("knowledge") or []
+        return {
+            "query": q,
+            "limit": use_limit,
+            "semantic": semantic,
+            "continuity": continuity,
+            "total": result.get("total", len(hits)),
+            "mode": result.get("mode"),
+            "top": [
+                {
+                    "id": a.get("id"),
+                    "title": a.get("title"),
+                    "summary": (a.get("summary") or "")[:240],
+                }
+                for a in hits[:use_limit]
+            ],
+        }
+
+    batches = await asyncio.gather(*[_one(e) for e in entries])
+    return {
+        "continuity_pool": "curated",
+        "queries_run": len(batches),
+        "config_b17": cfg.get("b17"),
+        "results": batches,
+    }
+
+
 @mcp.tool()
 @sap_gate(write=True)
 async def kb_promote(
