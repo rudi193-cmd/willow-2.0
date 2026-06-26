@@ -8,9 +8,56 @@ from __future__ import annotations
 
 import json
 
+from sap.handoff_index import latest_handoff_sort_key
 from willow.fylgja.willow_home import willow_home
 
 BRIDGE_PATH = willow_home() / "handoffs" / "cross-runtime.json"
+
+
+def handoff_recency_key(filename: str = "", date: str = "") -> tuple[str, str, str, str]:
+    """Sortable recency key for session handoff filenames or ISO dates."""
+    name = (filename or "").strip()
+    if name:
+        key = latest_handoff_sort_key(name, (date or "")[:10])
+        if key[0]:
+            return key
+    d = (date or "")[:10]
+    if d:
+        return (d, "", "", name)
+    return ("", "", "", name)
+
+
+def bridge_covers_handoff(
+    bridge: dict,
+    handoff_filename: str,
+    handoff_date: str = "",
+) -> bool:
+    """True when the bridge was built from a handoff at least as new as the live handoff."""
+    if not bridge:
+        return False
+    live_key = handoff_recency_key(handoff_filename, handoff_date)
+    if not live_key[0]:
+        return True
+    bridge_source = str(bridge.get("handoff_source") or "").strip()
+    if not bridge_source:
+        return False
+    return handoff_recency_key(bridge_source) >= live_key
+
+
+def ensure_fresh_bridge(agent: str, handoff_filename: str, handoff_date: str = "") -> dict:
+    """Return cross-runtime bridge; rebuild from disk handoffs when older than live handoff."""
+    bridge = read_bridge()
+    if bridge_covers_handoff(bridge, handoff_filename, handoff_date):
+        return bridge
+    try:
+        from scripts.bridge_cross_runtime import BRIDGE_PATH as _path, HANDOFF_DIR, build_bridge
+
+        HANDOFF_DIR.mkdir(parents=True, exist_ok=True)
+        fresh = build_bridge(agent=agent)
+        _path.write_text(json.dumps(fresh, indent=2) + "\n", encoding="utf-8")
+        return fresh
+    except Exception:
+        return bridge
 
 
 def read_bridge() -> dict:
