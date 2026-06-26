@@ -14,11 +14,13 @@ enables the fleet units with `systemctl --user`. All timers set
 | `willow-metabolic.timer` | nightly `03:00` | `willow.sh metabolic` | Norn pass — KB metabolism (demote/retire stale atoms) |
 | `willow-w8-census.timer` | weekly `Mon 04:00` | `willow.sh w8-census` | W8 canonical-reconstruction census — the trust instrument's heartbeat |
 | `willow-wce.timer` | weekly `Mon 05:00` | `willow.sh wce` | WCE continuity eval — thread recall, next-bite, surfacing, staleness vector |
+| `willow-bridge-cross-runtime.timer` | daily `06:00` | `willow.sh bridge-cross-runtime` | Rebuild `cross-runtime.json` from latest handoff + session JSONL |
 | `repo-fleet-sweep.timer` | weekly `Mon 04:00` | `repo-fleet-sweep.service` | Repo hygiene sweep (diverged/unpushed repos, branch litter) |
 
 **Enablement:** `setup.sh` enables `willow-metabolic.socket` (on-demand Norn pass),
 `willow-metabolic.timer` (nightly `03:00`), `willow-w8-census.timer`, and
 `willow-wce.timer`. WCE timer only (existing install): `scripts/install_wce_timer.sh`.
+Bridge timer only (existing install): `scripts/install_bridge_timer.sh`.
 One-shot consecration on an existing install: `scripts/consecrate_metabolic.sh` (copies units,
 enables socket+timer, runs first Norn pass). Other units, including
 `repo-fleet-sweep.timer`, are linked and can be enabled on demand with

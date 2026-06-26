@@ -326,6 +326,12 @@ print(json.dumps({
         WILLOW_PG_DB="${WILLOW_PG_DB}" exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/scripts/wce_witness.py" --check-first "$@"
         ;;
 
+    bridge-cross-runtime)
+        echo "Willow 2.0 — rebuild cross-runtime handoff bridge"
+        shift
+        WILLOW_PG_DB="${WILLOW_PG_DB}" exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/scripts/bridge_cross_runtime.py" "$@"
+        ;;
+
     kart-worker)
         echo "Willow 2.0 — starting Kart worker"
         exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/scripts/run_kart.py"
@@ -1010,7 +1016,7 @@ else:
         ;;
 
     *)
-        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|agents [list|active <id>|install <id>|check]|mcp [list|init|sync|check|audit]|project [list|sync|check]|venv [check|sync]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|w8-census|wce|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
+        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|agents [list|active <id>|install <id>|check]|mcp [list|init|sync|check|audit]|project [list|sync|check]|venv [check|sync]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|w8-census|wce|bridge-cross-runtime|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
         exit 1
         ;;
 esac

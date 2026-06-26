@@ -1,0 +1,11 @@
+[Unit]
+Description=Willow cross-runtime bridge — daily handoff bridge refresh
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=true
+Unit=willow-bridge-cross-runtime.service
+
+[Install]
+WantedBy=timers.target
