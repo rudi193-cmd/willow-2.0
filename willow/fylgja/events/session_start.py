@@ -392,18 +392,27 @@ def _run_silent_startup(session_id: str = "") -> dict:
     except Exception as e:
         result["mcp_errors"].append({"step": "handoff", "error": str(e)[:80]})
 
-    # 1b. Cross-runtime bridge — handoff-aligned threads + next bite (all IDEs)
+    # 1b. Cross-runtime bridge — threads + next bite only when as new as handoff_latest
     try:
-        from willow.fylgja.cross_runtime import read_bridge
+        from willow.fylgja.cross_runtime import bridge_covers_handoff, ensure_fresh_bridge
 
-        bridge = read_bridge()
-        if isinstance(bridge, dict):
+        handoff_file = result.get("handoff_title") or ""
+        bridge = ensure_fresh_bridge(AGENT, handoff_file, handoff_date)
+        if isinstance(bridge, dict) and bridge_covers_handoff(bridge, handoff_file, handoff_date):
             bridge_threads = bridge.get("open_threads") or []
             if bridge_threads:
                 result["handoff_threads"] = bridge_threads
             bridge_bite = str(bridge.get("next_bite") or "").strip()
             if bridge_bite and not _is_generic_next_bite(bridge_bite):
                 result["next_bite"] = bridge_bite
+        elif bridge:
+            result["mcp_errors"].append({
+                "step": "cross_runtime",
+                "error": (
+                    f"stale bridge ({bridge.get('handoff_source', '?')}) "
+                    f"skipped for {handoff_file or 'live handoff'}"
+                )[:120],
+            })
     except Exception as e:
         result["mcp_errors"].append({"step": "cross_runtime", "error": str(e)[:80]})
 
