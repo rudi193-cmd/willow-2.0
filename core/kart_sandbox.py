@@ -23,6 +23,7 @@ from pathlib import Path
 _log = logging.getLogger("kart.sandbox")
 
 _ALLOW_NET_DIRECTIVE = "# allow_net"
+_ALLOW_LOCALHOST_DIRECTIVE = "# allow_localhost"
 _DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "willow" / "fylgja" / "config" / "kart-sandbox.json"
 
 # Credential-bearing env prefixes (GAP-B). Only passed into the sandbox when a task
@@ -253,9 +254,17 @@ def collect_config_symlinks(root: Path | None = None) -> list[tuple[str, str]]:
     return links
 
 
-def build_bwrap_argv(*, allow_net: bool = False, root: Path | None = None) -> list[str]:
+def build_bwrap_argv(
+    *,
+    allow_net: bool = False,
+    allow_localhost: bool = False,
+    root: Path | None = None,
+) -> list[str]:
     args = ["bwrap"]
-    if not allow_net:
+    # Isolated: --unshare-net blocks all sockets (including 127.0.0.1:11434 Ollama).
+    # allow_localhost shares the host net ns so loopback services work, but does NOT
+    # mount credentials (GAP-B) — unlike allow_net.
+    if not allow_net and not allow_localhost:
         args.append("--unshare-net")
     # KP2 — namespace + kernel-surface hardening.
     #  --tmpfs /tmp + /dev/shm : private scratch, not a host bind (S11, S16) — no
@@ -384,6 +393,19 @@ def task_allows_network(task_text: str) -> bool:
     return any(line.strip() == _ALLOW_NET_DIRECTIVE for line in task_text.splitlines())
 
 
+def task_allows_localhost(task_text: str) -> bool:
+    return any(line.strip() == _ALLOW_LOCALHOST_DIRECTIVE for line in task_text.splitlines())
+
+
+def parse_task_network(task_text: str) -> tuple[str, bool, bool]:
+    """Strip network directives; return (cmd_body, allow_net, allow_localhost)."""
+    allow_net = task_allows_network(task_text)
+    allow_localhost = (not allow_net) and task_allows_localhost(task_text)
+    skip = {_ALLOW_NET_DIRECTIVE, _ALLOW_LOCALHOST_DIRECTIVE}
+    lines = [line for line in task_text.splitlines() if line.strip() not in skip]
+    return "\n".join(lines).strip(), allow_net, allow_localhost
+
+
 def _parse_fleet_env_file(path: Path, prefixes: tuple[str, ...]) -> dict[str, str]:
     """Parse a shell KEY=VALUE env file. Skips comments and blank lines.
     Only includes keys matching prefixes. Strips surrounding quotes from values."""
@@ -407,7 +429,12 @@ def _parse_fleet_env_file(path: Path, prefixes: tuple[str, ...]) -> dict[str, st
     return result
 
 
-def kart_env(root: Path | None = None, *, allow_net: bool = False) -> dict[str, str]:
+def kart_env(
+    root: Path | None = None,
+    *,
+    allow_net: bool = False,
+    allow_localhost: bool = False,
+) -> dict[str, str]:
     repo = root or willow_repo_root()
     cfg = load_sandbox_config(repo)
     prefixes = tuple(cfg.get("env_prefixes") or ("WILLOW_", "GROVE_", "PG", "POSTGRES", "OLLAMA_", "GIT_", "ANTHROPIC_", "GROQ_"))
@@ -423,6 +450,7 @@ def kart_env(root: Path | None = None, *, allow_net: bool = False) -> dict[str, 
         # Marker so code inside bwrap tasks can detect the Kart sandbox context.
         "WILLOW_IN_KART": "1",
         "WILLOW_KART_ALLOW_NET": "1" if allow_net else "0",
+        "WILLOW_KART_ALLOW_LOCALHOST": "1" if allow_localhost and not allow_net else "0",
     }
     for key, val in os.environ.items():
         if key.startswith(prefixes):
@@ -512,7 +540,12 @@ def kart_env(root: Path | None = None, *, allow_net: bool = False) -> dict[str, 
     return env
 
 
-def sandbox_manifest(*, allow_net: bool = False, root: Path | None = None) -> dict:
+def sandbox_manifest(
+    *,
+    allow_net: bool = False,
+    allow_localhost: bool = False,
+    root: Path | None = None,
+) -> dict:
     """KP3 — declare the boundary so a caller can tell 'empty' from 'absent'.
 
     Reports the roots that ARE mounted (rw vs ro), the tmpfs scratch, the network
@@ -528,10 +561,20 @@ def sandbox_manifest(*, allow_net: bool = False, root: Path | None = None) -> di
             (bound_ro if read_only else bound_rw).append(str(host))
     except Exception:
         pass
-    path_dirs = kart_env(root, allow_net=allow_net).get("PATH", "").split(":")
+    path_dirs = kart_env(
+        root, allow_net=allow_net, allow_localhost=allow_localhost
+    ).get("PATH", "").split(":")
+    if allow_net:
+        network_mode = "full"
+    elif allow_localhost:
+        network_mode = "localhost"
+    else:
+        network_mode = "isolated"
     return {
         "engine": engine,
         "allow_net": allow_net,
+        "allow_localhost": allow_localhost and not allow_net,
+        "network_mode": network_mode,
         "bound_rw": sorted(bound_rw),
         "bound_ro": sorted(bound_ro),
         "tmpfs": ["/tmp", "/dev/shm"] if engine == "bwrap" else [],
@@ -568,6 +611,7 @@ def run_shell(
     *,
     timeout: int = 120,
     allow_net: bool = False,
+    allow_localhost: bool = False,
     cwd: str | None = None,
     env: dict[str, str] | None = None,
 ) -> dict:
@@ -576,7 +620,7 @@ def run_shell(
     Returns {returncode, stdout, stderr, elapsed_s, sandbox: bwrap|plain}.
     """
     started = time.time()
-    run_env = kart_env(allow_net=allow_net)
+    run_env = kart_env(allow_net=allow_net, allow_localhost=allow_localhost)
     if env:
         run_env.update(env)
     if cwd:
@@ -598,7 +642,9 @@ def run_shell(
     pass_fds: tuple[int, ...] = ()
     status_file = None
     if use_bwrap():
-        prefix = build_bwrap_argv(allow_net=allow_net)
+        prefix = build_bwrap_argv(
+            allow_net=allow_net, allow_localhost=allow_localhost
+        )
         # KP3/S15: --json-status-fd lets us tell a sandbox-SETUP failure (mount/ns
         # error, bwrap exits before exec) from a COMMAND failure. bwrap writes
         # {"child-pid":N} once the child execs; its absence on a non-zero exit
@@ -688,9 +734,20 @@ def clip_output(text: str, limit: int) -> str:
     return f"{text[:head]}\n…[kart: {dropped} chars clipped]…\n{text[-tail:]}"
 
 
-def run_shell_result_for_task(cmd: str, *, timeout: int = 120, allow_net: bool = False) -> tuple[str, dict]:
+def run_shell_result_for_task(
+    cmd: str,
+    *,
+    timeout: int = 120,
+    allow_net: bool = False,
+    allow_localhost: bool = False,
+) -> tuple[str, dict]:
     """Normalize run_shell output for pg.task_complete(status, result)."""
-    raw = run_shell(cmd, timeout=timeout, allow_net=allow_net)
+    raw = run_shell(
+        cmd,
+        timeout=timeout,
+        allow_net=allow_net,
+        allow_localhost=allow_localhost,
+    )
     status = "completed" if raw.get("returncode") == 0 and raw.get("error") != "timeout" else "failed"
     result = {
         "returncode": raw.get("returncode"),
@@ -726,7 +783,11 @@ def run_shell_result_for_task(cmd: str, *, timeout: int = 120, allow_net: bool =
     # tell "this is empty" from "I couldn't see this." Best-effort — never fail the
     # task over manifest construction.
     try:
-        manifest = sandbox_manifest(allow_net=allow_net, root=None)
+        manifest = sandbox_manifest(
+            allow_net=allow_net,
+            allow_localhost=allow_localhost,
+            root=None,
+        )
         notes = unreachable_notes(cmd, manifest)
         if notes:
             manifest["notes"] = notes
@@ -782,7 +843,10 @@ def write_task_log(
         log_dir.mkdir(parents=True, exist_ok=True)
 
         manifest = result.get("sandbox_manifest") or {}
-        env = kart_env(allow_net=bool(manifest.get("allow_net")))
+        env = kart_env(
+            allow_net=bool(manifest.get("allow_net")),
+            allow_localhost=bool(manifest.get("allow_localhost")),
+        )
         meta = {
             "task_id": str(task_id),
             "cmd": cmd[:4000],
@@ -793,6 +857,8 @@ def write_task_log(
             "sandbox": result.get("sandbox"),
             "sandbox_setup": result.get("sandbox_setup"),
             "allow_net": manifest.get("allow_net"),
+            "allow_localhost": manifest.get("allow_localhost"),
+            "network_mode": manifest.get("network_mode"),
             "cwd": os.getcwd(),
             "written_at": _dt.datetime.now().astimezone().isoformat(),
             "bwrap_argv_summary": {

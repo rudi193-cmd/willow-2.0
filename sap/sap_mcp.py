@@ -1526,6 +1526,7 @@ async def agent_task_submit(
     agent:        str = "kart",
     submitted_by: str = "ganesha",
     allow_net:    bool = False,
+    allow_localhost: bool = False,
 ) -> dict:
     """Queue shell work for Kart (execution plane). Returns task_id immediately.
 
@@ -1535,8 +1536,12 @@ async def agent_task_submit(
     script_body must be Python (it always runs via python3); shell goes in task=.
 
     Set allow_net=True for git push, gh, curl, etc.
+    Set allow_localhost=True for loopback-only work (Ollama embeds) without credentials.
     After submit, call kart_task_run(app_id) or wait for kart-worker / Stop kart_poll."""
-    logger.info("[w2] agent_task_submit app_id=%s agent=%s allow_net=%s", app_id, agent, allow_net)
+    logger.info(
+        "[w2] agent_task_submit app_id=%s agent=%s allow_net=%s allow_localhost=%s",
+        app_id, agent, allow_net, allow_localhost,
+    )
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
@@ -1548,7 +1553,12 @@ async def agent_task_submit(
     except Exception as e:
         return {"error": f"prepare task: {e}"}
 
-    task_text = cmd if not allow_net else cmd + "\n# allow_net"
+    if allow_net:
+        task_text = cmd + "\n# allow_net"
+    elif allow_localhost:
+        task_text = cmd + "\n# allow_localhost"
+    else:
+        task_text = cmd
 
     from core.kart_task_scan import check_kart_task
 
@@ -3688,7 +3698,7 @@ async def dream_schedule(
 ) -> dict:
     """Queue AutoDream (auto_dream.py) as a Kart task. Returns task_id.
     check_first=True (default) skips queue unless dream_check says should_dream.
-    Call kart_task_run() afterwards or let Kart poll. Requires Ollama (# allow_net)."""
+    Call kart_task_run() afterwards or let Kart poll. Requires Ollama (# allow_localhost)."""
     logger.info("[w2] dream_schedule app_id=%s force=%s check_first=%s", app_id, force, check_first)
     if not pg:
         return _no_pg()
@@ -3735,7 +3745,7 @@ async def wce_schedule(
 ) -> dict:
     """Queue scripts/wce_witness.py as a Kart task. Returns task_id.
     check_first=True (default) skips queue unless wce_check says should_run.
-    Call kart_task_run() afterwards or let Kart poll. Requires Postgres + Ollama (# allow_net)."""
+    Call kart_task_run() afterwards or let Kart poll. Requires Postgres + Ollama (# allow_localhost)."""
     logger.info("[w2] wce_schedule app_id=%s force=%s check_first=%s", app_id, force, check_first)
     if not pg:
         return _no_pg()

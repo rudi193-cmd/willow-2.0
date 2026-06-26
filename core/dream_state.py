@@ -85,5 +85,5 @@ def queue_dream_task(pg, app_id: str, submitted_by: str = "willow", force: bool 
     cmd_parts = [sys.executable, str(script), "run", f"--app-id={app_id}"]
     if force:
         cmd_parts.append("--force")
-    cmd = " ".join(cmd_parts) + "\n# allow_net"
+    cmd = " ".join(cmd_parts) + "\n# allow_localhost"
     return pg.submit_task(cmd, submitted_by=submitted_by, agent="kart")
