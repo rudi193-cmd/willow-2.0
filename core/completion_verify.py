@@ -153,6 +153,20 @@ def verify_completion_evidence(
     }
 
 
+def is_supervised(task: dict[str, Any]) -> bool:
+    """True when the task has a distinct supervisor (from_agent != to_agent).
+
+    Separation of duties — and therefore the VERIFIED-evidence requirement on
+    close — applies only to supervised tasks. A self-managed task (from_agent
+    blank or equal to to_agent) returns False and is never evidence-gated; that is
+    the common willow self-dispatch path, which must keep its pre-gate behavior so
+    enabling the gate does not break ordinary, non-code dispatch closes.
+    """
+    worker = str(task.get("to_agent", "")).strip()
+    supervisor = str(task.get("from_agent", "")).strip()
+    return bool(supervisor) and supervisor != worker
+
+
 def self_close_rejection(app_id: str, task: dict[str, Any]) -> dict[str, Any] | None:
     """Block a supervised worker from closing its own dispatch task.
 

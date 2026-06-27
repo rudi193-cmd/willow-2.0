@@ -131,6 +131,28 @@ def test_no_supervisor_allows_close():
 
 
 # --------------------------------------------------------------------------- #
+# is_supervised (slice 3) — scopes the evidence requirement
+# --------------------------------------------------------------------------- #
+
+
+def test_supervised_when_distinct_supervisor():
+    assert cv.is_supervised({"to_agent": "loki", "from_agent": "willow"}) is True
+
+
+def test_not_supervised_when_self_managed():
+    assert cv.is_supervised({"to_agent": "willow", "from_agent": "willow"}) is False
+
+
+def test_not_supervised_when_no_supervisor():
+    assert cv.is_supervised({"to_agent": "loki", "from_agent": ""}) is False
+
+
+def test_not_supervised_handles_whitespace_and_missing():
+    assert cv.is_supervised({"to_agent": "loki", "from_agent": "  "}) is False
+    assert cv.is_supervised({}) is False
+
+
+# --------------------------------------------------------------------------- #
 # env-overridable config (slice 2)
 # --------------------------------------------------------------------------- #
 
