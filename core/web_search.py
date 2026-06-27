@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import html
 import logging
 import os
 import random
 import re
 import time
+from collections import OrderedDict
 from typing import Any, Protocol, runtime_checkable
 from urllib.parse import parse_qs, quote_plus, unquote, urlparse
 
@@ -353,6 +355,13 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in ("0", "false", "no", "off", "")
+
+
 def _retry_config() -> dict[str, float]:
     return {
         "max_attempts": _env_int("WILLOW_SEARCH_MAX_ATTEMPTS", 3),
@@ -511,12 +520,107 @@ def _search_providers(
     return []
 
 
+# --------------------------------------------------------------------------- #
+# Query cache
+#
+# In-process LRU + per-entry TTL over assembled result sets. A repeated query
+# inside the TTL window returns immediately without touching the provider chain.
+# Right-sized for Willow's single-host reality: in-process only, no Redis (the
+# spec's multi-process backend doesn't fit). Current-events queries ("latest",
+# "breaking", a date, ...) get a short TTL so fast-moving topics stay fresh.
+# Opt-out per call via search_web(cache=False); disable globally with
+# WILLOW_SEARCH_CACHE=0. Only non-empty results are cached — caching a [] would
+# pin a transient all-providers-down failure for the full TTL.
+# --------------------------------------------------------------------------- #
+
+
+_CURRENT_EVENTS_MARKERS = (
+    "latest", "breaking", "just now", "just announced", "right now",
+    "live", "today", "this morning", "this week", "current",
+)
+
+
+def _cache_config() -> dict[str, Any]:
+    return {
+        "enabled": _env_bool("WILLOW_SEARCH_CACHE", True),
+        "ttl": _env_float("WILLOW_SEARCH_CACHE_TTL", 300.0),
+        "ttl_news": _env_float("WILLOW_SEARCH_CACHE_TTL_NEWS", 60.0),
+    }
+
+
+def _is_current_events(query: str) -> bool:
+    """Heuristic: does this query chase fast-moving / time-sensitive results?"""
+    q = (query or "").lower()
+    return any(marker in q for marker in _CURRENT_EVENTS_MARKERS)
+
+
+def _cache_key(
+    query: str,
+    max_results: int,
+    trusted_only: bool,
+    include_handoffs: bool,
+    order: list[str],
+) -> str:
+    """sha256 over normalized query + the params that change the result set."""
+    norm = " ".join((query or "").lower().split())
+    raw = f"{norm}|{max_results}|{int(trusted_only)}|{int(include_handoffs)}|{','.join(order)}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+class _TTLCache:
+    """Bounded LRU cache with per-entry TTL.
+
+    Not thread-safe by design — Willow's MCP server services search calls
+    serially per session, so a lock would only add contention. Eviction is
+    least-recently-used once `maxsize` is exceeded; expired entries are dropped
+    lazily on access.
+    """
+
+    def __init__(self, maxsize: int = 256, clock=time.monotonic) -> None:
+        self._maxsize = max(1, maxsize)
+        self._clock = clock
+        self._data: OrderedDict[str, tuple[float, Any]] = OrderedDict()
+
+    def get(self, key: str) -> Any | None:
+        entry = self._data.get(key)
+        if entry is None:
+            return None
+        expires_at, value = entry
+        if self._clock() >= expires_at:
+            del self._data[key]
+            return None
+        self._data.move_to_end(key)
+        return value
+
+    def set(self, key: str, value: Any, ttl: float) -> None:
+        self._data[key] = (self._clock() + ttl, value)
+        self._data.move_to_end(key)
+        while len(self._data) > self._maxsize:
+            self._data.popitem(last=False)
+
+    def clear(self) -> None:
+        self._data.clear()
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+
+_SEARCH_CACHE = _TTLCache(maxsize=_env_int("WILLOW_SEARCH_CACHE_SIZE", 256))
+
+
+def reset_search_cache() -> None:
+    """Clear the query cache and re-read its size from env (test/operator reset)."""
+    global _SEARCH_CACHE
+    _SEARCH_CACHE = _TTLCache(maxsize=_env_int("WILLOW_SEARCH_CACHE_SIZE", 256))
+
+
 def search_web(
     query: str,
     *,
     max_results: int = 8,
     trusted_only: bool = False,
     include_handoffs: bool = False,
+    cache: bool = True,
     providers: list[SearchProvider] | None = None,
 ) -> list[dict[str, Any]]:
     """
@@ -524,9 +628,26 @@ def search_web(
 
     trusted_only: filter to verified institutional domain suffixes.
     include_handoffs: prepend map/search URLs for navigational queries.
+    cache: serve/store via the in-process LRU+TTL cache (opt-out per call;
+        WILLOW_SEARCH_CACHE=0 disables globally). Current-events queries get a
+        short TTL automatically.
     providers: explicit provider chain (default: built from
         WILLOW_SEARCH_PROVIDER_ORDER, falling back to DDG HTML).
     """
+    cfg = _cache_config()
+    order = [p.name for p in providers] if providers is not None else _provider_order()
+    use_cache = cache and cfg["enabled"]
+    key = (
+        _cache_key(query, max_results, trusted_only, include_handoffs, order)
+        if use_cache
+        else None
+    )
+    if key is not None:
+        cached = _SEARCH_CACHE.get(key)
+        if cached is not None:
+            log.debug("search cache hit (%s)", key[:12])
+            return list(cached)
+
     hits: list[dict[str, Any]] = []
     if include_handoffs:
         hits.extend(navigational_handoffs(query))
@@ -541,4 +662,11 @@ def search_web(
         if url and url not in seen:
             seen.add(url)
             hits.append(hit)
-    return hits[: max_results + (3 if include_handoffs else 0)]
+    result = hits[: max_results + (3 if include_handoffs else 0)]
+
+    # Cache only non-empty provider hits — an empty `raw` means every provider
+    # failed or was filtered out, and pinning that for the TTL would mask recovery.
+    if key is not None and raw:
+        ttl = cfg["ttl_news"] if _is_current_events(query) else cfg["ttl"]
+        _SEARCH_CACHE.set(key, list(result), ttl)
+    return result

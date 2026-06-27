@@ -9,7 +9,17 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from core import web_search
+
+
+@pytest.fixture(autouse=True)
+def _reset_cache():
+    """search_web now has a module-level query cache — isolate each test."""
+    web_search.reset_search_cache()
+    yield
+    web_search.reset_search_cache()
 
 
 def _hit(url: str, title: str = "t", hostname: str | None = None) -> dict[str, Any]:
