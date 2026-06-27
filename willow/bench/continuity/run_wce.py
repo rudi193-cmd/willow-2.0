@@ -600,6 +600,214 @@ def aggregate(results: list[dict[str, Any]], variant_labels: list[str]) -> dict[
     return out
 
 
+# ── Promotion-policy replay (Lever B1) ─────────────────────────────────────────
+#
+# The retrieval-side weight multiplier is already tamed (cap@1.4, PR #512). This
+# probe attacks the *promotion* side. sap_mcp promotes knowledge[:3] of EVERY
+# search (core/pg_bridge.py promote(): visit_count++, last_visited=now,
+# weight = 1 + ln(1+vc)*rf). Aggravator (a) of KB 270F089E: a search returns
+# top-k but only the top-3 ever warm, so a rank-4..k cold-but-relevant atom never
+# promotes and then slides under norn's demote_stale. That is a DYNAMIC feedback
+# effect the static cold_recall probe cannot see — it runs hybrid_search once
+# against a frozen weight snapshot.
+#
+# Method: hold the oracle/relevant/cold sets FIXED (recency-blind, computed before
+# any replay), then for each promotion policy replay the query stream `rounds`
+# times — running the live retrieval config (cap@weight_cap, curated pool) and
+# applying that policy's promotion to each result — then measure cold-relevant
+# recall@k on the resulting weights. The whole replay runs inside ONE transaction
+# that we ROLL BACK, so live weights are never mutated. hybrid_search is pure
+# retrieval (the top-3 promotion lives in sap_mcp, not the ranker), so the only
+# weight changes during a replay are the policy promotions we apply explicitly.
+
+PROMOTION_POLICIES = ("none", "top1", "top3", "top5", "top10", "relgate")
+# none    — control: no promotion at all (frozen weights baseline)
+# topN    — promote the first N retrieved hits each search (top3 = live baseline)
+# relgate — promote any hit with _cosine_sim >= relgate_floor (relevance-gated,
+#           unbounded N): warm only what is genuinely on-topic, regardless of rank
+
+_TOPN_POLICY = {"top1": 1, "top3": 3, "top5": 5, "top10": 10}
+
+# Same weight recompute as core/pg_bridge.py promote(), but WITHOUT the commit —
+# the update lives in the replay transaction and is discarded on rollback.
+_REPLAY_PROMOTE_SQL = """
+    WITH base AS (
+        SELECT
+            visit_count + 1 AS new_vc,
+            CASE
+                WHEN COALESCE(last_visited, now()) >= now() - INTERVAL '7 days'
+                THEN 1.0
+                ELSE GREATEST(0.1,
+                    1.0 - (0.9 / 173.0) *
+                    LEAST(173, EXTRACT(EPOCH FROM (now() - last_visited)) / 86400.0 - 7)
+                )
+            END AS rf
+        FROM knowledge WHERE id = %s
+    )
+    UPDATE knowledge
+    SET visit_count  = base.new_vc,
+        last_visited = now(),
+        weight       = 1.0 + ln(1.0 + base.new_vc) * base.rf
+    FROM base
+    WHERE knowledge.id = %s
+"""
+
+
+def _replay_promote(pg: PgBridge, atom_id: str) -> None:
+    """Apply one promote() to atom_id on the shared connection WITHOUT committing."""
+    with pg.conn.cursor() as cur:
+        cur.execute(_REPLAY_PROMOTE_SQL, (atom_id, atom_id))
+
+
+def _hits_to_promote(hits: list[dict], policy: str, *, relgate_floor: float) -> list[str]:
+    """Which retrieved atom ids this policy would promote for one search."""
+    if policy == "none":
+        return []
+    if policy == "relgate":
+        out = []
+        for h in hits:
+            cos = h.get("_cosine_sim")
+            if cos is not None and float(cos) >= relgate_floor and h.get("id"):
+                out.append(h["id"])
+        return out
+    n = _TOPN_POLICY.get(policy)
+    if n is None:
+        raise ValueError(f"unknown promotion policy: {policy!r}; expected {PROMOTION_POLICIES}")
+    return [h["id"] for h in hits[:n] if h.get("id")]
+
+
+def _fixed_oracle_sets(
+    pg: PgBridge,
+    queries: list[dict[str, Any]],
+    *,
+    k: int,
+    oracle_n: int,
+    oracle_pool: int,
+    cosine_floor: float,
+    cold_visit_max: int,
+    cold_age_days: float,
+    project: Optional[str],
+    oracle_source_types: Optional[list[str]],
+) -> list[dict[str, Any]]:
+    """Per-query relevant/cold/warm id sets, recency-blind, computed ONCE pre-replay."""
+    now = datetime.now(timezone.utc)
+    fixed: list[dict[str, Any]] = []
+    for q in queries:
+        qtext = q["query"]
+        qk = int(q.get("k", k))
+        qvec = embed(qtext)
+        if qvec is None:
+            fixed.append({"id": q["id"], "query": qtext, "k": qk, "error": "embed_failed"})
+            continue
+        oracle = cosine_oracle(
+            pg, qvec, project=project, oracle_pool=oracle_pool,
+            source_types=oracle_source_types,
+        )
+        relevant = [r for r in oracle[:oracle_n] if float(r["cosine"]) >= cosine_floor]
+        cold_ids = {
+            r["id"] for r in relevant
+            if is_cold(r, now, cold_visit_max=cold_visit_max, cold_age_days=cold_age_days)
+        }
+        warm_ids = {
+            r["id"] for r in relevant
+            if is_warm(r, now, cold_visit_max=cold_visit_max, cold_age_days=cold_age_days)
+        }
+        fixed.append({
+            "id": q["id"], "query": qtext, "k": qk,
+            "cold_ids": cold_ids, "warm_ids": warm_ids,
+            "relevant_ids": {r["id"] for r in relevant},
+            "n_cold_relevant": len(cold_ids),
+            "n_warm_relevant": len(warm_ids),
+            "n_relevant": len(relevant),
+        })
+    return fixed
+
+
+def run_promotion_replay(
+    pg: PgBridge,
+    fixed: list[dict[str, Any]],
+    *,
+    policies: list[str],
+    rounds: int,
+    project: Optional[str],
+    retrieval_source_types: Optional[list[str]],
+    weight_cap: float,
+    cosine_bypass: float,
+    relgate_floor: float,
+) -> dict[str, Any]:
+    """For each policy: snapshot → replay promotions `rounds`× → measure → rollback."""
+
+    def _search(fq: dict[str, Any]) -> list[dict]:
+        # Live retrieval config: cap multiplier + curated pool (promotion is the
+        # only variable under test, so retrieval is held at the live default).
+        return hybrid_search(
+            fq["query"], pg, limit=fq["k"], project=project,
+            weight_col=True, weight_mode="cap",
+            weight_cap=weight_cap, cosine_bypass=cosine_bypass,
+            source_types=retrieval_source_types,
+        )
+
+    scorable = [fq for fq in fixed if "error" not in fq]
+    by_policy: dict[str, Any] = {}
+    for policy in policies:
+        try:
+            # Replay: warm the snapshot under this policy.
+            for _ in range(rounds):
+                for fq in scorable:
+                    for aid in _hits_to_promote(_search(fq), policy, relgate_floor=relgate_floor):
+                        _replay_promote(pg, aid)
+            # Measure on the warmed snapshot.
+            per_query: list[dict[str, Any]] = []
+            for fq in scorable:
+                hits = _search(fq)
+                metrics = _recall_metrics(
+                    [h["id"] for h in hits], k=fq["k"],
+                    cold_ids=fq["cold_ids"], warm_ids=fq["warm_ids"],
+                    relevant_ids=fq["relevant_ids"],
+                )
+                per_query.append({
+                    "id": fq["id"],
+                    "n_cold_relevant": fq["n_cold_relevant"],
+                    "n_warm_relevant": fq["n_warm_relevant"],
+                    "metrics": metrics,
+                })
+        finally:
+            # Discard EVERY promotion this policy applied — live weights untouched.
+            pg.conn.rollback()
+
+        scored = [r for r in per_query if r["n_cold_relevant"] > 0]
+        by_policy[policy] = {
+            "queries_scored": len(scored),
+            "cold_relevant_recall": _mean([r["metrics"]["cold_relevant_recall"] for r in scored]),
+            "warm_relevant_recall": _mean([r["metrics"]["warm_relevant_recall"] for r in scored]),
+            "relevant_recall": _mean([r["metrics"]["relevant_recall"] for r in scored]),
+            "surfacing_precision": _mean([r["metrics"]["surfacing_precision"] for r in scored]),
+            "per_query": per_query,
+        }
+
+    baseline = by_policy.get("top3", {})
+    base_cold = baseline.get("cold_relevant_recall")
+    base_warm = baseline.get("warm_relevant_recall")
+    deltas: dict[str, Any] = {}
+    for policy, m in by_policy.items():
+        if policy == "top3":
+            continue
+        c, w = m.get("cold_relevant_recall"), m.get("warm_relevant_recall")
+        deltas[policy] = {
+            "cold_vs_top3": round(c - base_cold, 4) if c is not None and base_cold is not None else None,
+            "warm_vs_top3": round(w - base_warm, 4) if w is not None and base_warm is not None else None,
+        }
+    return {
+        "rounds": rounds,
+        "policies": policies,
+        "relgate_floor": relgate_floor,
+        "queries_total": len(fixed),
+        "queries_embed_failed": sum(1 for fq in fixed if fq.get("error") == "embed_failed"),
+        "by_policy": by_policy,
+        "vs_top3_baseline": deltas,
+    }
+
+
 # ── CLI ─────────────────────────────────────────────────────────────────────────
 
 WCE_TASKS = (
@@ -813,6 +1021,94 @@ def _run_layer_ablation(
     return 0
 
 
+def _run_promotion_replay(
+    args: argparse.Namespace,
+    queries: list[dict[str, Any]],
+    default_k: int,
+    payload: dict[str, Any],
+    timestamp: str,
+) -> int:
+    """Promotion-policy replay (Lever B1): does promoting top-3 bury cold memory?"""
+    k = args.k or default_k
+    policies = [p.strip() for p in args.replay_policies.split(",") if p.strip()]
+    unknown = [p for p in policies if p not in PROMOTION_POLICIES]
+    if unknown:
+        print(f"Unknown promotion policy(ies): {unknown}. Valid: {', '.join(PROMOTION_POLICIES)}",
+              file=sys.stderr)
+        return 2
+    relgate_floor = args.replay_relgate_floor
+    if relgate_floor is None:
+        relgate_floor = args.cosine_floor
+    retrieval_source_types = None if args.full_pool else resolve_continuity_source_types()
+
+    with PgBridge() as pg:
+        fixed = _fixed_oracle_sets(
+            pg, queries,
+            k=k,
+            oracle_n=args.oracle_n,
+            oracle_pool=args.oracle_pool,
+            cosine_floor=args.cosine_floor,
+            cold_visit_max=args.cold_visit_max,
+            cold_age_days=args.cold_age_days,
+            project=args.project,
+            oracle_source_types=retrieval_source_types,
+        )
+        replay = run_promotion_replay(
+            pg, fixed,
+            policies=policies,
+            rounds=args.replay_rounds,
+            project=args.project,
+            retrieval_source_types=retrieval_source_types,
+            weight_cap=args.weight_cap,
+            cosine_bypass=args.cosine_bypass,
+            relgate_floor=relgate_floor,
+        )
+
+    config = {
+        "k": k,
+        "oracle_n": args.oracle_n,
+        "oracle_pool": args.oracle_pool,
+        "cosine_floor": args.cosine_floor,
+        "cold_visit_max": args.cold_visit_max,
+        "cold_age_days": args.cold_age_days,
+        "project": args.project,
+        "weight_cap": args.weight_cap,
+        "rounds": args.replay_rounds,
+        "relgate_floor": relgate_floor,
+        "continuity_pool": "full" if args.full_pool else "curated",
+        "retrieval_source_types": retrieval_source_types,
+    }
+    payload["promotion_replay"] = {"config": config, "summary": replay}
+
+    # ── Human-readable report ──
+    print("\nWCE — promotion-policy replay (snapshot, rolled back; live cap ranker)")
+    print(f"  config: k={k} rounds={args.replay_rounds} relgate_floor={relgate_floor} "
+          f"cold(visit<={args.cold_visit_max}, age>={args.cold_age_days}d)")
+    print(f"  retrieval pool: {config['continuity_pool']}"
+          + (f" ({len(retrieval_source_types)} source_types)" if retrieval_source_types else ""))
+    scored = next((m["queries_scored"] for m in replay["by_policy"].values()), 0)
+    print(f"  queries scored: {scored}/{replay['queries_total']} "
+          f"(embed-failed: {replay['queries_embed_failed']})")
+    print(f"  {'policy':<10} {'cold_rec':>9} {'warm_rec':>9} {'rel_rec':>9} {'precision':>9} {'dcold_v3':>9}")
+    deltas = replay["vs_top3_baseline"]
+    for policy in policies:
+        m = replay["by_policy"].get(policy, {})
+        dc = deltas.get(policy, {}).get("cold_vs_top3") if policy != "top3" else 0.0
+        base_tag = "  (baseline)" if policy == "top3" else ""
+        print(f"  {policy:<10} {_fmt_score(m.get('cold_relevant_recall'), decimals=3):>9} "
+              f"{_fmt_score(m.get('warm_relevant_recall'), decimals=3):>9} "
+              f"{_fmt_score(m.get('relevant_recall'), decimals=3):>9} "
+              f"{_fmt_score(m.get('surfacing_precision'), decimals=3):>9} "
+              f"{_fmt_score(dc, decimals=3):>9}{base_tag}")
+
+    if not args.no_write:
+        RUNS_DIR.mkdir(parents=True, exist_ok=True)
+        out = Path(args.output) if args.output else RUNS_DIR / f"wce_promotion_{timestamp}.json"
+        out.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+        print(f"\nWrote {out}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Willow Continuity Eval (WCE).")
     ap.add_argument("--tasks", default="cold_recall",
@@ -850,6 +1146,16 @@ def main() -> int:
                          "layers (fixed non-LoCoMo oracle, live cap ranker per layer)")
     ap.add_argument("--full-pool", action="store_true",
                     help="live retrieval uses full source-type table (default: curated B2-minus-intake)")
+    ap.add_argument("--promotion-replay", action="store_true",
+                    help="Lever B1: replay the query stream under promotion policies on a "
+                         "rolled-back snapshot; measure cold recall (does top-3 promotion bury cold memory?)")
+    ap.add_argument("--replay-rounds", type=int, default=8,
+                    help="promotion-replay: times to replay the query stream per policy (default: 8)")
+    ap.add_argument("--replay-policies", default=",".join(PROMOTION_POLICIES),
+                    help="promotion-replay: comma-separated policies "
+                         f"({', '.join(PROMOTION_POLICIES)}); top3 is the live baseline")
+    ap.add_argument("--replay-relgate-floor", type=float, default=None,
+                    help="promotion-replay: cosine floor for the relgate policy (default: --cosine-floor)")
     ap.add_argument("--no-write", action="store_true", help="skip writing the run JSON")
     ap.add_argument("--output", default="", help="write JSON to this path (default: runs/wce_<timestamp>.json)")
     args = ap.parse_args()
@@ -912,6 +1218,9 @@ def main() -> int:
     if not queries:
         print("No queries found.", file=sys.stderr)
         return 2
+
+    if args.promotion_replay:
+        return _run_promotion_replay(args, queries, default_k, payload, timestamp)
 
     if args.layer_ablate:
         return _run_layer_ablation(args, queries, default_k, payload, timestamp)
