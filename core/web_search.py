@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import html
+import json
 import logging
 import os
 import random
@@ -482,6 +483,50 @@ def reset_circuit_breakers() -> None:
     _BREAKERS.clear()
 
 
+# --------------------------------------------------------------------------- #
+# Structured logging
+#
+# One structured record per search outcome on the existing `willow.web` logger.
+# Privacy: the raw query never appears — only a `query_hash` (so cache hits and
+# provider attempts for the same query correlate without leaking the text).
+# Right-sized for single-host local-first: a single JSON line on the logger we
+# already run, NOT a Prometheus/metrics sink (the spec's metrics surface and
+# proxy_id/proxy_tier fields don't fit — there is no proxy fleet).
+# --------------------------------------------------------------------------- #
+
+
+def _query_hash(query: str) -> str:
+    """Stable short hash of the normalized query — for logs, never the raw text."""
+    norm = " ".join((query or "").lower().split())
+    return hashlib.sha256(norm.encode("utf-8")).hexdigest()[:16]
+
+
+def _elapsed_ms(start: float) -> float:
+    return round((time.monotonic() - start) * 1000, 1)
+
+
+def _log_search_event(**fields: Any) -> None:
+    """Emit one structured, privacy-safe `web_search` record on willow.web."""
+    record = {"event": "web_search", **fields}
+    log.info("web_search %s", json.dumps(record, sort_keys=True))
+
+
+class _AttemptCounter:
+    """Wrap a nullary call and count invocations (retry attempts).
+
+    Module-level (not a per-iteration closure) so the provider chain can read
+    `.attempts` after `_with_retry` returns without a loop-binding lint trap.
+    """
+
+    def __init__(self, fn) -> None:
+        self._fn = fn
+        self.attempts = 0
+
+    def __call__(self):
+        self.attempts += 1
+        return self._fn()
+
+
 def _search_providers(
     query: str,
     max_results: int,
@@ -495,8 +540,11 @@ def _search_providers(
     every provider is exhausted.
     """
     chain = build_providers() if providers is None else providers
+    qhash = _query_hash(query)
     for provider in chain:
         breaker = _get_breaker(provider.name)
+        counter = _AttemptCounter(lambda p=provider: p.search(query, max_results))
+        start = time.monotonic()
         try:
             if not provider.available():
                 log.debug("provider %s unavailable — advancing", provider.name)
@@ -504,16 +552,26 @@ def _search_providers(
             if not breaker.allow():
                 log.info("provider %s circuit open — advancing", provider.name)
                 continue
-            results = _with_retry(lambda p=provider: p.search(query, max_results))
+            results = _with_retry(counter)
         except SearchError as exc:
             breaker.record_failure()
+            _log_search_event(query_hash=qhash, provider=provider.name, status="error",
+                              result_count=0, latency_ms=_elapsed_ms(start),
+                              cache_hit=False, attempt=counter.attempts)
             log.warning("provider %s failed: %s — advancing", provider.name, exc)
             continue
         except Exception as exc:
             breaker.record_failure()
+            _log_search_event(query_hash=qhash, provider=provider.name, status="error",
+                              result_count=0, latency_ms=_elapsed_ms(start),
+                              cache_hit=False, attempt=counter.attempts)
             log.warning("provider %s error: %s — advancing", provider.name, exc)
             continue
         breaker.record_success()
+        _log_search_event(query_hash=qhash, provider=provider.name,
+                          status="ok" if results else "empty", result_count=len(results),
+                          latency_ms=_elapsed_ms(start), cache_hit=False,
+                          attempt=counter.attempts)
         if results:
             return results
         log.info("provider %s returned 0 results — advancing", provider.name)
@@ -645,7 +703,9 @@ def search_web(
     if key is not None:
         cached = _SEARCH_CACHE.get(key)
         if cached is not None:
-            log.debug("search cache hit (%s)", key[:12])
+            _log_search_event(query_hash=_query_hash(query), provider="cache",
+                              status="ok", result_count=len(cached), latency_ms=0.0,
+                              cache_hit=True, attempt=0)
             return list(cached)
 
     hits: list[dict[str, Any]] = []
