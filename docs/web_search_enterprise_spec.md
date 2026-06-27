@@ -329,3 +329,46 @@ Phases 1–3 get you past the immediate volume cliff. Phases 4–8 are long-term
 - **Full JavaScript rendering** (Playwright/Puppeteer) — adds significant latency and infrastructure cost; only worth it if JSON API providers are unavailable
 - **CAPTCHA solving** — signals the scraping approach is fundamentally wrong at that volume; switch providers instead
 - **Search result re-ranking via LLM** — relevant for quality at scale but out of scope here
+
+---
+
+## Addendum: what shipped vs. deferred (2026-06-26)
+
+This spec was written for an enterprise-SaaS scale problem. Willow is single-host
+and local-first, so we deliberately built the **right-sized slice** — the parts
+that are genuinely high-leverage and low-risk on one machine — and **cut the scope
+that only pays off across a proxy fleet, multiple processes, or a metrics stack.**
+
+The diagnosis of the baseline (one attempt, silent `[]` on any failure, no provider
+seam, no cache, no observability) was accurate and is what we fixed. The
+infrastructure framing (residential/ISP proxy tiers, Redis, Prometheus,
+multi-tenant) was not adopted — there is no proxy fleet, no second process, and no
+metrics sink to feed.
+
+### Shipped — `core/web_search.py`
+
+| Spec section | What we built | PR |
+|---|---|---|
+| §1 Provider Abstraction | `SearchProvider` protocol + chain; DDG primary/last-resort; Brave key-gated **stub** | #527 |
+| §4c Circuit Breaker · §5 Retry | Per-provider `CircuitBreaker` (CLOSED→OPEN→HALF_OPEN) + jittered exponential backoff under a time budget | #528 |
+| §8 Caching | In-process LRU + per-entry TTL (300s general / 60s current-events); sha256 key; `cache=False` opt-out; **no Redis** | #529 |
+| §9 Structured Logging | One privacy-safe `web_search` JSON record per outcome on `willow.web` (`query_hash` only); **no metrics sink** | #530 |
+| §7 Parser Resilience | DDG parser-miss **detection + alert** (structure-drift early warning); **no second/lxml parser yet** | #531 |
+
+All gated by `WILLOW_SEARCH_*` env knobs; DDG stays the default and last-resort fallback.
+
+### Deferred — does not fit single-host local-first
+
+- **§3 Proxy Management** (pool, quality scoring, quarantine, session affinity) — no proxy fleet; a single host has one egress IP.
+- **§8 Redis cache backend** — no second process to share cache state with; in-process LRU is sufficient.
+- **§9 Prometheus metrics + `proxy_id`/`proxy_tier` fields** — no metrics sink; the structured log line is the observability surface.
+- **§2 TLS-fingerprint / header-pool hardening** — not warranted at current volume.
+
+### Deferred — real feature, not yet built
+
+- **§1 Brave provider implementation** — the seam and `BraveSearchProvider` exist but `available()` stays `False` until `BRAVE_API_KEY` is in the vault and the real JSON-API call is wired. This is the main remaining real feature.
+- **§7 Parser redundancy** (a second lxml/CSS parser as fallback) — detection ships first; the fallback parser lands only if/when the alert actually fires.
+
+> Build-phase labels used during implementation (cache = "Phase 4", logging = "Phase 5",
+> parser-miss = "Phase 6") are session bookkeeping and do **not** correspond to the
+> §11 "Implementation Phases" numbering above; map by spec section + PR.
