@@ -33,6 +33,21 @@ print(fleet_home(Path('${REPO_ROOT}')))
 " 2>/dev/null)" || WILLOW_HOME="${WILLOW_HOME_FALLBACK}"
 fi
 
+# Source the canonical fleet env (tracked in willow-config: $WILLOW_HOME/env).
+# This is the single source of truth for persistent fleet-wide settings — paths,
+# Postgres db, agent name, and policy flags such as
+# WILLOW_COMPLETION_REQUIRE_EVIDENCE. The file is documented as
+# "set -a && source ~/github/.willow/env && set +a"; honor that here so the MCP
+# server actually picks it up instead of relying only on the launcher's
+# .mcp.json env block. The active-agent file below still wins for
+# WILLOW_AGENT_NAME, and secrets.sh (sourced next) still overrides any secret.
+if [[ -f "${WILLOW_HOME}/env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "${WILLOW_HOME}/env"
+    set +a
+fi
+
 # Source local secrets (not tracked). Create $WILLOW_HOME/secrets.sh with:
 #   export ANTHROPIC_API_KEY="sk-ant-..."
 if [[ -f "${WILLOW_HOME}/secrets.sh" ]]; then
