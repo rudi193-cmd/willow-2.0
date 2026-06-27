@@ -182,6 +182,22 @@ def _parse_ddg_html(text: str, max_results: int) -> list[dict[str, Any]]:
     return hits
 
 
+# Below this body size a 200-OK page with 0 parsed links is treated as a genuine
+# empty/blocked response, not a structure change. A real DDG results page is tens
+# of KB; a "no results"/interstitial page is small.
+_PARSER_MISS_MIN_BODY = 2000
+
+
+def _looks_like_results_page(html_text: str) -> bool:
+    """Heuristic: did DDG return a substantial results-style page (vs. an empty
+    or interstitial one)? Used to flag a parser miss as likely HTML drift rather
+    than a legitimately empty result set."""
+    body = html_text or ""
+    if len(body) < _PARSER_MISS_MIN_BODY:
+        return False
+    return "result" in body.lower()
+
+
 def _ddg_fetch(query: str, max_results: int = 8) -> list[dict[str, Any]]:
     """Fetch + parse DuckDuckGo HTML, raising typed errors on failure.
 
@@ -189,6 +205,10 @@ def _ddg_fetch(query: str, max_results: int = 8) -> list[dict[str, Any]]:
     and 429/503/504; HardBlockError for 403/407; SearchError for other HTTP
     failures. Used by the provider chain so retry/circuit-breaker logic can
     distinguish failure classes. `ddg_html_search()` wraps this and swallows.
+
+    A 200-OK results-style page that parses to 0 links is logged as a
+    `parser_miss` (likely DDG HTML structure drift) — detection only; the call
+    still returns [] and the chain's retry/fallback handle the empty result.
     """
     q = query.strip()
     if not q:
@@ -215,7 +235,17 @@ def _ddg_fetch(query: str, max_results: int = 8) -> list[dict[str, Any]]:
     if status >= 400:
         raise SearchError(f"HTTP {status}")
 
-    return _parse_ddg_html(resp.text, max_results)
+    hits = _parse_ddg_html(resp.text, max_results)
+    if not hits and _looks_like_results_page(resp.text):
+        _log_search_event(
+            query_hash=_query_hash(q), provider="ddg_html", status="parser_miss",
+            result_count=0, body_bytes=len(resp.text), cache_hit=False,
+        )
+        log.warning(
+            "ddg parser miss — HTTP 200, %d-byte results-like body, 0 links parsed; "
+            "DDG HTML structure may have changed (_LINK_RE)", len(resp.text),
+        )
+    return hits
 
 
 def ddg_html_search(query: str, max_results: int = 8) -> list[dict[str, Any]]:
