@@ -1508,12 +1508,66 @@ async def agent_dispatch_result(
     dispatch_id: str,
     result:      str,
     card_id:     str = "",
+    role:        str = "close",
+    evidence:    dict = None,
 ) -> dict:
-    """Record the result of a completed dispatch task. Writes LOAM atom, closes dispatch record."""
-    logger.info("[w2] agent_dispatch_result app_id=%s did=%s", app_id, dispatch_id)
+    """Record the result of a completed dispatch task. Writes LOAM atom, closes dispatch record.
+
+    Evidence-gated completion (slice 2, see core/completion_verify.py). The gate is
+    default-off (WILLOW_COMPLETION_REQUIRE_EVIDENCE); when off this behaves exactly
+    as before, and any `evidence` is recorded advisory-only. When enforcing:
+      - role='report' lets a supervised worker submit evidence without closing
+        (status → 'reported'); it does not require VERIFIED.
+      - role='close' (default) enforces separation of duties (a worker cannot
+        self-close, self_close_rejection) and requires VERIFIED evidence; an
+        UNVERIFIED close is rejected 409 and the task is left open.
+    Every close/report that carries a verdict is written to the FRANK ledger.
+    """
+    logger.info("[w2] agent_dispatch_result app_id=%s did=%s role=%s", app_id, dispatch_id, role)
     loop = asyncio.get_running_loop()
 
     def _result():
+        from core import completion_verify as cv
+
+        gate = cv.gate_enabled()
+
+        # Separation of duties + verdict only matter under the gate, but the
+        # verdict is computed whenever evidence is supplied (advisory when off).
+        if gate and role == "close":
+            task_row = None
+            try:
+                bt = PgBridge()
+                with bt.conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT to_agent, from_agent FROM dispatch_tasks WHERE id=%s",
+                        (dispatch_id,),
+                    )
+                    row = cur.fetchone()
+                bt.conn.close()
+                if row:
+                    task_row = {"to_agent": row[0], "from_agent": row[1]}
+            except Exception:
+                task_row = None
+            if task_row is not None:
+                block = cv.self_close_rejection(app_id, task_row)
+                if block is not None:
+                    block["dispatch_id"] = dispatch_id
+                    return block
+
+        verdict = cv.verify_completion_evidence(evidence) if evidence else None
+
+        # Enforcement: a close under the gate requires VERIFIED provenance.
+        if gate and role == "close":
+            if verdict is None:
+                verdict = {"status": "UNVERIFIED", "reasons": ["no evidence provided"],
+                           "checked": {}}
+            if verdict["status"] != "VERIFIED":
+                _ledger_completion(dispatch_id, app_id, role, "rejected", verdict)
+                return {"status": 409, "error": "completion UNVERIFIED — evidence required to close",
+                        "dispatch_id": dispatch_id, "verdict": verdict}
+
+        new_status = "reported" if (gate and role == "report") else "completed"
+
         atom_id = None
         try:
             b = PgBridge()
@@ -1529,17 +1583,37 @@ async def agent_dispatch_result(
             b2 = PgBridge()
             with b2.conn.cursor() as cur:
                 cur.execute(
-                    "UPDATE dispatch_tasks SET status='completed',result_atom_id=%s,resolved_at=now()"
+                    "UPDATE dispatch_tasks SET status=%s,result_atom_id=%s,resolved_at=now()"
                     " WHERE id=%s",
-                    (atom_id, dispatch_id),
+                    (new_status, atom_id, dispatch_id),
                 )
             b2.conn.commit()
             b2.conn.close()
         except Exception:
             pass
-        return {"dispatch_id": dispatch_id, "atom_id": atom_id, "status": "completed"}
+
+        if verdict is not None:
+            _ledger_completion(dispatch_id, app_id, role, new_status, verdict)
+
+        out = {"dispatch_id": dispatch_id, "atom_id": atom_id, "status": new_status}
+        if verdict is not None:
+            out["verdict"] = verdict
+        return out
 
     return await loop.run_in_executor(_executor, _result)
+
+
+def _ledger_completion(dispatch_id: str, app_id: str, role: str, status: str, verdict: dict) -> None:
+    """Append a completion-verify provenance entry to the FRANK ledger. Never raises."""
+    if not pg:
+        return
+    try:
+        pg.ledger_append("willow", "completion_verify", {
+            "dispatch_id": dispatch_id, "app_id": app_id, "role": role,
+            "status": status, "verdict": verdict,
+        })
+    except Exception:
+        pass
 
 
 @mcp.tool()

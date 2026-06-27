@@ -128,3 +128,68 @@ def test_self_managed_task_allows_close():
 def test_no_supervisor_allows_close():
     task = {"to_agent": "loki", "from_agent": ""}
     assert cv.self_close_rejection("loki", task) is None
+
+
+# --------------------------------------------------------------------------- #
+# env-overridable config (slice 2)
+# --------------------------------------------------------------------------- #
+
+
+def test_required_checks_default_is_the_frozenset(monkeypatch):
+    monkeypatch.delenv("WILLOW_COMPLETION_REQUIRED_CHECKS", raising=False)
+    assert cv.required_checks() == cv.REQUIRED_CHECKS
+
+
+def test_required_checks_env_override(monkeypatch):
+    monkeypatch.setenv("WILLOW_COMPLETION_REQUIRED_CHECKS", "lint, security ,build")
+    assert cv.required_checks() == frozenset({"lint", "security", "build"})
+
+
+def test_required_checks_blank_env_falls_back_to_default(monkeypatch):
+    monkeypatch.setenv("WILLOW_COMPLETION_REQUIRED_CHECKS", "   ")
+    assert cv.required_checks() == cv.REQUIRED_CHECKS
+
+
+def test_allowed_repos_default(monkeypatch):
+    monkeypatch.delenv("WILLOW_COMPLETION_ALLOWED_REPOS", raising=False)
+    assert cv.allowed_repos() == cv.ALLOWED_REPOS
+
+
+def test_allowed_repos_env_override(monkeypatch):
+    monkeypatch.setenv("WILLOW_COMPLETION_ALLOWED_REPOS", "me/fork,other/repo")
+    assert cv.allowed_repos() == frozenset({"me/fork", "other/repo"})
+
+
+def test_gate_disabled_by_default(monkeypatch):
+    monkeypatch.delenv("WILLOW_COMPLETION_REQUIRE_EVIDENCE", raising=False)
+    assert cv.gate_enabled() is False
+
+
+def test_gate_enabled_truthy_values(monkeypatch):
+    for v in ("1", "true", "TRUE", "yes", "on"):
+        monkeypatch.setenv("WILLOW_COMPLETION_REQUIRE_EVIDENCE", v)
+        assert cv.gate_enabled() is True
+
+
+def test_gate_disabled_falsy_values(monkeypatch):
+    for v in ("0", "false", "no", "off", ""):
+        monkeypatch.setenv("WILLOW_COMPLETION_REQUIRE_EVIDENCE", v)
+        assert cv.gate_enabled() is False
+
+
+def test_verify_honors_env_repo_allowlist(monkeypatch):
+    # A repo NOT in the hardcoded default becomes valid once allowlisted via env.
+    monkeypatch.setenv("WILLOW_COMPLETION_ALLOWED_REPOS", "me/fork")
+    ev = {"repo": "me/fork", "commit_sha": "abc123"}
+    v = cv.verify_completion_evidence(ev, gh=_gh_ok())
+    assert v["status"] == "VERIFIED"
+
+
+def test_verify_honors_env_required_checks(monkeypatch):
+    # Narrow the required set to one check the fake gh reports green.
+    monkeypatch.setenv("WILLOW_COMPLETION_REQUIRED_CHECKS", "lint")
+    sha = "abc123"
+    runs = [{"name": "lint", "conclusion": "success", "app": {"slug": "github-actions"}}]
+    gh = lambda p: ({"sha": sha} if p.endswith(sha) else runs if "check-runs" in p else None)  # noqa: E731
+    v = cv.verify_completion_evidence(_ev(), gh=gh)
+    assert v["status"] == "VERIFIED"
