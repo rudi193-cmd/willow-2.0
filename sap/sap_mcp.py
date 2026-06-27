@@ -1513,14 +1513,16 @@ async def agent_dispatch_result(
 ) -> dict:
     """Record the result of a completed dispatch task. Writes LOAM atom, closes dispatch record.
 
-    Evidence-gated completion (slice 2, see core/completion_verify.py). The gate is
-    default-off (WILLOW_COMPLETION_REQUIRE_EVIDENCE); when off this behaves exactly
-    as before, and any `evidence` is recorded advisory-only. When enforcing:
+    Evidence-gated completion (slices 2–3, see core/completion_verify.py). The gate
+    is default-off (WILLOW_COMPLETION_REQUIRE_EVIDENCE); when off this behaves
+    exactly as before, and any `evidence` is recorded advisory-only. When enforcing,
+    only SUPERVISED tasks (from_agent != to_agent) are gated:
       - role='report' lets a supervised worker submit evidence without closing
         (status → 'reported'); it does not require VERIFIED.
       - role='close' (default) enforces separation of duties (a worker cannot
         self-close, self_close_rejection) and requires VERIFIED evidence; an
         UNVERIFIED close is rejected 409 and the task is left open.
+    Self-managed closes (the common willow self-dispatch path) are never gated.
     Every close/report that carries a verdict is written to the FRANK ledger.
     """
     logger.info("[w2] agent_dispatch_result app_id=%s did=%s role=%s", app_id, dispatch_id, role)
@@ -1531,10 +1533,10 @@ async def agent_dispatch_result(
 
         gate = cv.gate_enabled()
 
-        # Separation of duties + verdict only matter under the gate, but the
-        # verdict is computed whenever evidence is supplied (advisory when off).
+        # Resolve the task once (when gating) — separation of duties and the
+        # supervised-only evidence requirement both key off from_agent/to_agent.
+        task_row = None
         if gate and role == "close":
-            task_row = None
             try:
                 bt = PgBridge()
                 with bt.conn.cursor() as cur:
@@ -1556,14 +1558,18 @@ async def agent_dispatch_result(
 
         verdict = cv.verify_completion_evidence(evidence) if evidence else None
 
-        # Enforcement: a close under the gate requires VERIFIED provenance.
-        if gate and role == "close":
+        # Enforcement is scoped to SUPERVISED closes. Self-managed tasks, and any
+        # task that cannot be resolved (DB blip / not found), fail open — they keep
+        # the pre-gate behavior so the gate never breaks ordinary self-dispatch.
+        supervised = cv.is_supervised(task_row) if task_row else False
+        if gate and role == "close" and supervised:
             if verdict is None:
                 verdict = {"status": "UNVERIFIED", "reasons": ["no evidence provided"],
                            "checked": {}}
             if verdict["status"] != "VERIFIED":
                 _ledger_completion(dispatch_id, app_id, role, "rejected", verdict)
-                return {"status": 409, "error": "completion UNVERIFIED — evidence required to close",
+                return {"status": 409,
+                        "error": "completion UNVERIFIED — evidence required to close a supervised task",
                         "dispatch_id": dispatch_id, "verdict": verdict}
 
         new_status = "reported" if (gate and role == "report") else "completed"
