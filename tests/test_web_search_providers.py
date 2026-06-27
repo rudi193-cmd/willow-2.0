@@ -146,13 +146,16 @@ def test_chain_exhausted_returns_empty():
 def test_search_web_uses_ddg_by_default(monkeypatch):
     captured = {}
 
-    def fake_ddg(query, max_results=8):
+    # The DDG provider routes through _ddg_fetch (the raising fetch) so the
+    # chain's retry/circuit-breaker layer can see typed failures.
+    def fake_fetch(query, max_results=8):
         captured["query"] = query
         captured["max_results"] = max_results
         return [_hit("https://example.com")]
 
-    monkeypatch.setattr(web_search, "ddg_html_search", fake_ddg)
+    monkeypatch.setattr(web_search, "_ddg_fetch", fake_fetch)
     monkeypatch.delenv("WILLOW_SEARCH_PROVIDER_ORDER", raising=False)
+    web_search.reset_circuit_breakers()
     out = web_search.search_web("hello", max_results=5)
     assert [h["url"] for h in out] == ["https://example.com"]
     assert captured == {"query": "hello", "max_results": 5}
