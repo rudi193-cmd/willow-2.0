@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import html
 import logging
+import os
 import re
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 from urllib.parse import parse_qs, quote_plus, unquote, urlparse
 
 import requests
@@ -174,24 +175,148 @@ def ddg_html_search(query: str, max_results: int = 8) -> list[dict[str, Any]]:
     return hits
 
 
+# --------------------------------------------------------------------------- #
+# Provider seam
+#
+# `search_web()` historically conflated "search" with "DuckDuckGo HTML scrape."
+# The seam below separates the two without changing default behavior: the
+# default provider chain is `[DDGHtmlProvider]`, so an unconfigured call returns
+# exactly what `ddg_html_search()` returned before. Additional providers
+# (Brave/Bing/SerpAPI) slot in via `WILLOW_SEARCH_PROVIDER_ORDER` once their
+# implementations land — DDG stays the default and last-resort fallback.
+# --------------------------------------------------------------------------- #
+
+
+@runtime_checkable
+class SearchProvider(Protocol):
+    """A pluggable search backend returning Willow's standard result dicts."""
+
+    name: str
+
+    def available(self) -> bool:
+        """Cheap readiness/credential check — False means skip without calling."""
+        ...
+
+    def search(self, query: str, max_results: int) -> list[dict[str, Any]]:
+        """Return result dicts (title/url/snippet/source/source_id/date/hostname)."""
+        ...
+
+
+class DDGHtmlProvider:
+    """Current implementation — DuckDuckGo HTML scrape, no API key required.
+
+    Default primary provider and the last-resort fallback for the chain.
+    """
+
+    name = "ddg_html"
+
+    def available(self) -> bool:
+        return True
+
+    def search(self, query: str, max_results: int) -> list[dict[str, Any]]:
+        return ddg_html_search(query, max_results=max_results)
+
+
+class BraveSearchProvider:
+    """Brave Search JSON API provider — key-gated seam stub.
+
+    Phase 1 ships the seam only: the class is present and discoverable but is
+    not in the default chain, and `available()` stays False until both an API
+    key is configured and the real call is implemented in a follow-up. Wiring
+    it early (setting BRAVE_API_KEY) cannot change behavior because `available()`
+    gates on `_IMPLEMENTED` as well.
+    """
+
+    name = "brave"
+    _IMPLEMENTED = False
+
+    def __init__(self, api_key: str | None = None) -> None:
+        self._api_key = api_key or os.getenv("BRAVE_API_KEY", "")
+
+    def available(self) -> bool:
+        return self._IMPLEMENTED and bool(self._api_key)
+
+    def search(self, query: str, max_results: int) -> list[dict[str, Any]]:
+        # Real Brave call lands in the provider-implementation follow-up.
+        log.debug("brave provider not yet implemented — returning []")
+        return []
+
+
+# Registry of constructable providers by name. Factories are nullary so the
+# chain can be (re)built per call without shared mutable state.
+_PROVIDER_FACTORY: dict[str, Any] = {
+    "ddg_html": DDGHtmlProvider,
+    "brave": BraveSearchProvider,
+}
+
+_DEFAULT_PROVIDER_ORDER = "ddg_html"
+
+
+def _provider_order() -> list[str]:
+    """Provider chain from env (`WILLOW_SEARCH_PROVIDER_ORDER`), DDG by default."""
+    raw = os.getenv("WILLOW_SEARCH_PROVIDER_ORDER", _DEFAULT_PROVIDER_ORDER)
+    return [name.strip() for name in raw.split(",") if name.strip()]
+
+
+def build_providers(order: list[str] | None = None) -> list[SearchProvider]:
+    """Construct the provider chain in priority order, skipping unknown names."""
+    providers: list[SearchProvider] = []
+    for name in order or _provider_order():
+        factory = _PROVIDER_FACTORY.get(name)
+        if factory is None:
+            log.warning("unknown search provider %r — skipping", name)
+            continue
+        providers.append(factory())
+    return providers
+
+
+def _search_providers(
+    query: str,
+    max_results: int,
+    providers: list[SearchProvider] | None = None,
+) -> list[dict[str, Any]]:
+    """Run the provider chain, advancing on unavailable/empty/error.
+
+    The chain resets per query. Each advance is logged with a reason. Returns
+    the first non-empty result set, or [] if every provider is exhausted.
+    """
+    chain = build_providers() if providers is None else providers
+    for provider in chain:
+        try:
+            if not provider.available():
+                log.debug("provider %s unavailable — advancing", provider.name)
+                continue
+            results = provider.search(query, max_results)
+        except Exception as exc:
+            log.warning("provider %s failed: %s — advancing", provider.name, exc)
+            continue
+        if results:
+            return results
+        log.info("provider %s returned 0 results — advancing", provider.name)
+    return []
+
+
 def search_web(
     query: str,
     *,
     max_results: int = 8,
     trusted_only: bool = False,
     include_handoffs: bool = False,
+    providers: list[SearchProvider] | None = None,
 ) -> list[dict[str, Any]]:
     """
     General open web search for Willow.
 
     trusted_only: filter to verified institutional domain suffixes.
     include_handoffs: prepend map/search URLs for navigational queries.
+    providers: explicit provider chain (default: built from
+        WILLOW_SEARCH_PROVIDER_ORDER, falling back to DDG HTML).
     """
     hits: list[dict[str, Any]] = []
     if include_handoffs:
         hits.extend(navigational_handoffs(query))
 
-    raw = ddg_html_search(query, max_results=max_results)
+    raw = _search_providers(query, max_results, providers)
     if trusted_only:
         raw = [h for h in raw if _trusted_host(h.get("hostname", ""))]
 
