@@ -59,6 +59,7 @@ sys.path.insert(0, str(WILLOW_ROOT))
 
 from core.embedder import embed  # noqa: E402
 from core.pg_bridge import PgBridge  # noqa: E402
+from willow.fylgja.willow_home import willow_home  # noqa: E402
 from run_wce import cosine_oracle, is_cold, is_warm  # noqa: E402  (same dir)
 
 # Phrases that are procedural/meta, not knowledge topics — dropped pre-embed.
@@ -87,7 +88,7 @@ def _is_topical(text: str, *, min_words: int = 4, max_words: int = 32) -> bool:
 
 
 def _handoff_candidates(limit_files: int) -> list[dict[str, Any]]:
-    home = os.environ.get("WILLOW_HOME", os.path.expanduser("~/github/.willow"))
+    home = str(willow_home())
     files = sorted(glob.glob(os.path.join(home, "handoffs", "**", "*.md"), recursive=True))
     files = files[-limit_files:] if limit_files else files
     out: list[dict[str, Any]] = []
