@@ -1006,9 +1006,14 @@ async def kb_search(
             seen = {a["id"] for a in knowledge if a.get("id")}
             knowledge = knowledge + [n for n in neighbors if n.get("id") not in seen]
 
-        for atom in knowledge[:3]:
+        # Relevance-gated promotion (KB 43AB3F89): warm hits whose cosine clears
+        # the floor regardless of rank, not a fixed top-3. Falls back to top-N on
+        # the keyword/degraded path (no _cosine_sim). Revert via
+        # WILLOW_PROMOTE_MODE=topn. select_promotion_ids is pure; we promote here.
+        from core.promotion_policy import select_promotion_ids
+        for atom_id in select_promotion_ids(knowledge):
             try:
-                pg.promote(atom["id"])
+                pg.promote(atom_id)
             except Exception:
                 pass
         for row in jeles:
