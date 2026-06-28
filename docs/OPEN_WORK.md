@@ -15,8 +15,8 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 
 | PR | Type | Score | Lane | Next action |
 |----|------|-------|------|-------------|
-| [claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | narrow_bugfix | 8 | green | Fix pushed `0c9cfea`; CHANGES_REQUESTED not yet dismissed (11d silent) — **re-request review** |
-| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | narrow_bugfix | 8 | green | Fix pushed `5a6e633`; CHANGES_REQUESTED not yet dismissed (11d silent) — **re-request review** |
+| [claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | narrow_bugfix | 8 | green | **MERGED 2026-06-28** ✓ |
+| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | narrow_bugfix | 8 | green | Fix `54854a9` (listThreadSessions guard + v1.0.40 bump) clears last TerrysPOV issue; CI green; comment posted — **wait on maintainer** |
 | [claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | narrow_bugfix | 8 | green | CI green, no review yet — wait |
 | [claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | docs_setup | 8 | green | CI green, no review yet — wait |
 | [mcp-mem0 #18](https://github.com/coleam00/mcp-mem0/pull/18) | narrow_bugfix | 8 | green | Issue-linked (Fixes #3), mergeable, no review — wait |
@@ -33,14 +33,14 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 
 | PR | Status | Next step |
 |----|--------|-----------|
-| [claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | Fix pushed `0c9cfea`; `claude-review` SUCCESS; review still CHANGES_REQUESTED | Re-request review from TerrysPOV (fix addressed 2026-06-12, undismissed) |
-| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | Fix pushed `5a6e633`; `claude-review` SUCCESS; review still CHANGES_REQUESTED | Re-request review from TerrysPOV (fix addressed 2026-06-12, undismissed) |
 | [codejail #309](https://github.com/openedx/codejail/pull/309) | CLA signed 2026-06-18; maintainer `mphilbrick211` engaged; one CLA check FAILURE | Confirm CLA clears, then nudge `mphilbrick211` / `@moisesgsalas` |
 
 ## Upstream PRs — waiting on maintainers (no move)
 
 | PR | Status | Next step |
 |----|--------|-----------|
+| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | Fix `54854a9` clears last TerrysPOV issue (listThreadSessions); all 3 checks green; v1.0.40 bumped; comment posted 2026-06-28 | Maintainer to re-review/dismiss stale CHANGES_REQUESTED or merge |
+| [glapagos #20](https://github.com/castroquiles/glapagos/pull/20) | Lint was red (latent black/flake8/mypy conflicts); fix `628a9dd` 2026-06-28 — now 9/9 checks green, mergeable | Maintainer review |
 | [claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | CI green; mergeable; no review | Maintainer review |
 | [claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | CI green; mergeable; no review | Maintainer review |
 | [mcp-mem0 #18](https://github.com/coleam00/mcp-mem0/pull/18) | Mergeable; issue-linked; no review | Maintainer review |
