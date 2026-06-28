@@ -1,18 +1,391 @@
 {
-  "_comment": "WCE cold-relevant recall probe query set. Real Willow continuity topics drawn from the session corpus and handoffs. Recency-blind cosine is the relevance oracle; these are the questions a returning session would actually ask. OPEN (handoff Q): real session topics vs hand-picked scenarios — this v1 is hand-picked real topics; revisit with mined session topics. k = top-k cutoff for retrieval recall.",
+  "_comment": "WCE cold-relevant recall probe set v2 — MINED from real fleet signal (handoff machine blocks as spine + substantive session_messages to widen), filtered to BURIAL-TESTABLE candidates (n_cold>=3 & n_warm>=2) over the continuity-grade cosine oracle and ranked by min(cold,warm) balance — not by max cold-set size (the v1 trap that surfaced vague all-cold chatter), and not by ranker performance (not teaching-to-test). v1 (12 hand-picked) is in git history. Mined 2026-06-28T01:45:14Z.",
   "default_k": 10,
+  "_provenance": {
+    "miner": "mine_wce_queries.py",
+    "min_cold": 3,
+    "min_warm": 2,
+    "oracle_n": 20,
+    "continuity_grade_oracle": true,
+    "cosine_floor": 0.5,
+    "cold": "visit<=1 & (never|>=30.0d)",
+    "ranking": "min(n_cold, n_warm) desc, then (n_cold+n_warm) desc",
+    "n_probes": 40,
+    "source_mix": {
+      "handoff": 40,
+      "session_message": 0
+    },
+    "cold_set_size": {
+      "min": 10,
+      "max": 10,
+      "mean": 10.0
+    },
+    "warm_set_size": {
+      "min": 10,
+      "max": 10,
+      "mean": 10.0
+    }
+  },
   "queries": [
-    {"id": "ranking-feedback-loop", "query": "why does the live ranker bury cold but relevant memory recency feedback loop weight multiplier", "k": 10},
-    {"id": "locomo-bottleneck", "query": "LoCoMo bottleneck is the answerer not retrieval recall saturated", "k": 10},
-    {"id": "continuity-eval-design", "query": "Willow Continuity Eval WCE cold-relevant recall probe design", "k": 10},
-    {"id": "detached-kart-lane", "query": "detached Kart lane no timeout long running benchmark job", "k": 10},
-    {"id": "handoff-continuity", "query": "session handoff continuity what the next session needs open threads next bite", "k": 10},
-    {"id": "signal-weight-null", "query": "NULL-safe signal weight norn pass promotion fix", "k": 10},
-    {"id": "metabolic-consecration", "query": "fleet status metabolic consecration flag under-report host Kart", "k": 10},
-    {"id": "temporal-band-floor", "query": "temporal band date-anchored retrieval floor bitemporal validity", "k": 10},
-    {"id": "grove-gate-chokepoint", "query": "Grove gate fleet chokepoint health LISTEN NOTIFY monitor", "k": 10},
-    {"id": "mem-check-dedup", "query": "mem_check redundant contradiction gate before kb_ingest dedup", "k": 10},
-    {"id": "norn-demote-stale", "query": "norn pass demote stale atoms decay cadence weight recalculation", "k": 10},
-    {"id": "asyncanthropic-leak", "query": "AsyncAnthropic client not closed event loop closed leak locomo_llm", "k": 10}
+    {
+      "id": "git-remote-set-url-origin",
+      "query": "git remote set-url origin to public repo",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-21a_vishwakarma.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "force-pushed-master-to-reconcile",
+      "query": "force-pushed master to reconcile histories",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-21a_vishwakarma.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "patched-path-a-locomo-pilot",
+      "query": "Patched path_a_locomo_pilot.py skip-ingest + retry",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-05-31c_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "hardened-willow-md-operating-rules",
+      "query": "Hardened willow.md operating rules",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-10c_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "research-constellation-census-across-all",
+      "query": "Research constellation census across all stores and repos",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-14d_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "rh7-verification-artifacts-recorded-as",
+      "query": "RH7 verification artifacts recorded as private_context",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-14d_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "verified-handoff-latest-returns-session",
+      "query": "Verified handoff_latest returns session_handoff-2026-06-14i",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-14j_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "felis-catus-structural-audit-kb",
+      "query": "Felis-catus structural audit + KB atoms AF3D04DC EA422361",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-16_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "verified-live-stack-write-2026",
+      "query": "verified live stack write 2026-06-17T01:45:38Z",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-17a_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "host-norn-pass-881059c0-consecrated",
+      "query": "Host Norn pass 881059C0; consecrated true",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-17i_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "resolved-bash-50x-block-telemetry",
+      "query": "Resolved Bash 50x block-telemetry flag",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-17i_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "embed-only-histogram-over-186",
+      "query": "embed-only histogram over 186 files drove threshold calibration",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-22b_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "secret-guard-redacts-credentials",
+      "query": "secret guard redacts credentials",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-22d_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "closed-forks-fork-4e393e8e-fork",
+      "query": "Closed forks FORK-4E393E8E FORK-738FD0EC",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-23_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "kb-ingest-9ecaf5bb-memory-project",
+      "query": "kb_ingest 9ECAF5BB; memory project-codejail-309-quality-fix",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-24d_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "persist-flag-in-willow-config",
+      "query": "persist flag in willow-config env",
+      "k": 10,
+      "_source": "handoff:key_actions",
+      "_origin": "session_handoff-2026-06-27d_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "fix-willow-env-for-systemd",
+      "query": "fix willow env for systemd",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-05-30_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "decide-fate-of-boot-splash",
+      "query": "Decide fate of boot splash WIP",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-09b_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "embedding-backfill-when-ollama-idle",
+      "query": "Embedding backfill when Ollama idle",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-09c_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "wire-audit-verify-py-into",
+      "query": "wire audit_verify.py into CI",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-12b_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "install-user-timers-host-side",
+      "query": "install user timers host-side",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-12c_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "resolve-human-required-queue-items",
+      "query": "resolve human-required queue items",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-14b_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "add-research-entries-to-catalog",
+      "query": "Add research entries to catalog.json",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-14c_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "first-llm-physics-catalog-entry",
+      "query": "first LLM-physics catalog entry when safe",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-14i_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "verify-persona-picker-bare-number",
+      "query": "verify persona picker bare-number handler",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-15h_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "on-authorization-write-agent-identity",
+      "query": "on authorization: write agent_identity.require_agent_name test (zero coverage, it's a gate)",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-15i_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "then-grove-listen-run-cog",
+      "query": "then grove_listen._run (cog 110, untested)",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-15i_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "phase-1-core-store-port",
+      "query": "Phase 1: core/store_port.py + WillowStoreAdapter",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-16b_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "migrate-willow-skills-py-and",
+      "query": "Migrate willow/skills.py and flags.py to StorePort",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-16e_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "wire-patentsview-x-api-key",
+      "query": "wire PatentsView X-Api-Key + repoint host",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-21c_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "open-cowsay-pr-once-sean",
+      "query": "open cowsay PR once Sean draws Grogu",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-23h_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "reconcile-metabolic-consecrated-flag",
+      "query": "Reconcile metabolic consecrated flag",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-26e_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "wire-verify-into-agent-dispatch",
+      "query": "wire verify into agent_dispatch_result + ledger receipt",
+      "k": 10,
+      "_source": "handoff:next_steps",
+      "_origin": "session_handoff-2026-06-27_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "unify-two-diverged-nest-codebases",
+      "query": "unify two diverged Nest codebases",
+      "k": 10,
+      "_source": "handoff:open_threads",
+      "_origin": "session_handoff-2026-06-21b_vishwakarma.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "master-dirty-unrelated-local-mods",
+      "query": "master dirty unrelated local mods",
+      "k": 10,
+      "_source": "handoff:open_threads",
+      "_origin": "session_handoff-2026-05-30_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "hermes-27657-await-rivkincollective-reply",
+      "query": "Hermes #27657 — await RivkinCollective reply",
+      "k": 10,
+      "_source": "handoff:open_threads",
+      "_origin": "session_handoff-2026-05-30d_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "upstream-emerging-rule-community-9",
+      "query": "Upstream Emerging-Rule/community #9 — maintainer merge",
+      "k": 10,
+      "_source": "handoff:open_threads",
+      "_origin": "session_handoff-2026-05-30d_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "failed-safe-manifests-ratatosk-ask",
+      "query": "Failed SAFE manifests: ratatosk, ask-jeles, utety-chat",
+      "k": 10,
+      "_source": "handoff:open_threads",
+      "_origin": "session_handoff-2026-05-30d_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "calibration-series-human-reviewer-2",
+      "query": "Calibration Series human reviewer #2 for L02",
+      "k": 10,
+      "_source": "handoff:open_threads",
+      "_origin": "session_handoff-2026-05-31c_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    },
+    {
+      "id": "post-reboot-verify-willow-sh",
+      "query": "Post-reboot verify ./willow.sh status-all expanded service list",
+      "k": 10,
+      "_source": "handoff:open_threads",
+      "_origin": "session_handoff-2026-06-10d_willow.md",
+      "_n_cold_relevant_at_mint": 10,
+      "_n_warm_relevant_at_mint": 10
+    }
   ]
 }

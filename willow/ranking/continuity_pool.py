@@ -48,3 +48,18 @@ def resolve_continuity_source_types(*, pool: Optional[str] = None) -> Optional[l
     if mode == "curated":
         return curated_continuity_source_types()
     raise ValueError(f"unknown continuity pool {mode!r} — use curated|full|off")
+
+
+# ── Continuity-grade oracle corpus (WCE eval-validity) ────────────────────────
+# A *deny-list* on the corpus the WCE **oracle** scores — TIGHTER than the
+# curated *retrieval* allow-list above, and a different lever: the curated pool
+# restricts what the live ranker may RETRIEVE; this restricts what counts as
+# ground-truth RELEVANT (and hence cold/warm). Without it the cold/warm axis is
+# degenerate — ~83% of every cosine-relevant set is cold, so cold-relevant recall
+# collapses into plain relevant-recall (KB 64677924). Excluding these low-
+# continuity source_types and dirty/pipe/revelation title prefixes restores a
+# discriminating ~62/38 cold/warm split (1107 atoms, 416 warm), so a warm
+# population can actually bury cold-relevant memory (KB D9922FEF, validated
+# 2026-06-27).
+CONTINUITY_GRADE_DENY_SOURCE_TYPES = ("revelation", "dark_matter", "intake")
+CONTINUITY_GRADE_DENY_TITLE_PREFIXES = ("[dirty]", "PIPE-", "Revelation:")

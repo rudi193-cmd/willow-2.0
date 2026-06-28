@@ -79,7 +79,11 @@ from willow.ranking.hybrid import (  # noqa: E402
     WEIGHT_MODES,
     hybrid_search,
 )
-from willow.ranking.continuity_pool import resolve_continuity_source_types  # noqa: E402
+from willow.ranking.continuity_pool import (  # noqa: E402
+    CONTINUITY_GRADE_DENY_SOURCE_TYPES,
+    CONTINUITY_GRADE_DENY_TITLE_PREFIXES,
+    resolve_continuity_source_types,
+)
 
 import psycopg2.extras  # noqa: E402
 
@@ -93,6 +97,7 @@ def cosine_oracle(
     project: Optional[str],
     oracle_pool: int,
     source_types: Optional[list[str]] = None,
+    continuity_grade: bool = False,
 ) -> list[dict[str, Any]]:
     """
     Score every visible atom by raw cosine to query_vec — no weight, no recency.
@@ -104,6 +109,12 @@ def cosine_oracle(
     `source_types`, when set, restricts the oracle corpus to those source_types —
     the memory-layer ablation uses it to define the relevant set over the
     non-LoCoMo "full stack" (B3*) rather than the whole contaminated table.
+
+    `continuity_grade` (WCE eval-validity, KB D9922FEF) applies a continuity-grade
+    DENY-list on top of any allow-list: it drops low-continuity source_types
+    (revelation/dark_matter/intake) and dirty/pipe/revelation title prefixes so
+    the cold/warm axis is non-degenerate (~62/38 split, not ~83% all-cold). This
+    composes with `source_types` (allow-list AND deny-list).
     """
     vec_str = str(query_vec)
     filters = [
@@ -119,6 +130,15 @@ def cosine_oracle(
     if source_types:
         filters.append("source_type = ANY(%s)")
         params.append(list(source_types))
+    if continuity_grade:
+        # Deny low-continuity source_types (COALESCE so a NULL type — not on the
+        # deny-list — is kept, not silently dropped).
+        filters.append("COALESCE(source_type, '') <> ALL(%s)")
+        params.append(list(CONTINUITY_GRADE_DENY_SOURCE_TYPES))
+        # Deny dirty/pipe/revelation title prefixes. '[' is literal in LIKE.
+        for prefix in CONTINUITY_GRADE_DENY_TITLE_PREFIXES:
+            filters.append("COALESCE(title, '') NOT LIKE %s")
+            params.append(prefix + "%")
     where = " AND ".join(filters)
     params.append(oracle_pool)
 
@@ -475,6 +495,7 @@ def evaluate_query(
     project: Optional[str],
     weight_variants: list[WeightVariant],
     source_types: Optional[list[str]] = None,
+    continuity_grade: bool = False,
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     qtext = query["query"]
@@ -484,7 +505,10 @@ def evaluate_query(
     if qvec is None:
         return {"id": query["id"], "query": qtext, "error": "embed_failed"}
 
-    oracle = cosine_oracle(pg, qvec, project=project, oracle_pool=oracle_pool)
+    oracle = cosine_oracle(
+        pg, qvec, project=project, oracle_pool=oracle_pool,
+        continuity_grade=continuity_grade,
+    )
     relevant = [r for r in oracle[:oracle_n] if float(r["cosine"]) >= cosine_floor]
     cold_relevant = [
         r for r in relevant
@@ -688,6 +712,7 @@ def _fixed_oracle_sets(
     cold_age_days: float,
     project: Optional[str],
     oracle_source_types: Optional[list[str]],
+    continuity_grade: bool = False,
 ) -> list[dict[str, Any]]:
     """Per-query relevant/cold/warm id sets, recency-blind, computed ONCE pre-replay."""
     now = datetime.now(timezone.utc)
@@ -702,6 +727,7 @@ def _fixed_oracle_sets(
         oracle = cosine_oracle(
             pg, qvec, project=project, oracle_pool=oracle_pool,
             source_types=oracle_source_types,
+            continuity_grade=continuity_grade,
         )
         relevant = [r for r in oracle[:oracle_n] if float(r["cosine"]) >= cosine_floor]
         cold_ids = {
@@ -1052,6 +1078,7 @@ def _run_promotion_replay(
             cold_age_days=args.cold_age_days,
             project=args.project,
             oracle_source_types=retrieval_source_types,
+            continuity_grade=args.continuity_grade_oracle,
         )
         replay = run_promotion_replay(
             pg, fixed,
@@ -1077,6 +1104,7 @@ def _run_promotion_replay(
         "relgate_floor": relgate_floor,
         "continuity_pool": "full" if args.full_pool else "curated",
         "retrieval_source_types": retrieval_source_types,
+        "continuity_grade_oracle": args.continuity_grade_oracle,
     }
     payload["promotion_replay"] = {"config": config, "summary": replay}
 
@@ -1146,6 +1174,11 @@ def main() -> int:
                          "layers (fixed non-LoCoMo oracle, live cap ranker per layer)")
     ap.add_argument("--full-pool", action="store_true",
                     help="live retrieval uses full source-type table (default: curated B2-minus-intake)")
+    ap.add_argument("--continuity-grade-oracle", action=argparse.BooleanOptionalAction, default=True,
+                    help="define the oracle/cold/warm set over a continuity-grade corpus "
+                         "(deny revelation/dark_matter/intake + dirty/pipe/revelation titles) so the "
+                         "cold/warm axis is non-degenerate (~62/38, not ~83%% all-cold); "
+                         "--no-continuity-grade-oracle reverts to the pre-fix degenerate oracle (default: on)")
     ap.add_argument("--promotion-replay", action="store_true",
                     help="Lever B1: replay the query stream under promotion policies on a "
                          "rolled-back snapshot; measure cold recall (does top-3 promotion bury cold memory?)")
@@ -1240,6 +1273,7 @@ def main() -> int:
         "variant_labels": variant_labels,
         "continuity_pool": "full" if args.full_pool else "curated",
         "retrieval_source_types": retrieval_source_types,
+        "continuity_grade_oracle": args.continuity_grade_oracle,
     }
 
     results: list[dict[str, Any]] = []
@@ -1248,7 +1282,7 @@ def main() -> int:
             k: v for k, v in config.items()
             if k not in (
                 "variant_labels", "cap_sweep", "weight_cap", "cosine_bypass",
-                "continuity_pool", "retrieval_source_types",
+                "continuity_pool", "retrieval_source_types", "continuity_grade_oracle",
             )
         }
         for q in queries:
@@ -1257,6 +1291,7 @@ def main() -> int:
                     pg, q,
                     weight_variants=weight_variants,
                     source_types=retrieval_source_types,
+                    continuity_grade=args.continuity_grade_oracle,
                     **eval_cfg,
                 )
             )
@@ -1275,6 +1310,7 @@ def main() -> int:
     pool_note = config.get("continuity_pool", "curated")
     n_types = len(config.get("retrieval_source_types") or [])
     print(f"  retrieval pool: {pool_note}" + (f" ({n_types} source_types)" if n_types else ""))
+    print(f"  oracle corpus: {'continuity-grade' if config.get('continuity_grade_oracle') else 'full (degenerate axis)'}")
     print(f"  config: k={config['k']} oracle_n={config['oracle_n']} "
           f"cosine_floor={config['cosine_floor']} "
           f"cold(visit<={config['cold_visit_max']}, age>={config['cold_age_days']}d)")
