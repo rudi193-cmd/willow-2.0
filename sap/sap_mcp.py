@@ -6354,7 +6354,8 @@ def main() -> None:
     if args.http:
         from sap.security_middleware import verify_transport, wrap_streamable_http_app
 
-        verify_transport("http", host=args.host)
+        if not verify_transport("http", host=args.host):
+            sys.exit(1)
         if os.environ.get("WILLOW_MCP_API_KEY", "").strip():
             _orig_streamable_http_app = mcp.streamable_http_app
 
