@@ -29,7 +29,7 @@ pre-commit install --hook-type pre-push
 .venv-dev/bin/pip install -r requirements-dev.txt
 ```
 
-If `pip check` warns `willow requires aiohttp>=3.14.1` on Python 3.14, stale egg-info — run `bash scripts/refresh_editable_willow.sh`.
+If `pip check` warns `willow requires aiohttp>=3.14.1` on Python 3.14, run `bash scripts/refresh_editable_willow.sh` (refreshes editable metadata in site-packages).
 
 **Python:** 3.11–3.13 recommended (`litellm>=1.87` needs `<3.14`; 3.14 uses litellm 1.83.x). Check: `./willow.sh venv check`.
 

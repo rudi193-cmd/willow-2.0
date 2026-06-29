@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
 # Refresh editable willow metadata after pyproject.toml dependency changes.
-# Fixes stale willow.egg-info (e.g. aiohttp>=3.14.1 on Python 3.14 lanes).
+# PEP 660 editable installs keep metadata in site-packages, not willow.egg-info/.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV="${ROOT}/.venv-dev"
-[[ -x "${VENV}/bin/pip" ]] || { echo "Missing ${VENV} — run bash setup.sh first" >&2; exit 1; }
+PIP="${VENV}/bin/pip"
+[[ -x "${PIP}" ]] || { echo "Missing ${VENV} — run bash setup.sh first" >&2; exit 1; }
+
 rm -rf "${ROOT}/willow.egg-info"
-"${VENV}/bin/pip" install -e "${ROOT}" --no-deps --no-build-isolation --force-reinstall
-echo "OK — egg-info aiohttp line:"
-grep aiohttp "${ROOT}/willow.egg-info/requires.txt"
-"${VENV}/bin/pip" check
+"${PIP}" install -e "${ROOT}" --no-deps --no-build-isolation --force-reinstall
+
+META="$("${PIP}" show willow | awk -F': ' '/^Location:/ {print $2}')"
+META="${META}/willow-2.0.0.dist-info/METADATA"
+if [[ -f "${META}" ]]; then
+  echo "OK — installed metadata aiohttp:"
+  grep -i '^Requires-Dist: aiohttp' "${META}" || true
+else
+  echo "OK — editable willow reinstalled (no dist-info METADATA path)"
+fi
+"${PIP}" check
