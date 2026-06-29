@@ -50,7 +50,7 @@
     "willow_work":         {"group": "willow", "tier": "core", "description": "Facade: create, inspect, list, or log a bounded unit of work."},
     "willow_message":      {"group": "willow", "tier": "core", "description": "Facade: read, search, or send Grove messages."},
     "willow_app":          {"group": "willow", "tier": "core", "description": "Facade: inspect SAFE app registration and manifest state."},
-    "willow_external":     {"group": "willow", "tier": "core", "description": "Facade: ask, search, or verify cited external sources through Jeles/source-trail."},
+    "willow_external":     {"group": "willow", "tier": "core", "description": "Facade: ask, search, verify, or fetch cited external sources (Jeles / source-trail / guarded URL fetch)."},
     "willow_web_search":   {"group": "willow", "tier": "core", "description": "Open web SEARCH via DuckDuckGo HTML — not WebSearch/WebFetch. Current events, tech news, queries Jeles cannot cover."},
     "willow_web_fetch":    {"group": "willow", "tier": "core", "description": "Guarded URL fetch with external-guard sandwich — replaces native WebFetch."},
     "willow_code":         {"group": "willow", "tier": "core", "description": "Facade: search or suggest code context through the code graph."},
