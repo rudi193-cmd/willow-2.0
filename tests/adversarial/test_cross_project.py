@@ -69,14 +69,14 @@ def test_cross_project_search_without_connect_filters(bridge, tmp_safe_root):
     """End-to-end: private atoms do not leak across projects without connect declaration."""
     bridge.knowledge_put({
         "id": "adv_xp_private",
-        "project": "adv_target_proj",
+        "project": "personal",
         "title": "private sensitive knowledge",
         "summary": "secret information must not cross",
         "source_type": None,
     })
     bridge.knowledge_put({
         "id": "adv_xp_community",
-        "project": "adv_target_proj",
+        "project": "personal",
         "title": "community sensitive knowledge",
         "summary": "shared community insight may cross",
         "source_type": "community_detection",
@@ -84,8 +84,8 @@ def test_cross_project_search_without_connect_filters(bridge, tmp_safe_root):
     results = cross_project_search(
         bridge,
         query="sensitive knowledge",
-        source_project="adv_source_proj",
-        target_project="adv_target_proj",
+        source_project="willow",
+        target_project="personal",
         app_id="adv_no_connect_app",
         safe_root=tmp_safe_root,
     )

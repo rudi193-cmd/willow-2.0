@@ -54,12 +54,12 @@ def test_oversized_content_stored_intact(bridge):
     big_content = {"data": "x" * (1024 * 1024)}
     bridge.knowledge_put({
         "id": "adv_oversized",
-        "project": "adv_malformed",
+        "project": "heimdallr",
         "title": "oversized content atom",
         "summary": "payload is large",
         "content": big_content,
     })
-    results = bridge.knowledge_search("oversized content atom", project="adv_malformed")
+    results = bridge.knowledge_search("oversized content atom", project="heimdallr")
     assert len(results) == 1
     assert len(results[0]["content"]["data"]) == 1024 * 1024, "Content was truncated"
 
@@ -68,7 +68,7 @@ def test_knowledge_put_missing_id_raises(bridge):
     """knowledge_put with no id field must raise, not silently fail."""
     with pytest.raises((KeyError, ValueError)):
         bridge.knowledge_put({
-            "project": "adv_malformed",
+            "project": "heimdallr",
             "title": "no id field present",
         })
 
@@ -79,11 +79,11 @@ def test_unicode_roundtrip(bridge):
     summary = "Unicode roundtrip: emoji CJK Arabic Hebrew in one atom"
     bridge.knowledge_put({
         "id": "adv_unicode",
-        "project": "adv_malformed",
+        "project": "heimdallr",
         "title": title,
         "summary": summary,
     })
-    results = bridge.knowledge_search("Unicode roundtrip", project="adv_malformed")
+    results = bridge.knowledge_search("Unicode roundtrip", project="heimdallr")
     assert len(results) == 1
     assert results[0]["title"] == title
     assert results[0]["summary"] == summary
@@ -93,11 +93,11 @@ def test_empty_search_query_no_crash(bridge):
     """Empty search query must not crash — ILIKE %% matches everything."""
     bridge.knowledge_put({
         "id": "adv_empty_search",
-        "project": "adv_malformed",
+        "project": "heimdallr",
         "title": "findable via empty search",
         "summary": "present in db",
     })
-    results = bridge.knowledge_search("", project="adv_malformed")
+    results = bridge.knowledge_search("", project="heimdallr")
     assert isinstance(results, list)
     assert any(r["id"] == "adv_empty_search" for r in results)
 
@@ -105,7 +105,7 @@ def test_empty_search_query_no_crash(bridge):
 def test_huge_search_query_no_crash(bridge):
     """10,000-character search query must not crash the server."""
     huge_query = "willow " * 1000  # 7000 chars
-    results = bridge.knowledge_search(huge_query, project="adv_malformed")
+    results = bridge.knowledge_search(huge_query, project="heimdallr")
     assert isinstance(results, list)
 
 

@@ -49,7 +49,7 @@ def test_closed_atom_not_reopened_by_put(bridge):
     t_close = datetime(2026, 3, 1, tzinfo=timezone.utc)
     bridge.knowledge_put({
         "id": "adv_int_closed",
-        "project": "adv_integrity",
+        "project": "heimdallr",
         "title": "will be closed",
         "valid_at": t0,
     })
@@ -57,7 +57,7 @@ def test_closed_atom_not_reopened_by_put(bridge):
     # Re-put the same id without specifying invalid_at
     bridge.knowledge_put({
         "id": "adv_int_closed",
-        "project": "adv_integrity",
+        "project": "heimdallr",
         "title": "attempt to reopen atom",
     })
     with bridge.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -75,7 +75,7 @@ def test_draugr_category_overwritten_by_conflict_update(bridge):
     from core.intelligence import draugr_mark
     bridge.knowledge_put({
         "id": "adv_draugr_conflict",
-        "project": "adv_integrity",
+        "project": "heimdallr",
         "title": "zombie atom candidate",
         "summary": "old stale content",
     })
@@ -86,7 +86,7 @@ def test_draugr_category_overwritten_by_conflict_update(bridge):
     # Re-put without setting category — ON CONFLICT sets category = EXCLUDED.category = None
     bridge.knowledge_put({
         "id": "adv_draugr_conflict",
-        "project": "adv_integrity",
+        "project": "heimdallr",
         "title": "zombie atom updated",
         "summary": "refreshed content",
     })
@@ -106,7 +106,7 @@ def test_knowledge_at_before_close(bridge):
     t_close = now - timedelta(hours=1)
     bridge.knowledge_put({
         "id": "adv_at_before",
-        "project": "adv_integrity",
+        "project": "heimdallr",
         "title": "temporal integrity probe before close",
         "valid_at": t0,
     })
@@ -125,7 +125,7 @@ def test_knowledge_at_after_close(bridge):
     t_close = now - timedelta(hours=1)
     bridge.knowledge_put({
         "id": "adv_at_after",
-        "project": "adv_integrity",
+        "project": "heimdallr",
         "title": "temporal integrity probe after close",
         "valid_at": t0,
     })
