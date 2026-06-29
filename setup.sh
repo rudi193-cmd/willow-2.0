@@ -101,7 +101,8 @@ else
 fi
 "${VENV}/bin/pip" install --quiet --upgrade pip
 "${VENV}/bin/pip" install --quiet -r "${REPO_ROOT}/requirements.txt"
-"${VENV}/bin/pip" install --quiet -e "${REPO_ROOT}" --no-deps
+rm -rf "${REPO_ROOT}/willow.egg-info"
+"${VENV}/bin/pip" install --quiet -e "${REPO_ROOT}" --no-deps --no-build-isolation
 "${VENV}/bin/pip" install --quiet -r "${REPO_ROOT}/requirements-dev.txt"
 ok "Requirements + editable willow + dev tools installed"
 
