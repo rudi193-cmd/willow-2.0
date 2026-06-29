@@ -28,6 +28,19 @@ except ImportError:
         return None
 
 
+def _current_run_id_safe() -> Optional[str]:
+    """Best-effort read of the current session's run_id. Never raises.
+
+    Lazy import keeps the data layer decoupled from run_ledger and avoids any
+    import cycle. Returns None when no run is open or the ledger is unavailable.
+    """
+    try:
+        from core.run_ledger import current_run_id
+        return current_run_id()
+    except Exception:
+        return None
+
+
 # ── Knowledge lifecycle tiers ────────────────────────────────────────────────
 # Canonical vocabulary for knowledge.tier — ordered by epistemic maturity.
 KNOWLEDGE_TIERS: tuple[str, ...] = ("frontier", "contested", "canonical", "superseded")
@@ -100,14 +113,15 @@ CREATE TABLE IF NOT EXISTS agents (
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
-    id           TEXT PRIMARY KEY,
-    task         TEXT NOT NULL,
-    submitted_by TEXT,
-    agent        TEXT DEFAULT 'kart',
-    status       TEXT DEFAULT 'pending',
-    result       JSONB,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    id               TEXT PRIMARY KEY,
+    task             TEXT NOT NULL,
+    submitted_by     TEXT,
+    submitter_run_id TEXT,
+    agent            TEXT DEFAULT 'kart',
+    status           TEXT DEFAULT 'pending',
+    result           JSONB,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS opus_atoms (
@@ -428,6 +442,10 @@ _MIGRATIONS = [
     # Routines integration
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS goal TEXT",
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS routine_session_id TEXT",
+    # Run-ledger linkage: the submitter's run_id, captured at submit time so the
+    # kart-worker daemon (separate process, cannot read the session tmp file) can
+    # nest the Kart run under its real parent instead of a NULL top-level run.
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS submitter_run_id TEXT",
     """CREATE TABLE IF NOT EXISTS routines (
         id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, token TEXT NOT NULL,
         description TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -1783,15 +1801,23 @@ class PgBridge:
     # ── Tasks ────────────────────────────────────────────────────────────────
 
     def submit_task(self, task: str, submitted_by: str = "ganesha",
-                    agent: str = "kart") -> Optional[str]:
+                    agent: str = "kart",
+                    submitter_run_id: Optional[str] = None) -> Optional[str]:
         self._ensure_conn()
+        # Capture the submitting session's run_id here — in the submitter's
+        # process, where the session-local tmp pointer is correct. The kart-worker
+        # daemon runs separately and cannot resolve it at execute time, so without
+        # this every Kart run lands as a NULL-parent top-level run (see
+        # flag-dream-kart-runs-pollution).
+        if submitter_run_id is None:
+            submitter_run_id = _current_run_id_safe()
         try:
             task_id = self.gen_id(8)
             with self.conn.cursor() as cur:
                 cur.execute(
-                    "INSERT INTO tasks (id, task, submitted_by, agent)"
-                    " VALUES (%s, %s, %s, %s)",
-                    (task_id, task, submitted_by, agent),
+                    "INSERT INTO tasks (id, task, submitted_by, submitter_run_id, agent)"
+                    " VALUES (%s, %s, %s, %s, %s)",
+                    (task_id, task, submitted_by, submitter_run_id, agent),
                 )
             self.conn.commit()
             return task_id

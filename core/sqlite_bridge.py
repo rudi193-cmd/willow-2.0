@@ -26,6 +26,15 @@ from typing import Optional
 from willow.fylgja.willow_home import willow_home
 
 
+def _current_run_id_safe() -> Optional[str]:
+    """Best-effort read of the current session's run_id. Never raises."""
+    try:
+        from core.run_ledger import current_run_id
+        return current_run_id()
+    except Exception:
+        return None
+
+
 def _default_db_path() -> Path:
     return Path(os.environ.get("WILLOW_SQLITE_PATH", str(willow_home() / "willow.db"))).expanduser()
 
@@ -86,14 +95,15 @@ CREATE TABLE IF NOT EXISTS agents (
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
-    id           TEXT PRIMARY KEY,
-    task         TEXT NOT NULL,
-    submitted_by TEXT,
-    agent        TEXT DEFAULT 'kart',
-    status       TEXT DEFAULT 'pending',
-    result       TEXT,
-    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    id               TEXT PRIMARY KEY,
+    task             TEXT NOT NULL,
+    submitted_by     TEXT,
+    submitter_run_id TEXT,
+    agent            TEXT DEFAULT 'kart',
+    status           TEXT DEFAULT 'pending',
+    result           TEXT,
+    created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS opus_atoms (
@@ -223,6 +233,9 @@ _MIGRATIONS = [
     # jeles_atoms parity with PgBridge
     "ALTER TABLE jeles_atoms ADD COLUMN valid_at TEXT",
     "ALTER TABLE jeles_atoms ADD COLUMN invalid_at TEXT",
+    # tasks: run-ledger linkage (parity with PgBridge) — submitter's run_id
+    # captured at submit time so Kart runs nest under their real parent.
+    "ALTER TABLE tasks ADD COLUMN submitter_run_id TEXT",
 ]
 
 _FTS_TRIGGERS = """
@@ -549,12 +562,18 @@ class SqliteBridge:
     # ── Tasks ─────────────────────────────────────────────────────────────────
 
     def submit_task(self, task: str, submitted_by: str = "ganesha",
-                    agent: str = "kart") -> Optional[str]:
+                    agent: str = "kart",
+                    submitter_run_id: Optional[str] = None) -> Optional[str]:
+        # Capture the submitting session's run_id here (submitter's process) so
+        # the kart worker can nest the run correctly — parity with PgBridge.
+        if submitter_run_id is None:
+            submitter_run_id = _current_run_id_safe()
         try:
             task_id = self.gen_id(8)
             self._exec(
-                "INSERT INTO tasks (id, task, submitted_by, agent) VALUES (?, ?, ?, ?)",
-                (task_id, task, submitted_by, agent),
+                "INSERT INTO tasks (id, task, submitted_by, submitter_run_id, agent)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (task_id, task, submitted_by, submitter_run_id, agent),
             )
             return task_id
         except Exception:
