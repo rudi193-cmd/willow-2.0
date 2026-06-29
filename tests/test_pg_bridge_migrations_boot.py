@@ -106,17 +106,20 @@ def test_get_pool_fresh_schema_runs_init_schema(monkeypatch):
     assert calls["migrations"] == 0
 
 
-def test_submit_task_logs_insert_failure(caplog):
+def test_submit_task_logs_insert_failure(caplog, monkeypatch):
     bridge = pg_bridge.PgBridge.__new__(pg_bridge.PgBridge)
     bridge._local = threading.local()
     mock_conn = MagicMock()
     mock_conn.closed = False
     cur = MagicMock()
     cur.execute.side_effect = Exception("column submitter_run_id does not exist")
-    mock_conn.cursor.return_value.__enter__.return_value = cur
-    mock_conn.cursor.return_value.__exit__.return_value = False
+    cm = MagicMock()
+    cm.__enter__ = MagicMock(return_value=cur)
+    cm.__exit__ = MagicMock(return_value=False)
+    mock_conn.cursor.return_value = cm
     bridge.conn = mock_conn
     bridge.gen_id = MagicMock(return_value="ABCD1234")
+    monkeypatch.setattr(bridge, "_ensure_conn", lambda: None)
 
     with caplog.at_level(logging.WARNING, logger="core.pg_bridge"):
         result = bridge.submit_task("echo hi", submitted_by="willow", submitter_run_id="run-1")
