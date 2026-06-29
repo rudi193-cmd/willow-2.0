@@ -390,11 +390,68 @@ def _qualifies_as_flag(record: dict, deviation: float) -> bool:
     )
 
 
+def _kart_tasks_running() -> int:
+    """Best-effort count of in-flight (claimed/running) kart tasks."""
+    try:
+        if pg and hasattr(pg, "kart_queue_stats"):
+            stale_s = int(os.environ.get("KART_STALE_SECONDS", "3600"))
+            stats = pg.kart_queue_stats("kart", stale_s)
+            return int(stats.get("running", 0) or 0)
+    except Exception:
+        pass
+    return 0
+
+
+def _restart_kart_worker(only_if_idle: bool = True) -> dict:
+    """Restart the kart-worker systemd user service so merged Kart code goes live.
+
+    The Kart daemon (core/kart_worker.py → core/kart_execute.py / kart_sandbox.py)
+    runs as a separate `kart-worker.service`; neither fleet_reload's in-process
+    hot-swap nor fleet_restart's process exit reaches it, so merged Kart code runs
+    stale until the unit is bounced. The MCP server runs host-side (not in bwrap),
+    so it can drive `systemctl --user` directly.
+
+    only_if_idle: when a kart task is in-flight, skip the bounce — restarting would
+    SIGKILL the running task (the reaper later requeues it). Caller-chosen default.
+    """
+    running = _kart_tasks_running()
+    if only_if_idle and running:
+        return {
+            "status": "skipped",
+            "reason": f"{running} kart task(s) in-flight — not interrupting",
+            "running": running,
+            "hint": "re-run with force, or `systemctl --user restart kart-worker` on the host when idle",
+        }
+    import shutil
+    import subprocess
+    if not shutil.which("systemctl"):
+        return {
+            "status": "unavailable",
+            "reason": "systemctl not found",
+            "hint": "restart the Kart consumer manually on this node",
+        }
+    try:
+        r = subprocess.run(
+            ["systemctl", "--user", "restart", "kart-worker"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if r.returncode == 0:
+            return {"status": "restarted", "unit": "kart-worker"}
+        return {
+            "status": "error",
+            "returncode": r.returncode,
+            "stderr": (r.stderr or "").strip()[:300],
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
 def _hot_reload(target: str = "all") -> dict:
     global pg, store, _inf, _blast
     import importlib
     reloaded: list[str] = []
     errors:   list[str] = []
+    kart_result: dict | None = None
 
     if target in ("all", "blast"):
         try:
@@ -453,6 +510,13 @@ def _hot_reload(target: str = "all") -> dict:
         except Exception as e:
             errors.append(f"safe_agents: {e}")
 
+    # The Kart worker is a separate systemd service — it cannot be hot-swapped
+    # in this process, so bring it current by bouncing the unit (idle-only, so an
+    # in-flight task is not interrupted). This is the only out-of-process step.
+    if target in ("all", "kart"):
+        kart_result = _restart_kart_worker(only_if_idle=True)
+        reloaded.append(f"kart-worker: {kart_result.get('status')}")
+
     # Honesty: hot reload only re-imports the whitelist above. Core modules
     # (dream_state, run_ledger, …) and the facade tool bodies in this file are
     # NOT swapped — only a full process restart loads them. Surface that plus the
@@ -463,11 +527,12 @@ def _hot_reload(target: str = "all") -> dict:
         "status":   "reloaded" if not errors else "partial",
         "reloaded": reloaded,
         "errors":   errors if errors else None,
+        "kart": kart_result,
         "code_version": stale,
         "not_hot_swappable": (
-            "core.* modules (dream_state, run_ledger, kart_worker, …) and the "
-            "sap_mcp facade tool bodies are NOT reloaded here — only fleet_restart "
-            "(full process exit) loads them."
+            "core.* modules (dream_state, run_ledger, …) and the sap_mcp facade "
+            "tool bodies are NOT reloaded here — only fleet_restart (full process "
+            "exit) loads them. The Kart worker IS handled, via systemctl restart."
         ),
     }
     if stale.get("stale"):
@@ -668,7 +733,9 @@ async def fleet_agents(app_id: str) -> dict:
 @sap_gate()
 async def fleet_reload(app_id: str, target: str = "all") -> dict:
     """Hot-reload Willow modules without restarting the MCP server.
-    target: all | blast | inference | postgres | store | gate"""
+    target: all | blast | inference | postgres | store | gate | kart
+    target 'all' (and 'kart') also bounces the kart-worker systemd unit so merged
+    Kart code goes live — skipped automatically while a Kart task is in-flight."""
     logger.info("[w2] fleet_reload app_id=%s target=%s", app_id, target)
     loop = asyncio.get_running_loop()
     timeout_s = float(os.environ.get("WILLOW_FLEET_RELOAD_TIMEOUT", "30"))
@@ -692,9 +759,15 @@ async def fleet_reload(app_id: str, target: str = "all") -> dict:
 
 @mcp.tool(annotations={"destructiveHint": True})
 @sap_gate()
-async def fleet_restart(app_id: str) -> dict:
-    """Restart the SAP MCP server process. Run /mcp in Claude Code to reconnect."""
-    logger.info("[w2] fleet_restart app_id=%s — process exiting", app_id)
+async def fleet_restart(app_id: str, include_kart: bool = True) -> dict:
+    """Restart the SAP MCP server process. Run /mcp in Claude Code to reconnect.
+    include_kart (default True): also bounce the kart-worker systemd unit so the
+    full restart brings both the MCP server and the Kart daemon current in one
+    call. Skipped automatically while a Kart task is in-flight."""
+    logger.info("[w2] fleet_restart app_id=%s include_kart=%s — process exiting", app_id, include_kart)
+
+    kart_result = _restart_kart_worker(only_if_idle=True) if include_kart else {"status": "skipped", "reason": "include_kart=False"}
+
     import threading
     def _delayed_exit():
         import time
@@ -705,7 +778,7 @@ async def fleet_restart(app_id: str) -> dict:
     return {
         "status": "restarting",
         "note": "SAP MCP process exiting. Run /mcp in Claude Code to reconnect.",
-        "kart_daemon": "run_kart.py is a separate persistent process — fleet_restart does NOT restart it. Restart manually if kart_worker.py changed.",
+        "kart": kart_result,
     }
 
 
