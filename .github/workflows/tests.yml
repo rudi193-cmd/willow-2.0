@@ -65,22 +65,27 @@ jobs:
           path: bandit-report.txt
           if-no-files-found: ignore
 
+  pytest-plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          # PRs: 3.11 only. push to master/main: 3.11 + 3.12 smoke.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo 'matrix={"include":[{"python-version":"3.11","with-coverage":true}]}' >> "$GITHUB_OUTPUT"
+          else
+            echo 'matrix={"include":[{"python-version":"3.11","with-coverage":true},{"python-version":"3.12","with-coverage":false}]}' >> "$GITHUB_OUTPUT"
+          fi
+
   pytest-matrix:
+    needs: pytest-plan
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # PRs: 3.11 only (faster). push to master/main: 3.11 + 3.12 smoke.
-    if: github.event_name != 'pull_request' || matrix.run_on_pr
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          # openclaw-sap-gate requires Python >=3.11 (see requirements.txt)
-          - python-version: "3.11"
-            with-coverage: true
-            run_on_pr: true
-          - python-version: "3.12"
-            with-coverage: false
-            run_on_pr: false
+      matrix: ${{ fromJson(needs.pytest-plan.outputs.matrix) }}
 
     services:
       postgres:
@@ -126,7 +131,7 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install -e . --no-deps
-          pip install -r requirements-dev.txt
+          if [ "${{ matrix.with-coverage }}" = "true" ]; then pip install coverage; fi
           sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep
 
       - name: Prepare CI SAFE + USER stubs
