@@ -48,7 +48,8 @@ git clone https://github.com/rudi193-cmd/willow-2.0 ~/github/willow-2.0
 cd ~/github/willow-2.0
 python3 -m venv .venv-dev && source .venv-dev/bin/activate
 pip install -r requirements.txt
-pip install -e ".[dev]"
+pip install -e . --no-deps
+pip install -r requirements-dev.txt
 python3 seed.py
 ```
 

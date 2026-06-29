@@ -7,14 +7,15 @@ name = "willow"
 version = "2.0.0"
 description = "Willow 2.0 — local-first AI stack (Ollama by default)"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.15"
 dependencies = [
     "psycopg2-binary>=2.9.12",
     "pgvector>=0.4.2",
     "cryptography>=48.0.0",
     "requests>=2.34.2",
     "mcp>=1.28.0,<2.0.0",
-    "litellm>=1.87.0",
+    "litellm>=1.87.0; python_version < '3.14'",
+    "litellm>=1.83.7,<1.84; python_version >= '3.14'",
     "textual>=8.2.7",
     "watchdog>=6.0.0",
     "starlette>=1.3.1",

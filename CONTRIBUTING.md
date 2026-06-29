@@ -19,9 +19,17 @@ pre-commit install
 pre-commit install --hook-type pre-push
 ```
 
-`setup.sh` creates **`.venv-dev`** (canonical), installs `requirements.txt`, runs `pip install -e ".[dev]"`, and symlinks `$WILLOW_HOME/venv` → `.venv-dev`. Do not use a separate `.venv` — it is not wired into MCP or `./willow.sh`.
+`setup.sh` creates **`.venv-dev`** (canonical), installs `requirements.txt`, runs `pip install -e . --no-deps`, then `requirements-dev.txt`, and symlinks `$WILLOW_HOME/venv` → `.venv-dev`. Do not use a separate `.venv` — it is not wired into MCP or `./willow.sh`.
 
-**Python:** 3.11+ (`openclaw-sap-gate` in `requirements.txt` requires ≥3.11). Check: `./willow.sh venv check`.
+**Refresh deps manually** (avoid `pip install -e ".[dev]"` — it re-resolves runtime pins and fails on Python 3.14):
+
+```bash
+.venv-dev/bin/pip install -r requirements.txt
+.venv-dev/bin/pip install -e . --no-deps
+.venv-dev/bin/pip install -r requirements-dev.txt
+```
+
+**Python:** 3.11–3.13 recommended (`litellm>=1.87` needs `<3.14`; 3.14 uses litellm 1.83.x). Check: `./willow.sh venv check`.
 
 **IDE wiring:**
 

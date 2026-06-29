@@ -33,7 +33,8 @@ bash setup.sh --public
 
 Use `bash setup.sh` without `--public` when private `willow-config` is present
 at `~/github/.willow`. Manual lower-level path: `python3 -m venv .venv-dev`,
-`pip install -r requirements.txt`, `pip install -e ".[dev]"`, then `python3 seed.py`.
+`pip install -r requirements.txt`, `pip install -e . --no-deps`,
+`pip install -r requirements-dev.txt`, then `python3 seed.py`.
 
 `setup.sh` prepares the venv, dependencies, runtime config, database, and IDE
 templates. `seed.py` handles the lower-level environment seed: GPG, vault,

@@ -33,9 +33,9 @@ pre-commit install
 pre-commit install --hook-type pre-push
 ```
 
-(`setup.sh` already installs editable `willow[dev]` into `.venv-dev`.)
+(`setup.sh` already installs editable willow + dev tools into `.venv-dev`.)
 
-Use `bash setup.sh` without `--public` when private `willow-config` is present at `~/github/.willow`. Manual lower-level path: `python3 -m venv .venv-dev`, `pip install -r requirements.txt`, `pip install -e ".[dev]"`, then `python3 seed.py`.
+Use `bash setup.sh` without `--public` when private `willow-config` is present at `~/github/.willow`. Manual lower-level path: `python3 -m venv .venv-dev`, `pip install -r requirements.txt`, `pip install -e . --no-deps`, `pip install -r requirements-dev.txt`, then `python3 seed.py`.
 
 **What you should see:** setup steps scrolling, then your shell prompt back. No panic unless it stops with an error.
 

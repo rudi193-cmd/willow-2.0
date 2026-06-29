@@ -5,7 +5,7 @@
 # What it does:
 #   1. Pull private willow-config → ~/github/.willow; link runtime config into willow-2.0
 #   2. Create .venv-dev if missing
-#   3. Install requirements.txt + editable willow[dev]
+#   3. Install requirements.txt, editable willow (--no-deps), dev tools
 #   4. Verify Postgres connection
 #   5. Run migrations
 #
@@ -44,6 +44,10 @@ PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_i
 PY_MAJOR=$(echo "${PY_VER}" | cut -d. -f1)
 PY_MINOR=$(echo "${PY_VER}" | cut -d. -f2)
 [[ "${PY_MAJOR}" -ge 3 && "${PY_MINOR}" -ge 11 ]] || fail "Python 3.11+ required (found ${PY_VER})"
+if [[ "${PY_MINOR}" -ge 14 ]]; then
+    warn "Python ${PY_VER}: litellm>=1.87 is unavailable — requirements use litellm 1.83.x on 3.14+"
+    warn "For full dep parity, recreate .venv-dev with Python 3.11–3.13"
+fi
 ok "Python ${PY_VER}"
 
 # ── 2. ~/.willow runtime home (optional willow-config merge) ─────────────────
@@ -97,8 +101,9 @@ else
 fi
 "${VENV}/bin/pip" install --quiet --upgrade pip
 "${VENV}/bin/pip" install --quiet -r "${REPO_ROOT}/requirements.txt"
-"${VENV}/bin/pip" install --quiet -e "${REPO_ROOT}[dev]"
-ok "Requirements + editable willow[dev] installed"
+"${VENV}/bin/pip" install --quiet -e "${REPO_ROOT}" --no-deps
+"${VENV}/bin/pip" install --quiet -r "${REPO_ROOT}/requirements-dev.txt"
+ok "Requirements + editable willow + dev tools installed"
 
 hdr "Fleet venv (\$WILLOW_HOME/venv)"
 PYTHONPATH="${REPO_ROOT}" WILLOW_HOME="${WILLOW_HOME:-${HOME}/github/.willow}" \
