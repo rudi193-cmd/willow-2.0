@@ -76,10 +76,22 @@ def load_or_create_token() -> str:
 
 
 _TOKEN: str = ""
+_REPLAY_WINDOW = 30  # seconds — reject requests with timestamps outside this window
 
 
-def _valid_sig(body: bytes, sig: str) -> bool:
-    expected = hmac.new(_TOKEN.encode(), body, hashlib.sha256).hexdigest()
+def _valid_sig(data: bytes, sig: str, ts_str: str) -> bool:
+    """Verify HMAC-SHA256 and timestamp freshness. Rejects replayed requests.
+
+    Signs ts_str:data so a captured (sig, ts) pair cannot be replayed after
+    _REPLAY_WINDOW seconds even if the token is long-lived.
+    """
+    try:
+        ts = int(ts_str)
+    except (TypeError, ValueError):
+        return False
+    if abs(time.time() - ts) > _REPLAY_WINDOW:
+        return False
+    expected = hmac.new(_TOKEN.encode(), ts_str.encode() + b":" + data, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, sig)
 
 
@@ -130,7 +142,8 @@ class GroveHandler(http.server.BaseHTTPRequestHandler):
 
         elif parsed.path == "/grove/channels":
             sig = self.headers.get("X-Grove-Sig", "")
-            if not _valid_sig(self.path.encode(), sig):
+            ts  = self.headers.get("X-Grove-Ts", "")
+            if not _valid_sig(self.path.encode(), sig, ts):
                 self._send_json(401, {"error": "invalid signature"})
                 return
             try:
@@ -149,7 +162,8 @@ class GroveHandler(http.server.BaseHTTPRequestHandler):
 
         elif parsed.path == "/grove/history":
             sig = self.headers.get("X-Grove-Sig", "")
-            if not _valid_sig(self.path.encode(), sig):
+            ts  = self.headers.get("X-Grove-Ts", "")
+            if not _valid_sig(self.path.encode(), sig, ts):
                 self._send_json(401, {"error": "invalid signature"})
                 return
             channel_name = params.get("channel", ["general"])[0]
@@ -197,7 +211,8 @@ class GroveHandler(http.server.BaseHTTPRequestHandler):
         sig  = self.headers.get("X-Grove-Sig", "")
 
         if parsed.path == "/grove/send":
-            if not _valid_sig(body, sig):
+            ts = self.headers.get("X-Grove-Ts", "")
+            if not _valid_sig(body, sig, ts):
                 self._send_json(401, {"error": "invalid signature"})
                 return
             try:
@@ -239,7 +254,8 @@ class GroveHandler(http.server.BaseHTTPRequestHandler):
                 self._send_json(500, {"error": str(e)})
 
         elif parsed.path == "/command":
-            if not _valid_sig(body, sig):
+            ts = self.headers.get("X-Grove-Ts", "")
+            if not _valid_sig(body, sig, ts):
                 self._send_json(401, {"error": "invalid signature"})
                 return
             try:

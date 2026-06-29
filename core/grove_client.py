@@ -14,6 +14,7 @@ import hashlib
 import hmac
 import json
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -36,23 +37,27 @@ def load_token(path: Path = TOKEN_PATH) -> str:
     return path.read_text().strip()
 
 
-def sign(body: bytes, token: str) -> str:
-    return hmac.new(token.encode(), body, hashlib.sha256).hexdigest()
+def sign(body: bytes, token: str) -> tuple[str, str]:
+    ts_str = str(int(time.time()))
+    sig = hmac.new(token.encode(), ts_str.encode() + b":" + body, hashlib.sha256).hexdigest()
+    return ts_str, sig
 
 
-def _sign_get(path: str, token: str) -> str:
+def _sign_get(path: str, token: str) -> tuple[str, str]:
     """Sign a GET request path (including query string) for X-Grove-Sig."""
-    return hmac.new(token.encode(), path.encode(), hashlib.sha256).hexdigest()
+    ts_str = str(int(time.time()))
+    sig = hmac.new(token.encode(), ts_str.encode() + b":" + path.encode(), hashlib.sha256).hexdigest()
+    return ts_str, sig
 
 
 def get_channels(host_port: str, token: str, timeout: int = 10) -> dict:
     if not host_port.startswith("http"):
         host_port = f"http://{host_port}"
     path = "/grove/channels"
-    sig  = _sign_get(path, token)
+    ts_str, sig = _sign_get(path, token)
     req  = urllib.request.Request(
         f"{host_port.rstrip('/')}{path}",
-        headers={"X-Grove-Sig": sig},
+        headers={"X-Grove-Sig": sig, "X-Grove-Ts": ts_str},
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -71,10 +76,10 @@ def get_history(host_port: str, channel: str, token: str, limit: int = 50, timeo
     if not host_port.startswith("http"):
         host_port = f"http://{host_port}"
     path = f"/grove/history?channel={urllib.parse.quote(channel)}&limit={limit}"
-    sig  = _sign_get(path, token)
+    ts_str, sig = _sign_get(path, token)
     req  = urllib.request.Request(
         f"{host_port.rstrip('/')}{path}",
-        headers={"X-Grove-Sig": sig},
+        headers={"X-Grove-Sig": sig, "X-Grove-Ts": ts_str},
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -95,7 +100,7 @@ def send_command(host_port: str, cmd: str, token: str, timeout: int = 30) -> dic
     url = f"{host_port.rstrip('/')}/command"
 
     payload = json.dumps({"cmd": cmd}).encode()
-    sig = sign(payload, token)
+    ts_str, sig = sign(payload, token)
 
     req = urllib.request.Request(
         url,
@@ -104,6 +109,7 @@ def send_command(host_port: str, cmd: str, token: str, timeout: int = 30) -> dic
         headers={
             "Content-Type":  "application/json",
             "X-Grove-Sig":   sig,
+            "X-Grove-Ts":    ts_str,
             "Content-Length": str(len(payload)),
         },
     )
