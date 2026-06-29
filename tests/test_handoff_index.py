@@ -195,6 +195,55 @@ def test_select_best_handoff_uses_sort_timestamp_for_same_day_kb_atoms():
     assert best["filename"] == "kb_7D81F13A.json"
 
 
+def test_select_best_handoff_rich_yesterday_beats_thin_stub_today():
+    """A rich handoff from yesterday must beat a thin stub from today."""
+    thin_today = {
+        "filename": "session_handoff-2026-06-29a_hanuman.md",
+        "date": "2026-06-29",
+        "summary": "I stopped.",
+        "open_threads": [],
+        "questions": [],
+    }
+    rich_yesterday = {
+        "filename": "session_handoff-2026-06-28z_hanuman.md",
+        "date": "2026-06-28",
+        "summary": "Security fixes shipped, two new PRs in review",
+        "open_threads": ["relgate-promotion watch", "kart-sandbox-phase0"],
+        "questions": ["Q17: Open the verify_transport PR and check CI."],
+    }
+    best = select_best_handoff([thin_today, rich_yesterday])
+    assert best is not None
+    assert best["filename"] == "session_handoff-2026-06-28z_hanuman.md"
+
+
+def test_handoff_is_empty_stub_catches_thin_markdown():
+    """A markdown stub with no threads, questions, or next-bite should be flagged."""
+    thin_md = {
+        "filename": "session_handoff-2026-06-29a_hanuman.md",
+        "date": "2026-06-29",
+        "summary": "I stopped.",
+        "open_threads": [],
+        "questions": [],
+    }
+    assert handoff_is_empty_stub(thin_md)
+
+
+def test_handoff_is_empty_stub_spares_long_summary_markdown():
+    """A markdown handoff with a substantive summary (>= 25 words) is not a stub."""
+    legacy_md = {
+        "filename": "session_handoff-2026-06-29a_hanuman.md",
+        "date": "2026-06-29",
+        "summary": (
+            "Completed a thorough security audit of the write-path sanitizer and "
+            "confirmed the write-path injection gate was silently returning None. "
+            "Fixed the attribute access bug and added regression tests."
+        ),
+        "open_threads": [],
+        "questions": [],
+    }
+    assert not handoff_is_empty_stub(legacy_md)
+
+
 def test_scan_markdown_handoffs_finds_hanuman_session_files():
     root = handoffs_root()
     if not (root / "hanuman").is_dir():
