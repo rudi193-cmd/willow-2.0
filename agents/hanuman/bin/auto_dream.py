@@ -145,6 +145,8 @@ def run(app_id: str = "hanuman", force: bool = False) -> dict:
             f"AutoDream over {len(atoms)} atoms — {len(tensions)} tensions detected. "
             + (synthesis[:300] if synthesis else "")
         )
+        from core.canonical_lanes import normalize_project
+
         atom_id = pg.gen_id(8)
         pg.knowledge_put({
             "id":          atom_id,
@@ -158,7 +160,7 @@ def run(app_id: str = "hanuman", force: bool = False) -> dict:
             },
             "category":    "dream",
             "source_type": "session",
-            "project":     app_id,
+            "project":     normalize_project(app_id, agent=app_id),
             "weight":      0.7,
             "tier":        "observed",
             "confidence":  0.75,

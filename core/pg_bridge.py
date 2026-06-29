@@ -1071,6 +1071,13 @@ class PgBridge:
 
     def knowledge_put(self, record: dict) -> str:
         self._ensure_conn()
+        from core.canonical_lanes import normalize_project
+
+        record = dict(record)
+        record["project"] = normalize_project(
+            record.get("project"),
+            source_type=record.get("source_type"),
+        )
         vec = embed(self._knowledge_embedding_text(record))
         vec_str = str(vec) if vec is not None else None
         with self.conn.cursor() as cur:
