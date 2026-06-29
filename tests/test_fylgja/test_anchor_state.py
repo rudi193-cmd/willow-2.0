@@ -5,11 +5,7 @@ from willow.fylgja import session_inject as inject
 
 
 def test_write_state_mirrors_to_file(tmp_path, monkeypatch):
-    monkeypatch.setattr(
-        anchor,
-        "state_file",
-        lambda agent: tmp_path / f"anchor_state_{agent}.json",
-    )
+    monkeypatch.setattr(anchor, "willow_home", lambda: tmp_path)
     anchor.write_state("willow", {"prompt_count": 7})
     path = tmp_path / "anchor_state_willow.json"
     assert path.is_file()
@@ -17,11 +13,7 @@ def test_write_state_mirrors_to_file(tmp_path, monkeypatch):
 
 
 def test_bump_prompt_count(tmp_path, monkeypatch):
-    monkeypatch.setattr(
-        anchor,
-        "state_file",
-        lambda agent: tmp_path / f"anchor_state_{agent}.json",
-    )
+    monkeypatch.setattr(anchor, "willow_home", lambda: tmp_path)
     monkeypatch.setattr("core.soil.get", lambda *a, **k: None)
     assert anchor.bump_prompt_count("willow") == 1
     assert anchor.bump_prompt_count("willow") == 2

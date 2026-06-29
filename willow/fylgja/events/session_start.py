@@ -15,7 +15,7 @@ from core.agent_identity import require_agent_name
 from willow.fylgja._mcp import call
 from willow.fylgja._grove import call as _grove_call
 from willow.fylgja._state import reset_turn_count
-from willow.fylgja.anchor_state import reset_prompt_count
+from willow.fylgja.anchor_state import prune_session_states, reset_prompt_count
 from willow.fylgja.events._stack_snapshot import normalize_stack_record
 from willow.fylgja.project_env import repo_root
 from willow.fylgja.session_inject import (
@@ -731,7 +731,9 @@ def main():
     lite_inject = is_continuation_source(session_source)
 
     if is_fresh_source(session_source):
-        reset_prompt_count(AGENT)
+        reset_prompt_count(AGENT, session_id)
+        # Sweep stale per-session counters so they don't accumulate unbounded.
+        prune_session_states(AGENT)
 
     # Reset dedup tracker for the new session
     if _CONTEXT_AVAILABLE:
