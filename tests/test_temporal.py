@@ -56,7 +56,7 @@ def test_knowledge_at_excludes_closed_atom():
     assert not any(r["id"] == "tr_test_closed" for r in results)
 
     with bridge.conn.cursor() as cur:
-        cur.execute("DELETE FROM knowledge WHERE id = 'tr_test_open'")
+        cur.execute("DELETE FROM knowledge WHERE id = 'tr_test_closed'")
     bridge.conn.commit()
 
 
