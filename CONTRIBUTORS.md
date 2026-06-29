@@ -35,6 +35,14 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Point repo links at the almanac-data org | [PR #32](https://github.com/almanac-data/climate-almanac/pull/32) merged |
+| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Auto-open dead-link issues from the daily reachability probe | [PR #29](https://github.com/almanac-data/climate-almanac/pull/29) merged |
+| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Add GitHub issue forms for dataset suggestions and dead-link reports | [PR #28](https://github.com/almanac-data/climate-almanac/pull/28) merged |
+| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Add good first issues badge to README | [PR #27](https://github.com/almanac-data/climate-almanac/pull/27) merged |
+| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Automate daily link checks with reliable curl probes | [PR #3](https://github.com/almanac-data/climate-almanac/pull/3) merged |
+| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Seed catalog wave 1: 13 major climate datasets | [PR #2](https://github.com/almanac-data/climate-almanac/pull/2) merged |
+| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Add agent guide, pyproject, and fleet development docs | [PR #1](https://github.com/almanac-data/climate-almanac/pull/1) merged |
+| [Filippo-Venturini/ctxvault](https://github.com/Filippo-Venturini/ctxvault) | Filippo-Venturini | feat: configurable embedding model per vault (#18) | [PR #34](https://github.com/Filippo-Venturini/ctxvault/pull/34) merged |
 | [wanxingai/LightAgent](https://github.com/wanxingai/LightAgent) | wanxingai | docs: add vector memory adapter example | [PR #60](https://github.com/wanxingai/LightAgent/pull/60) merged |
 | [shinpr/mcp-local-rag](https://github.com/shinpr/mcp-local-rag) | shinpr | fix: report removedChunks and existed from delete_file | [PR #152](https://github.com/shinpr/mcp-local-rag/pull/152) merged |
 | [max-rh/sshelf](https://github.com/max-rh/sshelf) | max-rh | feat: print generated SSH command from CLI | [PR #3](https://github.com/max-rh/sshelf/pull/3) merged |
@@ -69,7 +77,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #401](https://github.com/TensorBlock/awesome-mcp-servers/pull/401) merged |
 | [castroquiles/glapagos](https://github.com/castroquiles/glapagos) | castroquiles | feat(api): export committed OpenAPI spec and cover the API (#13) | [PR #20](https://github.com/castroquiles/glapagos/pull/20) open |
 | [castroquiles/HeatWatch](https://github.com/castroquiles/HeatWatch) | castroquiles | fix(geo_utils): correct clip_array_to_bounds off-by-one; add geo_utils tests + NDVI no-data guard | [PR #20](https://github.com/castroquiles/HeatWatch/pull/20) open |
-| [Filippo-Venturini/ctxvault](https://github.com/Filippo-Venturini/ctxvault) | Filippo-Venturini | feat: configurable embedding model per vault (#18) | [PR #34](https://github.com/Filippo-Venturini/ctxvault/pull/34) open |
 | [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(cli): show configured project in list when uncredentialed (#1003) | [PR #1010](https://github.com/basicmachines-co/basic-memory/pull/1010) open |
 | [mex-memory/mex](https://github.com/mex-memory/mex) | mex-memory | feat: add packages/mex-mcp — MCP server for mex-agent | [PR #84](https://github.com/mex-memory/mex/pull/84) open |
 | [PDFMathTranslate/PDFMathTranslate](https://github.com/PDFMathTranslate/PDFMathTranslate) | PDFMathTranslate | feat: mirror source directory tree in batch translation output | [PR #1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) open |
