@@ -5,6 +5,8 @@ import re
 from collections.abc import Mapping
 from pathlib import Path
 
+from sap.handoff_paths import handoffs_root, resolve_agent_handoff_file
+
 
 _SESSION_TOKEN_RE = re.compile(r"session_handoff-(\d{4}-\d{2}-\d{2})([a-z]?)", re.IGNORECASE)
 _SESSION_LEGACY_RE = re.compile(r"SESSION_HANDOFF_(\d{4})(\d{2})(\d{2})", re.IGNORECASE)
@@ -227,3 +229,60 @@ def scan_markdown_handoffs(agent: str, handoffs_root: Path) -> list[dict]:
             "mtime": mtime,
         })
     return candidates
+
+
+_NOTE_SECTION_MARKERS = {
+    "agent_notes": "## Agent Notes for Human",
+    "human_notes": "## Human Notes to Agent",
+}
+
+
+def _parse_note_sections(text: str) -> dict:
+    out: dict = {}
+    for key, marker in _NOTE_SECTION_MARKERS.items():
+        if marker not in text:
+            continue
+        block = re.split(r"\n(?=## |---)", text[text.find(marker) + len(marker):])[0]
+        items = [
+            ln.strip()[2:].strip()
+            for ln in block.splitlines()
+            if ln.strip().startswith("- ")
+        ]
+        items = [i for i in items if i]
+        if items:
+            out[key] = items
+    return out
+
+
+def extract_live_handoff_notes(agent: str, source_filename: str = "") -> dict:
+    """Read agent/human note sections from the blended handoff file on disk.
+
+    Human notes are written by the operator AFTER the close pipeline ran, so
+    the DB row is stale for them by design — these always come live from disk.
+
+    When ``source_filename`` is the markdown pick from ``select_best_handoff``,
+    read that file so notes match the richness-ranked handoff. For KB-atom
+    filenames (``kb_*.json``) or missing paths, fall back to newest mtime.
+    """
+    out: dict = {}
+    try:
+        path = resolve_agent_handoff_file(agent, source_filename)
+        if path is None:
+            root = handoffs_root() / agent
+            if not root.is_dir():
+                return out
+            files = sorted(
+                root.glob("session_handoff-*.md"),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            if not files:
+                return out
+            path = files[0]
+        text = path.read_text(encoding="utf-8")
+        out = _parse_note_sections(text)
+        if out:
+            out["notes_file"] = path.name
+    except Exception:
+        pass
+    return out

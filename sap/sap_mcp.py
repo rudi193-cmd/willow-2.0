@@ -42,12 +42,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from sap.handoff_index import (
+    extract_live_handoff_notes,
     extract_next_bite,
     handoff_select_sql,
     scan_markdown_handoffs,
     select_best_handoff,
 )
-from sap.handoff_paths import discover_handoff_dirs, handoff_db_path, handoffs_root, handoffs_roots
+from sap.handoff_paths import discover_handoff_dirs, handoff_db_path, handoffs_roots
 from typing import AsyncIterator
 
 # ── Path setup ────────────────────────────────────────────────────────────────
@@ -3250,49 +3251,6 @@ async def hook_log_read(app_id: str, hook_name: str = "", limit: int = 50) -> di
 
 # ── Tools — handoff_ domain ───────────────────────────────────────────────────
 
-_NOTE_SECTION_MARKERS = {
-    "agent_notes": "## Agent Notes for Human",
-    "human_notes": "## Human Notes to Agent",
-}
-
-
-def extract_live_handoff_notes(agent: str) -> dict:
-    """Read agent/human note sections from the newest handoff FILE on disk.
-
-    Human notes are written by the operator AFTER the close pipeline ran, so
-    the DB row is stale for them by design — these always come live from disk.
-    """
-    import re as _re
-
-    out: dict = {}
-    try:
-        root = handoffs_root() / agent
-        files = sorted(
-            root.glob("session_handoff-*.md"),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )
-        if not files:
-            return out
-        text = files[0].read_text(encoding="utf-8")
-        for key, marker in _NOTE_SECTION_MARKERS.items():
-            if marker in text:
-                block = _re.split(r"\n(?=## |---)", text[text.find(marker) + len(marker):])[0]
-                items = [
-                    ln.strip()[2:].strip()
-                    for ln in block.splitlines()
-                    if ln.strip().startswith("- ")
-                ]
-                items = [i for i in items if i]
-                if items:
-                    out[key] = items
-        if out:
-            out["notes_file"] = files[0].name
-    except Exception as _e:
-        logger.warning("[w2] live handoff notes extract failed: %s", _e)
-    return out
-
-
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
 async def handoff_latest(app_id: str, agent: str = "") -> dict:
@@ -3428,7 +3386,12 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
             return {"error": "No session handoffs found."}
         result = select_best_handoff(candidates) or candidates[0]
         if agent_filter:
-            result.update(extract_live_handoff_notes(agent_filter))
+            result.update(
+                extract_live_handoff_notes(
+                    agent_filter,
+                    str(result.get("filename") or ""),
+                )
+            )
         result["next_bite"] = extract_next_bite(
             result.get("questions") or [],
             str(result.get("summary") or ""),
