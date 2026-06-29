@@ -129,19 +129,33 @@ def extract_next_bite(questions: list, summary: str = "") -> str:
 
 
 def handoff_is_empty_stub(handoff: Mapping[str, object]) -> bool:
-    """True for KB session stubs with no open threads, questions, or next bite."""
-    if not str(handoff.get("filename") or "").startswith("kb_"):
-        return False
+    """True for session stubs with no open threads, questions, or next bite.
+
+    Previously only flagged kb_-prefixed atoms; now also catches thin markdown
+    stubs (a crashed-session "I stopped" with no structured continuity fields).
+    KB-atom behaviour is unchanged — for non-KB files a substantive summary
+    (>= 25 words) is enough to avoid the stub label even without formal threads
+    or questions, to preserve compatibility with legacy v1 markdown handoffs.
+    """
+    filename = str(handoff.get("filename") or "")
+    is_kb = filename.startswith("kb_")
     open_threads = _parse_json_list(handoff.get("open_threads"))
     questions = _parse_json_list(handoff.get("questions"))
     if open_threads or questions:
         return False
     summary = str(handoff.get("summary") or "")
+    if not is_kb and len(summary.split()) >= 25:
+        return False
     return not extract_next_bite(questions, summary)
 
 
 def handoff_richness_score(handoff: Mapping[str, object]) -> tuple:
-    """Rank handoff candidates: recency first, richness breaks same-session ties."""
+    """Rank handoff candidates: substance first, then recency, then payload size.
+
+    Substance (0 = thin stub, 1 = rich) is the primary key so that a rich
+    handoff from yesterday always beats a thin stub from today.  Within the same
+    substance tier, recency (date → suffix → mtime) decides as before.
+    """
     open_threads = _parse_json_list(handoff.get("open_threads"))
     questions = _parse_json_list(handoff.get("questions"))
     summary = str(handoff.get("summary") or "")
@@ -150,12 +164,9 @@ def handoff_richness_score(handoff: Mapping[str, object]) -> tuple:
         str(handoff.get("date") or handoff.get("handoff_date") or ""),
         str(handoff.get("_sort_at") or handoff.get("_valid_at") or handoff.get("mtime") or ""),
     )
-    # Date and letter suffix are primary — a newer session always beats an older one.
-    # Richness only breaks ties within the exact same date+suffix.
     date, suffix, mtime, filename = sort_key
     substance = 0 if handoff_is_empty_stub(handoff) else 1
-    # Write freshness before payload size — same-day KB atoms lack filename suffixes.
-    return (date, suffix, substance, mtime, len(open_threads), len(questions), len(summary), filename)
+    return (substance, date, suffix, mtime, len(open_threads), len(questions), len(summary), filename)
 
 
 def select_best_handoff(candidates: list[dict]) -> dict | None:

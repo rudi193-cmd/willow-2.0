@@ -143,7 +143,7 @@ def _sanitize_write_input(data, source_label: str) -> str | None:
         if not flags:
             return None
         _sanitizer_log(flags, source=source_label, log_path=_GAPS_LOG)
-        high = [f for f in flags if f.get("severity") in ("high", "critical")]
+        high = [f for f in flags if f.severity in ("high", "critical")]
         if high:
             return f"write blocked: prompt injection detected ({len(high)} high-severity flag(s))"
     except Exception:
