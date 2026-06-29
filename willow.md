@@ -76,7 +76,7 @@ checkout and expect repo skills, tests, or MCP templates to be present.
 | ID | Severity | Rule |
 |----|----------|------|
 | `boot-order` | Critical | Complete `/boot` before any response — greetings, banter, and "quick questions" included. The agent does not classify a turn as exempt. Only two exceptions: (1) the user explicitly waives boot this session ("sandbox", "no startup", "skip boot", or equivalent); (2) the user is in a physical, mental, or personal emergency — respond immediately, boot after. |
-| `mcp-first` | Critical | For any operation covered by Willow MCP/facade tools, call MCP first. Do not substitute Bash, Python, `psql`, `sqlite3`, ad hoc file scraping, or direct repo scripts unless MCP is degraded or returns an explicit blocker. |
+| `mcp-first` | Critical | For any operation covered by Willow MCP/facade tools, call MCP first. Do not substitute Bash, Python, `psql`, `sqlite3`, native `WebFetch`/`WebSearch`, ad hoc file scraping, or direct repo scripts unless MCP is degraded or returns an explicit blocker. |
 | `namespace` | High | Write only in the active agent namespace. |
 | `worktree-pr` | Critical | Use branches/worktrees/PRs for code changes; avoid direct `master` edits. |
 | `kb-first` | High | Search KB when KB is available; skip only in public-fallback. Critical when starting a new project or before a build. |
@@ -92,6 +92,17 @@ When a Willow MCP/facade tool exists for the action:
 3. Use a fallback only when the MCP path is degraded, unavailable, or lacks the needed capability.
 4. Keep the fallback narrow and return to MCP as soon as possible.
 
+### Web routing (MCP-first)
+
+| Intent | MCP tool | Not |
+|--------|----------|-----|
+| Open-web search (news, current events) | `willow_web_search` | `WebSearch`, `WebFetch` on search URLs |
+| Academic / institutional search | `willow_external(mode=search)` | ad hoc fetch of archive pages |
+| Fetch a specific URL (guarded) | `willow_web_fetch` or `willow_external(mode=fetch)` | `WebFetch` |
+| Verify claims in text | `willow_external(mode=verify)` | manual fetch loops |
+
+Native web tools bypass Willow external-guard. The pre_tool hook warns (then blocks) `WebFetch`/`WebSearch` like Bash redirects.
+
 ## Tooling Surface
 
 Primary MCP/facade tools, when available:
@@ -100,6 +111,8 @@ Primary MCP/facade tools, when available:
 - `willow_find`
 - `willow_remember`
 - `willow_run`
+- `willow_web_search` — open-web search (DuckDuckGo)
+- `willow_external` — Jeles ask/search/verify/fetch facade
 
 Underlying groups include `fleet_`, `mai_`, `code_graph_`, `skill_`,
 `agent_`, `kb_`, `soil_`, and `grove_`.

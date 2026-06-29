@@ -9,12 +9,13 @@
       "Skill(*)",
       "Task(*)",
       "Shell(**)",
-      "WebFetch(*)",
       "Mcp(willow:fleet_restart)",
       "Mcp(willow:*)",
       "Mcp(markdownai:*)"
     ],
     "deny": [
+      "WebFetch(*)",
+      "WebSearch(*)",
       "Mcp(willow:app_uninstall)",
       "Mcp(willow:policy_put)",
       "Mcp(willow:policy_delete)",
