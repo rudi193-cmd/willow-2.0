@@ -13,7 +13,7 @@ dependencies = [
     "pgvector>=0.4.2",
     "cryptography>=49.0.0",
     "requests>=2.34.2",
-    "mcp>=1.28.0,<2.0.0",
+    "mcp>=1.28.1,<2.0.0",
     "litellm>=1.87.0; python_version < '3.14'",
     "litellm>=1.90.0,<1.91; python_version >= '3.14'",
     "textual>=8.2.7",
