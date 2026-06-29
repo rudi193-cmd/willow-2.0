@@ -16,7 +16,7 @@ def test_knowledge_at_finds_valid_atom():
 
     bridge.knowledge_put({
         "id": "tr_test_open",
-        "project": "test_temporal",
+        "project": "willow",
         "title": "temporal replay test open",
         "summary": "this atom is still valid",
         "valid_at": past,
@@ -26,7 +26,7 @@ def test_knowledge_at_finds_valid_atom():
     assert "tr_test_open" in ids
 
     with bridge.conn.cursor() as cur:
-        cur.execute("DELETE FROM knowledge WHERE project = 'test_temporal'")
+        cur.execute("DELETE FROM knowledge WHERE id = 'tr_test_open'")
     bridge.conn.commit()
 
 
@@ -39,7 +39,7 @@ def test_knowledge_at_excludes_closed_atom():
 
     bridge.knowledge_put({
         "id": "tr_test_closed",
-        "project": "test_temporal",
+        "project": "willow",
         "title": "temporal replay test closed",
         "summary": "this atom was closed",
         "valid_at": opened,
@@ -56,7 +56,7 @@ def test_knowledge_at_excludes_closed_atom():
     assert not any(r["id"] == "tr_test_closed" for r in results)
 
     with bridge.conn.cursor() as cur:
-        cur.execute("DELETE FROM knowledge WHERE project = 'test_temporal'")
+        cur.execute("DELETE FROM knowledge WHERE id = 'tr_test_open'")
     bridge.conn.commit()
 
 
@@ -67,21 +67,21 @@ def test_knowledge_at_project_filter():
 
     bridge.knowledge_put({
         "id": "tr_proj_a",
-        "project": "test_tr_proj_a",
+        "project": "willow",
         "title": "project filter atom alpha",
         "summary": "in project a",
     })
     bridge.knowledge_put({
         "id": "tr_proj_b",
-        "project": "test_tr_proj_b",
+        "project": "saps1",
         "title": "project filter atom alpha",
         "summary": "in project b",
     })
-    results = bridge.knowledge_at("project filter atom alpha", at_time=now, project="test_tr_proj_a")
+    results = bridge.knowledge_at("project filter atom alpha", at_time=now, project="willow")
     ids = [r["id"] for r in results]
     assert "tr_proj_a" in ids
     assert "tr_proj_b" not in ids
 
     with bridge.conn.cursor() as cur:
-        cur.execute("DELETE FROM knowledge WHERE project IN ('test_tr_proj_a', 'test_tr_proj_b')")
+        cur.execute("DELETE FROM knowledge WHERE id IN ('tr_proj_a', 'tr_proj_b')")
     bridge.conn.commit()

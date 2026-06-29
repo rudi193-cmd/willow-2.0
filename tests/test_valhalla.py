@@ -22,7 +22,7 @@ def test_collect_dpo_pairs_writes_jsonl():
     for i in range(3):
         bridge.knowledge_put({
             "id": f"vh_chosen_{i}",
-            "project": "test_valhalla",
+            "project": "willow",
             "title": f"Community insight {i}",
             "summary": f"A well-structured insight about machine learning topic {i}.",
             "source_type": "community_detection",
@@ -31,7 +31,7 @@ def test_collect_dpo_pairs_writes_jsonl():
     for i in range(3):
         bridge.knowledge_put({
             "id": f"vh_rejected_{i}",
-            "project": "test_valhalla",
+            "project": "willow",
             "title": f"Stale zombie atom {i}",
             "summary": f"Old stale content from long ago {i}.",
             "category": "draugr",
@@ -52,7 +52,7 @@ def test_collect_dpo_pairs_writes_jsonl():
         assert pair["chosen"] != pair["rejected"]
 
     with bridge.conn.cursor() as cur:
-        cur.execute("DELETE FROM knowledge WHERE project = 'test_valhalla'")
+        cur.execute("DELETE FROM knowledge WHERE id LIKE 'vh_%'")
     bridge.conn.commit()
 
 
@@ -64,7 +64,7 @@ def test_collect_dpo_pairs_returns_zero_when_no_candidates():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         count = collect_dpo_pairs(bridge, store, output_dir=Path(tmpdir),
-                                  project="totally_empty_project_xyz")
+                                  project="epstein_network")
     assert count == 0
 
 
