@@ -163,6 +163,43 @@ def main():
         _run()
 
 
+def _drain_channel(cur, ch_id: int, ch_name: str, cursors: dict, verbose: set) -> None:
+    """Fetch and print all messages for ch_id since cursors[ch_id]. Updates cursors in place.
+
+    Using WHERE id > cursor means missed/coalesced notifies are harmless — the next
+    drain always catches up from the last acknowledged id.
+    """
+    since = cursors.get(ch_id, 0)
+    cur.execute(
+        "SELECT id, sender, content FROM grove.messages"
+        " WHERE channel_id = %s AND id > %s AND is_deleted = 0"
+        " ORDER BY id ASC",
+        (ch_id, since),
+    )
+    for row in cur.fetchall():
+        cursors[ch_id] = row[0]
+        msg_id, sender, content = row[0], row[1], str(row[2])
+        broadcast = is_broadcast_mention(content)
+        direct_id = None if broadcast else direct_mention_identity(content)
+        if broadcast:
+            tag = "BROADCAST"
+        elif direct_id and sender.lower() != direct_id.lower():
+            tag = f"DIRECT:{direct_id}"
+        else:
+            tag = ""
+        preview = content.strip()[:80]
+        if tag:
+            line = f"[MENTION:{tag}] #{ch_name} id={msg_id} {sender}"
+            if preview:
+                line += f": {preview}"
+            print(line, flush=True)
+        elif ch_name.lower() in verbose:
+            line = f"[CHANNEL] #{ch_name} id={msg_id} {sender}"
+            if preview:
+                line += f": {preview}"
+            print(line, flush=True)
+
+
 def _run():
     try:
         conn = connect()
@@ -221,37 +258,7 @@ def _run():
                         ch_map = load_channels(cur)
                         cursors.setdefault(ch_id, 0)
                     ch_name = ch_map.get(ch_id, str(ch_id))
-                    since = cursors.get(ch_id, 0)
-                    cur.execute(
-                        """
-                        SELECT id, sender, content FROM grove.messages
-                        WHERE channel_id = %s AND id > %s AND is_deleted = 0
-                        ORDER BY id ASC
-                        """,
-                        (ch_id, since),
-                    )
-                    for row in cur.fetchall():
-                        cursors[ch_id] = row[0]
-                        msg_id, sender, content = row[0], row[1], str(row[2])
-                        broadcast = is_broadcast_mention(content)
-                        direct_id = None if broadcast else direct_mention_identity(content)
-                        if broadcast:
-                            tag = "BROADCAST"
-                        elif direct_id and sender.lower() != direct_id.lower():
-                            tag = f"DIRECT:{direct_id}"
-                        else:
-                            tag = ""
-                        preview = content.strip()[:80]
-                        if tag:
-                            line = f"[MENTION:{tag}] #{ch_name} id={msg_id} {sender}"
-                            if preview:
-                                line += f": {preview}"
-                            print(line, flush=True)
-                        elif ch_name.lower() in verbose:
-                            line = f"[CHANNEL] #{ch_name} id={msg_id} {sender}"
-                            if preview:
-                                line += f": {preview}"
-                            print(line, flush=True)
+                    _drain_channel(cur, ch_id, ch_name, cursors, verbose)
         except Exception as e:
             print(f"[grove-listen-error] {e}", flush=True)
             try:
@@ -263,17 +270,18 @@ def _run():
                     pass
                 cur = conn.cursor()
                 ch_map = load_channels(cur)
-                # Re-seed cursors so we don't replay or miss messages after reconnect
-                cursors = {ch_id: 0 for ch_id in ch_map}
-                if ch_map:
-                    cur.execute(
-                        "SELECT channel_id, COALESCE(MAX(id), 0) FROM grove.messages"
-                        " WHERE channel_id = ANY(%s) GROUP BY channel_id",
-                        (list(ch_map.keys()),)
-                    )
-                    for row in cur.fetchall():
-                        cursors[row[0]] = row[1]
+                # Keep existing cursors — only seed new channels at 0.
+                # Re-seeding to MAX would skip messages from the disconnect window.
+                for ch_id in ch_map:
+                    cursors.setdefault(ch_id, 0)
                 cur.execute("LISTEN grove_channel")
+                # Drain all channels immediately to catch any messages from the
+                # disconnect window — the WHERE id > cursor query is idempotent.
+                for ch_id, ch_name in list(ch_map.items()):
+                    try:
+                        _drain_channel(cur, ch_id, ch_name, cursors, verbose)
+                    except Exception:
+                        pass
             except Exception:
                 time.sleep(5)
 
