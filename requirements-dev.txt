@@ -1,0 +1,10 @@
+# Dev/test tooling — install after requirements.txt + editable willow (--no-deps).
+# Mirrors [project.optional-dependencies].dev in pyproject.toml.
+pytest>=9.1.1
+pytest-timeout>=2.4.0
+ruff
+mypy
+coverage
+pre-commit>=4.6.0
+bandit>=1.8.0
+pdoc>=15.0.0
