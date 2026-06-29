@@ -37,6 +37,19 @@ def handoff_db_path(agent: str) -> Path:
     return handoffs_root() / agent / "handoffs.db"
 
 
+def resolve_agent_handoff_file(agent: str, filename: str) -> Path | None:
+    """Locate a session handoff markdown file by basename across handoff roots."""
+    if not agent or not filename or filename.startswith("kb_"):
+        return None
+    if not filename.endswith(".md"):
+        return None
+    for root in handoffs_roots():
+        candidate = root / agent / filename
+        if candidate.is_file():
+            return candidate
+    return None
+
+
 def discover_handoff_dirs(agent: str) -> str:
     """Colon-separated scan dirs for build_handoff_db / handoff_rebuild."""
     dirs: list[str] = []

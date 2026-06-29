@@ -2,6 +2,7 @@ import tempfile
 from pathlib import Path
 
 from sap.handoff_index import (
+    extract_live_handoff_notes,
     extract_next_bite,
     handoff_is_empty_stub,
     handoff_richness_score,
@@ -311,3 +312,83 @@ def test_scan_markdown_handoffs_excludes_other_agents():
         best = select_best_handoff(hanuman_candidates)
         assert best is not None
         assert best["filename"] == "session_handoff-2026-06-09a_hanuman.md"
+
+
+_HANDOFF_WITH_NOTES = """\
+---
+agent: {agent}
+date: {date}
+session: {session}
+format: v2
+---
+
+# HANDOFF: test
+
+## Agent Notes for Human
+
+- {agent_note}
+
+## Human Notes to Agent
+
+- {human_note}
+"""
+
+
+def test_extract_live_handoff_notes_uses_blended_filename(tmp_path, monkeypatch):
+    """Notes must come from the richness-ranked file, not newest mtime."""
+    monkeypatch.setattr("sap.handoff_index.handoffs_root", lambda: tmp_path)
+    monkeypatch.setattr("sap.handoff_paths.handoffs_roots", lambda: [tmp_path])
+    agent_dir = tmp_path / "willow"
+    agent_dir.mkdir()
+    rich = "session_handoff-2026-06-28z_willow.md"
+    thin = "session_handoff-2026-06-29a_willow.md"
+    (agent_dir / rich).write_text(
+        _HANDOFF_WITH_NOTES.format(
+            agent="willow",
+            date="2026-06-28",
+            session="2026-06-28z",
+            agent_note="rich session reflection",
+            human_note="operator note on rich handoff",
+        ),
+        encoding="utf-8",
+    )
+    (agent_dir / thin).write_text(
+        _HANDOFF_WITH_NOTES.format(
+            agent="willow",
+            date="2026-06-29",
+            session="2026-06-29a",
+            agent_note="thin stub",
+            human_note="operator note on thin stub",
+        ),
+        encoding="utf-8",
+    )
+    # Newer file has later mtime
+    import os
+    import time
+    os.utime(agent_dir / thin, (time.time() + 10, time.time() + 10))
+
+    notes = extract_live_handoff_notes("willow", rich)
+    assert notes["notes_file"] == rich
+    assert notes["human_notes"] == ["operator note on rich handoff"]
+
+
+def test_extract_live_handoff_notes_kb_filename_falls_back_to_newest(tmp_path, monkeypatch):
+    monkeypatch.setattr("sap.handoff_index.handoffs_root", lambda: tmp_path)
+    monkeypatch.setattr("sap.handoff_paths.handoffs_roots", lambda: [tmp_path])
+    agent_dir = tmp_path / "willow"
+    agent_dir.mkdir()
+    newest = "session_handoff-2026-06-29a_willow.md"
+    (agent_dir / newest).write_text(
+        _HANDOFF_WITH_NOTES.format(
+            agent="willow",
+            date="2026-06-29",
+            session="2026-06-29a",
+            agent_note="kb fallback",
+            human_note="live notes from newest file",
+        ),
+        encoding="utf-8",
+    )
+
+    notes = extract_live_handoff_notes("willow", "kb_7D81F13A.json")
+    assert notes["notes_file"] == newest
+    assert notes["human_notes"] == ["live notes from newest file"]
