@@ -58,9 +58,11 @@ fi
 export WILLOW_AGENT_NAME="$AGENT"
 export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
 context_status=$(python3 -c "
+import os
 from willow.fylgja.anchor_state import context_status, prompt_count
 agent = '$AGENT'
-count = prompt_count(agent)
+sid = os.environ.get('WILLOW_SESSION_ID') or None
+count = prompt_count(agent, sid)
 print(context_status(count))
 " 2>/dev/null) || {
     echo "WARNING: anchor_state read failed — defaulting to STATUS_OK" >&2

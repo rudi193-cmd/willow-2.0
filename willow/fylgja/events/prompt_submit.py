@@ -575,7 +575,7 @@ def main():
     _boot_guard()
     _run_persona(prompt)
     increment_turn_count()
-    prompt_count = bump_prompt_count(AGENT)
+    prompt_count = bump_prompt_count(AGENT, session_id)
     _inject_context_sentinel(prompt_count)
     _inject_mcp_routing()
     _inject_clock()
