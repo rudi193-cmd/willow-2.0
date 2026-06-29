@@ -3,7 +3,6 @@ name: restart-server
 description: Hot-reload MCP servers — Willow (in-process), the Kart worker (systemd), and Grove. Use after editing any MCP layer, core, or Kart file.
 ---
 
-@markdownai v1.0
 
 # /restart-server — MCP + Kart Hot Reload
 
