@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from willow.bench.retrieval_gold import GoldQuery, run_gold_set
+from willow.bench.retrieval_gold import run_gold_set
 
 CI_GOLD_PATH = Path(__file__).with_name("retrieval_gold_ci.json")
 
