@@ -7,6 +7,7 @@ Schema is correct from first CREATE TABLE. No ALTER TABLE ever.
 """
 import hashlib
 import json
+import logging
 import os
 import threading
 import time
@@ -697,6 +698,7 @@ def _connect() -> "psycopg2.connection":
 # SimpleConnectionPool is explicitly documented as not thread-safe.
 _pool: Optional["psycopg2.pool.ThreadedConnectionPool"] = None
 _pool_lock = threading.Lock()
+_log = logging.getLogger(__name__)
 
 
 def _get_pool() -> "psycopg2.pool.ThreadedConnectionPool":
@@ -718,8 +720,8 @@ def _get_pool() -> "psycopg2.pool.ThreadedConnectionPool":
                     )
                     _schema_exists = _cur.fetchone() is not None
                 if _schema_exists:
-                    # Tables already exist — skip DDL entirely to avoid lock contention.
-                    conn.rollback()
+                    # Schema present — apply incremental migrations only (IF NOT EXISTS).
+                    run_migrations(conn)
                 else:
                     init_schema(conn)
             except Exception as _schema_err:
@@ -1856,7 +1858,8 @@ class PgBridge:
                 )
             self.conn.commit()
             return task_id
-        except Exception:
+        except Exception as exc:
+            _log.warning("submit_task failed: %s", exc, exc_info=True)
             return None
 
     # ── Routines ──────────────────────────────────────────────────────────────
