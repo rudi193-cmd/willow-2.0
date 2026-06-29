@@ -6,5 +6,5 @@ ruff
 mypy
 coverage
 pre-commit>=4.6.0
-bandit>=1.8.0
+bandit>=1.9.4
 pdoc>=16.0.0
