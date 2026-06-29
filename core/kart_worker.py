@@ -30,14 +30,19 @@ def _ensure_willow_on_path() -> Path | None:
     return root
 
 
-def _kart_run_open(task_id: str, task_text: str, submitted_by: str) -> None:
+def _kart_run_open(task_id: str, task_text: str, submitted_by: str,
+                   submitter_run_id: str | None = None) -> None:
     if _ensure_willow_on_path() is None:
         logger.debug("run_ledger open skipped: WILLOW_ROOT not found")
         return
     try:
         from core.run_ledger import current_run_id, open_run
 
-        parent = current_run_id()
+        # Prefer the run_id captured at submit time (the submitting session's
+        # real run). current_run_id() here would read THIS daemon process's tmp
+        # pointer, which is absent/stale — the bug that made every Kart run a
+        # NULL-parent top-level session (flag-dream-kart-runs-pollution).
+        parent = submitter_run_id or current_run_id()
         run_id = open_run(
             purpose=f"kart:{task_id[:8]} {task_text[:60]}",
             parent_run_id=parent,
@@ -128,7 +133,10 @@ def kart_loop(interval: int = 5) -> None:
                 submitted_by,
                 task_text[:60],
             )
-            _kart_run_open(task_id, task_text, submitted_by)
+            _kart_run_open(
+                task_id, task_text, submitted_by,
+                submitter_run_id=row.get("submitter_run_id"),
+            )
 
             status, result = execute_task_row(
                 row, pg, timeout=kart_timeout("daemon"), context="daemon"
