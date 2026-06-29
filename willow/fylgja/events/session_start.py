@@ -795,7 +795,8 @@ def main():
     lines.append("[ANCHOR]")
     lines.append(f"agent={AGENT}  postgres={startup['postgres']}")
     lines.append(
-        "[MCP-FIRST] Use Willow MCP tools — not PYTHONPATH= python, not psql/sqlite3 Bash. "
+        "[MCP-FIRST] Use Willow MCP tools — not PYTHONPATH= python, not psql/sqlite3 Bash, "
+        "not WebFetch/WebSearch (→ willow_web_search / willow_web_fetch / willow_external). "
         "Shell work → agent_task_submit + kart_task_run. Registry: sap/mcp_registry.json."
     )
     lines.append(

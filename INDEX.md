@@ -213,6 +213,7 @@
 | `docs/web_search_enterprise_spec.md` |
 | `install-windows.ps1` |
 | `paperclip-research` |
+| `requirements-dev.txt` |
 | `sap/MCP_SPEC.lock.json` |
 | `sap/adapters` |
 | `sap/cbm_facade.py` |

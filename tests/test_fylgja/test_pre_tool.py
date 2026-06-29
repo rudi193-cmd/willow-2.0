@@ -5,6 +5,7 @@ from willow.fylgja.events.pre_tool import (
     check_agent_block,
     check_kb_first,
     check_channel_enforce,
+    check_native_web_block,
 )
 
 
@@ -455,3 +456,36 @@ def test_session_ban_after_third_strike_on_block_pattern(tmp_path, monkeypatch):
     data4 = json.loads(out4)
     assert data4["decision"] == "block"
     assert "SESSION-BAN" in data4["reason"]
+
+
+def test_warns_native_web_search(monkeypatch):
+    import willow.fylgja.events.pre_tool as pt
+
+    monkeypatch.setattr(pt, "_NATIVE_WEB_SEARCH_BLOCK", False)
+    result = check_native_web_block("WebSearch")
+    assert result is not None
+    decision, reason = result
+    assert decision == "warn"
+    assert "willow_web_search" in reason
+
+
+def test_warns_native_web_fetch(monkeypatch):
+    import willow.fylgja.events.pre_tool as pt
+
+    monkeypatch.setattr(pt, "_NATIVE_WEB_FETCH_BLOCK", False)
+    result = check_native_web_block("WebFetch")
+    assert result is not None
+    decision, reason = result
+    assert decision == "warn"
+    assert "willow_web_search" in reason or "willow_external" in reason
+
+
+def test_web_fetch_pre_tool_warns():
+    out = _run_pre_tool({
+        "tool_name": "WebFetch",
+        "tool_input": {"url": "https://example.com/article"},
+        "session_id": "web-w1",
+    })
+    data = json.loads(out)
+    assert data["decision"] == "warn"
+    assert "MCP" in data["reason"] or "willow" in data["reason"]

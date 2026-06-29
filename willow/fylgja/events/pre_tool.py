@@ -1,6 +1,6 @@
 """
 events/pre_tool.py — PreToolUse hook handler.
-Safety gate → MCP guard (Bash + Agent) → F5 canon guard (write tools).
+Safety gate → MCP guard (Bash + Agent + native web) → F5 canon guard (write tools).
 """
 import json
 import os
@@ -34,6 +34,25 @@ _BLOCK_FLAG_THRESHOLD = int(os.environ.get("WILLOW_BLOCK_FLAG_THRESHOLD", "10"))
 _BASH_SESSION_THRESHOLD = int(os.environ.get("WILLOW_BASH_SESSION_THRESHOLD", "5"))
 _WARN_ESCALATE_STRIKES = int(os.environ.get("WILLOW_WARN_ESCALATE_STRIKES", "2"))
 _SESSION_BAN_STRIKES = int(os.environ.get("WILLOW_SESSION_BAN_STRIKES", "3"))
+
+# Native IDE web tools — warn until willow_web_fetch ships, then hard-block.
+_NATIVE_WEB_SEARCH_BLOCK = False
+_NATIVE_WEB_FETCH_BLOCK = False
+
+_WEB_SEARCH_REDIRECT = (
+    "Use MCP for open-web search — not native WebSearch. "
+    "→ mcp__willow__willow_web_search({app_id, query}) "
+    "· institutional sources → willow_external({app_id, mode='search', query})"
+)
+_WEB_FETCH_REDIRECT_WARN = (
+    "Prefer MCP for URL fetch (external-guard + audit). "
+    "→ willow_web_search for discovery · willow_external(mode=search) for archives."
+)
+_WEB_FETCH_REDIRECT_BLOCK = (
+    "WebFetch is blocked — use guarded MCP fetch with external-guard. "
+    "→ mcp__willow__willow_web_fetch({app_id, url}) "
+    "or willow_external({app_id, mode='fetch', url})"
+)
 
 _REPO_ROOT = str(Path(__file__).parent.parent.parent.parent)
 
@@ -305,6 +324,50 @@ def check_agent_block(subagent_type: str) -> str | None:
         return ("Explore subagent is blocked. Use MCP: soil_search, kb_search, "
                 "soil_get, soil_list — or Glob/Grep/Read directly.")
     return None
+
+
+def check_native_web_block(tool_name: str) -> tuple[str, str] | None:
+    """Route native WebSearch/WebFetch to Willow MCP web tools."""
+    if tool_name == "WebSearch":
+        decision = "block" if _NATIVE_WEB_SEARCH_BLOCK else "warn"
+        return decision, _WEB_SEARCH_REDIRECT
+    if tool_name == "WebFetch":
+        if _NATIVE_WEB_FETCH_BLOCK:
+            return "block", _WEB_FETCH_REDIRECT_BLOCK
+        return "warn", _WEB_FETCH_REDIRECT_WARN
+    return None
+
+
+def _apply_native_web_escalation(
+    session_id: str,
+    tool_name: str,
+    decision: str,
+    reason: str,
+) -> tuple[str, str]:
+    """Escalate warn→block on repeat (same strike model as Bash)."""
+    rule_key = _rule_key(tool_name, reason)
+    current = _read_session_rule_strikes(session_id).get(rule_key, 0)
+    ban_msg = (
+        f"[SESSION-BAN] {tool_name} is blocked for the rest of this session "
+        f"(rule {rule_key}, {_SESSION_BAN_STRIKES}+ attempts). "
+        f"Use willow_web_search / willow_web_fetch / willow_external.\n\n"
+    )
+    if current >= _SESSION_BAN_STRIKES:
+        return "block", ban_msg + reason
+    strike = _increment_session_rule_strike(session_id, rule_key)
+    if strike >= _SESSION_BAN_STRIKES:
+        return "block", ban_msg + reason
+    if decision == "warn" and strike >= _WARN_ESCALATE_STRIKES:
+        return (
+            "block",
+            (
+                f"[ESCALATED] Repeated {tool_name} attempt ({strike}× this session) — "
+                f"now blocked. Use Willow MCP web tools.\n\n{reason}"
+            ),
+        )
+    if decision == "block" and strike >= 2:
+        return "block", f"[REPEAT {strike}×] {reason}"
+    return decision, reason
 
 
 def _mcp_store_search(query: str) -> list:
@@ -633,6 +696,25 @@ def main():
                     ),
                 }))
                 sys.exit(0)
+        sys.exit(0)
+
+    # Native IDE web tools — route to Willow MCP (external-guard path)
+    if tool_name in ("WebFetch", "WebSearch"):
+        block_result = check_native_web_block(tool_name)
+        if block_result:
+            decision, reason = _apply_native_web_escalation(
+                session_id, tool_name, block_result[0], block_result[1]
+            )
+            if decision == "block":
+                if _LEDGER_AVAILABLE:
+                    try:
+                        _ledger_block(tool_name, reason[:300], session_id=session_id)
+                    except Exception:
+                        pass
+                _corpus_log_block(tool_name, reason, session_id)
+                print(json.dumps({"decision": "block", "reason": reason}))
+                sys.exit(0)
+            print(json.dumps({"decision": "warn", "reason": reason}))
         sys.exit(0)
 
     # Write/Edit tools — MarkdownAI routing, security path check, F5 canon guard
