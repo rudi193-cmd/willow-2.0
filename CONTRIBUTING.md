@@ -33,6 +33,8 @@ If `pip check` warns `willow requires aiohttp>=3.14.1` on Python 3.14, run `bash
 
 **Python:** 3.11–3.13 recommended (`litellm>=1.87` needs `<3.14`; 3.14 uses litellm 1.83.x). Check: `./willow.sh venv check`.
 
+**`.venv-dev` is Willow-only.** Do not `pip install -e` SAFE apps or sibling MCP repos into it — use each project's own venv or MCP `PYTHONPATH` wiring. If extras crept in: `bash scripts/prune_venv_extras.sh`.
+
 **IDE wiring:**
 
 ```bash
