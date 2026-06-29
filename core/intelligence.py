@@ -12,6 +12,7 @@ W19MC: Mycorrhizal — sparse KB feeding from adjacent projects
 PMEM2: Insight pass + Chunk synthesis
 """
 from core.agent_identity import require_agent_name
+from core.canonical_lanes import ORCHESTRATOR_LANE
 import psycopg2.extras
 import uuid as _uuid
 from collections import Counter
@@ -24,9 +25,6 @@ except Exception:
         return {"summary": None, "importance": 0}
 
 _AGENT = require_agent_name()
-
-
-from core.canonical_lanes import ORCHESTRATOR_LANE
 
 _SYSTEM_SOURCE_TYPES = frozenset({
     "community_detection", "dark_matter", "revelation", "mirror", "mycorrhizal",
