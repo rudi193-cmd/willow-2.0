@@ -32,18 +32,23 @@ def test_hit_rank_matches_id_or_title_fragment():
     ) == 1
 
 
-@pytest.mark.slow
-def test_retrieval_gold_set_meets_gate():
-    if os.environ.get("WILLOW_PG_DB", "").endswith("_test"):
-        pytest.skip("retrieval gold gate runs against fleet KB via comfort_check --local")
+@pytest.fixture(scope="module")
+def pg_gold():
     if try_connect() is None:
         pytest.skip("Postgres unavailable")
-    pg = PgBridge()
-    try:
-        from willow.bench.retrieval_gold import run_gold_set
+    bridge = PgBridge()
+    yield bridge
+    bridge.close()
 
-        report = run_gold_set(pg)
-    finally:
-        pg.close()
+
+@pytest.mark.slow
+def test_retrieval_gold_set_meets_gate(pg_gold):
+    from willow.bench.retrieval_gold import run_gold_set
+    from willow.bench.retrieval_gold_ci import run_ci_gold_set
+
+    if os.environ.get("WILLOW_PG_DB", "").endswith("_test"):
+        report = run_ci_gold_set(pg_gold)
+    else:
+        report = run_gold_set(pg_gold)
     assert report["total"] >= 7
     assert report["pass"], report
