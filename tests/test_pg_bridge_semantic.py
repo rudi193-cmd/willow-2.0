@@ -74,7 +74,7 @@ def test_knowledge_put_embeds_on_write():
     with patch("core.pg_bridge.embed", return_value=fake_vec):
         atom_id = pg.gen_id(8)
         pg.knowledge_put({
-            "id": atom_id, "project": "test", "title": "embed test",
+            "id": atom_id, "project": "global", "title": "embed test",
             "summary": "this should get embedded", "source_type": "test",
         })
     conn = _conn()
@@ -95,7 +95,7 @@ def test_knowledge_put_succeeds_when_embed_returns_none():
     with patch("core.pg_bridge.embed", return_value=None):
         atom_id = pg.gen_id(8)
         pg.knowledge_put({
-            "id": atom_id, "project": "test", "title": "no embed",
+            "id": atom_id, "project": "global", "title": "no embed",
             "summary": "ollama is down", "source_type": "test",
         })
     conn = _conn()

@@ -18,7 +18,7 @@ def test_degraded_bridge_knowledge_put_writes_to_store(tmp_path, monkeypatch):
     from core.graceful import DegradedBridge
     store = ws.WillowStore()
     bridge = DegradedBridge(store)
-    bridge.knowledge_put({"id": "gd_test_1", "title": "fallback atom", "project": "test"})
+    bridge.knowledge_put({"id": "gd_test_1", "title": "fallback atom", "project": "global"})
     results = store.search("knowledge/fallback", "fallback")
     assert len(results) == 1
     assert results[0]["id"] == "gd_test_1"
@@ -32,7 +32,7 @@ def test_degraded_bridge_knowledge_search_reads_from_store(tmp_path, monkeypatch
     from core.graceful import DegradedBridge
     store = ws.WillowStore()
     bridge = DegradedBridge(store)
-    bridge.knowledge_put({"id": "gd_test_2", "title": "Norse wisdom", "project": "test"})
+    bridge.knowledge_put({"id": "gd_test_2", "title": "Norse wisdom", "project": "global"})
     results = bridge.knowledge_search("Norse")
     assert len(results) == 1
 

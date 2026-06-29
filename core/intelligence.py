@@ -12,6 +12,7 @@ W19MC: Mycorrhizal — sparse KB feeding from adjacent projects
 PMEM2: Insight pass + Chunk synthesis
 """
 from core.agent_identity import require_agent_name
+from core.canonical_lanes import ORCHESTRATOR_LANE
 import psycopg2.extras
 import uuid as _uuid
 from collections import Counter
@@ -25,11 +26,11 @@ except Exception:
 
 _AGENT = require_agent_name()
 
-
 _SYSTEM_SOURCE_TYPES = frozenset({
     "community_detection", "dark_matter", "revelation", "mirror", "mycorrhizal",
 })
-_SYSTEM_PROJECTS = frozenset({"dark_matter", "revelation", "mirror", "global"})
+# Exclude only non-lane buckets from sparse/donor queries (synthetic lanes are gone).
+_SYSTEM_PROJECTS = frozenset({"global"})
 
 
 # ── W19DR — Draugr ────────────────────────────────────────────────────────────
@@ -165,7 +166,7 @@ def dark_matter_pass(bridge, min_overlap: int = 3, limit: int = 100) -> int:
                 dm_id = f"dm_{a['id'][:8]}_{b['id'][:8]}"
                 bridge.knowledge_put({
                     "id": dm_id,
-                    "project": "dark_matter",
+                    "project": ORCHESTRATOR_LANE,
                     "title": f"Implicit connection: {a['project']} ↔ {b['project']}",
                     "summary": f"Shared concepts: {', '.join(sorted(overlap)[:5])}",
                     "source_type": "dark_matter",
@@ -219,7 +220,7 @@ def revelation_pass(bridge, min_overlap: int = 3) -> int:
                 rev_id = f"rev_{a['project'][:8]}_{b['project'][:8]}_{datetime.now(timezone.utc).strftime('%Y%m')}"
                 bridge.knowledge_put({
                     "id": rev_id,
-                    "project": "revelation",
+                    "project": ORCHESTRATOR_LANE,
                     "title": f"Revelation: {a['project']} ↔ {b['project']}",
                     "summary": (
                         f"Cauldron of Wisdom — two isolated projects converge. "
@@ -270,7 +271,7 @@ def mirror_pass(bridge) -> int:
     mirror_id = f"mirror_{now.strftime('%Y%m')}"
     bridge.knowledge_put({
         "id": mirror_id,
-        "project": "mirror",
+        "project": ORCHESTRATOR_LANE,
         "title": f"Mirror — KB self-model {now.strftime('%Y-%m')}",
         "summary": (
             f"{len(nodes)} community nodes. "

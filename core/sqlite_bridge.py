@@ -390,8 +390,14 @@ class SqliteBridge:
         pass
 
     def knowledge_put(self, record: dict) -> str:
+        from core.canonical_lanes import normalize_project
+
         atom_id = record.get("id") or self.gen_id(8)
         record = {**record, "id": atom_id}
+        record["project"] = normalize_project(
+            record.get("project"),
+            source_type=record.get("source_type"),
+        )
         self._exec("""
             INSERT INTO knowledge
                 (id, project, valid_at, invalid_at, title, summary, content,

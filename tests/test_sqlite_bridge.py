@@ -40,7 +40,7 @@ def test_knowledge_put_returns_id(db):
 
 
 def test_ingest_atom(db):
-    atom_id = db.ingest_atom("Test title", "Test summary", domain="test")
+    atom_id = db.ingest_atom("Test title", "Test summary", domain="global")
     assert atom_id is not None
     results = db.knowledge_search("Test title")
     assert any(r["id"] == atom_id for r in results)
