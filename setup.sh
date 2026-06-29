@@ -5,7 +5,7 @@
 # What it does:
 #   1. Pull private willow-config → ~/github/.willow; link runtime config into willow-2.0
 #   2. Create .venv-dev if missing
-#   3. Install/upgrade requirements.txt
+#   3. Install requirements.txt + editable willow[dev]
 #   4. Verify Postgres connection
 #   5. Run migrations
 #
@@ -97,7 +97,8 @@ else
 fi
 "${VENV}/bin/pip" install --quiet --upgrade pip
 "${VENV}/bin/pip" install --quiet -r "${REPO_ROOT}/requirements.txt"
-ok "Requirements installed"
+"${VENV}/bin/pip" install --quiet -e "${REPO_ROOT}[dev]"
+ok "Requirements + editable willow[dev] installed"
 
 hdr "Fleet venv (\$WILLOW_HOME/venv)"
 PYTHONPATH="${REPO_ROOT}" WILLOW_HOME="${WILLOW_HOME:-${HOME}/github/.willow}" \

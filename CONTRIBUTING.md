@@ -13,13 +13,15 @@ Thank you for helping tend the tree. This doc covers setup, quality gates, PR ex
 ```bash
 git clone https://github.com/rudi193-cmd/willow-2.0
 cd willow-2.0
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+bash setup.sh --public   # or bash setup.sh when ~/github/.willow (willow-config) exists
+source .venv-dev/bin/activate   # optional — ./willow.sh already uses .venv-dev
 pre-commit install
 pre-commit install --hook-type pre-push
 ```
 
-**Python:** 3.11 or 3.12 (`openclaw-sap-gate` in `requirements.txt` requires ≥3.11).
+`setup.sh` creates **`.venv-dev`** (canonical), installs `requirements.txt`, runs `pip install -e ".[dev]"`, and symlinks `$WILLOW_HOME/venv` → `.venv-dev`. Do not use a separate `.venv` — it is not wired into MCP or `./willow.sh`.
+
+**Python:** 3.11+ (`openclaw-sap-gate` in `requirements.txt` requires ≥3.11). Check: `./willow.sh venv check`.
 
 **IDE wiring:**
 
