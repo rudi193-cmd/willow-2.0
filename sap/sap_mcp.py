@@ -938,6 +938,15 @@ def _no_pg() -> dict:
     return {"error": "not_available", "reason": "Postgres not connected"}
 
 
+def _resolve_kb_lane_scope(app_id: str, scope: str = "", project: str = ""):
+    from core.canonical_lanes import resolve_lane_read_scope
+    return resolve_lane_read_scope(
+        app_id,
+        scope=scope,
+        project=project or None,
+    )
+
+
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
 async def kb_search(
@@ -950,6 +959,8 @@ async def kb_search(
     tier:              str  = "",
     expand_neighbors:  bool = True,
     continuity:        bool = False,
+    scope:             str  = "",
+    project:           str  = "",
 ) -> dict:
     """Search Willow's Postgres knowledge graph before building anything.
     Returns atoms by title and summary. Search first — another agent may have already
@@ -957,10 +968,12 @@ async def kb_search(
     tier: filter to frontier|contested|canonical|superseded (omit for all tiers).
     expand_neighbors: one-hop graph expansion via public.edges (default on).
     continuity=True uses the curated B2-minus-intake retrieval pool (boot/cold-recovery).
-    semantic=True uses the hybrid pgvector+BM25 RRF hot path when available."""
+    semantic=True uses the hybrid pgvector+BM25 RRF hot path when available.
+    scope: default caller lane; willow may pass '*' for full god-view (incl. personal).
+    project: explicit lane filter (must be permitted for caller)."""
     logger.info(
-        "[w2] kb_search app_id=%s q=%r semantic=%s tier=%r continuity=%s",
-        app_id, query, semantic, tier, continuity,
+        "[w2] kb_search app_id=%s q=%r semantic=%s tier=%r continuity=%s scope=%r project=%r",
+        app_id, query, semantic, tier, continuity, scope, project,
     )
     if not pg:
         return _no_pg()
@@ -968,11 +981,14 @@ async def kb_search(
 
     def _search():
         tier_filter = tier or None
+        lane_scope = _resolve_kb_lane_scope(app_id, scope=scope, project=project)
+        explicit_project = (project or "").strip() or None
         if semantic:
             try:
                 knowledge = pg.knowledge_search_semantic(
                     query, limit=limit, include_embedding=include_embedding,
                     fields=fields, tier=tier_filter, continuity=continuity,
+                    project=explicit_project, lane_scope=lane_scope,
                 )
                 jeles    = pg.search_jeles_semantic(query, limit=limit // 2)
                 opus     = pg.search_opus_semantic(query, limit=limit // 2)
@@ -981,6 +997,7 @@ async def kb_search(
                 knowledge = pg.knowledge_search(
                     query, limit=limit, include_embedding=include_embedding,
                     fields=fields, tier=tier_filter,
+                    project=explicit_project, lane_scope=lane_scope,
                 )
                 jeles = pg.jeles_keyword_search(query, limit=limit // 2)
                 opus  = pg.search_opus(query, limit=limit // 2)
@@ -989,6 +1006,7 @@ async def kb_search(
             knowledge = pg.knowledge_search(
                 query, limit=limit, include_embedding=include_embedding,
                 fields=fields, tier=tier_filter,
+                project=explicit_project, lane_scope=lane_scope,
             )
             jeles = pg.jeles_keyword_search(query, limit=limit // 2)
             opus  = pg.search_opus(query, limit=limit // 2)
@@ -1000,6 +1018,7 @@ async def kb_search(
             try:
                 neighbors = pg.knowledge_expand_neighbors(
                     seed_ids, limit=max(5, limit // 3),
+                    lane_scope=lane_scope,
                 )
             except Exception:
                 neighbors = []
@@ -1027,6 +1046,10 @@ async def kb_search(
             "neighbors": neighbors,
             "total": len(knowledge) + len(jeles) + len(opus),
             "mode": mode,
+            "lane_scope": {
+                "projects": list(lane_scope.projects) if lane_scope.projects is not None else None,
+                "exclude": list(lane_scope.exclude),
+            },
         }
 
     return await loop.run_in_executor(_executor, _search)
@@ -1139,12 +1162,15 @@ async def kb_query(
     limit:             int  = 20,
     include_embedding: bool = False,
     fields:            list = None,
+    scope:             str  = "",
+    project:           str  = "",
 ) -> dict:
     """General search across the knowledge graph. Alias for kb_search (keyword mode)."""
     logger.info("[w2] kb_query app_id=%s q=%r", app_id, query)
     return await kb_search(
         app_id=app_id, query=query, limit=limit,
         semantic=False, include_embedding=include_embedding, fields=fields,
+        scope=scope, project=project,
     )
 
 
@@ -1156,14 +1182,18 @@ async def kb_get(
     include_embedding: bool = False,
     include_invalid:   bool = False,
     fields:            list = None,
+    scope:             str  = "",
+    project:           str  = "",
 ) -> dict:
     """Fetch a single knowledge atom by id. Omits embedding by default to keep payloads small."""
     logger.info("[w2] kb_get app_id=%s id=%s", app_id, id)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
+    lane_scope = _resolve_kb_lane_scope(app_id, scope=scope, project=project)
     atom = await loop.run_in_executor(
-        _executor, pg.knowledge_get, id, include_invalid, include_embedding, fields
+        _executor, pg.knowledge_get, id, include_invalid, include_embedding, fields,
+        lane_scope,
     )
     return {"atom": atom, "found": bool(atom)}
 
@@ -1334,6 +1364,7 @@ async def kb_at(
     at_time: str,
     project: str = "",
     limit:   int = 20,
+    scope:   str = "",
 ) -> dict:
     """Temporal replay: what did Willow know about query at a specific point in time?
     Uses bi-temporal edges — returns atoms valid at that moment.
@@ -1346,7 +1377,12 @@ async def kb_at(
     def _at():
         from datetime import datetime as _dt
         at = _dt.fromisoformat(at_time.replace("Z", "+00:00"))
-        results = pg.knowledge_at(query, at_time=at, project=project or None, limit=limit)
+        lane_scope = _resolve_kb_lane_scope(app_id, scope=scope, project=project)
+        explicit_project = (project or "").strip() or None
+        results = pg.knowledge_at(
+            query, at_time=at, project=explicit_project, limit=limit,
+            lane_scope=lane_scope,
+        )
         return {"results": results, "count": len(results), "at_time": at_time}
 
     return await loop.run_in_executor(_executor, _at)

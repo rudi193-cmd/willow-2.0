@@ -179,6 +179,7 @@ def _pgvector_search_raw(
     exclude_search_noise: bool = True,
     exclude_superseded: bool = True,
     source_types: Optional[list[str]] = None,
+    lane_scope=None,
 ) -> list[dict]:
     """Clean wrapper around the ANN search to avoid param duplication."""
     vec_str = str(query_vec)
@@ -187,9 +188,8 @@ def _pgvector_search_raw(
 
     if not include_invalid:
         filters.append("invalid_at IS NULL")
-    if project:
-        filters.append("project = %s")
-        where_params.append(project)
+    from core.canonical_lanes import apply_lane_scope_sql
+    apply_lane_scope_sql(filters, where_params, project=project, lane_scope=lane_scope)
     if fork_id:
         filters.append("fork_id = %s")
         where_params.append(fork_id)
@@ -232,6 +232,7 @@ def _bm25_search(
     exclude_search_noise: bool = True,
     exclude_superseded: bool = True,
     source_types: Optional[list[str]] = None,
+    lane_scope=None,
 ) -> list[dict]:
     """
     BM25 search over knowledge table.
@@ -250,9 +251,8 @@ def _bm25_search(
 
     if not include_invalid:
         filters.append("invalid_at IS NULL")
-    if project:
-        filters.append("project = %s")
-        params.append(project)
+    from core.canonical_lanes import apply_lane_scope_sql
+    apply_lane_scope_sql(filters, params, project=project, lane_scope=lane_scope)
     if fork_id:
         filters.append("fork_id = %s")
         params.append(fork_id)
@@ -535,6 +535,7 @@ def hybrid_search(
     weight_mode: str = "cap",
     weight_cap: float = DEFAULT_WEIGHT_CAP,
     cosine_bypass: float = DEFAULT_COSINE_BYPASS,
+    lane_scope=None,
 ) -> list[dict]:
     """
     Hybrid pgvector cosine + BM25 keyword search with RRF fusion.
@@ -621,6 +622,7 @@ def hybrid_search(
                 exclude_search_noise=exclude_search_noise,
                 exclude_superseded=exclude_superseded,
                 source_types=source_types,
+                lane_scope=lane_scope,
             )
             if vec_rows:
                 ranked_lists.append(vec_rows)
@@ -637,6 +639,7 @@ def hybrid_search(
                 exclude_search_noise=exclude_search_noise,
                 exclude_superseded=exclude_superseded,
                 source_types=source_types,
+                lane_scope=lane_scope,
             )
             if bm25_rows:
                 ranked_lists.append(bm25_rows)
@@ -651,7 +654,8 @@ def hybrid_search(
                                    include_invalid=include_invalid, limit=limit,
                                    tier=tier,
                                    exclude_search_noise=exclude_search_noise,
-                                   exclude_superseded=exclude_superseded)
+                                   exclude_superseded=exclude_superseded,
+                                   lane_scope=lane_scope)
 
     # --- RRF fusion ---
     fused = _rrf_fuse(

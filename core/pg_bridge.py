@@ -1310,7 +1310,8 @@ class PgBridge:
 
     def knowledge_get(self, atom_id: str, include_invalid: bool = False,
                       include_embedding: bool = False,
-                      fields: Optional[list] = None) -> Optional[dict]:
+                      fields: Optional[list] = None,
+                      lane_scope=None) -> Optional[dict]:
         self._ensure_conn()
         select_sql, _ = self._knowledge_select_cols(fields=fields, include_embedding=include_embedding)
         where = "id = %s"
@@ -1320,7 +1321,14 @@ class PgBridge:
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(f"SELECT {select_sql} FROM knowledge WHERE {where} LIMIT 1", params)
             row = cur.fetchone()
-            return dict(row) if row else None
+            if not row:
+                return None
+            atom = dict(row)
+        if lane_scope is not None:
+            from core.canonical_lanes import atom_in_lane_scope
+            if not atom_in_lane_scope(atom, lane_scope):
+                return None
+        return atom
 
     def knowledge_search(self, query: str, project: Optional[str] = None,
                          include_invalid: bool = False, limit: int = 20,
@@ -1328,7 +1336,8 @@ class PgBridge:
                          fields: Optional[list] = None,
                          tier: Optional[str] = None,
                          exclude_search_noise: bool = True,
-                         exclude_superseded: bool = True) -> list:
+                         exclude_superseded: bool = True,
+                         lane_scope=None) -> list:
         self._ensure_conn()
         # Split multi-word queries into AND-ed ILIKE terms so "grove fleet"
         # finds atoms containing both words, not the exact phrase.
@@ -1344,6 +1353,9 @@ class PgBridge:
         if project:
             filters.append("project = %s")
             params.append(project)
+        elif lane_scope is not None:
+            from core.canonical_lanes import apply_lane_scope_sql
+            apply_lane_scope_sql(filters, params, lane_scope=lane_scope)
         if not include_invalid:
             filters.append("invalid_at IS NULL")
         self._knowledge_retrieval_filters(
@@ -1458,7 +1470,8 @@ class PgBridge:
                        fields: Optional[list] = None,
                        tier: Optional[str] = None,
                        exclude_search_noise: bool = True,
-                       exclude_superseded: bool = True) -> list:
+                       exclude_superseded: bool = True,
+                       lane_scope=None) -> list:
         self._ensure_conn()  # re-acquire if Ollama embed call staled the connection
         vec_str = str(vec)
         filters = ["embedding IS NOT NULL", "invalid_at IS NULL"]
@@ -1471,6 +1484,9 @@ class PgBridge:
         if project:
             filters.append("project = %s")
             params.append(project)
+        elif lane_scope is not None:
+            from core.canonical_lanes import apply_lane_scope_sql
+            apply_lane_scope_sql(filters, params, lane_scope=lane_scope)
         self._knowledge_retrieval_filters(
             filters, params, tier=tier,
             exclude_search_noise=exclude_search_noise,
@@ -1494,7 +1510,8 @@ class PgBridge:
                                    tier: Optional[str] = None,
                                    exclude_search_noise: bool = True,
                                    exclude_superseded: bool = True,
-                                   continuity: bool = False) -> list:
+                                   continuity: bool = False,
+                                   lane_scope=None) -> list:
         source_types = None
         if continuity:
             from willow.ranking.continuity_pool import resolve_continuity_source_types
@@ -1512,6 +1529,7 @@ class PgBridge:
                 exclude_search_noise=exclude_search_noise,
                 exclude_superseded=exclude_superseded,
                 source_types=source_types,
+                lane_scope=lane_scope,
             )
             if hybrid:
                 return self._knowledge_shape_rows(
@@ -1530,12 +1548,14 @@ class PgBridge:
             include_embedding=include_embedding, fields=fields,
             tier=tier, exclude_search_noise=exclude_search_noise,
             exclude_superseded=exclude_superseded,
+            lane_scope=lane_scope,
         )
         ilike = self.knowledge_search(
             query, limit=limit, project=project,
             include_embedding=include_embedding, fields=fields,
             tier=tier, exclude_search_noise=exclude_search_noise,
             exclude_superseded=exclude_superseded,
+            lane_scope=lane_scope,
         )
         return _rrf_merge(ann, ilike)[:limit]
 
@@ -1548,6 +1568,7 @@ class PgBridge:
         exclude_superseded: bool = True,
         include_embedding: bool = False,
         fields: Optional[list] = None,
+        lane_scope=None,
     ) -> list:
         """One-hop graph expansion via public.edges for retrieval."""
         if not seed_ids:
@@ -1584,6 +1605,9 @@ class PgBridge:
 
         filters = ["id = ANY(%s)", "invalid_at IS NULL"]
         params: list = [list(neighbor_ids)]
+        if lane_scope is not None:
+            from core.canonical_lanes import apply_lane_scope_sql
+            apply_lane_scope_sql(filters, params, lane_scope=lane_scope)
         self._knowledge_retrieval_filters(
             filters, params,
             exclude_search_noise=exclude_search_noise,
@@ -1665,7 +1689,8 @@ class PgBridge:
             return [dict(r) for r in cur.fetchall()]
 
     def knowledge_at(self, query: str, at_time: datetime,
-                     project: Optional[str] = None, limit: int = 20) -> list:
+                     project: Optional[str] = None, limit: int = 20,
+                     lane_scope=None) -> list:
         self._ensure_conn()
         at_time_upper = at_time + timedelta(seconds=5)
         filters = [
@@ -1677,6 +1702,9 @@ class PgBridge:
         if project:
             filters.append("project = %s")
             params.append(project)
+        elif lane_scope is not None:
+            from core.canonical_lanes import apply_lane_scope_sql
+            apply_lane_scope_sql(filters, params, lane_scope=lane_scope)
         where = " AND ".join(filters)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
