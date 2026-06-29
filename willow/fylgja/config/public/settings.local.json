@@ -12,8 +12,6 @@
       "Grep(*)",
       "Skill(*)",
       "Bash(*)",
-      "WebFetch(*)",
-      "WebSearch(*)",
       "Task(*)",
       "mcp__willow__fleet_restart",
       "mcp__willow__*",
@@ -21,6 +19,8 @@
       "mcp__claude_ai_Grove__*"
     ],
     "deny": [
+      "WebFetch(*)",
+      "WebSearch(*)",
       "mcp__willow__app_uninstall",
       "mcp__willow__policy_put",
       "mcp__willow__policy_delete",

@@ -52,6 +52,7 @@
     "willow_app":          {"group": "willow", "tier": "core", "description": "Facade: inspect SAFE app registration and manifest state."},
     "willow_external":     {"group": "willow", "tier": "core", "description": "Facade: ask, search, or verify cited external sources through Jeles/source-trail."},
     "willow_web_search":   {"group": "willow", "tier": "core", "description": "Open web SEARCH via DuckDuckGo HTML — not WebSearch/WebFetch. Current events, tech news, queries Jeles cannot cover."},
+    "willow_web_fetch":    {"group": "willow", "tier": "core", "description": "Guarded URL fetch with external-guard sandwich — replaces native WebFetch."},
     "willow_code":         {"group": "willow", "tier": "core", "description": "Facade: search or suggest code context through the code graph."},
 
     "kb_search":          {"group": "kb",     "description": "Search KB atoms by title/content. Use semantic=true for embedding-based retrieval (nomic-embed). continuity=true for boot/cold-recovery curated pool. Depth limit 3 before asking user."},

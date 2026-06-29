@@ -2398,6 +2398,28 @@ async def willow_web_search(
     return {"query": query, "results": hits, "count": len(hits)}
 
 
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def willow_web_fetch(
+    app_id: str,
+    url: str,
+    wrap: bool = True,
+    max_bytes: int = 512_000,
+) -> dict:
+    """Fetch a URL through Willow external-guard (not native WebFetch).
+
+    Returns markdown-friendly text with sandwich defense when wrap=True.
+    Blocks private/loopback hosts. Use willow_web_search to discover URLs first."""
+    logger.info("[w2] willow_web_fetch app_id=%s url=%r", app_id, url[:120])
+    from core.web_fetch import fetch_url
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        _executor,
+        lambda: fetch_url(url, wrap=wrap, max_bytes=max_bytes),
+    )
+
+
 @mcp.tool()
 @sap_gate()
 async def source_trail_verify(

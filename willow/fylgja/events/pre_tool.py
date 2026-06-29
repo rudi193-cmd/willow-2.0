@@ -36,8 +36,8 @@ _WARN_ESCALATE_STRIKES = int(os.environ.get("WILLOW_WARN_ESCALATE_STRIKES", "2")
 _SESSION_BAN_STRIKES = int(os.environ.get("WILLOW_SESSION_BAN_STRIKES", "3"))
 
 # Native IDE web tools — warn until willow_web_fetch ships, then hard-block.
-_NATIVE_WEB_SEARCH_BLOCK = False
-_NATIVE_WEB_FETCH_BLOCK = False
+_NATIVE_WEB_SEARCH_BLOCK = True
+_NATIVE_WEB_FETCH_BLOCK = True
 
 _WEB_SEARCH_REDIRECT = (
     "Use MCP for open-web search — not native WebSearch. "
