@@ -483,7 +483,7 @@ def _agent_name_from(name_str: str) -> str:
     return slug or os.environ.get("USER", "willow")
 
 
-def _run_install(win, name_str: str, email: str, passphrase: str) -> str:
+def _run_install(win, name_str: str, email: str, passphrase: str) -> tuple[str, list[str]]:
     """Run all install steps. Shows progress bars in TUI. Returns GPG fingerprint."""
     amber  = curses.color_pair(_CA_AMBER)  | curses.A_BOLD
     bright = curses.color_pair(_CA_BRIGHT) | curses.A_BOLD
@@ -534,6 +534,7 @@ def _run_install(win, name_str: str, email: str, passphrase: str) -> str:
     ]
 
     fingerprint = ""
+    failed_steps: list[str] = []
     for i, (label, fn) in enumerate(steps):
         py = prog_start + i
         _progress_row(win, py, label, done=False)
@@ -545,6 +546,7 @@ def _run_install(win, name_str: str, email: str, passphrase: str) -> str:
         except Exception as e:
             _blog(f"install step {label} failed: {e}")
             _progress_row(win, py, label, error=True)
+            failed_steps.append(f"{label}: {e}")
 
     _safe(win, prog_start + len(steps) + 1, 2,
           "FRANK: All steps complete. FRANK has filed a report. It was acknowledged.", green)
@@ -552,7 +554,7 @@ def _run_install(win, name_str: str, email: str, passphrase: str) -> str:
           "FRANK: This has never happened before. FRANK has noted it.", dim)
     win.refresh()
     time.sleep(1.8)
-    return fingerprint
+    return fingerprint, failed_steps
 
 
 # ── Individual install steps ──────────────────────────────────────────────────
@@ -577,14 +579,21 @@ def _step_deps() -> None:
     if not req.exists():
         return
     pkgs = [l.strip() for l in req.read_text().splitlines() if l.strip() and not l.startswith("#")]
+    failed: list[str] = []
     for pkg in pkgs:
+        installed = False
         for flags in [[], ["--break-system-packages"]]:
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", pkg, "--quiet"] + flags,
                 capture_output=True, text=True,
             )
             if result.returncode == 0:
+                installed = True
                 break
+        if not installed:
+            failed.append(pkg)
+    if failed:
+        raise RuntimeError(f"pip install failed for: {', '.join(failed)}")
 
 
 def _step_gpg(name_str: str, email: str, passphrase: str) -> str:
@@ -1663,7 +1672,7 @@ def run_new_user(stdscr) -> None:
     age  = page_age_gate(stdscr)
 
     # Install
-    fingerprint = _run_install(stdscr, gate["name"], gate["email"], gate["passphrase"])
+    fingerprint, install_errors = _run_install(stdscr, gate["name"], gate["email"], gate["passphrase"])
 
     # First conversation
     atoms = page_first_conversation(stdscr, gate["provider"], gate["api_key"], gate["name"])
@@ -1685,6 +1694,7 @@ def run_new_user(stdscr) -> None:
     # Save boot config
     cfg = {
         "completed":       True,
+        "install_errors":  install_errors,
         "first_run_at":    datetime.now().isoformat(),
         "name":            gate["name"],
         "email":           gate["email"],
