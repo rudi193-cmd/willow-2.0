@@ -6,6 +6,9 @@
 #   ./scripts/comfort_check.sh --local   # + symlinks, systemd, agents check, verify
 #   ./scripts/comfort_check.sh --ci      # explicit CI mode (same as default)
 #
+# COMFORT_SKIP_DUPLICATE_GUARDS=1 — skip path/lint/store guards and fast pytest
+#   (pytest-matrix sets this; dedicated workflow jobs already run those checks).
+#
 # Exit 0 only if all required checks pass.
 set -euo pipefail
 
@@ -209,20 +212,28 @@ _public_fallback_verify() {
   "${PYTHON}" scripts/verify_public_fallback.py
 }
 
+_skip_duplicate_guards() {
+  [[ "${COMFORT_SKIP_DUPLICATE_GUARDS:-}" == "1" ]]
+}
+
 echo "[comfort_check] mode=${MODE} root=${ROOT}"
 
 if [[ "${MODE}" == "ci" ]]; then
   _ci_stubs
 fi
 
-_run "path-guard" _path_guard
-_run "lint-first-party" _lint_first_party
-_run "store-import-guard" _store_import_guard
+if ! _skip_duplicate_guards; then
+  _run "path-guard" _path_guard
+  _run "lint-first-party" _lint_first_party
+  _run "store-import-guard" _store_import_guard
+fi
 _run "mcp-registry-strict" _mcp_registry
 _run "verify-layout" _layout
 _run "remote-surface-check" _remote_surface_check
 _run "public-fallback-verify" _public_fallback_verify
-_run "fast-mcp-tests" _fast_tests
+if ! _skip_duplicate_guards; then
+  _run "fast-mcp-tests" _fast_tests
+fi
 _run "bifrost-db-scan" _bifrost_db_warn
 
 if [[ "${MODE}" == "local" ]]; then

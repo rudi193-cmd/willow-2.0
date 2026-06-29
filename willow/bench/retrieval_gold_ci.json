@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "description": "CI retrieval gold — atoms seeded into willow_20_test; mirrors fleet query shape.",
+  "min_pass_ratio": 1.0,
+  "seed_atoms": [
+    {
+      "id": "CIG00001",
+      "title": "Open projects Willow fleet tracker",
+      "summary": "Open projects and fleet coordination status across Willow agents.",
+      "category": "ci-gold",
+      "source_type": "ci_seed",
+      "tier": "canonical",
+      "project": "willow"
+    },
+    {
+      "id": "CIG00002",
+      "title": "BKT boot shutdown wiring",
+      "summary": "Bayesian Knowledge Tracing hooks at boot and graceful shutdown.",
+      "category": "ci-gold",
+      "source_type": "ci_seed",
+      "tier": "canonical",
+      "project": "willow"
+    },
+    {
+      "id": "CIG00003",
+      "title": "Intake promotion norn-pass pipeline",
+      "summary": "Intake promotion path through norn-pass signal classification.",
+      "category": "ci-gold",
+      "source_type": "ci_seed",
+      "tier": "canonical",
+      "project": "willow"
+    },
+    {
+      "id": "CIG00004",
+      "title": "Kart stale-running task recovery",
+      "summary": "Kart task queue stale-running detection and reclaim.",
+      "category": "ci-gold",
+      "source_type": "ci_seed",
+      "tier": "canonical",
+      "project": "willow"
+    },
+    {
+      "id": "CIG00005",
+      "title": "Discord Grove responder KB grounding",
+      "summary": "Discord remote responder grounds replies in Postgres KB search.",
+      "category": "ci-gold",
+      "source_type": "ci_seed",
+      "tier": "canonical",
+      "project": "willow"
+    },
+    {
+      "id": "CIG00006",
+      "title": "Binder edges sync to public.edges",
+      "summary": "Binder edge linking: pg_edge proposals sync to public.edges on ratification.",
+      "category": "ci-gold",
+      "source_type": "ci_seed",
+      "tier": "canonical",
+      "project": "willow"
+    },
+    {
+      "id": "CIG00007",
+      "title": "HNS Human Notification System design",
+      "summary": "Human Notification System routing and operator escalation.",
+      "category": "ci-gold",
+      "source_type": "ci_seed",
+      "tier": "canonical",
+      "project": "willow"
+    }
+  ],
+  "queries": [
+    {
+      "id": "open_projects_fleet",
+      "query": "open projects Willow fleet",
+      "expect_ids": ["CIG00001"],
+      "expect_title_contains": [],
+      "k": 5,
+      "semantic": false
+    },
+    {
+      "id": "bkt_boot_shutdown",
+      "query": "BKT boot shutdown wiring",
+      "expect_ids": ["CIG00002"],
+      "expect_title_contains": [],
+      "k": 5,
+      "semantic": false
+    },
+    {
+      "id": "intake_norn_pass",
+      "query": "intake promotion norn-pass",
+      "expect_ids": ["CIG00003"],
+      "expect_title_contains": [],
+      "k": 5,
+      "semantic": false
+    },
+    {
+      "id": "kart_stale_running",
+      "query": "Kart task queue stale running",
+      "expect_ids": [],
+      "expect_title_contains": ["Kart stale-running"],
+      "k": 5,
+      "semantic": false
+    },
+    {
+      "id": "discord_responder_kb",
+      "query": "Discord Grove responder KB grounding",
+      "expect_ids": ["CIG00005"],
+      "expect_title_contains": [],
+      "k": 5,
+      "semantic": false
+    },
+    {
+      "id": "binder_public_edges",
+      "query": "Binder edges sync public.edges pg_edge linking",
+      "expect_ids": [],
+      "expect_title_contains": ["Binder edges sync to public.edges"],
+      "k": 5,
+      "semantic": false
+    },
+    {
+      "id": "hns_design",
+      "query": "HNS Human Notification System design",
+      "expect_ids": ["CIG00007"],
+      "expect_title_contains": [],
+      "k": 5,
+      "semantic": false
+    }
+  ]
+}
