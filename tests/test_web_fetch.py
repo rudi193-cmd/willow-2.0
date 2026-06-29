@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from core.web_fetch import fetch_url, validate_fetch_url
 
 
