@@ -215,3 +215,136 @@ def test_verify_honors_env_required_checks(monkeypatch):
     gh = lambda p: ({"sha": sha} if p.endswith(sha) else runs if "check-runs" in p else None)  # noqa: E731
     v = cv.verify_completion_evidence(_ev(), gh=gh)
     assert v["status"] == "VERIFIED"
+
+
+# --------------------------------------------------------------------------- #
+# named check contexts — commit-status fallback (ccfo borrow)
+# --------------------------------------------------------------------------- #
+
+
+def _gh_mixed(check_run_names, status_contexts, sha: str = "abc123"):
+    """Fake gh serving check-runs AND commit statuses.
+
+    check_run_names: names served as green github-actions check-runs.
+    status_contexts: list of {context, state, creator} commit-status dicts.
+    """
+    runs = [{"name": n, "status": "completed", "conclusion": "success",
+             "app": {"slug": "github-actions"}} for n in check_run_names]
+
+    def gh(path: str) -> Any:
+        if path.endswith(f"/commits/{sha}"):
+            return {"sha": sha}
+        if "check-runs" in path:
+            return {"check_runs": runs}
+        if "statuses" in path:
+            return status_contexts
+        return None
+    return gh
+
+
+def test_verified_via_trusted_status_context_when_no_check_run(monkeypatch):
+    # A required gate that exists only as a trusted commit-status context (no
+    # check-run at all) still satisfies VERIFIED — the core named-check borrow.
+    monkeypatch.setenv("WILLOW_COMPLETION_REQUIRED_CHECKS", "external-audit")
+    statuses = [{"context": "external-audit", "state": "success",
+                 "creator": {"login": "github-actions[bot]"}}]
+    gh = _gh_mixed(check_run_names=[], status_contexts=statuses)
+    v = cv.verify_completion_evidence(_ev(), gh=gh)
+    assert v["status"] == "VERIFIED", v["reasons"]
+    assert any(o["kind"] == "commit-status" and o["ok"] for o in v["checks"])
+
+
+def test_unverified_when_status_creator_untrusted(monkeypatch):
+    monkeypatch.setenv("WILLOW_COMPLETION_REQUIRED_CHECKS", "external-audit")
+    statuses = [{"context": "external-audit", "state": "success",
+                 "creator": {"login": "evil-actor"}}]
+    gh = _gh_mixed(check_run_names=[], status_contexts=statuses)
+    v = cv.verify_completion_evidence(_ev(), gh=gh)
+    assert v["status"] == "UNVERIFIED"
+    assert any("external-audit" in r for r in v["reasons"])
+
+
+def test_unverified_when_status_state_not_success(monkeypatch):
+    monkeypatch.setenv("WILLOW_COMPLETION_REQUIRED_CHECKS", "external-audit")
+    statuses = [{"context": "external-audit", "state": "pending",
+                 "creator": {"login": "github-actions[bot]"}}]
+    gh = _gh_mixed(check_run_names=[], status_contexts=statuses)
+    v = cv.verify_completion_evidence(_ev(), gh=gh)
+    assert v["status"] == "UNVERIFIED"
+
+
+def test_mixed_sources_one_check_run_one_status(monkeypatch):
+    # Two required gates: one satisfied by a check-run, one by a status context.
+    monkeypatch.setenv("WILLOW_COMPLETION_REQUIRED_CHECKS", "lint,external-audit")
+    statuses = [{"context": "external-audit", "state": "success",
+                 "creator": {"login": "github-actions[bot]"}}]
+    gh = _gh_mixed(check_run_names=["lint"], status_contexts=statuses)
+    v = cv.verify_completion_evidence(_ev(), gh=gh)
+    assert v["status"] == "VERIFIED", v["reasons"]
+    kinds = {o["name"]: o["kind"] for o in v["checks"] if o["ok"]}
+    assert kinds == {"lint": "check-run", "external-audit": "commit-status"}
+
+
+def test_latest_status_context_wins(monkeypatch):
+    # A stale failing status must not block when a newer success exists.
+    monkeypatch.setenv("WILLOW_COMPLETION_REQUIRED_CHECKS", "external-audit")
+    statuses = [
+        {"context": "external-audit", "state": "failure", "created_at": "2026-01-01T00:00:00Z",
+         "creator": {"login": "github-actions[bot]"}},
+        {"context": "external-audit", "state": "success", "created_at": "2026-06-29T00:00:00Z",
+         "creator": {"login": "github-actions[bot]"}},
+    ]
+    gh = _gh_mixed(check_run_names=[], status_contexts=statuses)
+    v = cv.verify_completion_evidence(_ev(), gh=gh)
+    assert v["status"] == "VERIFIED", v["reasons"]
+
+
+def test_verified_result_carries_observations():
+    v = cv.verify_completion_evidence(_ev(), gh=_gh_ok())
+    assert v["checks"], "expected per-check observations"
+    assert all(o["ok"] for o in v["checks"])
+    assert {o["name"] for o in v["checks"]} == set(cv.REQUIRED_CHECKS)
+
+
+def test_statuses_endpoint_not_hit_when_all_check_runs_pass():
+    # Lazy: the statuses API must not be queried if every gate passes as a check-run.
+    sha = "abc123"
+    runs = [{"name": n, "status": "completed", "conclusion": "success",
+             "app": {"slug": "github-actions"}} for n in cv.REQUIRED_CHECKS]
+    hits: list[str] = []
+
+    def gh(path: str) -> Any:
+        hits.append(path)
+        if path.endswith(f"/commits/{sha}"):
+            return {"sha": sha}
+        if "check-runs" in path:
+            return runs
+        return None
+    v = cv.verify_completion_evidence(_ev(), gh=gh)
+    assert v["status"] == "VERIFIED"
+    assert not any("statuses" in p for p in hits)
+
+
+# --------------------------------------------------------------------------- #
+# trusted-actor config (named-check-contexts)
+# --------------------------------------------------------------------------- #
+
+
+def test_trusted_status_creators_default(monkeypatch):
+    monkeypatch.delenv("WILLOW_COMPLETION_TRUSTED_STATUS_CREATORS", raising=False)
+    assert cv.trusted_status_creators() == cv.TRUSTED_STATUS_CREATORS
+
+
+def test_trusted_status_creators_env_override(monkeypatch):
+    monkeypatch.setenv("WILLOW_COMPLETION_TRUSTED_STATUS_CREATORS", "a[bot], b[bot]")
+    assert cv.trusted_status_creators() == frozenset({"a[bot]", "b[bot]"})
+
+
+def test_trusted_check_apps_default(monkeypatch):
+    monkeypatch.delenv("WILLOW_COMPLETION_TRUSTED_CHECK_APPS", raising=False)
+    assert cv.trusted_check_apps() == cv.TRUSTED_CHECK_APPS
+
+
+def test_trusted_check_apps_env_override(monkeypatch):
+    monkeypatch.setenv("WILLOW_COMPLETION_TRUSTED_CHECK_APPS", "my-runner")
+    assert cv.trusted_check_apps() == frozenset({"my-runner"})

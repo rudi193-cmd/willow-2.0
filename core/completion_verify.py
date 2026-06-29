@@ -11,10 +11,20 @@ so it is fully unit-testable offline (same provider-seam trick as
 `core/web_search.py`). Slice 2 wires it into `agent_dispatch_result` + the FRANK
 ledger; the wiring lives in `sap/sap_mcp.py`, nothing here mutates state.
 
-Config seam (slice 2): the required-checks set, the allowlisted repos, and the
-enforcement flag are all env-overridable so the gate can ship default-off and be
-tightened per-deployment without a code change. Env is read at call time, so the
-defaults below remain the pinned public surface the tests iterate over.
+Named-check-contexts (ccfo borrow): a required gate is satisfied by EITHER a
+trusted check-run (Checks API) OR a trusted commit-status context (legacy
+Statuses API). The two GitHub surfaces are distinct — external auditors and some
+third-party CI post *status contexts*, not check-runs — so verifying only
+check-runs left a "required gate is green but invisible" gap. Each source has its
+own trusted-actor allowlist (apps for check-runs, creator logins for statuses) so
+an untrusted token cannot forge a passing context. Per-check observations are
+returned for an auditable trail.
+
+Config seam (slice 2): the required-checks set, the allowlisted repos, the
+trusted actors, and the enforcement flag are all env-overridable so the gate can
+ship default-off and be tightened per-deployment without a code change. Env is
+read at call time, so the defaults below remain the pinned public surface the
+tests iterate over.
 """
 
 from __future__ import annotations
@@ -46,9 +56,16 @@ REQUIRED_CHECKS: frozenset[str] = frozenset({
 # (comma-separated); see allowed_repos().
 ALLOWED_REPOS: frozenset[str] = frozenset({"rudi193-cmd/willow-2.0"})
 
-# A green check only counts if it came from a trusted app — stops a malicious
-# self-hosted runner from rubber-stamping its own success.
+# A green check-run only counts if it came from a trusted app — stops a malicious
+# self-hosted runner from rubber-stamping its own success. Override with
+# WILLOW_COMPLETION_TRUSTED_CHECK_APPS; see trusted_check_apps().
 TRUSTED_CHECK_APPS: frozenset[str] = frozenset({"github-actions"})
+
+# A green commit-status context only counts if its creator is trusted — the
+# Statuses-API analog of TRUSTED_CHECK_APPS, keyed on the creator login (GitHub
+# Actions posts statuses as "github-actions[bot]"). Override with
+# WILLOW_COMPLETION_TRUSTED_STATUS_CREATORS; see trusted_status_creators().
+TRUSTED_STATUS_CREATORS: frozenset[str] = frozenset({"github-actions[bot]"})
 
 # Enforcement flag — default-off. When unset/false the gate is advisory: the
 # dispatch close still records a verdict but never blocks. See gate_enabled().
@@ -79,6 +96,19 @@ def allowed_repos() -> frozenset[str]:
     return _env_frozenset("WILLOW_COMPLETION_ALLOWED_REPOS", ALLOWED_REPOS)
 
 
+def trusted_check_apps() -> frozenset[str]:
+    """Trusted check-run apps, env-overridable via WILLOW_COMPLETION_TRUSTED_CHECK_APPS."""
+    return _env_frozenset("WILLOW_COMPLETION_TRUSTED_CHECK_APPS", TRUSTED_CHECK_APPS)
+
+
+def trusted_status_creators() -> frozenset[str]:
+    """Trusted commit-status creators, env-overridable via
+    WILLOW_COMPLETION_TRUSTED_STATUS_CREATORS."""
+    return _env_frozenset(
+        "WILLOW_COMPLETION_TRUSTED_STATUS_CREATORS", TRUSTED_STATUS_CREATORS
+    )
+
+
 def gate_enabled() -> bool:
     """True when the completion gate is set to enforce (default-off)."""
     return os.environ.get(GATE_ENV, "").strip().lower() in _TRUTHY
@@ -106,6 +136,75 @@ def _check_runs(payload: Any) -> list[dict[str, Any]]:
     return payload or []
 
 
+def _statuses(payload: Any) -> list[dict[str, Any]]:
+    """Normalize a commit-statuses response — gh returns a bare [...] list, but
+    tolerate a {statuses: [...]} envelope too."""
+    if isinstance(payload, dict):
+        return payload.get("statuses", []) or []
+    return payload or []
+
+
+def _app_slug(run: dict[str, Any]) -> str:
+    app = run.get("app")
+    return str((app or {}).get("slug") or "").strip() if isinstance(app, dict) else ""
+
+
+def _status_creator(status: dict[str, Any]) -> str:
+    creator = status.get("creator")
+    return str((creator or {}).get("login") or "").strip() if isinstance(creator, dict) else ""
+
+
+def _latest_named(items: list[dict[str, Any]], field: str, name: str) -> dict[str, Any] | None:
+    """Newest item whose `field` equals `name` (a check may be re-run). Sorts by
+    the available timestamps; items without timestamps sort stably to the end."""
+    matches = [it for it in items if it.get(field) == name]
+    if not matches:
+        return None
+    return sorted(
+        matches,
+        key=lambda it: it.get("completed_at") or it.get("started_at")
+        or it.get("created_at") or "",
+        reverse=True,
+    )[0]
+
+
+def _eval_check_run(runs: list[dict[str, Any]], name: str) -> tuple[bool, dict[str, Any]]:
+    """A required gate passes as a check-run when the latest run of that name is a
+    success from a trusted app. GitHub only sets `conclusion` once `status` is
+    completed, so success implies completed."""
+    run = _latest_named(runs, "name", name)
+    if not run:
+        return False, {"name": name, "kind": "check-run", "ok": False,
+                       "detail": "missing check-run"}
+    conclusion = run.get("conclusion")
+    slug = _app_slug(run)
+    trusted = slug.lower() in {a.lower() for a in trusted_check_apps()}
+    ok = conclusion == "success" and trusted
+    return ok, {
+        "name": name, "kind": "check-run", "ok": ok,
+        "detail": f"conclusion={conclusion} app={slug or 'missing'} trusted_app={trusted}",
+        "url": run.get("html_url") or run.get("details_url"),
+    }
+
+
+def _eval_status(statuses: list[dict[str, Any]], name: str) -> tuple[bool, dict[str, Any]]:
+    """A required gate passes as a commit-status context when the latest status of
+    that context is `success` from a trusted creator login."""
+    status = _latest_named(statuses, "context", name)
+    if not status:
+        return False, {"name": name, "kind": "commit-status", "ok": False,
+                       "detail": "missing commit status"}
+    state = status.get("state")
+    creator = _status_creator(status)
+    trusted = creator.lower() in {c.lower() for c in trusted_status_creators()}
+    ok = state == "success" and trusted
+    return ok, {
+        "name": name, "kind": "commit-status", "ok": ok,
+        "detail": f"state={state} creator={creator or 'missing'} trusted_creator={trusted}",
+        "url": status.get("target_url"),
+    }
+
+
 def verify_completion_evidence(
     evidence: dict[str, Any] | None,
     *,
@@ -113,14 +212,15 @@ def verify_completion_evidence(
 ) -> dict[str, Any]:
     """Validate a completion claim against GitHub.
 
-    Returns {"status": "VERIFIED"|"UNVERIFIED", "reasons": [...], "checked": {...}}.
-    VERIFIED requires: a commit_sha, an allowlisted repo, the commit existing on
-    GitHub, and every required check (required_checks()) present as success from a
-    TRUSTED app. Any shortfall yields UNVERIFIED with the specific reasons — never
-    raises.
+    Returns {"status": "VERIFIED"|"UNVERIFIED", "reasons": [...], "checked": {...},
+    "checks": [observation, ...]}. VERIFIED requires: a commit_sha, an allowlisted
+    repo, the commit existing on GitHub, and every required check satisfied by
+    EITHER a trusted check-run OR a trusted commit-status context for that exact
+    sha. Any shortfall yields UNVERIFIED with the specific reasons — never raises.
     """
     evidence = evidence or {}
     reasons: list[str] = []
+    observations: list[dict[str, Any]] = []
     sha = str(evidence.get("commit_sha", "")).strip()
     repo = str(evidence.get("repo", "")).strip()
     repos = allowed_repos()
@@ -136,20 +236,29 @@ def verify_completion_evidence(
 
     if not reasons:
         runs = _check_runs(gh(f"repos/{repo}/commits/{sha}/check-runs?per_page=100"))
-        passed = {
-            c.get("name")
-            for c in runs
-            if c.get("conclusion") == "success"
-            and (c.get("app") or {}).get("slug") in TRUSTED_CHECK_APPS
-        }
-        missing = required_checks() - passed
-        if missing:
-            reasons.append(f"checks not green/trusted: {sorted(missing)}")
+        statuses: list[dict[str, Any]] | None = None  # fetched lazily, only if needed
+        failures: list[str] = []
+        for check in sorted(required_checks()):
+            run_ok, run_obs = _eval_check_run(runs, check)
+            if run_ok:
+                observations.append(run_obs)
+                continue
+            if statuses is None:
+                statuses = _statuses(gh(f"repos/{repo}/commits/{sha}/statuses?per_page=100"))
+            status_ok, status_obs = _eval_status(statuses, check)
+            if status_ok:
+                observations.append(status_obs)
+                continue
+            observations.extend([run_obs, status_obs])
+            failures.append(f"{check}: {run_obs['detail']}; {status_obs['detail']}")
+        if failures:
+            reasons.append("required checks not green/trusted: " + "; ".join(failures))
 
     return {
         "status": "UNVERIFIED" if reasons else "VERIFIED",
         "reasons": reasons,
         "checked": {"sha": sha, "repo": repo},
+        "checks": observations,
     }
 
 
