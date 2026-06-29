@@ -13,13 +13,27 @@ Thank you for helping tend the tree. This doc covers setup, quality gates, PR ex
 ```bash
 git clone https://github.com/rudi193-cmd/willow-2.0
 cd willow-2.0
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+bash setup.sh --public   # or bash setup.sh when ~/github/.willow (willow-config) exists
+source .venv-dev/bin/activate   # optional — ./willow.sh already uses .venv-dev
 pre-commit install
 pre-commit install --hook-type pre-push
 ```
 
-**Python:** 3.11 or 3.12 (`openclaw-sap-gate` in `requirements.txt` requires ≥3.11).
+`setup.sh` creates **`.venv-dev`** (canonical), installs `requirements.txt`, runs `pip install -e . --no-deps`, then `requirements-dev.txt`, and symlinks `$WILLOW_HOME/venv` → `.venv-dev`. Do not use a separate `.venv` — it is not wired into MCP or `./willow.sh`.
+
+**Refresh deps manually** (avoid `pip install -e ".[dev]"` — it re-resolves runtime pins and fails on Python 3.14):
+
+```bash
+.venv-dev/bin/pip install -r requirements.txt
+.venv-dev/bin/pip install -e . --no-deps
+.venv-dev/bin/pip install -r requirements-dev.txt
+```
+
+If `pip check` warns `willow requires aiohttp>=3.14.1` on Python 3.14, run `bash scripts/refresh_editable_willow.sh` (refreshes editable metadata in site-packages).
+
+**Python:** 3.11–3.13 recommended (`litellm>=1.87` needs `<3.14`; 3.14 uses litellm 1.83.x). Check: `./willow.sh venv check`.
+
+**`.venv-dev` is Willow-only.** Do not `pip install -e` SAFE apps or sibling MCP repos into it — use each project's own venv or MCP `PYTHONPATH` wiring. If extras crept in: `bash scripts/prune_venv_extras.sh`.
 
 **IDE wiring:**
 
