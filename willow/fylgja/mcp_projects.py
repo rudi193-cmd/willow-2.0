@@ -176,7 +176,11 @@ def render_project_mcp(
     if not isinstance(servers, list) or not servers:
         raise ValueError(f"project {project_id!r}: servers[] required")
 
-    willow_env = entry.get("env") if isinstance(entry.get("env"), dict) else {}
+    willow_env = dict(entry.get("env") if isinstance(entry.get("env"), dict) else {})
+    raw_path = str(entry.get("path") or "").strip()
+    if raw_path:
+        willow_env.setdefault("WILLOW_PROJECT_ROOT", raw_path)
+    willow_env.setdefault("WILLOW_HANDOFF_PROJECT", project_id)
     server_env = entry.get("server_env") if isinstance(entry.get("server_env"), dict) else {}
 
     mcp_servers: dict[str, Any] = {}

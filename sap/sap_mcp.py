@@ -3349,13 +3349,13 @@ async def hook_log_read(app_id: str, hook_name: str = "", limit: int = 50) -> di
 
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
-async def handoff_latest(app_id: str, agent: str = "", project: str = "") -> dict:
+async def handoff_latest(app_id: str, agent: str = "", project: str = "", workspace: str = "") -> dict:
     """Fetch the most recent session handoff document for an agent.
 
-    When ``project`` is set (or resolved from WILLOW_PROJECT_ROOT / cwd via the fleet
-    registry), only handoffs tagged with that project id are considered.
+    When ``project`` is set (or resolved from ``workspace``, WILLOW_PROJECT_ROOT, or
+    WILLOW_HANDOFF_PROJECT), only handoffs tagged with that project id are considered.
     """
-    logger.info("[w2] handoff_latest app_id=%s agent=%s project=%s", app_id, agent, project)
+    logger.info("[w2] handoff_latest app_id=%s agent=%s project=%s workspace=%s", app_id, agent, project, workspace)
     loop = asyncio.get_running_loop()
 
     def _latest():
@@ -3365,7 +3365,11 @@ async def handoff_latest(app_id: str, agent: str = "", project: str = "") -> dic
         from willow.fylgja.handoff_project import resolve_handoff_project
 
         agent_filter = agent or app_id or os.environ.get("WILLOW_AGENT_NAME", "")
-        project_filter = (project or resolve_handoff_project() or "").strip()
+        project_filter = (
+            project
+            or resolve_handoff_project(workspace=workspace)
+            or ""
+        ).strip()
 
         # --- Postgres KB atoms (category='handoff', source_type='session') ---
         kb_result: dict | None = None

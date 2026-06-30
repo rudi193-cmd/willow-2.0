@@ -69,7 +69,10 @@ No full patch. No full diffs.
 **Postgres down = hard stop in private-config mode.** In public-fallback, note degraded and continue.
 
 **4. Continuity** *(parallel with 3, 5–6)*
-`handoff_latest(app_id=<agent>)` — what was in flight, open threads, agreements.
+Use the **repo root from step 2** — not the global `session_anchor_{agent}.json` (that file is desk-scoped and will bleed Schmidt/almanac threads across repos).
+
+`handoff_latest(app_id=<agent>, workspace=<repo root from step 2>)` — project-scoped open threads only.
+If the result is `No session handoffs found for project …`, say so plainly — do **not** fall back to the global willow handoff pile.
 If stale (> 2h): note it, continue — run /startup after.
 
 **5. Grove inbox** *(parallel with 3–4, 6)*
