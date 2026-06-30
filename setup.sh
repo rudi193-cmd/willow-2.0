@@ -106,6 +106,15 @@ rm -rf "${REPO_ROOT}/willow.egg-info"
 "${VENV}/bin/pip" install --quiet -r "${REPO_ROOT}/requirements-dev.txt"
 ok "Requirements + editable willow + dev tools installed"
 
+hdr "Pre-commit hooks"
+if [[ -x "${VENV}/bin/pre-commit" ]]; then
+    "${VENV}/bin/pre-commit" install
+    "${VENV}/bin/pre-commit" install --hook-type pre-push
+    ok "pre-commit installed (commit + pre-push — ruff matches CI lint job)"
+else
+    warn "pre-commit missing from venv — run: ${VENV}/bin/pip install -r requirements-dev.txt"
+fi
+
 hdr "Fleet venv (\$WILLOW_HOME/venv)"
 PYTHONPATH="${REPO_ROOT}" WILLOW_HOME="${WILLOW_HOME:-${HOME}/github/.willow}" \
     "${VENV}/bin/python3" -m willow.fylgja.fleet_venv sync \

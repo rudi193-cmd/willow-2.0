@@ -62,3 +62,15 @@ gh pr create --title "..." --body "..."
 Wait for CI. Get USER's approval. Merge. Delete the branch.
 
 See `/worktree` for the full flow including teardown.
+
+## Before commit or push
+
+When Python under `core/`, `sap/`, `willow/`, `tests/`, or `scripts/` changed, run the **same lint CI runs** before the first commit or any push:
+
+```bash
+bash scripts/lint_first_party.sh
+```
+
+**Kart scripts** (commit/push via `agent_task_submit`): call `bash scripts/kart_lint_gate.sh` first and fail the script if it exits non-zero. Do not rely on `diagnostic_summary` on single files — CI runs full first-party `ruff check`.
+
+Pre-commit hooks (installed by `setup.sh`) also run ruff on staged files when you commit on the host; Kart bypasses those hooks unless you run the gate explicitly.
