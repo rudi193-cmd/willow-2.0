@@ -35,6 +35,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | docs(schema): add catalog-entry v2 rationale (SCHEMA-V2.md) | [PR #8](https://github.com/almanac-data/almanac-template/pull/8) merged |
 | [almanac-data/.github](https://github.com/almanac-data/.github) | almanac-data | docs: agent guide and fleet overlay gitignore | [PR #1](https://github.com/almanac-data/.github/pull/1) merged |
 | [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | feat(check_links): headless-browser reachability fallback | [PR #39](https://github.com/almanac-data/climate-almanac/pull/39) merged |
 | [Taiko2k/Tauon](https://github.com/Taiko2k/Tauon) | Taiko2k | Fix Tidal return-type annotations: return_list yields track ids (list[int]) | [PR #2208](https://github.com/Taiko2k/Tauon/pull/2208) merged |
