@@ -121,6 +121,54 @@
       },
       "note": "Personal data vault — law-gazelle for legal reads."
     },
+    "almanac-data": {
+      "path": "{{HOME}}/github/almanac-data",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow"],
+      "ides": ["cursor", "claude"],
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Almanac org workspace — engine caretaker jump-in; symlinks to template + verticals."
+    },
+    "almanac-data-dotgithub": {
+      "path": "{{HOME}}/github/almanac-data-dotgithub",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow"],
+      "ides": ["cursor", "claude"],
+      "env": {
+        "WILLOW_HANDOFF_PROJECT": "almanac-data"
+      },
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "GitHub org profile (almanac-data/.github) — landing page; handoffs tag almanac-data."
+    },
+    "almanac-template": {
+      "path": "{{HOME}}/github/almanac-template",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow"],
+      "ides": ["cursor", "claude"],
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Almanac engine template — PR engine changes here first."
+    },
     "climate-almanac": {
       "path": "{{HOME}}/github/climate-almanac",
       "agent": "willow",
