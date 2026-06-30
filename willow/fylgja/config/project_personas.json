@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "_note": "Maps a project key (WILLOW_HANDOFF_PROJECT, else workspace dir name) to a default persona. Persona is a voice overlay only — it does not change fleet identity, MCP app_id, Grove sender, or SOIL namespace. An explicit in-project pick overrides the binding. Read by willow.fylgja.persona.project_persona_binding().",
+  "bindings": {
+    "almanac-data": "ada",
+    "almanac-data-dotgithub": "ada"
+  }
+}
