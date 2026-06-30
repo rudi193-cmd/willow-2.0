@@ -35,6 +35,13 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [Taiko2k/Tauon](https://github.com/Taiko2k/Tauon) | Taiko2k | Fix Tidal return-type annotations: return_list yields track ids (list[int]) | [PR #2208](https://github.com/Taiko2k/Tauon/pull/2208) merged |
+| [almanac-data/civic-almanac](https://github.com/almanac-data/civic-almanac) | almanac-data | feat: headless reachability fallback (propagated from template) | [PR #6](https://github.com/almanac-data/civic-almanac/pull/6) merged |
+| [almanac-data/environment-almanac](https://github.com/almanac-data/environment-almanac) | almanac-data | feat: headless reachability fallback (propagated from template) | [PR #6](https://github.com/almanac-data/environment-almanac/pull/6) merged |
+| [almanac-data/economy-almanac](https://github.com/almanac-data/economy-almanac) | almanac-data | feat: headless reachability fallback (propagated from template) | [PR #6](https://github.com/almanac-data/economy-almanac/pull/6) merged |
+| [almanac-data/health-almanac](https://github.com/almanac-data/health-almanac) | almanac-data | feat: headless reachability fallback (propagated from template) | [PR #6](https://github.com/almanac-data/health-almanac/pull/6) merged |
+| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | feat: headless reachability fallback (propagated from template) | [PR #33](https://github.com/almanac-data/climate-almanac/pull/33) merged |
+| [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | feat: headless reachability fallback | [PR #1](https://github.com/almanac-data/almanac-template/pull/1) merged |
 | [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Point repo links at the almanac-data org | [PR #32](https://github.com/almanac-data/climate-almanac/pull/32) merged |
 | [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Auto-open dead-link issues from the daily reachability probe | [PR #29](https://github.com/almanac-data/climate-almanac/pull/29) merged |
 | [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Add GitHub issue forms for dataset suggestions and dead-link reports | [PR #28](https://github.com/almanac-data/climate-almanac/pull/28) merged |
@@ -75,6 +82,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: Willow adapter for Postgres-backed knowledge store | [PR #145](https://github.com/manojmallick/sigmap/pull/145) merged |
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: native Python AST extractor for accurate signature extraction | [PR #144](https://github.com/manojmallick/sigmap/pull/144) merged |
 | [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #401](https://github.com/TensorBlock/awesome-mcp-servers/pull/401) merged |
+| [alash3al/stash](https://github.com/alash3al/stash) | alash3al | docs: clarify that curl /sse holding open is expected SSE behavior (#11) | [PR #14](https://github.com/alash3al/stash/pull/14) open |
 | [castroquiles/glapagos](https://github.com/castroquiles/glapagos) | castroquiles | feat(api): export committed OpenAPI spec and cover the API (#13) | [PR #20](https://github.com/castroquiles/glapagos/pull/20) open |
 | [castroquiles/HeatWatch](https://github.com/castroquiles/HeatWatch) | castroquiles | fix(geo_utils): correct clip_array_to_bounds off-by-one; add geo_utils tests + NDVI no-data guard | [PR #20](https://github.com/castroquiles/HeatWatch/pull/20) open |
 | [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(cli): show configured project in list when uncredentialed (#1003) | [PR #1010](https://github.com/basicmachines-co/basic-memory/pull/1010) open |
