@@ -135,6 +135,66 @@
         "python": "fleet"
       },
       "note": "Climate Almanac catalog — fleet overlay gitignored; project sync wires hooks + scoped MCP env."
+    },
+    "health-almanac": {
+      "path": "{{HOME}}/github/health-almanac",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow"],
+      "ides": ["cursor", "claude"],
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Health Almanac vertical — same MCP env pattern as climate-almanac."
+    },
+    "economy-almanac": {
+      "path": "{{HOME}}/github/economy-almanac",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow"],
+      "ides": ["cursor", "claude"],
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Economy Almanac vertical — same MCP env pattern as climate-almanac."
+    },
+    "environment-almanac": {
+      "path": "{{HOME}}/github/environment-almanac",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow"],
+      "ides": ["cursor", "claude"],
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Environment Almanac vertical — same MCP env pattern as climate-almanac."
+    },
+    "civic-almanac": {
+      "path": "{{HOME}}/github/civic-almanac",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow"],
+      "ides": ["cursor", "claude"],
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Civic Almanac vertical — same MCP env pattern as climate-almanac."
     }
   }
 }

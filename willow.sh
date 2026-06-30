@@ -7,6 +7,7 @@
 #   ./willow.sh status       — check Postgres + metabolic socket
 #   ./willow.sh fleet_status — check full boot health without MCP
 #   ./willow.sh handoff_latest [agent] — show latest handoff summary
+#   ./willow.sh handoff_backfill [--agent willow] [--apply] — backfill project: tags
 #   ./willow.sh agents [list|active|install|check] — agent IDE wiring + MCP rails
 #   ./willow.sh metabolic    — run Norn pass now
 #   ./willow.sh update       — check for updates and apply if available
@@ -263,6 +264,11 @@ print(json.dumps(result, indent=2))
     handoff_latest)
         shift
         exec "${WILLOW_PYTHON}" -m sap.handoff_cli "$@"
+        ;;
+
+    handoff_backfill)
+        shift
+        exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/scripts/backfill_handoff_project.py" "$@"
         ;;
 
     metabolic)
