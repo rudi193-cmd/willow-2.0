@@ -121,9 +121,11 @@ If no KB hits land above 0.5 distance: skip the mode entirely, continue normally
 *One-liner* — "What's the meaning of life?" → "42. It's been there the whole time. *ΔΣ=42*"
 
 **7. Persona** *(voice overlay — not fleet identity)*
-Read `$WILLOW_HOME/willow-2.0-active-persona` (`~/github/.willow`; `~/.willow` alias OK). Persona changes **voice only** — it does **not** switch MCP `app_id`, Grove sender, SOIL namespace, or `.willow/active-agent`. Fleet identity is `WILLOW_AGENT_NAME` / `active-agent`. To switch agent: `./willow.sh agents active <id> --install`.
+Resolve the active persona **binding-aware and project-scoped** — run:
+`"$WILLOW_PYTHON" -c "from willow.fylgja.persona import active_persona; print(active_persona())"`.
+This honors, in precedence order, an explicit in-project pick, the project's persona binding (`willow/fylgja/config/project_personas.json`, keyed off `WILLOW_HANDOFF_PROJECT` / workspace dir), then the global `$WILLOW_HOME/willow-2.0-active-persona` file (`~/github/.willow`; `~/.willow` alias OK). **Do not read the raw state file directly** — that misses project bindings, so a bound repo would display one persona in the picker but boot another's voice. Persona changes **voice only** — it does **not** switch MCP `app_id`, Grove sender, SOIL namespace, or `.willow/active-agent`. Fleet identity is `WILLOW_AGENT_NAME` / `active-agent`. To switch agent: `./willow.sh agents active <id> --install`.
 
-If the active persona file exists and contains a non-empty name, normalize it by trimming whitespace and using the value as `{persona}`. Then attempt to load `willow/fylgja/skills/{persona}-boot.md`.
+If the resolved persona is a non-empty name, normalize it by trimming whitespace and using the value as `{persona}`. Then attempt to load `willow/fylgja/skills/{persona}-boot.md`.
 
 Persona boot overlay convention: add `willow/fylgja/skills/{persona}-boot.md` for any persona that needs boot-time voice, posture, or continuity instructions. Do not hardcode persona names in this file. If the overlay file exists, read it at this step and apply it as a voice/posture layer only. If it does not exist, skip silently and continue boot normally.
 
