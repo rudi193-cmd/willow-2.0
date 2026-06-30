@@ -1,9 +1,11 @@
 # Open work (fleet backlog)
 
-*Last updated: 2026-06-29 — upstream contributions desk pass (live `gh` reconciliation).*
+*Last updated: 2026-06-30 — upstream desk touch (stash #14 + Tauon #2208 merged).*
 
 **Strategy:** [`UPSTREAM_CONTRIBUTION_STRATEGY.md`](UPSTREAM_CONTRIBUTION_STRATEGY.md) · type ledger: [`upstream/type_ledger.json`](upstream/type_ledger.json)
 
+> **2026-06-30 state change:** [Taiko2k/Tauon #2208](https://github.com/Taiko2k/Tauon/pull/2208) **merged** (Tidal return-type annotations toward #1338). [alash3al/stash #14](https://github.com/alash3al/stash/pull/14) **opened** (docs_setup — SSE curl troubleshooting, closes #11); issue follow-up posted 2026-06-30 — **wait on maintainer**.
+>
 > **2026-06-29 state change:** claudeclaw **#239 and #240 merged** (TerrysPOV approved + merged
 > 2026-06-28). claudeclaw **#234** — the `listThreadSessions` filter TerrysPOV requested is
 > already at HEAD (`a9eb7cb`, shipped under `54854a9`); his 2026-06-28 `CHANGES_REQUESTED` was
@@ -32,6 +34,7 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 | [mex #84](https://github.com/mex-memory/mex/pull/84) | mcp_adapter | 6 | yellow | REVIEW_REQUIRED, mergeable — wait |
 | [codejail #309](https://github.com/openedx/codejail/pull/309) | small_feature | 6 | yellow | CLA **executed 2026-06-24**; `openedx/cla` check now SUCCESS; review nudge posted 2026-06-28 — **wait on maintainer** (`mphilbrick211` / `@moisesgsalas`) |
 | [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | mcp_adapter | 4 | red | Rebased 2026-06-15; `check-pr-labels` FAILURE is a **maintainer-only label gate** (needs `kind/*` + `release-note`) — code clean, deprioritize |
+| [stash #14](https://github.com/alash3al/stash/pull/14) | docs_setup | 9 | green | OPEN 2026-06-30; +17 lines `GETTING_STARTED.md` Troubleshooting; closes #11; warm maintainer (3 prior merges); no CI gate — **wait on maintainer** |
 | [hermes-agent #40737](https://github.com/NousResearch/hermes-agent/pull/40737) | unsolicited_large_feature | 2 | red | No maintainer signal since 2026-06-08 — do not invest; consider withdrawing |
 
 **Desk rule:** No new upstream PRs while green lanes have maintainer-pending merges, unless a new candidate scores green *and* has no overlapping open PR in the same repo. *(2026-06-23: green lane is clear of merge-pending blockers — new green-lane candidates are unblocked.)*
@@ -46,6 +49,7 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 |----|--------|-----------|
 | [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | `listThreadSessions` filter at HEAD (`a9eb7cb`/`54854a9`); 3/3 checks green; TerrysPOV's 06-28 CHANGES_REQUESTED filed vs parent `5a6e6336` is stale; comment posted 2026-06-28 | Maintainer to re-review/dismiss stale CHANGES_REQUESTED or merge |
 | [codejail #309](https://github.com/openedx/codejail/pull/309) | CLA executed 2026-06-24; `openedx/cla` check SUCCESS; review nudge posted 2026-06-28; `mphilbrick211` engaged | Maintainer review (`mphilbrick211` / `@moisesgsalas`) |
+| [stash #14](https://github.com/alash3al/stash/pull/14) | Docs-only SSE curl note; closes #11; issue thread linked 2026-06-30 | Maintainer review (`alash3al`) |
 | [glapagos #20](https://github.com/castroquiles/glapagos/pull/20) | Lint was red (latent black/flake8/mypy conflicts); fix `628a9dd` 2026-06-28 — now 9/9 checks green, mergeable | Maintainer review |
 | [mcp-mem0 #18](https://github.com/coleam00/mcp-mem0/pull/18) | Mergeable; issue-linked; no review | Maintainer review |
 | [PDFMathTranslate #1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) | Mergeable; no review | Maintainer review |
@@ -60,6 +64,7 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 
 | PR | Note |
 |----|------|
+| [Taiko2k/Tauon #2208](https://github.com/Taiko2k/Tauon/pull/2208) | Tidal return-type annotations (`list[TrackClass]` → `list[int]`); merged 2026-06-30 by C0rn3j |
 | [moazbuilds/claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | TerrysPOV approved + merged 2026-06-28 |
 | [moazbuilds/claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | docs_setup — TerrysPOV approved + merged 2026-06-28 |
 | [moazbuilds/claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | narrow_bugfix — merged 2026-06-28 |
