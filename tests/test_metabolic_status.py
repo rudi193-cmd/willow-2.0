@@ -87,7 +87,7 @@ def test_check_metabolic_status_uses_private_home_when_willow_home_is_generated(
     assert status["consecrated"] is True
 
 
-def test_norn_pass_includes_demoted_field():
+def test_norn_pass_includes_demoted_field(mock_norn_subpasses):
     from core.metabolic import norn_pass
 
     report = norn_pass(dry_run=True)
