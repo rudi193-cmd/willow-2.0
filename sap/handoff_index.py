@@ -55,9 +55,10 @@ def handoff_select_sql(conn) -> str:
     cols = {row[1] for row in cur.fetchall()}
     agreements = "h.agreements" if "agreements" in cols else "NULL AS agreements"
     capabilities = "h.capabilities" if "capabilities" in cols else "NULL AS capabilities"
+    project = "h.project" if "project" in cols else "NULL AS project"
     return (
         "SELECT f.filename, f.mtime, h.handoff_date, h.summary,"
-        f" h.open_threads, h.questions, {agreements}, {capabilities}"
+        f" h.open_threads, h.questions, {agreements}, {capabilities}, {project}"
         " FROM handoffs h JOIN files f ON h.file_id = f.id"
     )
 
@@ -178,10 +179,24 @@ def select_best_handoff(candidates: list[dict]) -> dict | None:
     return max(candidates, key=handoff_richness_score)
 
 
-def scan_markdown_handoffs(agent: str, handoffs_root: Path) -> list[dict]:
+def filter_handoff_candidates(candidates: list[dict], project: str) -> list[dict]:
+    """Keep only handoffs matching the requested fleet project scope."""
+    if not project:
+        return candidates
+    from willow.fylgja.handoff_project import handoff_project_matches
+
+    return [
+        c for c in candidates
+        if handoff_project_matches(str(c.get("project") or "") or None, project)
+    ]
+
+
+def scan_markdown_handoffs(agent: str, handoffs_root: Path, project: str = "") -> list[dict]:
     """Read v2 session handoff markdown when SQLite index is missing or stale."""
     if not agent:
         return []
+    from willow.fylgja.handoff_project import handoff_project_matches
+
     agent_dir = handoffs_root / agent
     if not agent_dir.is_dir():
         return []
@@ -204,6 +219,9 @@ def scan_markdown_handoffs(agent: str, handoffs_root: Path) -> list[dict]:
         if not has_valid_frontmatter(content) and not has_handoff_body_marker(content):
             continue
         parsed = parse_session_handoff(content, path.name)
+        stored_project = str(parsed.get("project") or "")
+        if project and not handoff_project_matches(stored_project or None, project):
+            continue
         open_threads = _parse_json_list(parsed.get("open_threads"))
         questions = _parse_json_list(parsed.get("questions"))
         agreements = _parse_json_list(parsed.get("agreements"))
@@ -219,6 +237,7 @@ def scan_markdown_handoffs(agent: str, handoffs_root: Path) -> list[dict]:
         candidates.append({
             "filename": path.name,
             "date": parsed.get("handoff_date") or "",
+            "project": stored_project,
             "summary": parsed.get("summary") or "",
             "open_threads": open_threads,
             "questions": questions,

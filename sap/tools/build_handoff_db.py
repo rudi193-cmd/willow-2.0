@@ -104,6 +104,9 @@ def parse_session_meta(content: str, filename: str = "") -> dict:
             result["handoff_date"] = m.group(1).strip()
         elif filename:
             result["handoff_date"] = date_from_filename(filename)
+    m = re.search(r"^project:\s*(.+)$", content, re.MULTILINE)
+    if m:
+        result["project"] = m.group(1).strip()
     m = re.search(r"turns:\s*(\d+)", content)
     if m:
         result["turns"] = int(m.group(1))
@@ -316,13 +319,14 @@ def kb_to_sqlite(conn: sqlite3.Connection) -> int:
 
         cur_sql.execute("""
             INSERT OR IGNORE INTO handoffs
-                (file_id, file_type, session_id, handoff_date,
+                (file_id, file_type, project, session_id, handoff_date,
                  turns, tools_used, last_messages, key_actions,
                  open_threads, questions, agreements, capabilities,
                  summary, raw_content)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             file_id, "session",
+            str(content.get("project") or "").strip() or None,
             atom_id,
             content.get("handoff_date") or mtime[:10],
             content.get("turns"),
@@ -362,6 +366,7 @@ def build_db():
             id            INTEGER PRIMARY KEY,
             file_id       INTEGER REFERENCES files(id),
             file_type     TEXT,
+            project       TEXT,
             session_id    TEXT,
             handoff_date  TEXT,
             turns         INTEGER,
@@ -375,6 +380,7 @@ def build_db():
             summary       TEXT,
             raw_content   TEXT
         );
+        CREATE INDEX idx_handoffs_project ON handoffs(project);
         CREATE INDEX idx_handoffs_date ON handoffs(handoff_date);
         CREATE INDEX idx_handoffs_session ON handoffs(session_id);
         CREATE INDEX idx_files_type ON files(file_type);
@@ -430,12 +436,12 @@ def build_db():
             )
             cur.execute("""
                 INSERT INTO handoffs
-                    (file_id, file_type, session_id, handoff_date, turns,
+                    (file_id, file_type, project, session_id, handoff_date, turns,
                      tools_used, last_messages, key_actions, open_threads,
                      questions, agreements, capabilities, summary, raw_content)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (
-                file_id, ftype,
+                file_id, ftype, parsed.get("project"),
                 parsed.get("session_id"), parsed.get("handoff_date"), parsed.get("turns"),
                 parsed.get("tools_used"), parsed.get("last_messages"), parsed.get("key_actions"),
                 parsed.get("open_threads"), parsed.get("questions"),

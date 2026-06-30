@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from willow.fylgja.willow_home import willow_home
+from willow.fylgja.handoff_project import resolve_handoff_project
 
 
 def handoff_dir(agent: str) -> Path:
@@ -39,7 +40,7 @@ def write_session_handoff(
     agent: str,
     body: str,
     *,
-    project: str = "willow-2.0",
+    project: str = "",
     branch: str = "",
     suffix: str = "",
 ) -> Path:
@@ -48,6 +49,7 @@ def write_session_handoff(
 
     body: markdown starting with '# HANDOFF:' or '# SESSION HANDOFF' — frontmatter prepended.
     """
+    project_id = (project or resolve_handoff_project() or "willow-2.0").strip()
     dest_dir = handoff_dir(agent)
     dest_dir.mkdir(parents=True, exist_ok=True)
     filename = next_session_filename(agent, suffix)
@@ -63,7 +65,7 @@ def write_session_handoff(
         f"session: {session_id}",
         "runtime: claude-code",
         "format: v2",
-        f"project: {project}",
+        f"project: {project_id}",
         *( [f"branch: {branch}"] if branch else [] ),
         "---",
         "",
@@ -75,7 +77,7 @@ def write_session_handoff(
         # Body has frontmatter but missing agent — prepend our block after first ---
         parts = text.split("---", 2)
         if len(parts) >= 3:
-            text = f"---\nagent: {agent}\ndate: {today}\nproject: {project}\n---{parts[2]}"
+            text = f"---\nagent: {agent}\ndate: {today}\nproject: {project_id}\n---{parts[2]}"
     path = dest_dir / filename
     path.write_text(text if text.endswith("\n") else text + "\n", encoding="utf-8")
     return path

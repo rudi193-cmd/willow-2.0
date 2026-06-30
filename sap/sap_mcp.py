@@ -44,6 +44,7 @@ from pathlib import Path
 from sap.handoff_index import (
     extract_live_handoff_notes,
     extract_next_bite,
+    filter_handoff_candidates,
     handoff_select_sql,
     scan_markdown_handoffs,
     select_best_handoff,
@@ -3348,17 +3349,23 @@ async def hook_log_read(app_id: str, hook_name: str = "", limit: int = 50) -> di
 
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
-async def handoff_latest(app_id: str, agent: str = "") -> dict:
-    """Fetch the most recent session handoff document for an agent."""
-    logger.info("[w2] handoff_latest app_id=%s agent=%s", app_id, agent)
+async def handoff_latest(app_id: str, agent: str = "", project: str = "") -> dict:
+    """Fetch the most recent session handoff document for an agent.
+
+    When ``project`` is set (or resolved from WILLOW_PROJECT_ROOT / cwd via the fleet
+    registry), only handoffs tagged with that project id are considered.
+    """
+    logger.info("[w2] handoff_latest app_id=%s agent=%s project=%s", app_id, agent, project)
     loop = asyncio.get_running_loop()
 
     def _latest():
         import json as _j
         import sqlite3 as _sql
         import psycopg2.extras as _pge
+        from willow.fylgja.handoff_project import resolve_handoff_project
 
         agent_filter = agent or app_id or os.environ.get("WILLOW_AGENT_NAME", "")
+        project_filter = (project or resolve_handoff_project() or "").strip()
 
         # --- Postgres KB atoms (category='handoff', source_type='session') ---
         kb_result: dict | None = None
@@ -3418,6 +3425,7 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                         kb_candidates.append({
                             "filename": f"kb_{row['id']}.json",
                             "date": str(row["valid_at"])[:10],
+                            "project": str(content.get("project") or "").strip(),
                             "summary": content.get("summary") or row["summary"] or row["title"] or "",
                             "open_threads": open_threads if isinstance(open_threads, list) else [],
                             "questions": questions if isinstance(questions, list) else [],
@@ -3427,6 +3435,7 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                             "_valid_at": str(row["valid_at"]),
                             "_sort_at": str(row.get("updated_at") or row.get("created_at") or row["valid_at"]),
                         })
+                    kb_candidates = filter_handoff_candidates(kb_candidates, project_filter)
                     if kb_candidates:
                         kb_result = select_best_handoff(kb_candidates)
             except Exception as _e:
@@ -3447,6 +3456,7 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                     sqlite_candidates.append({
                         "filename": row["filename"],
                         "date": row["handoff_date"],
+                        "project": row["project"] if "project" in row.keys() else "",
                         "summary": row["summary"],
                         "open_threads": _j.loads(row["open_threads"]) if row["open_threads"] else [],
                         "questions": _j.loads(row["questions"]) if row["questions"] else [],
@@ -3456,6 +3466,7 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
                         "_valid_at": row["handoff_date"] or "",
                         "mtime": row["mtime"],
                     })
+                sqlite_candidates = filter_handoff_candidates(sqlite_candidates, project_filter)
                 sqlite_result = select_best_handoff(sqlite_candidates) if sqlite_candidates else None
                 conn.close()
             except Exception as _e:
@@ -3467,7 +3478,9 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
             try:
                 md_candidates: list[dict] = []
                 for root in handoffs_roots():
-                    md_candidates.extend(scan_markdown_handoffs(agent_filter, root))
+                    md_candidates.extend(
+                        scan_markdown_handoffs(agent_filter, root, project_filter)
+                    )
                 if md_candidates:
                     markdown_result = select_best_handoff(md_candidates)
             except Exception as _e:
@@ -3478,8 +3491,15 @@ async def handoff_latest(app_id: str, agent: str = "") -> dict:
             r for r in (kb_result, sqlite_result, markdown_result) if r is not None
         ]
         if not candidates:
+            if project_filter:
+                return {
+                    "error": f"No session handoffs found for project {project_filter!r}.",
+                    "project": project_filter,
+                }
             return {"error": "No session handoffs found."}
         result = select_best_handoff(candidates) or candidates[0]
+        if project_filter:
+            result["project"] = project_filter
         if agent_filter:
             result.update(
                 extract_live_handoff_notes(
