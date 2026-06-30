@@ -241,6 +241,62 @@
         "nest_session_corpus"
       ],
       "notes": "Sidecar to rh_apo_discernment_harness. Reports live under sandbox/stone_soup/reports/ (gitignored). angrybob DBs extracted to $WILLOW_HOME; Rendereason archives remain private ($NEST, $RH_RESEARCH). Verdict bands: aligned ≥0.75, partial ≥0.45."
+    },
+    {
+      "id": "willow_sli_scorecard",
+      "title": "Willow SLI Scorecard",
+      "kind": "scorecard",
+      "status": "active",
+      "visibility": "tracked",
+      "summary": "Locked baseline / goal / stretch targets for fleet-wide improvement — multi-SLI gate, no composite score.",
+      "primary_artifacts": [
+        "willow/bench/scorecard.json",
+        "willow/bench/scorecards/2026-06-30.json",
+        "willow/bench/scorecards/2026-06-30.md"
+      ],
+      "metrics": [
+        "pass_ratio",
+        "token_f1",
+        "mrr",
+        "thread_recall_mean",
+        "next_bite_hit_rate",
+        "cold_relevant_recall"
+      ],
+      "refresh": "pytest && python3 scripts/retrieval_gold_check.py",
+      "related": [
+        "fleet_retrieval_gold",
+        "locomo_path_a",
+        "wce_handoff_continuity"
+      ],
+      "notes": "Locked 2026-06-30 until 2026-07-31. Smoke: retrieval_gold + pytest. Nightly: WCE. Weekly: LoCoMo full-10."
+    },
+    {
+      "id": "wce_handoff_continuity",
+      "title": "WCE — Willow Continuity Eval",
+      "kind": "session_continuity",
+      "status": "active",
+      "visibility": "tracked",
+      "summary": "Handoff pair continuity (thread recall, next-bite, cold-relevant recall) — deterministic, no LLM judge.",
+      "primary_artifacts": [
+        "willow/bench/continuity/run_wce.py",
+        "willow/bench/continuity/handoff_eval.py",
+        "willow/bench/continuity/wce_queries.json",
+        "willow/bench/continuity/runs/"
+      ],
+      "metrics": [
+        "thread_recall_mean",
+        "next_bite_hit_rate",
+        "surfacing_precision_mean",
+        "cold_relevant_recall",
+        "warm_relevant_recall"
+      ],
+      "refresh": "python3 willow/bench/continuity/run_wce.py --tasks thread_recall,next_bite,cold_recall --agent willow",
+      "related": [
+        "fleet_retrieval_gold",
+        "locomo_path_a",
+        "willow_sli_scorecard"
+      ],
+      "notes": "Latest lock run: wce_20260630T234004Z.json. Cold recall uses hybrid weight_mode=cap."
     }
   ]
 }

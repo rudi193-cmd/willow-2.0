@@ -108,6 +108,32 @@ Small latency or policy-bridge measurements.
 
 ---
 
+## SLI Scorecard (fleet-wide improvement gate)
+
+Locked baseline / goal / stretch per release period. No composite Willow score.
+
+| ID | Artifact | Visibility | Summary |
+| --- | --- | --- | --- |
+| `willow_sli_scorecard` | [`willow/bench/scorecard.json`](../willow/bench/scorecard.json) | tracked | 8 SLIs — retrieval, LoCoMo, WCE continuity, pytest |
+| `wce_handoff_continuity` | [`willow/bench/continuity/`](../willow/bench/continuity/) | tracked | Handoff N→N+1 thread recall, next-bite, cold recall |
+
+**Locked 2026-06-30:** [`willow/bench/scorecards/2026-06-30.md`](../willow/bench/scorecards/2026-06-30.md)
+
+Refresh:
+
+```bash
+# smoke (PR)
+pytest && python3 scripts/retrieval_gold_check.py
+
+# nightly
+python3 willow/bench/continuity/run_wce.py --tasks thread_recall,next_bite,cold_recall --agent willow
+
+# weekly
+python3 willow/bench/locomo/path_a_locomo_pilot.py --all --semantic --top-k 20
+```
+
+---
+
 ## Discernment Benchmarks
 
 Research artifacts that double as runnable benchmarks -- each a probe of whether the
