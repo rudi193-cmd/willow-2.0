@@ -17,8 +17,8 @@ from willow.fylgja._grove import call as _grove_call
 from willow.fylgja._state import reset_turn_count
 from willow.fylgja.anchor_state import prune_session_states, reset_prompt_count
 from willow.fylgja.events._stack_snapshot import normalize_stack_record
+from willow.fylgja.handoff_project import resolve_handoff_project, session_anchor_path
 from willow.fylgja.project_env import repo_root, workspace_root
-from willow.fylgja.handoff_project import resolve_handoff_project
 from willow.fylgja.session_inject import (
     CONFIRMATION_EXCERPT_CHARS,
     CORRECTION_EXCERPT_CHARS,
@@ -37,7 +37,6 @@ from willow.fylgja.session_inject import (
     record_injection,
     should_skip_duplicate,
 )
-from willow.fylgja.willow_home import willow_home
 
 try:
     from willow.context.dedup import reset_session as _dedup_reset
@@ -366,8 +365,8 @@ def _run_silent_startup(session_id: str = "") -> dict:
     Silent startup — 5 targeted MCP calls, writes session_anchor.json.
     Removed: fork_create, skill_load, knowledge_search, atoms/store, skills/store.
     """
-    anchor_dir = willow_home()
-    anchor_file = anchor_dir / f"session_anchor_{AGENT}.json"
+    handoff_project = resolve_handoff_project(workspace_root() or Path.cwd())
+    anchor_file = session_anchor_path(AGENT, handoff_project)
 
     result = {
         "handoff_title": "", "handoff_summary": "",
@@ -376,15 +375,18 @@ def _run_silent_startup(session_id: str = "") -> dict:
         "postgres": "unknown",
         "recent_traces": [], "next_bite": "",
         "mcp_errors": [],
+        "handoff_project": handoff_project,
     }
 
     # 1. Latest handoff — filename, summary, open threads, next bite
     handoff_date = ""
-    handoff_project = resolve_handoff_project(workspace_root() or Path.cwd())
     try:
         handoff_params: dict = {"app_id": AGENT}
         if handoff_project:
             handoff_params["project"] = handoff_project
+        else:
+            ws = workspace_root() or Path.cwd()
+            handoff_params["workspace"] = str(ws)
         h = call("handoff_latest", handoff_params, timeout=8)
         if isinstance(h, dict) and not h.get("error"):
             result["handoff_project"] = handoff_project or h.get("project") or ""
@@ -597,7 +599,7 @@ def _run_silent_startup(session_id: str = "") -> dict:
 
     # Write anchor cache
     try:
-        anchor_dir.mkdir(parents=True, exist_ok=True)
+        anchor_file.parent.mkdir(parents=True, exist_ok=True)
         anchor_file.write_text(json.dumps({
             "written_at": datetime.now().isoformat(),
             "agent": AGENT,

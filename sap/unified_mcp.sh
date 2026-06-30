@@ -74,6 +74,7 @@ elif [[ -z "${WILLOW_AGENT_NAME:-}" ]]; then
     WILLOW_AGENT_NAME="hanuman"
 fi
 export WILLOW_AGENT_NAME
+export WILLOW_MCP_SERVER=1
 export GROVE_SENDER="${WILLOW_AGENT_NAME}"
 export GROVE_NAME="${WILLOW_AGENT_NAME}"
 export WILLOW_PG_DB="${WILLOW_PG_DB:-willow_20}"

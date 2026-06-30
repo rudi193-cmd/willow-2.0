@@ -53,12 +53,46 @@ def test_resolve_handoff_project_github_slug(monkeypatch, tmp_path):
     assert resolve_handoff_project(climate) == "climate-almanac"
 
 
+def test_resolve_handoff_project_skips_mcp_server_cwd(monkeypatch, tmp_path):
+    willow_repo = tmp_path / "github" / "willow-2.0"
+    willow_repo.mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("WILLOW_MCP_SERVER", "1")
+    monkeypatch.delenv("WILLOW_HANDOFF_PROJECT", raising=False)
+    monkeypatch.delenv("WILLOW_PROJECT_ROOT", raising=False)
+    monkeypatch.setattr("willow.fylgja.handoff_project._registry_projects", lambda: [])
+    monkeypatch.chdir(willow_repo)
+    assert resolve_handoff_project() == ""
+
+
+def test_session_anchor_path_project_scoped():
+    from willow.fylgja.handoff_project import session_anchor_path
+
+    p = session_anchor_path("willow", "climate-almanac")
+    assert p.name == "session_anchor_willow_climate-almanac.json"
+    assert session_anchor_path("willow", "").name == "session_anchor_willow.json"
+
+
 def test_resolve_handoff_project_parent_github_returns_empty(monkeypatch, tmp_path):
     github = tmp_path / "github"
     github.mkdir()
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.delenv("WILLOW_HANDOFF_PROJECT", raising=False)
     monkeypatch.delenv("WILLOW_PROJECT_ROOT", raising=False)
+    monkeypatch.delenv("WILLOW_MCP_SERVER", raising=False)
     monkeypatch.setattr("willow.fylgja.handoff_project._registry_projects", lambda: [])
     monkeypatch.chdir(github)
     assert resolve_handoff_project(github) == ""
+
+
+def test_resolve_handoff_project_workspace_param(monkeypatch, tmp_path):
+    climate = tmp_path / "github" / "climate-almanac"
+    climate.mkdir(parents=True)
+    (tmp_path / "github" / "willow-2.0").mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("WILLOW_MCP_SERVER", "1")
+    monkeypatch.delenv("WILLOW_HANDOFF_PROJECT", raising=False)
+    monkeypatch.delenv("WILLOW_PROJECT_ROOT", raising=False)
+    monkeypatch.setattr("willow.fylgja.handoff_project._registry_projects", lambda: [])
+    monkeypatch.chdir(tmp_path / "github" / "willow-2.0")
+    assert resolve_handoff_project(workspace=climate) == "climate-almanac"

@@ -120,6 +120,21 @@
         "python": "fleet"
       },
       "note": "Personal data vault — law-gazelle for legal reads."
+    },
+    "climate-almanac": {
+      "path": "{{HOME}}/github/climate-almanac",
+      "agent": "willow",
+      "profile": "core",
+      "servers": ["willow"],
+      "ides": ["cursor", "claude"],
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Climate Almanac catalog — fleet overlay gitignored; project sync wires hooks + scoped MCP env."
     }
   }
 }

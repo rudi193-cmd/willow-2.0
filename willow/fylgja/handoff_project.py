@@ -8,11 +8,13 @@ folder name under ~/github.
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 from willow.fylgja.project_wiring import expand_home
 
 DEFAULT_LEGACY_PROJECT = "willow-2.0"
+_ANCHOR_SAFE = re.compile(r"[^A-Za-z0-9._-]+")
 
 
 def _github_root() -> Path:
@@ -82,15 +84,20 @@ def _probe_paths(start: Path | None) -> list[Path]:
         _add(Path(raw))
     if start is not None:
         _add(start)
-    _add(Path.cwd())
+    # MCP server cwd is always willow-2.0 — never infer project from it.
+    if not os.environ.get("WILLOW_MCP_SERVER", "").strip():
+        _add(Path.cwd())
     return out
 
 
-def resolve_handoff_project(start: Path | None = None) -> str:
+def resolve_handoff_project(start: Path | None = None, workspace: str | Path = "") -> str:
     """Return fleet project id for handoff scoping, or '' when unknown."""
     override = os.environ.get("WILLOW_HANDOFF_PROJECT", "").strip()
     if override:
         return override
+
+    if workspace:
+        start = Path(workspace).expanduser()
 
     registry = _registry_projects()
     for probe in _probe_paths(start):
@@ -120,3 +127,19 @@ def handoff_project_matches(stored: str | None, requested: str) -> bool:
     if got:
         return got == req
     return req == DEFAULT_LEGACY_PROJECT
+
+
+def session_anchor_slug(project: str) -> str:
+    slug = _ANCHOR_SAFE.sub("_", normalize_handoff_project(project)).strip("_")
+    return slug
+
+
+def session_anchor_path(agent: str, project: str = "") -> Path:
+    """Per-project session anchor — avoids cross-repo continuity bleed."""
+    from willow.fylgja.willow_home import willow_home
+
+    base = willow_home() / f"session_anchor_{agent.strip()}"
+    slug = session_anchor_slug(project)
+    if slug:
+        return Path(f"{base}_{slug}.json")
+    return Path(f"{base}.json")

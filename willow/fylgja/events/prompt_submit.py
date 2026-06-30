@@ -19,12 +19,13 @@ from willow.fylgja.anchor_state import (
     context_advisory,
     prompt_count as get_prompt_count,
 )
+from willow.fylgja.handoff_project import resolve_handoff_project, session_anchor_path
+from willow.fylgja.project_env import workspace_root
 from willow.fylgja.willow_home import willow_home
 
 _HOME = willow_home()
 ANCHOR_INTERVAL = _ANCHOR_INTERVAL
 FLAT_HANDOFF_INTERVAL = 10  # write flat handoff every N prompts
-ANCHOR_CACHE = _HOME / f"session_anchor_{AGENT}.json"
 TURNS_FILE = Path.home() / "agents" / AGENT / "cache" / "turns.txt"
 ACTIVE_BUILD_FILE = Path(f"/tmp/{AGENT}-active-build.json")
 DISPATCH_INBOX = Path(f"/tmp/willow-dispatch-inbox-{AGENT}.json")
@@ -54,6 +55,11 @@ PERMISSION_LEVELS = {
 }
 HANUMAN_PERMISSIONS = ["willow_kb_read", "willow_kb_write", "filesystem_write", "local_llm"]
 ADVANCEMENT_THRESHOLDS = {0: 3, 1: 5, 2: 10, 3: None}
+
+
+def _anchor_cache_path() -> Path:
+    project = resolve_handoff_project(workspace_root() or Path.cwd())
+    return session_anchor_path(AGENT, project)
 
 FEEDBACK_PATTERNS = [
     (r"run.{0,20}(in the |in )background", "process", "Run tasks in the background"),
@@ -240,7 +246,7 @@ def _run_anchor(count: int) -> None:
     if not should_anchor(count):
         return
     try:
-        anchor = json.loads(ANCHOR_CACHE.read_text()) if ANCHOR_CACHE.exists() else {}
+        anchor = json.loads(_anchor_cache_path().read_text()) if _anchor_cache_path().exists() else {}
         if not anchor:
             return
         lines = ["[ANCHOR]"]
@@ -532,16 +538,16 @@ def _check_identity() -> None:
     if not is_first_turn():
         return
     try:
-        if not ANCHOR_CACHE.exists():
+        if not _anchor_cache_path().exists():
             return
-        anchor = json.loads(ANCHOR_CACHE.read_text())
+        anchor = json.loads(_anchor_cache_path().read_text())
         anchor_agent = anchor.get("agent", "")
         if anchor_agent and anchor_agent != AGENT:
             print(
                 f"[IDENTITY MISMATCH] anchor={anchor_agent} running={AGENT}\n"
                 f"  CWD: {Path.cwd()}\n"
                 f"  Re-run /startup to reset the anchor, or delete "
-                f"{ANCHOR_CACHE}."
+                f"{_anchor_cache_path()}."
             )
             sys.exit(1)
     except Exception:
