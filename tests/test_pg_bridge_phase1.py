@@ -14,7 +14,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.pg_bridge import PgBridge, run_migrations
+from core.pg_bridge import PgBridge
+
+# Session conftest init_pg_schema + PgBridge pool boot already apply migrations.
+pytestmark = pytest.mark.timeout(180)
 
 
 @pytest.fixture(scope="module")
@@ -22,8 +25,6 @@ def pg():
     # PgBridge reads WILLOW_PG_DB from env; default to willow_20_test for isolation
     os.environ.setdefault("WILLOW_PG_DB", "willow_20_test")
     b = PgBridge()
-    # Ensure migrations have run (test DB schema may predate migration additions)
-    run_migrations(b.conn)
     yield b
     b.close()
 

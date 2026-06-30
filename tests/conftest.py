@@ -90,3 +90,14 @@ def pytest_sessionfinish(session, exitstatus):
     except Exception as e:
         if os.environ.get("WILLOW_ATOM_VERBOSE"):
             print(f"[conftest] test_completion error: {e}")
+
+
+@pytest.fixture
+def mock_norn_subpasses(monkeypatch):
+    """Keep norn_pass unit tests off Postgres/migrations (community_pass, demote_stale_pass)."""
+    from core import metabolic
+
+    monkeypatch.setattr(metabolic, "compost_pass", lambda dry_run=False: 1)
+    monkeypatch.setattr(metabolic, "community_pass", lambda dry_run=False: 2)
+    monkeypatch.setattr(metabolic, "measure_heartbeat", lambda: 0.75)
+    monkeypatch.setattr(metabolic, "demote_stale_pass", lambda dry_run=False: 0)

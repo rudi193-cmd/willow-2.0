@@ -5,7 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-def test_norn_pass_returns_report():
+def test_norn_pass_returns_report(mock_norn_subpasses):
     from core.metabolic import norn_pass
     report = norn_pass(dry_run=True)
     assert "composted" in report
@@ -34,14 +34,14 @@ def test_community_pass_dry_run_returns_count():
     assert count >= 0
 
 
-def test_norn_pass_squeakdog_field():
+def test_norn_pass_squeakdog_field(mock_norn_subpasses):
     from core.metabolic import norn_pass
     report = norn_pass(dry_run=True)
     assert "squeakdog" in report
     assert isinstance(report["squeakdog"], bool)
 
 
-def test_norn_pass_report_has_intelligence_fields():
+def test_norn_pass_report_has_intelligence_fields(mock_norn_subpasses):
     from core.metabolic import norn_pass
     report = norn_pass(dry_run=True)
     for field in ("draugr", "serendipity", "dark_matter", "revelations", "mirror", "mycorrhizal"):
