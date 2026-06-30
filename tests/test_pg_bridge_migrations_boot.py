@@ -11,11 +11,21 @@ import pytest
 from core import pg_bridge
 
 
+def _close_pool():
+    pool = pg_bridge._pool
+    if pool is not None:
+        try:
+            pool.closeall()
+        except Exception:
+            pass
+    pg_bridge._pool = None
+
+
 @pytest.fixture(autouse=True)
 def _reset_pool():
-    pg_bridge._pool = None
+    _close_pool()
     yield
-    pg_bridge._pool = None
+    _close_pool()
 
 
 class _FakeCursor:
