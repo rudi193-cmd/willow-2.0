@@ -23,15 +23,24 @@ Fork-aware code review checklist. Run before merging any branch. Catches missing
    - No security issues: SQL injection, unvalidated external input, hardcoded secrets, path traversal
    - Follows existing patterns in this repo (naming, error handling, logging style)
 
-3. **Run the tests** — run the relevant test suite. Report the result verbatim.
+3. **Run lint** — if the diff touches `core/`, `sap/`, `willow/`, `tests/`, or `scripts/`:
 
-4. **Report the verdict:**
+   ```bash
+   bash scripts/lint_first_party.sh
+   ```
+
+   Kart: `bash scripts/kart_lint_gate.sh` before commit/push scripts. Report failures verbatim; unused imports (ruff F401) block merge.
+
+4. **Run the tests** — run the relevant test suite. Report the result verbatim.
+
+5. **Report the verdict:**
    - **Passed**: list what was checked, confirm green, suggest merge if appropriate
    - **Failed**: list specific files and lines that need fixing before merge
 
 ## Rules
 
 - Never approve without running tests. "Looks right" is not a review.
+- Never approve Python changes without `lint_first_party.sh` green when first-party paths changed.
 - Security issues block merge. Always.
 - Placeholders block merge. A `TODO` in merged code is a future bug.
 - Patterns matter — code that works but doesn't fit the codebase creates drift.

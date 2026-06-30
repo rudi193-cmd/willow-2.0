@@ -61,6 +61,25 @@ Shell tasks use **full-string** `bash -c` via `kart_sandbox.run_shell` (pipeline
 
 `agent_task_submit(..., allow_net=True)` for git push, `gh`, curl, etc.
 
+## Lint before commit/push
+
+CI enforces `ruff check core sap willow tests scripts`. Kart does **not** run git hooks — call the gate before commit/push in any Kart script that touches first-party Python:
+
+```bash
+bash scripts/kart_lint_gate.sh   # same as lint_first_party.sh
+```
+
+Example Kart `script_body` tail:
+
+```python
+import subprocess
+repo = "/path/to/willow-2.0"
+subprocess.run(["bash", "scripts/kart_lint_gate.sh"], cwd=repo, check=True)
+subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+subprocess.run(["git", "commit", "-m", "..."], cwd=repo, check=True)
+subprocess.run(["git", "push"], cwd=repo, check=True)
+```
+
 ## Timeouts
 
 Default 120s (`KART_POLL_TIMEOUT`). Stop drain uses `KART_POLL_STOP_TIMEOUT` (default 130s).

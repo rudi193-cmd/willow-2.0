@@ -25,7 +25,7 @@ bash setup.sh --public
 
 **Fleet operators:** clone `willow-config` to `~/github/.willow`, then run `bash setup.sh` so runtime config points at the private home while root `willow.md` stays public-safe.
 
-**Optional — pre-commit hooks** (ruff + path guard; mypy on push):
+**Pre-commit hooks** (ruff + path guard; mypy report on pre-push) — installed automatically by `setup.sh`. To reinstall:
 
 ```bash
 source .venv-dev/bin/activate

@@ -15,6 +15,11 @@ git clone https://github.com/rudi193-cmd/willow-2.0
 cd willow-2.0
 bash setup.sh --public   # or bash setup.sh when ~/github/.willow (willow-config) exists
 source .venv-dev/bin/activate   # optional — ./willow.sh already uses .venv-dev
+```
+
+`setup.sh` installs dev deps and runs `pre-commit install` + `pre-commit install --hook-type pre-push` (ruff on staged first-party files). To reinstall hooks manually:
+
+```bash
 pre-commit install
 pre-commit install --hook-type pre-push
 ```

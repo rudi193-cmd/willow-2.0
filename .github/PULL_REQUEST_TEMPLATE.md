@@ -8,6 +8,7 @@ Fixes #<!-- issue --> · KB atom <!-- id --> · Grove thread <!-- channel/msg --
 
 ## Test plan
 
+- [ ] `bash scripts/lint_first_party.sh` (if `core/`, `sap/`, `willow/`, `tests/`, or `scripts/` changed)
 - [ ] `export WILLOW_AGENT_NAME=… WILLOW_SAFE_ROOT=… && pytest` (if code touched)
 - [ ] `./willow.sh fleet_status` (if runtime touched)
 - [ ] 
