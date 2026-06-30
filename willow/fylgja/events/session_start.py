@@ -17,7 +17,8 @@ from willow.fylgja._grove import call as _grove_call
 from willow.fylgja._state import reset_turn_count
 from willow.fylgja.anchor_state import prune_session_states, reset_prompt_count
 from willow.fylgja.events._stack_snapshot import normalize_stack_record
-from willow.fylgja.project_env import repo_root
+from willow.fylgja.project_env import repo_root, workspace_root
+from willow.fylgja.handoff_project import resolve_handoff_project
 from willow.fylgja.session_inject import (
     CONFIRMATION_EXCERPT_CHARS,
     CORRECTION_EXCERPT_CHARS,
@@ -379,9 +380,14 @@ def _run_silent_startup(session_id: str = "") -> dict:
 
     # 1. Latest handoff — filename, summary, open threads, next bite
     handoff_date = ""
+    handoff_project = resolve_handoff_project(workspace_root() or Path.cwd())
     try:
-        h = call("handoff_latest", {"app_id": AGENT}, timeout=8)
+        handoff_params: dict = {"app_id": AGENT}
+        if handoff_project:
+            handoff_params["project"] = handoff_project
+        h = call("handoff_latest", handoff_params, timeout=8)
         if isinstance(h, dict) and not h.get("error"):
+            result["handoff_project"] = handoff_project or h.get("project") or ""
             result["handoff_title"] = h.get("filename", "")
             result["handoff_summary"] = (h.get("summary") or "")[:500]
             result["handoff_threads"] = h.get("open_threads") or []

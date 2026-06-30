@@ -264,6 +264,7 @@ date: {date}
 session: {session}
 runtime: claude-code
 format: v2
+project: {project}
 ---
 
 # HANDOFF: test
@@ -296,11 +297,15 @@ def test_scan_markdown_handoffs_excludes_other_agents():
 
         # hanuman file — older session
         (root / "hanuman" / "session_handoff-2026-06-09a_hanuman.md").write_text(
-            _HANDOFF_TEMPLATE.format(agent="hanuman", date="2026-06-09", session="2026-06-09a")
+            _HANDOFF_TEMPLATE.format(
+                agent="hanuman", date="2026-06-09", session="2026-06-09a", project="willow-2.0"
+            )
         )
         # willow file — newer session (would win a naive recency sort)
         (root / "willow" / "session_handoff-2026-06-09d_willow.md").write_text(
-            _HANDOFF_TEMPLATE.format(agent="willow", date="2026-06-09", session="2026-06-09d")
+            _HANDOFF_TEMPLATE.format(
+                agent="willow", date="2026-06-09", session="2026-06-09d", project="willow-2.0"
+            )
         )
 
         hanuman_candidates = scan_markdown_handoffs("hanuman", root)
@@ -312,6 +317,31 @@ def test_scan_markdown_handoffs_excludes_other_agents():
         best = select_best_handoff(hanuman_candidates)
         assert best is not None
         assert best["filename"] == "session_handoff-2026-06-09a_hanuman.md"
+
+
+def test_scan_markdown_handoffs_filters_by_project():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        agent_dir = root / "willow"
+        agent_dir.mkdir()
+        (agent_dir / "session_handoff-2026-06-10a_willow.md").write_text(
+            _HANDOFF_TEMPLATE.format(
+                agent="willow", date="2026-06-10", session="2026-06-10a", project="climate-almanac"
+            )
+        )
+        (agent_dir / "session_handoff-2026-06-10b_willow.md").write_text(
+            _HANDOFF_TEMPLATE.format(
+                agent="willow", date="2026-06-10", session="2026-06-10b", project="willow-2.0"
+            )
+        )
+
+        climate = scan_markdown_handoffs("willow", root, "climate-almanac")
+        assert len(climate) == 1
+        assert climate[0]["filename"] == "session_handoff-2026-06-10a_willow.md"
+
+        engine = scan_markdown_handoffs("willow", root, "willow-2.0")
+        assert len(engine) == 1
+        assert engine[0]["filename"] == "session_handoff-2026-06-10b_willow.md"
 
 
 _HANDOFF_WITH_NOTES = """\
