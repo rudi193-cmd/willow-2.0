@@ -1,13 +1,20 @@
 # Open work (fleet backlog)
 
-*Last updated: 2026-06-23 — upstream contributions desk pass (live `gh` reconciliation).*
+*Last updated: 2026-06-29 — upstream contributions desk pass (live `gh` reconciliation).*
 
 **Strategy:** [`UPSTREAM_CONTRIBUTION_STRATEGY.md`](UPSTREAM_CONTRIBUTION_STRATEGY.md) · type ledger: [`upstream/type_ledger.json`](upstream/type_ledger.json)
 
+> **2026-06-29 state change:** claudeclaw **#239 and #240 merged** (TerrysPOV approved + merged
+> 2026-06-28). claudeclaw **#234** — the `listThreadSessions` filter TerrysPOV requested is
+> already at HEAD (`a9eb7cb`, shipped under `54854a9`); his 2026-06-28 `CHANGES_REQUESTED` was
+> filed against the parent commit `5a6e6336` and is now **stale** — needs maintainer
+> re-review/dismissal, nothing on us. codejail **#309** CLA **executed 2026-06-24**; review
+> nudge posted 2026-06-28 — maintainer's court. **Every open PR is maintainer-blocked —
+> nothing is blocked on us.** Green lane is clear; new green-lane work is unblocked.
+>
 > **2026-06-23 state change:** ctxvault #31 **merged**. Six long-stale maintainer-pending PRs
 > batch-closed without merge on 2026-06-15 (~02:09 UTC): awesome-claude-skills #885,
-> mengram #40, python-sdk #2640, ngrok-python #159 / #160 / #161. All currently-open PRs are
-> **maintainer-blocked — nothing is blocked on us.** Green lane is clear; new green-lane work is unblocked.
+> mengram #40, python-sdk #2640, ngrok-python #159 / #160 / #161.
 
 ## Upstream desk preflight
 
@@ -16,14 +23,14 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 | PR | Type | Score | Lane | Next action |
 |----|------|-------|------|-------------|
 | [claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | narrow_bugfix | 8 | green | **MERGED 2026-06-28** ✓ |
-| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | narrow_bugfix | 8 | green | Fix `54854a9` (listThreadSessions guard + v1.0.40 bump) clears last TerrysPOV issue; CI green; comment posted — **wait on maintainer** |
-| [claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | narrow_bugfix | 8 | green | CI green, no review yet — wait |
-| [claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | docs_setup | 8 | green | CI green, no review yet — wait |
+| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | narrow_bugfix | 8 | green | `listThreadSessions` filter at HEAD (`a9eb7cb`/`54854a9`); 3/3 checks green; TerrysPOV's 06-28 CHANGES_REQUESTED is **stale** (filed vs parent `5a6e6336`) — **wait on maintainer** re-review/dismiss |
+| [claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | narrow_bugfix | 8 | green | **MERGED 2026-06-28** ✓ |
+| [claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | docs_setup | 8 | green | **MERGED 2026-06-28** ✓ |
 | [mcp-mem0 #18](https://github.com/coleam00/mcp-mem0/pull/18) | narrow_bugfix | 8 | green | Issue-linked (Fixes #3), mergeable, no review — wait |
 | [DontFeedTheAI #8](https://github.com/zeroc00I/DontFeedTheAI/pull/8) | ci_verify | 7 | yellow | CI publish workflow, mergeable, no review — wait (warm maintainer, 2 prior merges) |
 | [PDFMathTranslate #1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) | small_feature | 6 | yellow | Mergeable, no review — wait |
 | [mex #84](https://github.com/mex-memory/mex/pull/84) | mcp_adapter | 6 | yellow | REVIEW_REQUIRED, mergeable — wait |
-| [codejail #309](https://github.com/openedx/codejail/pull/309) | small_feature | 6 | yellow | **CLA gate** — signed 2026-06-18 (rudi193@gmail.com); maintainer `mphilbrick211` active — ping once CLA clears |
+| [codejail #309](https://github.com/openedx/codejail/pull/309) | small_feature | 6 | yellow | CLA **executed 2026-06-24**; `openedx/cla` check now SUCCESS; review nudge posted 2026-06-28 — **wait on maintainer** (`mphilbrick211` / `@moisesgsalas`) |
 | [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | mcp_adapter | 4 | red | Rebased 2026-06-15; `check-pr-labels` FAILURE is a **maintainer-only label gate** (needs `kind/*` + `release-note`) — code clean, deprioritize |
 | [hermes-agent #40737](https://github.com/NousResearch/hermes-agent/pull/40737) | unsolicited_large_feature | 2 | red | No maintainer signal since 2026-06-08 — do not invest; consider withdrawing |
 
@@ -31,18 +38,15 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 
 ## Upstream PRs — actionable (our move)
 
-| PR | Status | Next step |
-|----|--------|-----------|
-| [codejail #309](https://github.com/openedx/codejail/pull/309) | CLA signed 2026-06-18; maintainer `mphilbrick211` engaged; one CLA check FAILURE | Confirm CLA clears, then nudge `mphilbrick211` / `@moisesgsalas` |
+*None.* Every open PR is maintainer-blocked as of 2026-06-29. Green lane is clear — to make progress, open a **new** green-lane contribution (see strategy doc + type ledger).
 
 ## Upstream PRs — waiting on maintainers (no move)
 
 | PR | Status | Next step |
 |----|--------|-----------|
-| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | Fix `54854a9` clears last TerrysPOV issue (listThreadSessions); all 3 checks green; v1.0.40 bumped; comment posted 2026-06-28 | Maintainer to re-review/dismiss stale CHANGES_REQUESTED or merge |
+| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | `listThreadSessions` filter at HEAD (`a9eb7cb`/`54854a9`); 3/3 checks green; TerrysPOV's 06-28 CHANGES_REQUESTED filed vs parent `5a6e6336` is stale; comment posted 2026-06-28 | Maintainer to re-review/dismiss stale CHANGES_REQUESTED or merge |
+| [codejail #309](https://github.com/openedx/codejail/pull/309) | CLA executed 2026-06-24; `openedx/cla` check SUCCESS; review nudge posted 2026-06-28; `mphilbrick211` engaged | Maintainer review (`mphilbrick211` / `@moisesgsalas`) |
 | [glapagos #20](https://github.com/castroquiles/glapagos/pull/20) | Lint was red (latent black/flake8/mypy conflicts); fix `628a9dd` 2026-06-28 — now 9/9 checks green, mergeable | Maintainer review |
-| [claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | CI green; mergeable; no review | Maintainer review |
-| [claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | CI green; mergeable; no review | Maintainer review |
 | [mcp-mem0 #18](https://github.com/coleam00/mcp-mem0/pull/18) | Mergeable; issue-linked; no review | Maintainer review |
 | [PDFMathTranslate #1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) | Mergeable; no review | Maintainer review |
 | [mex #84](https://github.com/mex-memory/mex/pull/84) | Mergeable; REVIEW_REQUIRED | Maintainer review |
@@ -56,6 +60,9 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 
 | PR | Note |
 |----|------|
+| [moazbuilds/claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | TerrysPOV approved + merged 2026-06-28 |
+| [moazbuilds/claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | docs_setup — TerrysPOV approved + merged 2026-06-28 |
+| [moazbuilds/claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | narrow_bugfix — merged 2026-06-28 |
 | [Filippo-Venturini/ctxvault #31](https://github.com/Filippo-Venturini/ctxvault/pull/31) | Remove stale `vault_config` reindex kwarg — merged 2026-06-17 by Filippo-Venturini |
 | [max-rh/sshelf #3](https://github.com/max-rh/sshelf/pull/3) | Print generated SSH command from CLI |
 | [liatrio-labs/claude-deep-review #5](https://github.com/liatrio-labs/claude-deep-review/pull/5) | Extract `dedup_by_id` into standalone module |
