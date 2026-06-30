@@ -1,0 +1,65 @@
+{
+  "scorecard": "willow/bench/scorecard.json",
+  "locked_date": "2026-06-30",
+  "timestamp_utc": "20260630T234004Z",
+  "agent": "willow",
+  "measurements": [
+    {
+      "sli_id": "fleet_retrieval_gold",
+      "value": 0.857,
+      "detail": "6/7 passed; open_projects_fleet missed (rank null)",
+      "run_artifact": "kart:BE18680E",
+      "caveat": "Kart bwrap run: Ollama embed unreachable — semantic degraded to keyword-only"
+    },
+    {
+      "sli_id": "locomo_token_f1",
+      "value": 0.445245,
+      "detail": "1540 questions, locomo10, top_k=20, claude-haiku-4-5",
+      "run_artifact": "willow/bench/locomo/external_runs/locomo_willow_locomo10_20260624T233829Z.json",
+      "source": "baselines.jsonl row 20260624T233829Z"
+    },
+    {
+      "sli_id": "locomo_temporal_f1",
+      "value": 0.150164,
+      "run_artifact": "willow/bench/locomo/external_runs/locomo_willow_locomo10_20260624T233829Z.json",
+      "source": "baselines.jsonl row 20260624T233829Z"
+    },
+    {
+      "sli_id": "locomo_mrr",
+      "value": 0.489333,
+      "run_artifact": "willow/bench/locomo/external_runs/locomo_willow_locomo10_20260624T233829Z.json",
+      "source": "baselines.jsonl row 20260624T233829Z"
+    },
+    {
+      "sli_id": "wce_thread_recall",
+      "value": 0.6732,
+      "detail": "151 handoffs, 150 pairs, 143 scored",
+      "run_artifact": "willow/bench/continuity/runs/wce_20260630T234004Z.json"
+    },
+    {
+      "sli_id": "wce_next_bite",
+      "value": 0.4414,
+      "detail": "145 pairs scored",
+      "run_artifact": "willow/bench/continuity/runs/wce_20260630T234004Z.json"
+    },
+    {
+      "sli_id": "wce_cold_recall",
+      "value": 0.1616,
+      "detail": "40 queries, weight_mode=cap, warm_relevant_recall=0.2913",
+      "run_artifact": "willow/bench/continuity/runs/wce_20260630T234004Z.json"
+    },
+    {
+      "sli_id": "pytest_pass",
+      "value": 1.0,
+      "detail": "Assumed from CI green on master at lock time; re-verify on demand",
+      "run_artifact": null,
+      "caveat": "Not re-run at lock — smoke gate is pytest on PR"
+    }
+  ],
+  "refresh_commands": {
+    "full_snapshot": "python3 willow/bench/scorecards/refresh_snapshot.py --date 2026-06-30",
+    "smoke": "pytest && python3 scripts/retrieval_gold_check.py",
+    "nightly": "python3 willow/bench/continuity/run_wce.py --tasks thread_recall,next_bite,cold_recall --agent willow",
+    "weekly": "python3 willow/bench/locomo/path_a_locomo_pilot.py --all --semantic --top-k 20"
+  }
+}
