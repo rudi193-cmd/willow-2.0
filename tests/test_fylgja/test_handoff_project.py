@@ -1,7 +1,4 @@
 """Tests for fleet project resolution and handoff scoping."""
-from pathlib import Path
-
-import pytest
 
 from willow.fylgja.handoff_project import (
     DEFAULT_LEGACY_PROJECT,
