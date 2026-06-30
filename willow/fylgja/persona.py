@@ -24,6 +24,60 @@ USER_PERSONAS_FILE = _HOME / "user-personas.json"
 _CREATE_KEY = "__create__"
 
 
+def _state_project_file() -> Path:
+    """Companion to STATE_FILE recording the project an explicit pick was made in.
+
+    Computed from STATE_FILE at call time so tests that monkeypatch STATE_FILE
+    redirect this file too.
+    """
+    return STATE_FILE.parent / (STATE_FILE.name + ".project")
+
+
+def _project_personas_file() -> Path:
+    """config/project_personas.json — maps a project key to a default persona."""
+    return _repo_root() / "willow" / "fylgja" / "config" / "project_personas.json"
+
+
+def current_project_key() -> str:
+    """Best-effort name of the project being worked on (not the willow code repo).
+
+    Prefers WILLOW_HANDOFF_PROJECT (set per-project by mcp sync), then the
+    workspace root directory name. Empty string when neither resolves.
+    """
+    proj = os.environ.get("WILLOW_HANDOFF_PROJECT", "").strip()
+    if proj:
+        return proj
+    try:
+        from willow.fylgja.project_env import workspace_root
+
+        ws = workspace_root()
+        if ws is not None:
+            return ws.name
+    except Exception:
+        pass
+    return ""
+
+
+def project_persona_binding(project: str = "") -> str:
+    """Persona key bound to the current (or given) project, or '' if none/invalid."""
+    proj = (project or current_project_key()).strip()
+    if not proj:
+        return ""
+    path = _project_personas_file()
+    if not path.exists():
+        return ""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        bindings = data.get("bindings", {}) if isinstance(data, dict) else {}
+    except Exception:
+        return ""
+    key = str(bindings.get(proj, "")).strip().lower()
+    if not key:
+        return ""
+    personas, _ = get_personas()
+    return key if key in personas else ""
+
+
 
 def _repo_root() -> Path:
     try:
@@ -86,6 +140,15 @@ _BUILTIN_PERSONAS: dict[str, dict] = {
         "source": "file",
         "path": _persona_path("jeles"),
     },
+    "ada": {
+        "label": "Ada",
+        "desc": "Systems Administrator of UTETY. Keeper of the Quiet Uptime — monitor-first.",
+        "source": "file",
+        "path": _persona_path("ada"),
+        # Voice overlay only — Ada is a UTETY professor, NOT a fleet agent id.
+        # Marked so the active-agent collision guard does not treat her as one.
+        "fleet_agent": False,
+    },
     "none": {
         "label": "None",
         "desc": "Blank slate — no persona injected.",
@@ -93,10 +156,15 @@ _BUILTIN_PERSONAS: dict[str, dict] = {
     },
 }
 
-_BUILTIN_LIST = ["oakenscroll", "hanuman", "loki", "skirnir", "vishwakarma", "jeles", "none"]
+_BUILTIN_LIST = ["oakenscroll", "hanuman", "loki", "skirnir", "vishwakarma", "jeles", "ada", "none"]
 
 # Built-in persona keys that double as fleet agent ids — easy to confuse with active-agent.
-_FLEET_NAMED_PERSONAS = frozenset(k for k in _BUILTIN_PERSONAS if k != "none")
+# Personas explicitly flagged fleet_agent=False (e.g. Ada, a UTETY voice persona) are excluded
+# so the collision guard does not warn/block when they differ from the active fleet agent.
+_FLEET_NAMED_PERSONAS = frozenset(
+    k for k, v in _BUILTIN_PERSONAS.items()
+    if k != "none" and v.get("fleet_agent", True)
+)
 
 # Legacy aliases — kept so callers that imported PERSONAS/PERSONA_LIST directly still work.
 PERSONAS = _BUILTIN_PERSONAS
@@ -225,12 +293,39 @@ def check_persona_fleet_collision(persona_key: str) -> tuple[bool, str | None]:
 
 
 def active_persona() -> str:
+    """Resolve the active persona.
+
+    Precedence:
+      1. An explicit pick made *in the current project* (global state whose
+         recorded project matches) — so switching inside a bound project sticks.
+      2. The project's configured persona binding (config/project_personas.json).
+      3. The global explicit pick (legacy behavior for unbound projects).
+    """
+    personas, _ = get_personas()
+
+    state = ""
     if STATE_FILE.exists():
-        name = STATE_FILE.read_text(encoding="utf-8").strip().lower()
-        personas, _ = get_personas()
-        if name in personas:
-            return name
-    return ""
+        state = STATE_FILE.read_text(encoding="utf-8").strip().lower()
+    if state not in personas:
+        state = ""
+
+    proj = current_project_key()
+    state_proj = ""
+    spf = _state_project_file()
+    if spf.exists():
+        state_proj = spf.read_text(encoding="utf-8").strip()
+
+    # 1. Explicit pick made in this same project wins.
+    if state and proj and state_proj == proj:
+        return state
+
+    # 2. Project binding is the default for bound projects.
+    binding = project_persona_binding(proj)
+    if binding:
+        return binding
+
+    # 3. Fall back to the global explicit pick.
+    return state
 
 
 def set_active_persona(name: str) -> bool:
@@ -243,6 +338,9 @@ def set_active_persona(name: str) -> bool:
         return False
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(key + "\n", encoding="utf-8")
+    # Record which project this explicit pick was made in, so a project binding
+    # does not silently override a deliberate in-project switch.
+    _state_project_file().write_text(current_project_key() + "\n", encoding="utf-8")
     return True
 
 
