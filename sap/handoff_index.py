@@ -305,3 +305,111 @@ def extract_live_handoff_notes(agent: str, source_filename: str = "") -> dict:
     except Exception:
         pass
     return out
+
+
+def _row_to_candidate(row: Mapping[str, object]) -> dict:
+    """Normalize a SQLite handoff row into a filter/rank candidate dict."""
+    def _value(key: str) -> object:
+        if hasattr(row, "keys") and key in row.keys():
+            return row[key]
+        return ""
+
+    return {
+        "filename": str(_value("filename")),
+        "date": str(_value("handoff_date") or ""),
+        "project": str(_value("project") or ""),
+        "summary": str(_value("summary") or ""),
+        "open_threads": _parse_json_list(_value("open_threads")),
+        "questions": _parse_json_list(_value("questions")),
+        "agreements": _parse_json_list(_value("agreements")),
+        "capabilities": _parse_json_list(_value("capabilities")),
+        "_source": "sqlite",
+        "_valid_at": str(_value("handoff_date") or ""),
+        "mtime": str(_value("mtime") or ""),
+    }
+
+
+def _candidate_to_result(candidate: dict) -> dict:
+    """Public handoff_latest payload from an internal candidate."""
+    return {
+        "filename": candidate.get("filename") or "",
+        "date": candidate.get("date") or "",
+        "project": candidate.get("project") or "",
+        "summary": candidate.get("summary") or "",
+        "open_threads": candidate.get("open_threads") or [],
+        "questions": candidate.get("questions") or [],
+        "agreements": candidate.get("agreements") or [],
+        "capabilities": candidate.get("capabilities") or [],
+    }
+
+
+def fetch_latest_handoff(
+    agent: str,
+    *,
+    project: str = "",
+    workspace: str | Path = "",
+) -> dict:
+    """Latest session handoff for an agent, optionally scoped by fleet project id."""
+    import sqlite3
+
+    from willow.fylgja.handoff_project import resolve_handoff_project
+    from sap.handoff_paths import handoff_db_path, handoffs_root, handoffs_roots
+
+    agent_filter = (agent or "").strip()
+    project_filter = (
+        (project or "").strip()
+        or resolve_handoff_project(workspace=workspace)
+        or ""
+    ).strip()
+
+    candidates: list[dict] = []
+
+    handoff_db = Path(
+        __import__("os").environ.get(
+            "WILLOW_HANDOFF_DB",
+            str(handoff_db_path(agent_filter)),
+        )
+    )
+    if not handoff_db.exists():
+        discovered = sorted(
+            handoffs_root().glob("*/handoffs.db"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if discovered:
+            handoff_db = discovered[0]
+
+    if handoff_db.exists():
+        try:
+            conn = sqlite3.connect(handoff_db)
+            conn.row_factory = sqlite3.Row
+            base_sql = handoff_select_sql(conn)
+            where_agent = " WHERE h.file_type = 'session' AND f.filename LIKE ?"
+            rows = (
+                conn.execute(base_sql + where_agent, (f"%{agent_filter}%",)).fetchall()
+                if agent_filter
+                else conn.execute(base_sql + " WHERE h.file_type = 'session'").fetchall()
+            )
+            conn.close()
+            candidates.extend(_row_to_candidate(row) for row in rows)
+        except Exception:
+            pass
+
+    if agent_filter:
+        for root in handoffs_roots():
+            candidates.extend(scan_markdown_handoffs(agent_filter, root, project_filter))
+
+    filtered = filter_handoff_candidates(candidates, project_filter)
+    best = select_best_handoff(filtered)
+    if not best:
+        if project_filter:
+            return {
+                "error": f"No session handoffs found for project {project_filter!r}.",
+                "project": project_filter,
+            }
+        return {"error": "No session handoffs found."}
+
+    result = _candidate_to_result(best)
+    if project_filter:
+        result["project"] = project_filter
+    return result

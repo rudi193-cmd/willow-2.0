@@ -20,7 +20,7 @@ These run before your first turn via hooks:
 
 | Hook | What it does |
 |---|---|
-| **SessionStart** | Hardware scan · willow_status · jeles registration · dispatch subscribe · heartbeat · corpus corrections seeded from memory feedback files · stack snapshot read from SOIL · anchor written to `$WILLOW_HOME/session_anchor_{agent}.json` |
+| **SessionStart** | Hardware scan · willow_status · jeles registration · dispatch subscribe · heartbeat · corpus corrections seeded from memory feedback files · stack snapshot read from SOIL · anchor written to `$WILLOW_HOME/session_anchor_{agent}_{project}.json` (or `session_anchor_{agent}.json` when project is unknown) |
 | **prompt_submit (turn 1)** | Persona picker injected · boot guard injected · dispatch inbox injected |
 
 ---
@@ -57,6 +57,8 @@ Fallback: Read the raw file.
 Agent name · repo root · current branch · staged/unstaged/untracked counts · one-line diff note.
 No full patch. No full diffs.
 
+> **IDE folder.** Open the **git repo root** (e.g. `climate-almanac/`), not a parent folder like `~/github/` — project scoping, anchors, and `handoff_latest(workspace=…)` all key off that path.
+
 > **Clocks.** All Willow artifacts (handoff filenames, DB timestamps) are **UTC**;
 > the harness reports "today" in **local** time. Between ~18:00 local and midnight
 > the two calendar dates differ by one day — this is correct, not drift. The
@@ -69,7 +71,10 @@ No full patch. No full diffs.
 **Postgres down = hard stop in private-config mode.** In public-fallback, note degraded and continue.
 
 **4. Continuity** *(parallel with 3, 5–6)*
-`handoff_latest(app_id=<agent>)` — what was in flight, open threads, agreements.
+Use the **repo root from step 2** — not the global `session_anchor_{agent}.json` (that file is desk-scoped and will bleed Schmidt/almanac threads across repos).
+
+`handoff_latest(app_id=<agent>, workspace=<repo root from step 2>)` — project-scoped open threads only.
+If the result is `No session handoffs found for project …`, say so plainly — do **not** fall back to the global willow handoff pile.
 If stale (> 2h): note it, continue — run /startup after.
 
 **5. Grove inbox** *(parallel with 3–4, 6)*
@@ -262,7 +267,7 @@ Q17: {next single bite — one sentence, no preamble}
 **Required:** Q17 line must be `Q17: <text>` — no question mark in the key, colon-delimited, no preamble. Q17 is always "What is the next single bite?" answered.
 **Convention:** Q1-Q16 are open questions for the next session — things unresolved, decisions pending, gates not yet crossed. Write as many as are genuinely open (pad to 17 only if needed). Q17 is always the next action.
 
-After writing, run `handoff_rebuild(app_id={agent})` then verify with `handoff_latest(app_id={agent})`.
+After writing, run `handoff_rebuild(app_id={agent})` then verify with `handoff_latest(app_id={agent}, workspace=<repo root>)`.
 
 ---
 
