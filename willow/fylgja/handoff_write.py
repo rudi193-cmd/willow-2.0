@@ -43,13 +43,18 @@ def write_session_handoff(
     project: str = "",
     branch: str = "",
     suffix: str = "",
+    workspace: str | Path = "",
 ) -> Path:
     """
     Write a session handoff markdown file with required YAML frontmatter.
 
     body: markdown starting with '# HANDOFF:' or '# SESSION HANDOFF' — frontmatter prepended.
     """
-    project_id = (project or resolve_handoff_project() or "willow-2.0").strip()
+    project_id = (
+        project
+        or resolve_handoff_project(workspace=workspace)
+        or "willow-2.0"
+    ).strip()
     dest_dir = handoff_dir(agent)
     dest_dir.mkdir(parents=True, exist_ok=True)
     filename = next_session_filename(agent, suffix)

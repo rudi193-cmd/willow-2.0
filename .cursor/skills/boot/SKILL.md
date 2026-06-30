@@ -20,7 +20,7 @@ These run before your first turn via hooks:
 
 | Hook | What it does |
 |---|---|
-| **SessionStart** | Hardware scan · willow_status · jeles registration · dispatch subscribe · heartbeat · corpus corrections seeded from memory feedback files · stack snapshot read from SOIL · anchor written to `$WILLOW_HOME/session_anchor_{agent}.json` |
+| **SessionStart** | Hardware scan · willow_status · jeles registration · dispatch subscribe · heartbeat · corpus corrections seeded from memory feedback files · stack snapshot read from SOIL · anchor written to `$WILLOW_HOME/session_anchor_{agent}_{project}.json` (or `session_anchor_{agent}.json` when project is unknown) |
 | **prompt_submit (turn 1)** | Persona picker injected · boot guard injected · dispatch inbox injected |
 
 ---
@@ -56,6 +56,8 @@ Fallback: Read the raw file.
 **2. Local context** *(compact)*
 Agent name · repo root · current branch · staged/unstaged/untracked counts · one-line diff note.
 No full patch. No full diffs.
+
+> **IDE folder.** Open the **git repo root** (e.g. `climate-almanac/`), not a parent folder like `~/github/` — project scoping, anchors, and `handoff_latest(workspace=…)` all key off that path.
 
 > **Clocks.** All Willow artifacts (handoff filenames, DB timestamps) are **UTC**;
 > the harness reports "today" in **local** time. Between ~18:00 local and midnight
@@ -265,7 +267,7 @@ Q17: {next single bite — one sentence, no preamble}
 **Required:** Q17 line must be `Q17: <text>` — no question mark in the key, colon-delimited, no preamble. Q17 is always "What is the next single bite?" answered.
 **Convention:** Q1-Q16 are open questions for the next session — things unresolved, decisions pending, gates not yet crossed. Write as many as are genuinely open (pad to 17 only if needed). Q17 is always the next action.
 
-After writing, run `handoff_rebuild(app_id={agent})` then verify with `handoff_latest(app_id={agent})`.
+After writing, run `handoff_rebuild(app_id={agent})` then verify with `handoff_latest(app_id={agent}, workspace=<repo root>)`.
 
 ---
 

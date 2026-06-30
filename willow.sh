@@ -261,53 +261,8 @@ print(json.dumps(result, indent=2))
         ;;
 
     handoff_latest)
-        HANDOFF_AGENT="${2:-${WILLOW_AGENT_NAME}}"
-        HANDOFF_AGENT="${HANDOFF_AGENT}" "${WILLOW_PYTHON}" -c "
-import json, os, sqlite3, sys
-from pathlib import Path
-from sap.handoff_index import select_latest_handoff
-
-agent = os.environ.get('HANDOFF_AGENT', '')
-from sap.handoff_paths import handoff_db_path, handoffs_root
-handoff_db = Path(os.environ.get('WILLOW_HANDOFF_DB', str(handoff_db_path(agent))))
-if not handoff_db.exists():
-    candidates = sorted(
-        handoffs_root().glob('*/handoffs.db'),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
-    )
-    if candidates:
-        handoff_db = candidates[0]
-if not handoff_db.exists():
-    print(json.dumps({'error': 'handoffs.db not found. Run handoff_rebuild first.'}, indent=2))
-    raise SystemExit(1)
-
-conn = sqlite3.connect(handoff_db)
-conn.row_factory = sqlite3.Row
-from sap.handoff_index import handoff_select_sql
-base_sql = handoff_select_sql(conn)
-where_agent = ' WHERE h.file_type = ' + repr('session') + ' AND f.filename LIKE ?'
-where_any   = ' WHERE h.file_type = ' + repr('session')
-rows = conn.execute(base_sql + where_agent, (f'%{agent}%',)).fetchall() if agent else []
-if not rows:
-    rows = conn.execute(base_sql + where_any).fetchall()
-conn.close()
-row = select_latest_handoff(rows)
-
-if not row:
-    print(json.dumps({'error': 'No session handoffs found.'}, indent=2))
-    raise SystemExit(1)
-
-print(json.dumps({
-    'filename': row['filename'],
-    'date': row['handoff_date'],
-    'summary': row['summary'],
-    'open_threads': json.loads(row['open_threads']) if row['open_threads'] else [],
-    'questions': json.loads(row['questions']) if row['questions'] else [],
-    'agreements':   json.loads(row['agreements'])   if row['agreements']   else [],
-    'capabilities': json.loads(row['capabilities']) if row['capabilities'] else [],
-}, indent=2))
-"
+        shift
+        exec "${WILLOW_PYTHON}" -m sap.handoff_cli "$@"
         ;;
 
     metabolic)
@@ -1016,7 +971,7 @@ else:
         ;;
 
     *)
-        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent]|agents [list|active <id>|install <id>|check]|mcp [list|init|sync|check|audit]|project [list|sync|check]|venv [check|sync]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|w8-census|wce|bridge-cross-runtime|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
+        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent] [--project ID] [--workspace PATH]]|agents [list|active <id>|install <id>|check]|mcp [list|init|sync|check|audit]|project [list|sync|check]|venv [check|sync]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|w8-census|wce|bridge-cross-runtime|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
         exit 1
         ;;
 esac

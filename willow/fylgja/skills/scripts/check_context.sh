@@ -28,7 +28,20 @@ elif [[ -n "${WILLOW_AGENT_NAME:-}" ]]; then
 else
   AGENT="hanuman"
 fi
-SESSION_ANCHOR="${WILLOW_HOME}/session_anchor_${AGENT}.json"
+SESSION_ANCHOR="$(
+  export WILLOW_AGENT_NAME="$AGENT"
+  export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}"
+  python3 -c "
+from pathlib import Path
+import os
+from willow.fylgja.handoff_project import resolve_handoff_project, session_anchor_path
+from willow.fylgja.project_env import workspace_root
+agent = os.environ['WILLOW_AGENT_NAME']
+ws = workspace_root() or Path.cwd()
+project = resolve_handoff_project(workspace=ws)
+print(session_anchor_path(agent, project))
+" 2>/dev/null || echo "${WILLOW_HOME}/session_anchor_${AGENT}.json"
+)"
 
 # ---------------------------------------------------------------------------
 # Postgres check — takes priority over all context checks
