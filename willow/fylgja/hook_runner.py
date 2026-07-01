@@ -63,6 +63,7 @@ def _cursor_to_claude(module: str, payload: dict) -> dict:
                 "Read": "Read",
                 "Task": "Task",
                 "Edit": "Edit",
+                "StrReplace": "Edit",
             }
             mapped = tool_map.get(tool, tool)
             tool_input = payload.get("tool_input") or {}
@@ -71,6 +72,14 @@ def _cursor_to_claude(module: str, payload: dict) -> dict:
             if mapped == "Bash" and "command" not in tool_input:
                 cmd = tool_input.get("command") or payload.get("command", "")
                 tool_input = {"command": cmd}
+            # Cursor sends "path" where Claude-format events use "file_path".
+            # Without this, pre_tool guards (boot gate, hook tamper) can't see
+            # which file a Cursor Read/Write/Edit touches — the boot sentinel
+            # Write was invisible, forcing operators to seed it by hand.
+            if mapped in ("Read", "Write", "Edit") and "file_path" not in tool_input:
+                path = tool_input.get("path") or payload.get("path", "")
+                if path:
+                    tool_input = {**tool_input, "file_path": path}
             return {
                 "session_id": sid,
                 "tool_name": mapped,
