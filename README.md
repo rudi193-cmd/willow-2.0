@@ -124,6 +124,18 @@ Repo map: [`docs/ROOT_LAYOUT.md`](docs/ROOT_LAYOUT.md). Deeper architecture: [`w
 
 ---
 
+## Research & safety context
+
+Willow's multi-session memory, prompt-injection taxonomy, and fleet gates are documented for cross-org citation:
+
+- [**AI Risk Repository**](https://arxiv.org/abs/2408.12622) (MIT FutureTech) — taxonomy we map to operational controls: [`docs/outreach/ai-risk-taxonomy-mapping.md`](docs/outreach/ai-risk-taxonomy-mapping.md)
+- **Multi-session continuity** — reference for eval researchers ([METR time-horizon discussion](https://github.com/METR/eval-analysis-public/issues/40)): [`docs/outreach/multi-session-continuity-reference.md`](docs/outreach/multi-session-continuity-reference.md)
+- **Fleet Persuasion Eval sketch** — extending [FAR AI AttemptPersuadeEval](https://github.com/AlignmentResearch/AttemptPersuadeEval) to multi-agent orchestration: [`docs/outreach/fleet-persuasion-eval-sketch.md`](docs/outreach/fleet-persuasion-eval-sketch.md)
+
+Index: [`docs/outreach/README.md`](docs/outreach/README.md).
+
+---
+
 ## Requirements
 
 - Python 3.11+ (3.12 supported; CI matrix covers both)
