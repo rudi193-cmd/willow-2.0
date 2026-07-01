@@ -117,7 +117,7 @@
       "goal": 1.0,
       "stretch": 1.0,
       "tier": "smoke",
-      "refresh": "pytest",
+      "refresh": "bash scripts/smoke_scorecard.sh",
       "community_metric": "Standard software regression gate"
     }
   ]

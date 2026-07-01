@@ -122,8 +122,8 @@ Locked baseline / goal / stretch per release period. No composite Willow score.
 Refresh:
 
 ```bash
-# smoke (PR)
-pytest && python3 scripts/retrieval_gold_check.py
+# smoke (PR) — .venv-dev via scripts/smoke_scorecard.sh
+bash scripts/smoke_scorecard.sh
 
 # nightly
 python3 willow/bench/continuity/run_wce.py --tasks thread_recall,next_bite,cold_recall --agent willow

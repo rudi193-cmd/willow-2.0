@@ -58,7 +58,7 @@
   ],
   "refresh_commands": {
     "full_snapshot": "python3 willow/bench/scorecards/refresh_snapshot.py --date 2026-06-30",
-    "smoke": "pytest && python3 scripts/retrieval_gold_check.py",
+    "smoke": "bash scripts/smoke_scorecard.sh",
     "nightly": "python3 willow/bench/continuity/run_wce.py --tasks thread_recall,next_bite,cold_recall --agent willow",
     "weekly": "python3 willow/bench/locomo/path_a_locomo_pilot.py --all --semantic --top-k 20"
   }

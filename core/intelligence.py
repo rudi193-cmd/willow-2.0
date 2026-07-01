@@ -79,6 +79,9 @@ def serendipity_pass(bridge, recent_days: int = 7,
     Surface atoms from old_min_days–old_max_days ago that share keywords
     with atoms created in the last recent_days. W19SD.
     Returns list of surfaced atom dicts (max 5).
+
+    Keyword signal uses only the newest recent atom (not the full LIMIT window)
+    so a shared fleet KB does not dilute matches with stale topical noise.
     """
     now = datetime.now(timezone.utc)
     recent_cutoff = now - timedelta(days=recent_days)
@@ -98,7 +101,7 @@ def serendipity_pass(bridge, recent_days: int = 7,
         return []
 
     keywords = set()
-    for atom in recent:
+    for atom in recent[:1]:
         for field in (atom.get("title") or "", atom.get("summary") or ""):
             keywords.update(w.lower() for w in field.split() if len(w) > 4)
 
