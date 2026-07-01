@@ -120,6 +120,19 @@ Full registry: `sap/mcp_registry.json`.
 `settings.global.json`, but it must not replace this root contract with a
 machine-local symlink.
 
+### Claude Code hook wiring
+
+The PreToolUse/SessionStart/UserPromptSubmit/PostToolUse/Stop wiring that
+routes Claude Code events to `willow/fylgja/bin/fylgja-hook` lives in
+`~/.claude/settings.json` — a global, per-user file, **not** repo-tracked and
+**not** `.willow`. It is intentionally excluded from Kart's `bind_try` list
+and from agent `Read` access (the fylgja PreToolUse guard refuses to read its
+own wiring file, to prevent bypass discovery) — the same directory holds
+`.credentials.json`, so nothing in that path is reachable from inside a
+session or a Kart task. Confirmed by direct operator inspection 2026-07-01
+(issue #603). A daily host-side timer (`hook-wiring-audit.timer`, see
+`docs/SCHEDULED_JOBS.md`) re-verifies this from outside any agent session.
+
 ## What Does Not Travel Publicly
 
 - KB atoms, Jeles corpus, and session handoffs
