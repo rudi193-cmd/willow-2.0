@@ -108,7 +108,7 @@ class VitalsBar(Static):
             embed = f"embed [yellow]{pct:.1f}%[/]"
         else:
             embed = "embed [green]done[/]"
-        model = os.environ.get("WILLOW_MODEL", "claude-sonnet-4-6")
+        model = os.environ.get("WILLOW_MODEL", "claude-sonnet-5")
         self.post_message(_VitalsData(f"[dim]{model}[/]  {pg}  {embed}"))
 
     def on__vitals_data(self, event: _VitalsData) -> None:

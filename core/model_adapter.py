@@ -57,7 +57,7 @@ class OllamaAdapter(ModelAdapter):
 
 class AnthropicAdapter(ModelAdapter):
     _API_URL = "https://api.anthropic.com/v1/messages"
-    _DEFAULT_MODEL = "claude-sonnet-4-6"
+    _DEFAULT_MODEL = "claude-sonnet-5"
 
     def __init__(self, api_key: str, model: str = _DEFAULT_MODEL):
         self._key = api_key
@@ -81,7 +81,12 @@ class AnthropicAdapter(ModelAdapter):
             raise RuntimeError(f"Anthropic chat failed: {e}") from e
 
     def available_models(self) -> list[str]:
-        return ["claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"]
+        return [
+            "claude-opus-4-7",
+            "claude-sonnet-5",
+            "claude-sonnet-4-6",
+            "claude-haiku-4-5-20251001",
+        ]
 
     def health(self) -> bool:
         try:

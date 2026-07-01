@@ -72,6 +72,7 @@ def test_build_litellm_config_includes_only_enabled_providers(store, monkeypatch
     assert "yggdrasil:v9" in model_names
     assert "qwen2.5:3b" in model_names
     # Cloud models should NOT be present
+    assert "claude-sonnet-5" not in model_names
     assert "claude-sonnet-4-6" not in model_names
     assert "gpt-4o" not in model_names
 
@@ -81,6 +82,7 @@ def test_build_litellm_config_adds_cloud_when_enabled(store):
     enable_provider(store, "anthropic", api_key="sk-ant-test")
     config = build_litellm_config(store)
     model_names = [m["model_name"] for m in config["model_list"]]
+    assert "claude-sonnet-5" in model_names
     assert "claude-sonnet-4-6" in model_names
     assert "claude-haiku-4-5" in model_names
 
@@ -102,10 +104,12 @@ def test_get_active_models_returns_only_enabled(store):
     models = get_active_models(store)
     # Only ollama models by default
     assert "yggdrasil:v9" in models
+    assert "claude-sonnet-5" not in models
     assert "claude-sonnet-4-6" not in models
     # Enable anthropic and recheck
     enable_provider(store, "anthropic", api_key="sk-ant-test")
     models2 = get_active_models(store)
+    assert "claude-sonnet-5" in models2
     assert "claude-sonnet-4-6" in models2
 
 

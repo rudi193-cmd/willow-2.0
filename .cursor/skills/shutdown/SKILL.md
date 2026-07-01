@@ -44,7 +44,7 @@ Stack position: this skill is the **end-of-session persistence** layer — it ab
 
 ```
 # HANDOFF: <title>
-From: {AGENT} (Claude Code, Sonnet 4.6)
+From: {AGENT} (Claude Code, Sonnet 5)
 Session: {YYYY-MM-DDx} | Resume: claude --resume {UUID}
 
 ## What I Now Understand
