@@ -165,35 +165,93 @@ def _result(title: str, url: str, source: str, institution: str,
     }
 
 
-# ── ACADEMIC ──────────────────────────────────────────────────────────────────
+def _extract_path(obj, path: str):
+    """Walk a dotted path of dict keys (e.g. "resultList.result"). Returns None
+    if any segment is missing or the object stops being a dict along the way."""
+    cur = obj
+    for part in path.split("."):
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(part)
+    return cur
 
-def search_openalex(query: str, limit: int = 5) -> list[dict]:
-    """OpenAlex — 200M+ scholarly works. No key required."""
-    url = (
-        "https://api.openalex.org/works?search="
-        + urllib.parse.quote(query)
-        + f"&per-page={limit}&mailto=rudi193@gmail.com"
-    )
+
+def _generic_json_search(source_id: str, url_template: str, results_path: str,
+                          field_map: dict, query: str, limit: int,
+                          institution: str = "") -> list[dict]:
+    """Generic single-endpoint JSON search adapter for sources whose response is a
+    flat list of items under `results_path`.
+
+    url_template: format string with {query} (URL-quoted) and {limit} placeholders.
+    results_path: dotted path to the list of result items in the parsed JSON body.
+    field_map: {"title"|"url"|"snippet"|"date"|"id"|"institution": dotted_path_str
+        | callable(item)->str}. Any field omitted from field_map returns "" (or
+        falls back to the fixed `institution` string for that one field).
+    institution: fixed institution label, used when field_map has no per-item
+        "institution" entry (e.g. a single-institution source like NASA).
+
+    Sources with real branching logic (DOI-vs-internal-id fallbacks, nested
+    author-list flattening, multi-request lookups) can still express it via a
+    callable field_map entry — see search_openalex below. This adapter is for
+    collapsing the *dispatch/extraction* boilerplate, not for sources needing
+    a fundamentally different flow (pagination, multi-request lookups)."""
+    url = url_template.format(query=urllib.parse.quote(query), limit=limit)
     data = _get(url)
     if not data:
         return []
-    results = []
-    for item in (data.get("results") or [])[:limit]:
-        doi = item.get("doi") or ""
-        results.append(_result(
-            title=item.get("display_name", ""),
-            url=doi if doi else item.get("id", ""),
-            source="openalex",
-            institution=", ".join(
-                i.get("display_name", "")
-                for a in (item.get("authorships") or [])[:2]
-                for i in (a.get("institutions") or [])[:1]
-            ),
-            snippet=item.get("abstract", "") or "",
-            date=str(item.get("publication_year", "")),
-            rid=item.get("id", "").split("/")[-1],
-        ))
-    return results
+    items = _extract_path(data, results_path) or []
+
+    def _field(item, name: str) -> str:
+        spec = field_map.get(name)
+        if spec is None:
+            return ""
+        if callable(spec):
+            return spec(item) or ""
+        return _extract_path(item, spec) or ""
+
+    return [
+        _result(
+            title=_field(item, "title"),
+            url=_field(item, "url"),
+            source=source_id,
+            institution=_field(item, "institution") or institution,
+            snippet=_field(item, "snippet"),
+            date=_field(item, "date"),
+            rid=_field(item, "id"),
+        )
+        for item in items[:limit]
+    ]
+
+
+# ── ACADEMIC ──────────────────────────────────────────────────────────────────
+
+def _openalex_institution(item: dict) -> str:
+    return ", ".join(
+        i.get("display_name", "")
+        for a in (item.get("authorships") or [])[:2]
+        for i in (a.get("institutions") or [])[:1]
+    )
+
+
+def search_openalex(query: str, limit: int = 5) -> list[dict]:
+    """OpenAlex — 200M+ scholarly works. No key required."""
+    return _generic_json_search(
+        source_id="openalex",
+        url_template=(
+            "https://api.openalex.org/works?search={query}"
+            "&per-page={limit}&mailto=rudi193@gmail.com"
+        ),
+        results_path="results",
+        field_map={
+            "title": "display_name",
+            "url": lambda item: item.get("doi") or item.get("id", ""),
+            "institution": _openalex_institution,
+            "snippet": "abstract",
+            "date": lambda item: str(item.get("publication_year", "")),
+            "id": lambda item: item.get("id", "").split("/")[-1],
+        },
+        query=query, limit=limit,
+    )
 
 
 def search_core(query: str, limit: int = 5) -> list[dict]:
@@ -547,29 +605,20 @@ def search_usgs(query: str, limit: int = 5) -> list[dict]:
 
 def search_nasa(query: str, limit: int = 5) -> list[dict]:
     """NASA Image & Video Library. No key required."""
-    url = (
-        "https://images-api.nasa.gov/search?q="
-        + urllib.parse.quote(query)
-        + f"&page_size={limit}"
+    return _generic_json_search(
+        source_id="nasa",
+        url_template="https://images-api.nasa.gov/search?q={query}&page_size={limit}",
+        results_path="collection.items",
+        field_map={
+            "title": lambda item: (item.get("data") or [{}])[0].get("title", ""),
+            "url": lambda item: (item.get("links") or [{}])[0].get("href", ""),
+            "snippet": lambda item: (item.get("data") or [{}])[0].get("description", ""),
+            "date": lambda item: (item.get("data") or [{}])[0].get("date_created", "")[:10],
+            "id": lambda item: (item.get("data") or [{}])[0].get("nasa_id", ""),
+        },
+        institution="NASA",
+        query=query, limit=limit,
     )
-    data = _get(url)
-    if not data:
-        return []
-    items = (data.get("collection") or {}).get("items") or []
-    results = []
-    for item in items[:limit]:
-        data_block = (item.get("data") or [{}])[0]
-        links = item.get("links") or [{}]
-        results.append(_result(
-            title=data_block.get("title", ""),
-            url=links[0].get("href", "") if links else "",
-            source="nasa",
-            institution="NASA",
-            snippet=data_block.get("description", ""),
-            date=data_block.get("date_created", "")[:10],
-            rid=data_block.get("nasa_id", ""),
-        ))
-    return results
 
 
 # ── MUSEUMS ───────────────────────────────────────────────────────────────────
