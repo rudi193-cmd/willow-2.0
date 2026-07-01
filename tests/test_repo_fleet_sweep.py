@@ -37,3 +37,49 @@ def test_branch_litter_threshold(tmp_path):
         subprocess.run(["git", "-C", str(tmp_path / "gamma"), "branch", f"b{i}"], check=True)
     s = survey_repo(tmp_path / "gamma", branch_limit=2)
     assert any("branch litter" in f for f in s["findings"])
+
+
+def _commit(repo: Path, name: str, msg: str) -> None:
+    (repo / name).write_text("x\n")
+    subprocess.run(["git", "-C", str(repo), "add", name], check=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.email=t@t", "-c", "user.name=t",
+                    "commit", "-q", "-m", msg], check=True)
+
+
+def _wt_add(repo: Path, wt_path: Path, branch: str, base: str = "master") -> None:
+    subprocess.run(["git", "-C", str(repo), "worktree", "add", "-q", "-b", branch,
+                    str(wt_path), base], check=True)
+
+
+def test_merged_clean_worktree_is_flagged(tmp_path):
+    repo = tmp_path / "delta"
+    _mk_repo(repo)
+    wt = tmp_path / "delta-wt"
+    _wt_add(repo, wt, "feature-merged")
+    _commit(wt, "f.txt", "feat")
+    subprocess.run(["git", "-C", str(repo), "merge", "-q", "feature-merged"], check=True)
+
+    s = survey_repo(repo, branch_limit=15)
+    assert any("merged worktree" in f and "feature-merged" in f for f in s["findings"])
+
+
+def test_unmerged_worktree_not_flagged(tmp_path):
+    repo = tmp_path / "epsilon"
+    _mk_repo(repo)
+    wt = tmp_path / "epsilon-wt"
+    _wt_add(repo, wt, "feature-open")
+    _commit(wt, "f.txt", "feat")  # committed but NOT merged into master
+
+    s = survey_repo(repo, branch_limit=15)
+    assert not any("merged worktree" in f for f in s["findings"])
+
+
+def test_dirty_merged_worktree_not_flagged(tmp_path):
+    repo = tmp_path / "zeta"
+    _mk_repo(repo)
+    wt = tmp_path / "zeta-wt"
+    _wt_add(repo, wt, "feature-dirty")  # fully in master (fast-forward-equal)
+    (wt / "wip.txt").write_text("uncommitted\n")  # dirty → must not be flagged
+
+    s = survey_repo(repo, branch_limit=15)
+    assert not any("merged worktree" in f for f in s["findings"])
