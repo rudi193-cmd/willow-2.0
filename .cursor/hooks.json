@@ -25,6 +25,19 @@
         "timeout": 5
       }
     ],
+    "preToolUse": [
+      {
+        "matcher": "Read|Write|Task",
+        "command": "./willow/fylgja/bin/fylgja-hook cursor pre_tool",
+        "timeout": 5
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": "./willow/fylgja/bin/fylgja-hook cursor pre_tool",
+        "timeout": 5
+      }
+    ],
     "stop": [
       {
         "command": "./willow/fylgja/bin/fylgja-hook cursor stop",
