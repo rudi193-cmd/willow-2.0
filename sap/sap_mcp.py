@@ -1764,6 +1764,15 @@ async def agent_task_submit(
         "[w2] agent_task_submit app_id=%s agent=%s allow_net=%s allow_localhost=%s",
         app_id, agent, allow_net, allow_localhost,
     )
+    from core.boot_gate import is_booted
+    if not is_booted():
+        return {
+            "error": (
+                "Boot sentinel absent for this session. Complete /boot "
+                "before submitting Kart tasks — the PreToolUse boot gate "
+                "does not fire for MCP tool calls, so this check runs here."
+            ),
+        }
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
