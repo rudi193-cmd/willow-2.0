@@ -165,35 +165,93 @@ def _result(title: str, url: str, source: str, institution: str,
     }
 
 
-# ── ACADEMIC ──────────────────────────────────────────────────────────────────
+def _extract_path(obj, path: str):
+    """Walk a dotted path of dict keys (e.g. "resultList.result"). Returns None
+    if any segment is missing or the object stops being a dict along the way."""
+    cur = obj
+    for part in path.split("."):
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(part)
+    return cur
 
-def search_openalex(query: str, limit: int = 5) -> list[dict]:
-    """OpenAlex — 200M+ scholarly works. No key required."""
-    url = (
-        "https://api.openalex.org/works?search="
-        + urllib.parse.quote(query)
-        + f"&per-page={limit}&mailto=rudi193@gmail.com"
-    )
+
+def _generic_json_search(source_id: str, url_template: str, results_path: str,
+                          field_map: dict, query: str, limit: int,
+                          institution: str = "") -> list[dict]:
+    """Generic single-endpoint JSON search adapter for sources whose response is a
+    flat list of items under `results_path`.
+
+    url_template: format string with {query} (URL-quoted) and {limit} placeholders.
+    results_path: dotted path to the list of result items in the parsed JSON body.
+    field_map: {"title"|"url"|"snippet"|"date"|"id"|"institution": dotted_path_str
+        | callable(item)->str}. Any field omitted from field_map returns "" (or
+        falls back to the fixed `institution` string for that one field).
+    institution: fixed institution label, used when field_map has no per-item
+        "institution" entry (e.g. a single-institution source like NASA).
+
+    Sources with real branching logic (DOI-vs-internal-id fallbacks, nested
+    author-list flattening, multi-request lookups) can still express it via a
+    callable field_map entry — see search_openalex below. This adapter is for
+    collapsing the *dispatch/extraction* boilerplate, not for sources needing
+    a fundamentally different flow (pagination, multi-request lookups)."""
+    url = url_template.format(query=urllib.parse.quote(query), limit=limit)
     data = _get(url)
     if not data:
         return []
-    results = []
-    for item in (data.get("results") or [])[:limit]:
-        doi = item.get("doi") or ""
-        results.append(_result(
-            title=item.get("display_name", ""),
-            url=doi if doi else item.get("id", ""),
-            source="openalex",
-            institution=", ".join(
-                i.get("display_name", "")
-                for a in (item.get("authorships") or [])[:2]
-                for i in (a.get("institutions") or [])[:1]
-            ),
-            snippet=item.get("abstract", "") or "",
-            date=str(item.get("publication_year", "")),
-            rid=item.get("id", "").split("/")[-1],
-        ))
-    return results
+    items = _extract_path(data, results_path) or []
+
+    def _field(item, name: str) -> str:
+        spec = field_map.get(name)
+        if spec is None:
+            return ""
+        if callable(spec):
+            return spec(item) or ""
+        return _extract_path(item, spec) or ""
+
+    return [
+        _result(
+            title=_field(item, "title"),
+            url=_field(item, "url"),
+            source=source_id,
+            institution=_field(item, "institution") or institution,
+            snippet=_field(item, "snippet"),
+            date=_field(item, "date"),
+            rid=_field(item, "id"),
+        )
+        for item in items[:limit]
+    ]
+
+
+# ── ACADEMIC ──────────────────────────────────────────────────────────────────
+
+def _openalex_institution(item: dict) -> str:
+    return ", ".join(
+        i.get("display_name", "")
+        for a in (item.get("authorships") or [])[:2]
+        for i in (a.get("institutions") or [])[:1]
+    )
+
+
+def search_openalex(query: str, limit: int = 5) -> list[dict]:
+    """OpenAlex — 200M+ scholarly works. No key required."""
+    return _generic_json_search(
+        source_id="openalex",
+        url_template=(
+            "https://api.openalex.org/works?search={query}"
+            "&per-page={limit}&mailto=rudi193@gmail.com"
+        ),
+        results_path="results",
+        field_map={
+            "title": "display_name",
+            "url": lambda item: item.get("doi") or item.get("id", ""),
+            "institution": _openalex_institution,
+            "snippet": "abstract",
+            "date": lambda item: str(item.get("publication_year", "")),
+            "id": lambda item: item.get("id", "").split("/")[-1],
+        },
+        query=query, limit=limit,
+    )
 
 
 def search_core(query: str, limit: int = 5) -> list[dict]:
@@ -547,29 +605,20 @@ def search_usgs(query: str, limit: int = 5) -> list[dict]:
 
 def search_nasa(query: str, limit: int = 5) -> list[dict]:
     """NASA Image & Video Library. No key required."""
-    url = (
-        "https://images-api.nasa.gov/search?q="
-        + urllib.parse.quote(query)
-        + f"&page_size={limit}"
+    return _generic_json_search(
+        source_id="nasa",
+        url_template="https://images-api.nasa.gov/search?q={query}&page_size={limit}",
+        results_path="collection.items",
+        field_map={
+            "title": lambda item: (item.get("data") or [{}])[0].get("title", ""),
+            "url": lambda item: (item.get("links") or [{}])[0].get("href", ""),
+            "snippet": lambda item: (item.get("data") or [{}])[0].get("description", ""),
+            "date": lambda item: (item.get("data") or [{}])[0].get("date_created", "")[:10],
+            "id": lambda item: (item.get("data") or [{}])[0].get("nasa_id", ""),
+        },
+        institution="NASA",
+        query=query, limit=limit,
     )
-    data = _get(url)
-    if not data:
-        return []
-    items = (data.get("collection") or {}).get("items") or []
-    results = []
-    for item in items[:limit]:
-        data_block = (item.get("data") or [{}])[0]
-        links = item.get("links") or [{}]
-        results.append(_result(
-            title=data_block.get("title", ""),
-            url=links[0].get("href", "") if links else "",
-            source="nasa",
-            institution="NASA",
-            snippet=data_block.get("description", ""),
-            date=data_block.get("date_created", "")[:10],
-            rid=data_block.get("nasa_id", ""),
-        ))
-    return results
 
 
 # ── MUSEUMS ───────────────────────────────────────────────────────────────────
@@ -3248,6 +3297,48 @@ def list_sources() -> list[dict]:
     ]
 
 
+def _rerank_combined(query: str, out: dict[str, list], top_n: int = 15) -> list[dict]:
+    """Cross-source rerank of jeles hits via the same RRF fusion the main KB uses
+    (willow/ranking/hybrid.py._rrf_fuse, k=60) — a lexical BM25 leg plus a cosine
+    leg over the local embedding model, fused rather than sorted by cosine alone.
+    Degrades to lexical-only when the embedder is unreachable (same graceful-degrade
+    pattern hybrid.py already uses for KB search)."""
+    from willow.ranking.hybrid import _tokenize, _build_bm25, _rrf_fuse
+
+    flat: list[dict] = []
+    for sid, hits in out.items():
+        for hit in hits:
+            row = dict(hit)
+            row["source"] = row.get("source") or sid
+            row["id"] = row.get("id") or f"{sid}:{hash((row.get('url'), row.get('title')))}"
+            flat.append(row)
+    if not flat:
+        return []
+
+    # Shape as {"title", "summary"} so hybrid.py's _row_text/_build_bm25 apply unmodified.
+    bm25_rows = [{"title": r.get("title", ""), "summary": r.get("snippet", "")} for r in flat]
+    bm25 = _build_bm25(bm25_rows)
+    query_tokens = _tokenize(query)
+    lexical_scores = bm25.get_scores(query_tokens)
+    lexical_ranked = [flat[i] for i in sorted(
+        range(len(flat)), key=lambda i: lexical_scores[i], reverse=True,
+    )]
+
+    ranked_lists = [lexical_ranked]
+    q_vec = _get_embedding(query)
+    if q_vec:
+        cosine_ranked = []
+        for row in flat:
+            v = _get_embedding(f"{row.get('title', '')} {row.get('snippet', '')}")
+            sim = _cosine(q_vec, v) if v else 0.0
+            cosine_ranked.append({**row, "_cosine_sim": sim})
+        cosine_ranked.sort(key=lambda r: -r["_cosine_sim"])
+        ranked_lists.append(cosine_ranked)
+
+    fused = _rrf_fuse(ranked_lists, weight_col=False)
+    return fused[:top_n]
+
+
 def search(
     query: str,
     sources: list[str] | None = None,
@@ -3255,18 +3346,27 @@ def search(
     wall_clock_limit: float = 20.0,
 ) -> dict:
     """Search across trusted sources. DB-registry dispatch via fn_name strings.
-    sources=None → all non-opt-in sources. Pass a list to target specific ones.
+    sources=None → auto-routed via route_sources_semantic() to the ~6 sources
+    whose domain best matches the query (falls back to all non-opt-in sources
+    only if routing is unavailable). Pass a list to target specific ones and
+    bypass routing entirely.
 
     Concurrent: up to 16 sources run in parallel via _SEARCH_EXECUTOR (module-level,
     shared across MCP calls). wall_clock_limit caps total wait time; per-source urllib
     timeout (_TIMEOUT) handles individual hangs. Sources not done within
-    wall_clock_limit are dropped."""
+    wall_clock_limit are dropped.
+
+    Results carry a cross-source `ranked` list (RRF-fused, see _rerank_combined)
+    in addition to the per-source `results` dict."""
     registry = _load_registry()
     if sources:
         active = sources
+        routed = False
     else:
-        active = [sid for sid, cfg in registry.items()
-                  if not cfg.get("opt_in") and cfg.get("enabled", True)]
+        # route_sources_semantic() always returns a non-empty list (falls back to
+        # _DEFAULT_SOURCES as its own last resort), so this always narrows the fan-out.
+        active = route_sources_semantic(query)
+        routed = True
 
     resolved: list[tuple[str, object]] = []
     for sid in active:
@@ -3306,12 +3406,15 @@ def search(
         )
 
     total = sum(len(v) for v in out.values())
+    ranked = _rerank_combined(query, out) if out else []
     if out:
         _write_cache(query, out)
     return {
         "query": query,
         "sources_queried": active,
+        "routed": routed,
         "total": total,
         "results": out,
+        "ranked": ranked,
         "note": NO_WIKIPEDIA_NOTE,
     }
