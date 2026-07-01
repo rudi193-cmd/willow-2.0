@@ -30,6 +30,8 @@ from willow.fylgja.safety.security_scan import (
 AGENT = require_agent_name()
 MAX_DEPTH = int(os.environ.get("WILLOW_AGENT_MAX_DEPTH", "3"))
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
+BOOT_DONE = Path(f"/tmp/willow-boot-done-{AGENT}.flag")
+_BOOT_MD_PATH = str(Path(__file__).parent.parent / "skills" / "boot.md")
 _BLOCK_FLAG_THRESHOLD = int(os.environ.get("WILLOW_BLOCK_FLAG_THRESHOLD", "10"))
 _BASH_SESSION_THRESHOLD = int(os.environ.get("WILLOW_BASH_SESSION_THRESHOLD", "5"))
 _WARN_ESCALATE_STRIKES = int(os.environ.get("WILLOW_WARN_ESCALATE_STRIKES", "2"))
@@ -319,6 +321,22 @@ def check_bash_block(command: str) -> tuple[str, str] | None:
     return None
 
 
+def check_boot_gate(tool_name: str, tool_input: dict) -> str | None:
+    """Block every tool call until the boot sentinel exists, except reading boot.md
+    itself and writing the sentinel file. Real enforcement (decision:block) —
+    replaces the old advisory-only print in prompt_submit.py's _boot_guard."""
+    if BOOT_DONE.exists():
+        return None
+    if tool_name == "Read" and str(tool_input.get("file_path", "")) == _BOOT_MD_PATH:
+        return None
+    if tool_name == "Write" and str(tool_input.get("file_path", "")) == str(BOOT_DONE):
+        return None
+    return (
+        f"Boot sentinel absent for this session. Read {_BOOT_MD_PATH}, complete the "
+        f"steps there, then write {BOOT_DONE} to clear this gate."
+    )
+
+
 def check_agent_block(subagent_type: str) -> str | None:
     if subagent_type == "Explore":
         return ("Explore subagent is blocked. Use MCP: soil_search, kb_search, "
@@ -601,6 +619,11 @@ def main():
     if mai_block:
         _corpus_log_block(tool_name, mai_block, session_id)
         print(json.dumps({"decision": "block", "reason": mai_block}))
+        sys.exit(0)
+
+    boot_block = check_boot_gate(tool_name, tool_input)
+    if boot_block:
+        print(json.dumps({"decision": "block", "reason": boot_block}))
         sys.exit(0)
 
     # Safety gate — runs before all other checks

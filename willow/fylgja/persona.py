@@ -555,12 +555,9 @@ def prompt_submit_block(*, is_first: bool, prompt: str) -> str:
             personas, _ = get_personas()
             label = personas.get(active, {}).get("label", active.capitalize()) if active else "None"
             parts.append(
-                "[PERSONA-GATE] No persona confirmed this turn.\n"
-                "[PERSONA-GATE] Show ONLY the fenced picker block above. "
-                "Do NOT write a boot report. Do NOT start any work.\n"
-                f"[PERSONA-GATE] End your reply with exactly: "
-                f"\"Active: **{label}** — reply with a number to switch, or say **go** to continue.\"\n"
-                "[PERSONA-GATE] Wait for the user's next message before proceeding."
+                f"[PERSONA] No persona confirmed this session yet. Currently active: {label}. "
+                "Picker is shown above for the user to switch or confirm; this is "
+                "advisory state, not a directive — respond to the user's actual request."
             )
             return "\n".join(parts)
     elif active:

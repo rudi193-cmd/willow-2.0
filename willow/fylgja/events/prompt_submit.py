@@ -411,19 +411,25 @@ def _run_corpus_capture(prompt: str, session_id: str) -> None:
 
 
 def _boot_guard() -> None:
-    """First turn only: gate on boot sentinel. If absent, direct agent to Read boot.md and execute."""
+    """First turn only: informational note when boot sentinel is absent.
+
+    This is advisory context, not enforcement — Claude Code only treats a
+    hook's structured {"decision": "block"} JSON as binding, plain stdout is
+    just added as background context the agent is free to weigh. The actual
+    gate lives in events/pre_tool.py's check_boot_gate(), which blocks every
+    tool call except reading boot.md and writing the sentinel until boot
+    completes. Keep this note purely descriptive — imperative "STOP/MUST"
+    phrasing here is indistinguishable from a prompt-injection attempt and
+    agents correctly refuse to treat it as authoritative.
+    """
     if not is_first_turn():
         return
     if BOOT_DONE.exists():
         return
     boot_path = str(Path(__file__).parent.parent / "skills" / "boot.md")
     print(
-        "[BOOT-REQUIRED] Boot sentinel absent — this session has NOT been booted.\n"
-        "[BOOT-REQUIRED] STOP. Do NOT emit any text. Do NOT call any other tool.\n"
-        f"[BOOT-REQUIRED] Your FIRST tool call must be: Read(file_path='{boot_path}') then execute all 14 steps.\n"
-        "[BOOT-REQUIRED] Write the boot sentinel when complete.\n"
-        "[BOOT-REQUIRED] Until boot completes, no response to the user is permitted.\n"
-        "[BOOT-REQUIRED] Answering before boot completes is a protocol violation."
+        f"[BOOT] Boot sentinel absent for this session. Boot guide: {boot_path}. "
+        f"Tool calls are gated (see PreToolUse) until {BOOT_DONE} is written."
     )
 
 
