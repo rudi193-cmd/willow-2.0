@@ -529,14 +529,15 @@ def _run_persona(prompt: str) -> None:
 
 
 def _run_build_continue() -> None:
+    # UserPromptSubmit can't emit a binding decision, and the thing this used to
+    # command ("don't stop to report status") is the agent choosing to end a
+    # turn with prose rather than a tool call — PreToolUse has no next tool
+    # call to intercept in that case, so there's no enforcement path here.
+    # Keep it purely descriptive; the agent decides how to weigh it.
     task = get_active_task()
     if not task:
         return
-    print(
-        f"[BUILD-CONTINUE] Active work in progress: {task[:120]}\n"
-        f"[BUILD-CONTINUE] Keep building. Do not stop to report status or ask for direction.\n"
-        f"[BUILD-CONTINUE] Only pause if blocked or if [user] asks a question."
-    )
+    print(f"[BUILD-CONTINUE] Active work in progress: {task[:120]}")
 
 
 def _check_identity() -> None:
