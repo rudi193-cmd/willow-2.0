@@ -1,4 +1,5 @@
 import json
+import time
 from unittest.mock import patch
 from willow.fylgja.events.pre_tool import (
     check_bash_block,
@@ -514,9 +515,6 @@ def test_web_fetch_pre_tool_blocks():
 
 
 # ── Boot gate + Kart reuse (salvaged from #597) ────────────────────────────────
-
-import time
-import willow.fylgja.events.pre_tool as _pt
 
 
 def test_boot_gate_blocks_without_sentinel(tmp_path, monkeypatch):
