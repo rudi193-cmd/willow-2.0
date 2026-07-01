@@ -72,6 +72,7 @@
     "{{HOME}}/github/quiet-corner",
     "{{HOME}}/github/community",
     "{{HOME}}/github/jeles-remote",
+    "{{HOME}}/.fly",
     "{{HOME}}/.willow-venv",
     "{{WILLOW_ROOT}}/.venv-dev",
     "{{HOME}}/.gitconfig",
@@ -99,8 +100,7 @@
     "{{HOME}}/SAFE",
     "{{HOME}}/safe-app-store",
     "{{HOME}}/.kaggle",
-    "/media/willow",
-    "{{HOME}}/.fly"
+    "/media/willow"
   ],
   "worktree_scan_roots": [
     "{{WILLOW_ROOT}}/worktrees"
