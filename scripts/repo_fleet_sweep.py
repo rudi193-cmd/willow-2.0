@@ -9,6 +9,7 @@ read-only sweep that found the five fleet-wide patterns:
 3. tracked-but-dirty runtime state (permanent dirt)
 4. branch litter / stash↔atom parity
 5. upstream clones with no upstream tracking
+6. merged-but-present linked worktrees (clean + fully in default branch → reapable)
 
 Read-only by design: reports and (optionally) raises SOIL flags. It never
 fetches, pulls, deletes branches, or drops stashes (Tier 3: no autonomous
@@ -40,6 +41,80 @@ def _git(repo: Path, *args: str) -> str:
         capture_output=True, text=True, timeout=30,
     )
     return proc.stdout.strip() if proc.returncode == 0 else ""
+
+
+def _git_ok(repo: Path, *args: str) -> bool:
+    """Run a git command for its exit status only (no stdout captured)."""
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        capture_output=True, timeout=30,
+    ).returncode == 0
+
+
+def _default_branch(repo: Path) -> str | None:
+    """The repo's integration branch — 'master' or 'main', whichever exists."""
+    for b in ("master", "main"):
+        if _git_ok(repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{b}"):
+            return b
+    return None
+
+
+def worktree_findings(repo: Path) -> list[str]:
+    """Merged-but-present linked worktrees: clean AND fully contained in the
+    default branch → safe to reap.
+
+    A worktree is flagged only when all of these hold, so the operator can act
+    on the report without re-verifying:
+      - it is a linked worktree, not the primary checkout,
+      - it tracks a real branch (detached HEADs are left for a human),
+      - its working tree is clean (any uncommitted work → never flagged),
+      - its HEAD is an ancestor of the default branch (fully merged).
+
+    Read-only (Tier 3: report, never delete). Local refs only — the sweep does
+    not fetch, so 'merged' means merged into the *local* default branch, which
+    is safe against false positives (a not-yet-merged tip is never an ancestor).
+    """
+    porcelain = _git(repo, "worktree", "list", "--porcelain")
+    if not porcelain:
+        return []
+    default = _default_branch(repo)
+    if not default:
+        return []
+
+    blocks: list[dict[str, str]] = []
+    cur: dict[str, str] = {}
+    for line in porcelain.splitlines():
+        if not line.strip():
+            if cur:
+                blocks.append(cur)
+                cur = {}
+            continue
+        key, _, val = line.partition(" ")
+        cur[key] = val
+    if cur:
+        blocks.append(cur)
+
+    findings: list[str] = []
+    for blk in blocks:
+        wt = blk.get("worktree", "")
+        if not wt or "bare" in blk or "detached" in blk:
+            continue
+        wt_path = Path(wt)
+        if wt_path.resolve() == repo.resolve():
+            continue  # the primary checkout is never a leftover
+        head = blk.get("HEAD", "")
+        branch = blk.get("branch", "").replace("refs/heads/", "")
+        if not head or not branch or branch == default:
+            continue
+        if _git(wt_path, "status", "--porcelain"):
+            continue  # uncommitted work — never flag
+        if _git_ok(repo, "merge-base", "--is-ancestor", head, default):
+            findings.append(
+                f"merged worktree {wt_path.name!r} (branch {branch!r}) is clean and "
+                f"fully in {default} — reap: git worktree remove {wt} "
+                f"&& git branch -d {branch}"
+            )
+    return findings
 
 
 def find_repos(root: Path) -> list[Path]:
@@ -83,6 +158,7 @@ def survey_repo(repo: Path, branch_limit: int) -> dict:
         findings.append(f"{len(dirty_tracked)} tracked files dirty (runtime state in git?)")
     if len(branches) > branch_limit:
         findings.append(f"branch litter: {len(branches)} local branches")
+    findings.extend(worktree_findings(repo))
 
     return {
         "repo": repo.name,
