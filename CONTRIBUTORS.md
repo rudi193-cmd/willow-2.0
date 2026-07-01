@@ -35,6 +35,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | feat(schema): add v1->v2 catalog migration script | [PR #16](https://github.com/almanac-data/almanac-template/pull/16) merged |
 | [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | chore: land recovery-bot commit onto main | [PR #14](https://github.com/almanac-data/almanac-template/pull/14) merged |
 | [almanac-data/.github](https://github.com/almanac-data/.github) | almanac-data | docs: list six new almanac vertical stubs on org profile | [PR #2](https://github.com/almanac-data/.github/pull/2) merged |
 | [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | feat(bot): recovery-candidate discovery via jeles-remote (#11 item 1) | [PR #13](https://github.com/almanac-data/almanac-template/pull/13) merged |
@@ -90,6 +91,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: Willow adapter for Postgres-backed knowledge store | [PR #145](https://github.com/manojmallick/sigmap/pull/145) merged |
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: native Python AST extractor for accurate signature extraction | [PR #144](https://github.com/manojmallick/sigmap/pull/144) merged |
 | [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #401](https://github.com/TensorBlock/awesome-mcp-servers/pull/401) merged |
+| [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | feat(ci): add propagate-engine workflow to auto-PR engine changes to verticals | [PR #15](https://github.com/almanac-data/almanac-template/pull/15) open |
 | [Taiko2k/Tauon](https://github.com/Taiko2k/Tauon) | Taiko2k | fix(lyrics): use OggOpus for .opus tag writes (#2135) | [PR #2209](https://github.com/Taiko2k/Tauon/pull/2209) open |
 | [alash3al/stash](https://github.com/alash3al/stash) | alash3al | docs: clarify that curl /sse holding open is expected SSE behavior (#11) | [PR #14](https://github.com/alash3al/stash/pull/14) open |
 | [castroquiles/glapagos](https://github.com/castroquiles/glapagos) | castroquiles | feat(api): export committed OpenAPI spec and cover the API (#13) | [PR #20](https://github.com/castroquiles/glapagos/pull/20) open |
