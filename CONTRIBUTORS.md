@@ -35,6 +35,10 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | chore: land recovery-bot commit onto main | [PR #14](https://github.com/almanac-data/almanac-template/pull/14) merged |
+| [almanac-data/.github](https://github.com/almanac-data/.github) | almanac-data | docs: list six new almanac vertical stubs on org profile | [PR #2](https://github.com/almanac-data/.github/pull/2) merged |
+| [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | feat(bot): recovery-candidate discovery via jeles-remote (#11 item 1) | [PR #13](https://github.com/almanac-data/almanac-template/pull/13) merged |
+| [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | feat(schema): adopt catalog-entry v2 as canonical schema | [PR #12](https://github.com/almanac-data/almanac-template/pull/12) merged |
 | [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | feat(schema): add catalog-entry v2 JSON Schema + gitignore .cursor overlay | [PR #9](https://github.com/almanac-data/almanac-template/pull/9) merged |
 | [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | docs(schema): add catalog-entry v2 rationale (SCHEMA-V2.md) | [PR #8](https://github.com/almanac-data/almanac-template/pull/8) merged |
 | [almanac-data/.github](https://github.com/almanac-data/.github) | almanac-data | docs: agent guide and fleet overlay gitignore | [PR #1](https://github.com/almanac-data/.github/pull/1) merged |
