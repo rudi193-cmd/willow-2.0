@@ -33,6 +33,11 @@ _SYSTEM_SOURCE_TYPES = frozenset({
 _SYSTEM_PROJECTS = frozenset({"global"})
 
 
+def _ensure_pg(bridge) -> None:
+    """Refresh pooled connection before raw cursor use in intelligence passes."""
+    bridge._ensure_conn()
+
+
 # ── W19DR — Draugr ────────────────────────────────────────────────────────────
 
 def draugr_scan(bridge, days: int = 60) -> list:
@@ -41,6 +46,7 @@ def draugr_scan(bridge, days: int = 60) -> list:
     Ignores system source types (community, dark matter, etc).
     Returns list of atom IDs. W19DR.
     """
+    _ensure_pg(bridge)
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     with bridge.conn.cursor() as cur:
         cur.execute("""
@@ -59,6 +65,7 @@ def draugr_mark(bridge, atom_ids: list) -> int:
     System source types (community_detection, dark_matter, etc.) are never marked."""
     if not atom_ids:
         return 0
+    _ensure_pg(bridge)
     with bridge.conn.cursor() as cur:
         cur.execute(
             "UPDATE knowledge SET category = 'draugr' "
@@ -84,6 +91,7 @@ def serendipity_pass(bridge, recent_days: int = 7,
     Keyword signal uses only the newest recent atom (not the full LIMIT window)
     so a shared fleet KB does not dilute matches with stale topical noise.
     """
+    _ensure_pg(bridge)
     now = datetime.now(timezone.utc)
     recent_cutoff = now - timedelta(days=recent_days)
     old_min = now - timedelta(days=old_max_days)
@@ -111,6 +119,7 @@ def serendipity_pass(bridge, recent_days: int = 7,
 
     surfaced, seen = [], set()
     for kw in sorted(keywords)[:20]:
+        _ensure_pg(bridge)
         with bridge.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
                 SELECT * FROM knowledge
@@ -180,6 +189,7 @@ def dark_matter_pass(bridge, min_overlap: int = 3, limit: int = 100) -> int:
     Writes source_type='dark_matter' atoms to project='dark_matter'. W19DM.
     Returns count of atoms written.
     """
+    _ensure_pg(bridge)
     with bridge.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("""
             SELECT id, project, title, summary FROM knowledge
@@ -234,6 +244,7 @@ def revelation_pass(bridge, min_overlap: int = 3) -> int:
     Writes source_type='revelation' atoms to project='revelation'.
     Returns count of revelation atoms written.
     """
+    _ensure_pg(bridge)
     with bridge.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("""
             SELECT id, project, title, summary FROM knowledge
@@ -286,6 +297,7 @@ def mirror_pass(bridge) -> int:
     Requires >= 3 community nodes. Writes source_type='mirror'.
     Returns 1 if mirror atom written, 0 otherwise.
     """
+    _ensure_pg(bridge)
     with bridge.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("""
             SELECT id, project, title, summary FROM knowledge
@@ -309,6 +321,7 @@ def mycorrhizal_pass(bridge, sparse_threshold: int = 5) -> int:
     Projects with < sparse_threshold atoms receive nutrients from richer neighbors. W19MC.
     Returns count of mycorrhizal atoms written.
     """
+    _ensure_pg(bridge)
     with bridge.conn.cursor() as cur:
         cur.execute("""
             SELECT project, COUNT(*) AS cnt FROM knowledge
@@ -322,6 +335,7 @@ def mycorrhizal_pass(bridge, sparse_threshold: int = 5) -> int:
     if not sparse_projects:
         return 0
 
+    _ensure_pg(bridge)
     with bridge.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("""
             SELECT id, project, title, summary FROM knowledge

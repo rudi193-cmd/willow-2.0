@@ -94,12 +94,23 @@ def test_get_connection_success_resets_breaker(monkeypatch):
     pg_bridge._cb_record_failure()
     assert pg_bridge.cb_state()["recent_failures"] == 2
 
-    sentinel = object()
-    monkeypatch.setattr(pg_bridge, "_get_pool", lambda: _FakePool(sentinel))
+    alive = _AliveConn()
+    monkeypatch.setattr(pg_bridge, "_get_pool", lambda: _FakePool(alive))
 
     conn = pg_bridge.get_connection()
-    assert conn is sentinel
+    assert conn is alive
     assert pg_bridge.cb_state()["recent_failures"] == 0
+
+
+def test_get_connection_discards_stale_pool_checkout(monkeypatch):
+    """Dead pooled connections are discarded instead of handed to callers."""
+    alive = _AliveConn()
+    pool = _StaleThenAlivePool(_StaleConn(), alive)
+    monkeypatch.setattr(pg_bridge, "_get_pool", lambda: pool)
+
+    conn = pg_bridge.get_connection()
+    assert conn is alive
+    assert pool.discarded == 1
 
 
 def test_get_connection_falls_back_to_direct_connect(monkeypatch):
@@ -145,12 +156,64 @@ def test_repeated_connect_failures_trip_the_breaker(monkeypatch):
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+class _AliveConn:
+    """Minimal stand-in that passes pg_bridge._connection_alive()."""
+
+    closed = 0
+
+    class info:
+        transaction_status = 0
+
+    def rollback(self):
+        pass
+
+    def cursor(self):
+        return _AliveCursor()
+
+
+class _AliveCursor:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        pass
+
+    def execute(self, _sql):
+        pass
+
+
+class _StaleConn:
+    closed = 1
+
+    class info:
+        transaction_status = 0
+
+
 class _FakePool:
     def __init__(self, conn):
         self._conn = conn
 
     def getconn(self):
         return self._conn
+
+    def putconn(self, conn, close=False):
+        pass
+
+
+class _StaleThenAlivePool:
+    def __init__(self, stale, alive):
+        self._stale = stale
+        self._alive = alive
+        self.discarded = 0
+
+    def getconn(self):
+        if self.discarded == 0:
+            return self._stale
+        return self._alive
+
+    def putconn(self, conn, close=False):
+        if close:
+            self.discarded += 1
 
 
 class _RaisingPool:

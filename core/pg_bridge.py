@@ -735,14 +735,49 @@ def _get_pool() -> "psycopg2.pool.ThreadedConnectionPool":
     return _pool
 
 
+def _connection_alive(conn: "psycopg2.connection") -> bool:
+    """True when conn accepts a trivial query (pool checkout / release guard)."""
+    if conn is None:
+        return False
+    try:
+        if conn.closed:
+            return False
+    except Exception:
+        return False
+    try:
+        if conn.info.transaction_status == 3:  # INERROR — clear before ping
+            conn.rollback()
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+        return True
+    except Exception:
+        return False
+
+
+def _discard_connection(conn: "psycopg2.connection") -> None:
+    """Remove a dead connection from the pool instead of recycling it."""
+    if conn is None:
+        return
+    try:
+        _get_pool().putconn(conn, close=True)
+    except Exception:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
 def get_connection() -> "psycopg2.connection":
     if not _cb_check():
         raise RuntimeError("pg_bridge: circuit open — Postgres is degraded, not attempting connection")
     _pool_warn_if_near_capacity()
     try:
-        conn = _get_pool().getconn()
-        _cb_reset()
-        return conn
+        for _ in range(2):
+            conn = _get_pool().getconn()
+            if _connection_alive(conn):
+                _cb_reset()
+                return conn
+            _discard_connection(conn)
     except Exception as _pool_err:
         import sys as _sys
         print(f"[pg_bridge] pool error ({_pool_err}) — direct connect fallback", file=_sys.stderr, flush=True)
@@ -753,10 +788,23 @@ def get_connection() -> "psycopg2.connection":
         except Exception as _direct_err:
             _cb_record_failure()
             raise _direct_err
+    # Pool returned two dead connections — fall back to direct connect.
+    import sys as _sys
+    print("[pg_bridge] pool checkout stale — direct connect fallback", file=_sys.stderr, flush=True)
+    try:
+        conn = _connect()
+        _cb_reset()
+        return conn
+    except Exception as _direct_err:
+        _cb_record_failure()
+        raise _direct_err
 
 
 def release_connection(conn: "psycopg2.connection") -> None:
     if conn is None:
+        return
+    if not _connection_alive(conn):
+        _discard_connection(conn)
         return
     try:
         _get_pool().putconn(conn)
@@ -862,23 +910,8 @@ class PgBridge:
         if self.conn is None or self.conn.closed:
             self.conn = get_connection()
             return
-        # Clear any aborted transaction before probing — INERROR connections
-        # pass the closed check but poison every subsequent query.
-        # Do NOT rollback INTRANS (status=2): that would destroy legitimate
-        # pending work from the caller's open transaction.
-        try:
-            if self.conn.info.transaction_status == 3:  # INERROR only
-                self.conn.rollback()
-        except Exception:
-            pass
-        try:
-            with self.conn.cursor() as _cur:
-                _cur.execute("SELECT 1")
-        except Exception:
-            try:
-                release_connection(self.conn)
-            except Exception:
-                pass
+        if not _connection_alive(self.conn):
+            _discard_connection(self.conn)
             try:
                 self.conn = get_connection()
             except Exception:
