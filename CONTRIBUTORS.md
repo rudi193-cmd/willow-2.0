@@ -35,6 +35,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | feat: archive-rot recheck for recovery[] candidates (almanac-template#11 item 2) | [PR #19](https://github.com/almanac-data/almanac-template/pull/19) merged |
 | [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | test: revert propagate-engine verification marker | [PR #18](https://github.com/almanac-data/almanac-template/pull/18) merged |
 | [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | test: verify propagate-engine fan-out (will revert) | [PR #17](https://github.com/almanac-data/almanac-template/pull/17) merged |
 | [almanac-data/transportation-almanac](https://github.com/almanac-data/transportation-almanac) | almanac-data | chore(schema): adopt v2 catalog schema + migrate entries | [PR #1](https://github.com/almanac-data/transportation-almanac/pull/1) merged |
@@ -105,6 +106,17 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: Willow adapter for Postgres-backed knowledge store | [PR #145](https://github.com/manojmallick/sigmap/pull/145) merged |
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: native Python AST extractor for accurate signature extraction | [PR #144](https://github.com/manojmallick/sigmap/pull/144) merged |
 | [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #401](https://github.com/TensorBlock/awesome-mcp-servers/pull/401) merged |
+| [almanac-data/civic-almanac](https://github.com/almanac-data/civic-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #9](https://github.com/almanac-data/civic-almanac/pull/9) open |
+| [almanac-data/economy-almanac](https://github.com/almanac-data/economy-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #9](https://github.com/almanac-data/economy-almanac/pull/9) open |
+| [almanac-data/education-almanac](https://github.com/almanac-data/education-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #3](https://github.com/almanac-data/education-almanac/pull/3) open |
+| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #42](https://github.com/almanac-data/climate-almanac/pull/42) open |
+| [almanac-data/environment-almanac](https://github.com/almanac-data/environment-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #10](https://github.com/almanac-data/environment-almanac/pull/10) open |
+| [almanac-data/energy-almanac](https://github.com/almanac-data/energy-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #3](https://github.com/almanac-data/energy-almanac/pull/3) open |
+| [almanac-data/agriculture-almanac](https://github.com/almanac-data/agriculture-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #3](https://github.com/almanac-data/agriculture-almanac/pull/3) open |
+| [almanac-data/transportation-almanac](https://github.com/almanac-data/transportation-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #3](https://github.com/almanac-data/transportation-almanac/pull/3) open |
+| [almanac-data/science-almanac](https://github.com/almanac-data/science-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #3](https://github.com/almanac-data/science-almanac/pull/3) open |
+| [almanac-data/health-almanac](https://github.com/almanac-data/health-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #11](https://github.com/almanac-data/health-almanac/pull/11) open |
+| [almanac-data/justice-almanac](https://github.com/almanac-data/justice-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #3](https://github.com/almanac-data/justice-almanac/pull/3) open |
 | [Taiko2k/Tauon](https://github.com/Taiko2k/Tauon) | Taiko2k | fix(lyrics): use OggOpus for .opus tag writes (#2135) | [PR #2209](https://github.com/Taiko2k/Tauon/pull/2209) open |
 | [alash3al/stash](https://github.com/alash3al/stash) | alash3al | docs: clarify that curl /sse holding open is expected SSE behavior (#11) | [PR #14](https://github.com/alash3al/stash/pull/14) open |
 | [castroquiles/glapagos](https://github.com/castroquiles/glapagos) | castroquiles | feat(api): export committed OpenAPI spec and cover the API (#13) | [PR #20](https://github.com/castroquiles/glapagos/pull/20) open |
