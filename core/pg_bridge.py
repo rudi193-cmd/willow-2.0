@@ -725,10 +725,16 @@ def _get_pool() -> "psycopg2.pool.ThreadedConnectionPool":
                     )
                     _schema_exists = _cur.fetchone() is not None
                 if _schema_exists:
-                    # Schema present — apply incremental migrations only (IF NOT EXISTS).
-                    run_migrations(conn)
+                    # Schema present — apply incremental migrations only when the
+                    # stored fingerprint says the _MIGRATIONS list changed; a
+                    # matching fingerprint short-circuits to one SELECT instead
+                    # of replaying ~36 idempotent DDL round-trips per process.
+                    if not migrations_current(conn):
+                        run_migrations(conn)
+                        record_migrations_applied(conn)
                 else:
                     init_schema(conn)
+                    record_migrations_applied(conn)
             except Exception as _schema_err:
                 import sys as _sys
                 print(f"[pg_bridge] init_schema error, skipping: {_schema_err}", file=_sys.stderr, flush=True)
@@ -837,6 +843,59 @@ def init_schema(conn: "psycopg2.connection") -> None:
             cur.execute(stmt)
         cur.execute(_INDEXES)
     conn.commit()
+
+
+_MIGRATIONS_FINGERPRINT = hashlib.sha256(
+    "\n".join(_MIGRATIONS).encode("utf-8")
+).hexdigest()
+
+
+def migrations_current(conn: "psycopg2.connection") -> bool:
+    """One cheap SELECT: True when the stored fingerprint matches _MIGRATIONS.
+
+    Lets _get_pool skip the full ~36-statement DDL replay that every fresh
+    process otherwise pays on its first DB touch (~15s observed per Kart task —
+    flag-pg-bridge-migrations-rerun-every-process). Any error (table missing,
+    first run) reads as stale, so migrations still run."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT migrations_hash FROM schema_migrations_state WHERE id = 1"
+            )
+            row = cur.fetchone()
+        conn.rollback()
+        return bool(row) and row[0] == _MIGRATIONS_FINGERPRINT
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return False
+
+
+def record_migrations_applied(conn: "psycopg2.connection") -> None:
+    """Persist the current _MIGRATIONS fingerprint after a successful apply."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS schema_migrations_state ("
+                " id integer PRIMARY KEY,"
+                " migrations_hash text NOT NULL,"
+                " applied_at timestamptz NOT NULL DEFAULT now())"
+            )
+            cur.execute(
+                "INSERT INTO schema_migrations_state (id, migrations_hash, applied_at)"
+                " VALUES (1, %s, now())"
+                " ON CONFLICT (id) DO UPDATE SET"
+                " migrations_hash = EXCLUDED.migrations_hash, applied_at = now()",
+                (_MIGRATIONS_FINGERPRINT,),
+            )
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
 
 def run_migrations(conn: "psycopg2.connection") -> None:

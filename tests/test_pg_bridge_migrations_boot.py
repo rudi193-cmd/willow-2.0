@@ -32,7 +32,7 @@ class _FakeCursor:
     def __init__(self, schema_exists: bool):
         self._schema_exists = schema_exists
 
-    def execute(self, sql):
+    def execute(self, sql, params=None):
         pass
 
     def fetchone(self):
@@ -136,3 +136,86 @@ def test_submit_task_logs_insert_failure(caplog, monkeypatch):
 
     assert result is None
     assert any("submit_task failed" in r.message for r in caplog.records)
+
+
+class _StatefulCursor:
+    def __init__(self, conn):
+        self._conn = conn
+        self._last = ""
+
+    def execute(self, sql, params=None):
+        self._last = sql
+        self._conn.executed.append(sql)
+
+    def fetchone(self):
+        if "information_schema.tables" in self._last:
+            return (1,)
+        if "schema_migrations_state" in self._last:
+            return (self._conn.stored_hash,) if self._conn.stored_hash else None
+        return None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+
+class _StatefulConn:
+    def __init__(self, stored_hash):
+        self.stored_hash = stored_hash
+        self.executed = []
+
+    def cursor(self, *args, **kwargs):
+        return _StatefulCursor(self)
+
+    def rollback(self):
+        pass
+
+    def commit(self):
+        pass
+
+
+class _StatefulPool:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def getconn(self):
+        return self._conn
+
+    def putconn(self, conn):
+        pass
+
+
+def _arm_pool(monkeypatch, conn):
+    import psycopg2.pool
+
+    monkeypatch.delenv("WILLOW_PG_SKIP_SCHEMA_INIT", raising=False)
+    monkeypatch.setattr(
+        psycopg2.pool, "ThreadedConnectionPool", lambda **kw: _StatefulPool(conn)
+    )
+
+
+def test_get_pool_skips_migrations_when_fingerprint_current(monkeypatch):
+    calls = {"migrations": 0}
+    monkeypatch.setattr(
+        pg_bridge, "run_migrations",
+        lambda c: calls.__setitem__("migrations", calls["migrations"] + 1),
+    )
+    conn = _StatefulConn(stored_hash=pg_bridge._MIGRATIONS_FINGERPRINT)
+    _arm_pool(monkeypatch, conn)
+    pg_bridge._get_pool()
+    assert calls["migrations"] == 0
+
+
+def test_get_pool_runs_and_records_when_fingerprint_stale(monkeypatch):
+    calls = {"migrations": 0}
+    monkeypatch.setattr(
+        pg_bridge, "run_migrations",
+        lambda c: calls.__setitem__("migrations", calls["migrations"] + 1),
+    )
+    conn = _StatefulConn(stored_hash="stale-fingerprint")
+    _arm_pool(monkeypatch, conn)
+    pg_bridge._get_pool()
+    assert calls["migrations"] == 1
+    assert any("ON CONFLICT (id) DO UPDATE" in s for s in conn.executed)
