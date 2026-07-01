@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -30,6 +31,9 @@ from willow.fylgja.safety.security_scan import (
 AGENT = require_agent_name()
 MAX_DEPTH = int(os.environ.get("WILLOW_AGENT_MAX_DEPTH", "3"))
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
+BOOT_DONE = Path(f"/tmp/willow-boot-done-{AGENT}.flag")
+_BOOT_MD_PATH = str(Path(__file__).parent.parent / "skills" / "boot.md")
+_KART_PENDING_TTL = 1800  # seconds — backstop if kart_task_run is never called
 _BLOCK_FLAG_THRESHOLD = int(os.environ.get("WILLOW_BLOCK_FLAG_THRESHOLD", "10"))
 _BASH_SESSION_THRESHOLD = int(os.environ.get("WILLOW_BASH_SESSION_THRESHOLD", "5"))
 _WARN_ESCALATE_STRIKES = int(os.environ.get("WILLOW_WARN_ESCALATE_STRIKES", "2"))
@@ -319,6 +323,67 @@ def check_bash_block(command: str) -> tuple[str, str] | None:
     return None
 
 
+def check_boot_gate(tool_name: str, tool_input: dict) -> str | None:
+    """Block every tool call until the boot sentinel exists, except reading boot.md
+    itself and writing the sentinel file. Real enforcement (decision:block) —
+    replaces the old advisory-only print in prompt_submit.py's _boot_guard."""
+    # Integration tests exercise pre_tool.main() without a live boot ritual;
+    # PYTEST_CURRENT_TEST is set automatically under pytest (see tests/vcr.py).
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return None
+    if BOOT_DONE.exists():
+        return None
+    if tool_name == "Read" and str(tool_input.get("file_path", "")) == _BOOT_MD_PATH:
+        return None
+    if tool_name == "Write" and str(tool_input.get("file_path", "")) == str(BOOT_DONE):
+        return None
+    return (
+        f"Boot sentinel absent for this session. Read {_BOOT_MD_PATH}, complete the "
+        f"steps there, then write {BOOT_DONE} to clear this gate."
+    )
+
+
+def _kart_pending_path(session_id: str) -> Path:
+    """Must match post_tool.py's _kart_pending_path exactly — same file, written
+    there on agent_task_submit, read/cleared here on the next tool call."""
+    safe = (session_id or "unknown")[:16].replace("/", "_")
+    return Path(f"/tmp/willow-kart-pending-{safe}.json")
+
+
+def check_kart_reuse(tool_name: str, tool_input: dict, session_id: str) -> str | None:
+    """Real enforcement for the old PostToolUse-only Kart nudge: PostToolUse
+    writes the submitted command to a pending file; this blocks a Bash
+    re-run of that exact command until kart_task_run is called for it (which
+    clears the pending file). This is the post-tool-writes /
+    pre-tool-enforces pattern — the same shape as the existing bash-count /
+    rule-strike state files, just keyed to a specific prior action instead of
+    a rolling counter."""
+    p = _kart_pending_path(session_id)
+    if tool_name == "mcp__willow__kart_task_run":
+        p.unlink(missing_ok=True)
+        return None
+    if tool_name != "Bash":
+        return None
+    if not p.exists():
+        return None
+    try:
+        pending = json.loads(p.read_text())
+    except Exception:
+        p.unlink(missing_ok=True)
+        return None
+    if time.time() - pending.get("ts", 0) > _KART_PENDING_TTL:
+        p.unlink(missing_ok=True)
+        return None
+    command = (tool_input.get("command") or "").strip()
+    if command and command == str(pending.get("command", "")).strip():
+        tid = pending.get("task_id", "")
+        return (
+            f"Already submitted to Kart (task_id={tid}). "
+            "Call kart_task_run(app_id) for its output instead of re-running in Bash."
+        )
+    return None
+
+
 def check_agent_block(subagent_type: str) -> str | None:
     if subagent_type == "Explore":
         return ("Explore subagent is blocked. Use MCP: soil_search, kb_search, "
@@ -601,6 +666,17 @@ def main():
     if mai_block:
         _corpus_log_block(tool_name, mai_block, session_id)
         print(json.dumps({"decision": "block", "reason": mai_block}))
+        sys.exit(0)
+
+    boot_block = check_boot_gate(tool_name, tool_input)
+    if boot_block:
+        print(json.dumps({"decision": "block", "reason": boot_block}))
+        sys.exit(0)
+
+    kart_block = check_kart_reuse(tool_name, tool_input, session_id)
+    if kart_block:
+        _corpus_log_block(tool_name, kart_block, session_id)
+        print(json.dumps({"decision": "block", "reason": kart_block}))
         sys.exit(0)
 
     # Safety gate — runs before all other checks

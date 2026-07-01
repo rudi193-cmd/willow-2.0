@@ -19,7 +19,7 @@ def _run(stdin_data: dict) -> str:
 def test_toolsearch_emits_directive():
     out = _run({"tool_name": "ToolSearch", "tool_input": {}})
     assert "TOOL-SEARCH-COMPLETE" in out
-    assert "NOW" in out
+    assert "Schema loaded" in out
 
 
 def test_other_tool_emits_nothing():
@@ -84,3 +84,43 @@ def test_store_put_failure_does_not_crash(tmp_path):
             _run({"tool_name": "Edit", "tool_input": {"file_path": "/foo/bar.py"}})
         except Exception as exc:
             pytest.fail(f"Hook raised an exception: {exc}")
+
+
+def test_task_update_writes_active_build_file(tmp_path, monkeypatch):
+    import willow.fylgja.events.post_tool as m
+    ledger = tmp_path / "ledger.json"
+    active = tmp_path / "active-build.json"
+    monkeypatch.setattr(m, "_TASK_LEDGER_FILE", ledger)
+    monkeypatch.setattr(m, "_ACTIVE_BUILD_FILE", active)
+    _run({
+        "tool_name": "TaskUpdate",
+        "tool_input": {
+            "taskId": "t1",
+            "status": "in_progress",
+            "activeForm": "fix hook enforcement",
+        },
+    })
+    assert active.is_file()
+    data = json.loads(active.read_text())
+    assert data["label"] == "fix hook enforcement"
+    _run({
+        "tool_name": "TaskUpdate",
+        "tool_input": {"taskId": "t1", "status": "completed"},
+    })
+    assert not active.exists()
+
+
+def test_agent_task_submit_records_kart_pending(tmp_path, monkeypatch):
+    import willow.fylgja.events.post_tool as m
+    pending = tmp_path / "kart-pending.json"
+    monkeypatch.setattr(m, "_kart_pending_path", lambda sid: pending)
+    _run({
+        "tool_name": "mcp__willow__agent_task_submit",
+        "tool_input": {"task": "pytest tests/ -q"},
+        "tool_response": {"task_id": "KART1"},
+        "session_id": "sess-abc",
+    })
+    assert pending.is_file()
+    data = json.loads(pending.read_text())
+    assert data["command"] == "pytest tests/ -q"
+    assert data["task_id"] == "KART1"

@@ -1,4 +1,5 @@
 import json
+import time
 from unittest.mock import patch
 from willow.fylgja.events.pre_tool import (
     check_bash_block,
@@ -511,3 +512,71 @@ def test_web_fetch_pre_tool_blocks():
     data = json.loads(out)
     assert data["decision"] == "block"
     assert "willow_web_fetch" in data["reason"] or "MCP" in data["reason"]
+
+
+# ── Boot gate + Kart reuse (salvaged from #597) ────────────────────────────────
+
+
+def test_boot_gate_blocks_without_sentinel(tmp_path, monkeypatch):
+    missing = tmp_path / "willow-boot-done-willow.flag"
+    monkeypatch.setattr(_pt, "BOOT_DONE", missing)
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    reason = _pt.check_boot_gate("Bash", {"command": "echo hi"})
+    assert reason is not None
+    assert "Boot sentinel absent" in reason
+
+
+def test_boot_gate_allows_read_boot_md(tmp_path, monkeypatch):
+    missing = tmp_path / "willow-boot-done-willow.flag"
+    monkeypatch.setattr(_pt, "BOOT_DONE", missing)
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    assert _pt.check_boot_gate("Read", {"file_path": _pt._BOOT_MD_PATH}) is None
+
+
+def test_boot_gate_allows_write_sentinel(tmp_path, monkeypatch):
+    missing = tmp_path / "willow-boot-done-willow.flag"
+    monkeypatch.setattr(_pt, "BOOT_DONE", missing)
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    assert _pt.check_boot_gate("Write", {"file_path": str(missing)}) is None
+
+
+def test_boot_gate_skipped_under_pytest(monkeypatch, tmp_path):
+    missing = tmp_path / "willow-boot-done-willow.flag"
+    monkeypatch.setattr(_pt, "BOOT_DONE", missing)
+    monkeypatch.setenv("PYTEST_CURRENT_TEST", "test_fylgja/test_pre_tool.py::test_x")
+    assert _pt.check_boot_gate("Bash", {}) is None
+
+
+def test_kart_reuse_blocks_duplicate_bash(tmp_path, monkeypatch):
+    pending = tmp_path / "kart-pending.json"
+    monkeypatch.setattr(_pt, "_kart_pending_path", lambda sid: pending)
+    pending.write_text(json.dumps({
+        "command": "ls -la /tmp",
+        "task_id": "ABC123",
+        "ts": time.time(),
+    }))
+    reason = _pt.check_kart_reuse(
+        "Bash", {"command": "ls -la /tmp"}, "session-1",
+    )
+    assert reason is not None
+    assert "Already submitted to Kart" in reason
+    assert "ABC123" in reason
+
+
+def test_kart_reuse_clears_on_kart_task_run(tmp_path, monkeypatch):
+    pending = tmp_path / "kart-pending.json"
+    monkeypatch.setattr(_pt, "_kart_pending_path", lambda sid: pending)
+    pending.write_text(json.dumps({"command": "ls", "task_id": "X", "ts": time.time()}))
+    assert _pt.check_kart_reuse("mcp__willow__kart_task_run", {}, "s1") is None
+    assert not pending.exists()
+
+
+def test_kart_reuse_allows_different_command(tmp_path, monkeypatch):
+    pending = tmp_path / "kart-pending.json"
+    monkeypatch.setattr(_pt, "_kart_pending_path", lambda sid: pending)
+    pending.write_text(json.dumps({
+        "command": "ls -la",
+        "task_id": "ABC",
+        "ts": time.time(),
+    }))
+    assert _pt.check_kart_reuse("Bash", {"command": "pwd"}, "s1") is None

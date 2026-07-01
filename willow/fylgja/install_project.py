@@ -420,6 +420,8 @@ def build_claude_hooks_block(package_root: Path) -> dict:
         "PostToolUse": [
             {"matcher": "ToolSearch",
              "hooks": [{"type": "command", "command": cmd("post_tool"), "timeout": 5}]},
+            {"matcher": "TaskUpdate",
+             "hooks": [{"type": "command", "command": cmd("post_tool"), "timeout": 5}]},
             {"matcher": "mcp__willow__agent_task_submit",
              "hooks": [{"type": "command", "command": cmd("post_tool"), "timeout": 5}]},
         ],
