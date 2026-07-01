@@ -14,6 +14,8 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 
 # Deterministic identity before importing the hook (resolve_agent_name reads
 # WILLOW_AGENT first; otherwise it falls back to the repo's active-agent file).
@@ -120,6 +122,28 @@ def test_stop_slow_imports_resolve_on_stop():
 
 
 # --- fast path ------------------------------------------------------------
+
+def test_stop_main_preserves_boot_sentinel(monkeypatch):
+    """Stop runs every turn in Cursor — it must not delete the boot sentinel."""
+    import io
+    import sys
+
+    real_flag = Path("/tmp/willow-boot-done-test-agent.flag")
+    try:
+        real_flag.write_text("booted")
+        monkeypatch.setattr(stop, "_write_session_composite", lambda _sid: None)
+        monkeypatch.setattr(stop, "_scan_personal_signal", lambda _sid: None)
+        monkeypatch.setattr(stop, "_launch_slow_path", lambda _sid: None)
+        monkeypatch.setattr(stop, "DEPTH_FILE", Path("/tmp/willow-test-depth-stack.txt"))
+        monkeypatch.setattr(stop, "THREAD_FILE", Path("/tmp/willow-test-context-thread.json"))
+        stdin = io.StringIO(json.dumps({"session_id": "sess-1"}))
+        monkeypatch.setattr(sys, "stdin", stdin)
+        with pytest.raises(SystemExit):
+            stop.main()
+        assert real_flag.exists(), "boot sentinel must survive per-turn Stop"
+    finally:
+        real_flag.unlink(missing_ok=True)
+
 
 def test_launch_slow_path_detached(monkeypatch):
     import subprocess
