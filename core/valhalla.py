@@ -42,6 +42,7 @@ def collect_dpo_pairs(bridge, store, output_dir: Optional[Path] = None,
         return 0
 
     try:
+        bridge._ensure_conn()
         chosen_filters = [
             "invalid_at IS NULL",
             "source_type IN ('community_detection', 'revelation', 'mirror')",
@@ -81,12 +82,19 @@ def collect_dpo_pairs(bridge, store, output_dir: Optional[Path] = None,
     if not chosen_candidates or not rejected_candidates:
         return 0
 
+    rejected_with_text = [
+        r for r in rejected_candidates
+        if (r.get("summary") or "").strip()
+    ]
+    if not rejected_with_text:
+        return 0
+
     pairs = []
     for i, chosen in enumerate(chosen_candidates):
-        rejected = rejected_candidates[i % len(rejected_candidates)]
+        rejected = rejected_with_text[i % len(rejected_with_text)]
         chosen_text = (chosen.get("summary") or "").strip()
         rejected_text = (rejected.get("summary") or "").strip()
-        if not chosen_text or not rejected_text or chosen_text == rejected_text:
+        if not chosen_text or chosen_text == rejected_text:
             continue
         pairs.append({
             "prompt": f"What does Willow know about: {chosen.get('title', 'this topic')}?",

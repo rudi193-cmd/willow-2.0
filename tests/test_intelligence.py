@@ -13,7 +13,12 @@ _SD_MARKER = "xw19sd_uniq_surface_z99"
 _RV_CROSS_A = "xrv19cross_aa_token"
 _RV_CROSS_B = "xrv19cross_bb_token"
 _RV_SAME_MARKER = "xrv19same_only_z88"
-_MC_SPARSE_PROJECT = "test_mc_sparse_z99"
+
+
+def _pg(bridge):
+    """Return a live connection (re-acquire from pool when stale)."""
+    bridge._ensure_conn()
+    return bridge.conn
 
 
 def _sparse_canonical_lane(bridge, *, sparse_threshold: int = 5) -> str:
@@ -23,7 +28,7 @@ def _sparse_canonical_lane(bridge, *, sparse_threshold: int = 5) -> str:
     for lane in sorted(CANONICAL_LANES):
         if lane == "global":
             continue
-        with bridge.conn.cursor() as cur:
+        with _pg(bridge).cursor() as cur:
             cur.execute(
                 "SELECT COUNT(*) FROM knowledge WHERE invalid_at IS NULL AND project = %s",
                 (lane,),
@@ -54,7 +59,7 @@ def _revelation_count_for_ids(bridge, *atom_ids: str) -> int:
     """Revelation atoms whose payload references any of the given node ids."""
     clauses = " OR ".join("content::text LIKE %s" for _ in atom_ids)
     params = tuple(f"%{aid}%" for aid in atom_ids)
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute(
             f"SELECT COUNT(*) FROM knowledge WHERE source_type = 'revelation' "
             f"AND ({clauses})",
@@ -72,12 +77,12 @@ def _put_old(bridge, atom_id, project, title, days_old=90):
         "summary": f"atom created {days_old} days ago",
     })
     old_ts = datetime.now(timezone.utc) - timedelta(days=days_old)
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute(
             "UPDATE knowledge SET created_at = %s WHERE id = %s",
             (old_ts, atom_id),
         )
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
 
 # ── W19DR — Draugr ────────────────────────────────────────────────────────────
@@ -89,9 +94,9 @@ def test_draugr_scan_finds_old_uncategorized_atoms(bridge):
     found = draugr_scan(bridge, days=60)
     assert "dr_test_zombie" in found
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute("DELETE FROM knowledge WHERE id = 'dr_test_zombie'")
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
 
 def test_draugr_scan_ignores_community_nodes(bridge):
@@ -104,16 +109,16 @@ def test_draugr_scan_ignores_community_nodes(bridge):
         "source_type": "community_detection",
     })
     old_ts = datetime.now(timezone.utc) - timedelta(days=90)
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute("UPDATE knowledge SET created_at = %s WHERE id = 'dr_community_skip'", (old_ts,))
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
     found = draugr_scan(bridge, days=60)
     assert "dr_community_skip" not in found
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute("DELETE FROM knowledge WHERE id = 'dr_community_skip'")
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
 
 def test_draugr_mark_sets_category(bridge):
@@ -128,9 +133,9 @@ def test_draugr_mark_sets_category(bridge):
         row = cur.fetchone()
     assert row["category"] == "draugr"
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute("DELETE FROM knowledge WHERE id = 'dr_mark_test'")
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
 
 # ── W19SD — Serendipity ───────────────────────────────────────────────────────
@@ -139,13 +144,13 @@ def test_serendipity_surfaces_old_overlap_atoms(bridge):
     from core.intelligence import serendipity_pass
     now = datetime.now(timezone.utc)
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute(
             "DELETE FROM knowledge WHERE id IN ('sd_old_atom', 'sd_recent_atom') "
             "OR title = %s OR summary = %s",
             (_SD_MARKER, _SD_MARKER),
         )
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
     bridge.knowledge_put({
         "id": "sd_old_atom",
@@ -154,7 +159,7 @@ def test_serendipity_surfaces_old_overlap_atoms(bridge):
         "summary": _SD_MARKER,
     })
     old_ts = now - timedelta(days=60)
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute("UPDATE knowledge SET created_at = %s WHERE id = 'sd_old_atom'", (old_ts,))
 
     bridge.knowledge_put({
@@ -167,9 +172,9 @@ def test_serendipity_surfaces_old_overlap_atoms(bridge):
     # ORDER BY created_at DESC LIMIT 20 query regardless of how many other
     # test atoms are in the DB.  Still within recent_days=7.
     recent_ts = now + timedelta(seconds=60)
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute("UPDATE knowledge SET created_at = %s WHERE id = 'sd_recent_atom'", (recent_ts,))
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
     surfaced = serendipity_pass(
         bridge, recent_days=7, old_min_days=30, old_max_days=180,
@@ -179,13 +184,13 @@ def test_serendipity_surfaces_old_overlap_atoms(bridge):
     assert "sd_old_atom" in ids
     assert "sd_recent_atom" not in ids
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute(
             "DELETE FROM knowledge WHERE id IN ('sd_old_atom', 'sd_recent_atom') "
             "OR title = %s OR summary = %s",
             (_SD_MARKER, _SD_MARKER),
         )
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
 
 def test_serendipity_returns_empty_when_no_recent(bridge):
@@ -215,21 +220,21 @@ def test_dark_matter_writes_implicit_connection(bridge):
     count = dark_matter_pass(bridge, min_overlap=2)
     assert count >= 1
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute(
             "SELECT COUNT(*) FROM knowledge WHERE project = 'willow' "
             "AND source_type = 'dark_matter'"
         )
         assert cur.fetchone()[0] >= 1
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute("DELETE FROM knowledge WHERE id IN ('dm_atom_a', 'dm_atom_b')")
         # Remove only the dark_matter atoms created by this test's atom pairs
         cur.execute(
             "DELETE FROM knowledge WHERE source_type = 'dark_matter' "
             "AND (content::text LIKE '%dm_atom_a%' OR content::text LIKE '%dm_atom_b%')"
         )
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
 
 def test_dark_matter_skips_same_project(bridge):
@@ -251,7 +256,7 @@ def test_dark_matter_skips_same_project(bridge):
     dark_matter_pass(bridge, min_overlap=2)
 
     # Same project — no dark matter atom should link dm_same_a to dm_same_b
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute(
             "SELECT COUNT(*) FROM knowledge WHERE source_type = 'dark_matter' "
             "AND content::text LIKE '%dm_same_a%' AND content::text LIKE '%dm_same_b%'"
@@ -259,13 +264,13 @@ def test_dark_matter_skips_same_project(bridge):
         dm_for_same = cur.fetchone()[0]
     assert dm_for_same == 0
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute("DELETE FROM knowledge WHERE id IN ('dm_same_a', 'dm_same_b')")
         cur.execute(
             "DELETE FROM knowledge WHERE source_type = 'dark_matter' "
             "AND (content::text LIKE '%dm_same_a%' OR content::text LIKE '%dm_same_b%')"
         )
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
 
 # ── W19RV — Revelation ────────────────────────────────────────────────────────
@@ -273,13 +278,13 @@ def test_dark_matter_skips_same_project(bridge):
 def test_revelation_detects_cross_project_convergence(bridge):
     from core.intelligence import revelation_pass
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute(
             "DELETE FROM knowledge WHERE id IN ('rv_community_a', 'rv_community_b') "
             "OR (source_type = 'revelation' AND (content::text LIKE '%rv_community_a%' "
             "OR content::text LIKE '%rv_community_b%'))"
         )
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
     bridge.knowledge_put({
         "id": "rv_community_a",
@@ -300,21 +305,21 @@ def test_revelation_detects_cross_project_convergence(bridge):
     assert count >= 1
     assert _revelation_count_for_ids(bridge, "rv_community_a", "rv_community_b") >= 1
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute("DELETE FROM knowledge WHERE id IN ('rv_community_a', 'rv_community_b')")
         cur.execute(
             "DELETE FROM knowledge WHERE source_type = 'revelation' "
             "AND (content::text LIKE '%rv_community_a%' OR content::text LIKE '%rv_community_b%')"
         )
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
 
 def test_revelation_ignores_same_project_communities(bridge):
     from core.intelligence import revelation_pass
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute("DELETE FROM knowledge WHERE id IN ('rv_same_a', 'rv_same_b')")
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
     bridge.knowledge_put({
         "id": "rv_same_a",
@@ -335,9 +340,9 @@ def test_revelation_ignores_same_project_communities(bridge):
 
     assert _revelation_count_for_ids(bridge, "rv_same_a", "rv_same_b") == 0
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute("DELETE FROM knowledge WHERE id IN ('rv_same_a', 'rv_same_b')")
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
 
 # ── W19MR — Mirror ────────────────────────────────────────────────────────────
@@ -358,20 +363,20 @@ def test_mirror_writes_meta_community(bridge):
     count = mirror_pass(bridge)
     assert count == 1
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute(
             "SELECT COUNT(*) FROM knowledge WHERE project = 'willow' "
             "AND source_type = 'mirror'"
         )
         assert cur.fetchone()[0] >= 1
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute("DELETE FROM knowledge WHERE id LIKE 'mr_community_%'")
         cur.execute(
             "DELETE FROM knowledge WHERE source_type = 'mirror' "
             "AND content::text LIKE '%mr_community_%'"
         )
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
 
 def test_mirror_skips_when_too_few_nodes():
@@ -401,13 +406,13 @@ def test_mycorrhizal_feeds_sparse_project(bridge):
 
     sparse_lane = _sparse_canonical_lane(bridge, sparse_threshold=5)
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute(
             "DELETE FROM knowledge WHERE id IN ('mc_donor_community', 'mc_sparse_0', 'mc_sparse_1') "
             "OR (project = %s AND source_type = 'mycorrhizal' AND id LIKE 'myco_%%')",
             (sparse_lane,),
         )
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
     bridge.knowledge_put({
         "id": "mc_donor_community",
@@ -428,7 +433,7 @@ def test_mycorrhizal_feeds_sparse_project(bridge):
     count = mycorrhizal_pass(bridge, sparse_threshold=5)
     assert count >= 1
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute(
             "SELECT COUNT(*) FROM knowledge WHERE project = %s "
             "AND source_type = 'mycorrhizal'",
@@ -436,13 +441,13 @@ def test_mycorrhizal_feeds_sparse_project(bridge):
         )
         assert cur.fetchone()[0] >= 1
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute(
             "DELETE FROM knowledge WHERE id IN ('mc_donor_community', 'mc_sparse_0', 'mc_sparse_1') "
             "OR (project = %s AND source_type = 'mycorrhizal' AND id LIKE 'myco_%%')",
             (sparse_lane,),
         )
-    bridge.conn.commit()
+    _pg(bridge).commit()
 
 
 def test_mycorrhizal_skips_non_sparse_projects(bridge):
@@ -456,7 +461,7 @@ def test_mycorrhizal_skips_non_sparse_projects(bridge):
             "summary": "rich project has many atoms",
         })
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute(
             "SELECT COUNT(*) FROM knowledge WHERE project = 'rh-dirty' "
             "AND source_type = 'mycorrhizal'"
@@ -465,7 +470,7 @@ def test_mycorrhizal_skips_non_sparse_projects(bridge):
 
     mycorrhizal_pass(bridge, sparse_threshold=5)
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute(
             "SELECT COUNT(*) FROM knowledge WHERE project = 'rh-dirty' "
             "AND source_type = 'mycorrhizal'"
@@ -473,6 +478,6 @@ def test_mycorrhizal_skips_non_sparse_projects(bridge):
         count_after = cur.fetchone()[0]
     assert count_after == count_before
 
-    with bridge.conn.cursor() as cur:
+    with _pg(bridge).cursor() as cur:
         cur.execute("DELETE FROM knowledge WHERE id LIKE 'mc_rich_%'")
-    bridge.conn.commit()
+    _pg(bridge).commit()

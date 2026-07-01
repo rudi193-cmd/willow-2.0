@@ -6,18 +6,24 @@ import json
 import tempfile
 from pathlib import Path
 
-os.environ.setdefault("WILLOW_PG_DB", "willow_20")
+os.environ.setdefault("WILLOW_PG_DB", "willow_20_test")
 
 
 def _bridge():
     from core.pg_bridge import PgBridge
-    return PgBridge()
+    b = PgBridge()
+    b._ensure_conn()
+    return b
 
 
 def test_collect_dpo_pairs_writes_jsonl():
     from core.valhalla import collect_dpo_pairs
     from core.willow_store import WillowStore
     bridge = _bridge()
+
+    with bridge.conn.cursor() as cur:
+        cur.execute("DELETE FROM knowledge WHERE id LIKE 'vh_%'")
+    bridge.conn.commit()
 
     for i in range(3):
         bridge.knowledge_put({
