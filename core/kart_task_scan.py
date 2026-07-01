@@ -8,6 +8,10 @@ Contract (P2-kart-scanner-contract, hybrid lane):
   - script_body (Python) is scanned for content-injection patterns.
   - Exfiltration / secret access / obfuscation always block at SEV_HIGH+ even
     when a fleet verb is present on another fragment.
+  - Fylgja hook source paths (mirrors pre_tool.py's check_hook_tamper_guard)
+    are blocked in task/script_body text unless WILLOW_HOOK_MAINTENANCE=1 —
+    the IDE-native guard never sees willow_run/Kart calls, so this closes
+    that path separately.
 
 Disable: WILLOW_KART_SCAN=0
 """
@@ -49,6 +53,16 @@ _FLEET_ALLOWED: tuple[str, ...] = (
 )
 
 _ALWAYS_BLOCK_CATEGORIES = frozenset({"exfiltration", "obfuscation", "secret_access"})
+
+# Mirrors willow/fylgja/events/pre_tool.py's _HOOK_GUARD_FRAGMENTS — keep in sync.
+_HOOK_GUARD_FRAGMENTS: tuple[str, ...] = (
+    "willow/fylgja/events/",
+    "willow/fylgja/hook_runner.py",
+    "willow/fylgja/bin/fylgja-hook",
+    "willow/fylgja/config/cursor-hooks.json",
+    ".cursor/hooks.json",
+    ".claude/settings.json",
+)
 
 
 def kart_scan_enabled() -> bool:
@@ -140,12 +154,51 @@ def _issue_payload(issue: ScanIssue, *, where: str) -> dict:
     }
 
 
+def _hook_tamper_fragment(text: str) -> str | None:
+    if not text:
+        return None
+    return next((frag for frag in _HOOK_GUARD_FRAGMENTS if frag in text), None)
+
+
+def check_hook_tamper(task_text: str = "", *, script_body: str = "") -> dict | None:
+    """Block Kart task/script_body text that reads or writes Fylgja hook source.
+
+    pre_tool.py's check_hook_tamper_guard only fires for IDE-native Read/Write/Edit
+    calls; willow_run/agent_task_submit text never passes through PreToolUse, so a
+    script_body reading willow/fylgja/events/pre_tool.py went unblocked. Same
+    WILLOW_HOOK_MAINTENANCE=1 bypass as the IDE-native guard.
+    """
+    if os.environ.get("WILLOW_HOOK_MAINTENANCE"):
+        return None
+    frag = _hook_tamper_fragment(task_text) or _hook_tamper_fragment(script_body)
+    if not frag:
+        return None
+    where = "task" if _hook_tamper_fragment(task_text) else "script_body"
+    return {
+        "error": (
+            f"[KART-SECURITY] Fylgja hook source ({frag}) cannot be read or written "
+            "via Kart task/script_body (prevents bypass discovery and silent "
+            "tampering). Maintainers: set WILLOW_HOOK_MAINTENANCE=1 for hook edits."
+        ),
+        "kart_scan": {
+            "category": "hook_tamper",
+            "severity": SEV_CRITICAL,
+            "message": f"Fylgja hook source reference: {frag}",
+            "where": where,
+        },
+    }
+
+
 def check_kart_task(task_text: str = "", *, script_body: str = "") -> dict | None:
     """
     Return an error dict if the task should not run/queue, else None.
     """
     if not kart_scan_enabled():
         return None
+
+    tamper = check_hook_tamper(task_text, script_body=script_body)
+    if tamper:
+        return tamper
 
     if script_body.strip():
         issues = scan_write("", script_body)
