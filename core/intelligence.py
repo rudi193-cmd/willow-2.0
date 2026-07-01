@@ -74,7 +74,8 @@ def draugr_mark(bridge, atom_ids: list) -> int:
 # ── W19SD — Serendipity ───────────────────────────────────────────────────────
 
 def serendipity_pass(bridge, recent_days: int = 7,
-                     old_min_days: int = 30, old_max_days: int = 180) -> list:
+                     old_min_days: int = 30, old_max_days: int = 180,
+                     *, promote_surfaced: bool = True) -> list:
     """
     Surface atoms from old_min_days–old_max_days ago that share keywords
     with atoms created in the last recent_days. W19SD.
@@ -124,13 +125,46 @@ def serendipity_pass(bridge, recent_days: int = 7,
                     seen.add(d["id"])
                     surfaced.append(d)
 
-    for atom in surfaced[:5]:
-        try:
-            bridge.promote(atom["id"])
-        except Exception as e:
-            print(f"[WARN] promote({atom['id']}) failed: {e}", flush=True)
+    if promote_surfaced:
+        for atom in surfaced[:5]:
+            try:
+                bridge.promote(atom["id"])
+            except Exception as e:
+                print(f"[WARN] promote({atom['id']}) failed: {e}", flush=True)
 
     return surfaced[:5]
+
+
+def _mirror_from_nodes(nodes: list[dict]) -> dict | None:
+    """Build mirror atom payload from community nodes; None if <3 nodes."""
+    if len(nodes) < 3:
+        return None
+
+    kw_counter = Counter()
+    for node in nodes:
+        kw_counter.update(_keywords(node))
+
+    top_themes = [kw for kw, _ in kw_counter.most_common(5)]
+    if not top_themes:
+        return None
+
+    now = datetime.now(timezone.utc)
+    return {
+        "id": f"mirror_{now.strftime('%Y%m')}",
+        "project": ORCHESTRATOR_LANE,
+        "title": f"Mirror — KB self-model {now.strftime('%Y-%m')}",
+        "summary": (
+            f"{len(nodes)} community nodes. "
+            f"Dominant themes: {', '.join(top_themes)}"
+        ),
+        "source_type": "mirror",
+        "category": "meta",
+        "content": {
+            "community_count": len(nodes),
+            "top_themes": top_themes,
+            "projects": list({n["project"] for n in nodes}),
+        },
+    }
 
 
 # ── W19DM — Dark Matter ───────────────────────────────────────────────────────
@@ -259,35 +293,11 @@ def mirror_pass(bridge) -> int:
         """)
         nodes = [dict(r) for r in cur.fetchall()]
 
-    if len(nodes) < 3:
+    payload = _mirror_from_nodes(nodes)
+    if payload is None:
         return 0
 
-    kw_counter = Counter()
-    for node in nodes:
-        kw_counter.update(_keywords(node))
-
-    top_themes = [kw for kw, _ in kw_counter.most_common(5)]
-    if not top_themes:
-        return 0
-
-    now = datetime.now(timezone.utc)
-    mirror_id = f"mirror_{now.strftime('%Y%m')}"
-    bridge.knowledge_put({
-        "id": mirror_id,
-        "project": ORCHESTRATOR_LANE,
-        "title": f"Mirror — KB self-model {now.strftime('%Y-%m')}",
-        "summary": (
-            f"{len(nodes)} community nodes. "
-            f"Dominant themes: {', '.join(top_themes)}"
-        ),
-        "source_type": "mirror",
-        "category": "meta",
-        "content": {
-            "community_count": len(nodes),
-            "top_themes": top_themes,
-            "projects": list({n["project"] for n in nodes}),
-        },
-    })
+    bridge.knowledge_put(payload)
     return 1
 
 
