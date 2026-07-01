@@ -6,7 +6,11 @@ import psycopg2.extras
 import pytest
 from datetime import datetime, timezone, timedelta
 
-os.environ.setdefault("WILLOW_PG_DB", "willow_20")
+os.environ.setdefault("WILLOW_PG_DB", "willow_20_test")
+
+# Unique token — only these fixtures use it; generic ML keywords fill the
+# serendipity max-5 cap against a shared willow_20_test corpus.
+_SD_MARKER = "xw19sd_uniq_surface_z99"
 
 
 @pytest.fixture
@@ -93,11 +97,19 @@ def test_serendipity_surfaces_old_overlap_atoms(bridge):
     from core.intelligence import serendipity_pass
     now = datetime.now(timezone.utc)
 
+    with bridge.conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM knowledge WHERE id IN ('sd_old_atom', 'sd_recent_atom') "
+            "OR title = %s OR summary = %s",
+            (_SD_MARKER, _SD_MARKER),
+        )
+    bridge.conn.commit()
+
     bridge.knowledge_put({
         "id": "sd_old_atom",
         "project": "willow",
-        "title": "ancient machine learning knowledge",
-        "summary": "neural network patterns from the past",
+        "title": _SD_MARKER,
+        "summary": _SD_MARKER,
     })
     old_ts = now - timedelta(days=60)
     with bridge.conn.cursor() as cur:
@@ -106,8 +118,8 @@ def test_serendipity_surfaces_old_overlap_atoms(bridge):
     bridge.knowledge_put({
         "id": "sd_recent_atom",
         "project": "willow",
-        "title": "machine learning today",
-        "summary": "current neural network work",
+        "title": _SD_MARKER,
+        "summary": _SD_MARKER,
     })
     # Stamp sd_recent_atom 60 seconds in the future so it always tops the
     # ORDER BY created_at DESC LIMIT 20 query regardless of how many other
@@ -123,7 +135,11 @@ def test_serendipity_surfaces_old_overlap_atoms(bridge):
     assert "sd_recent_atom" not in ids
 
     with bridge.conn.cursor() as cur:
-        cur.execute("DELETE FROM knowledge WHERE id IN ('sd_old_atom', 'sd_recent_atom')")
+        cur.execute(
+            "DELETE FROM knowledge WHERE id IN ('sd_old_atom', 'sd_recent_atom') "
+            "OR title = %s OR summary = %s",
+            (_SD_MARKER, _SD_MARKER),
+        )
     bridge.conn.commit()
 
 
