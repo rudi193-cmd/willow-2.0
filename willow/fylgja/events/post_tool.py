@@ -40,6 +40,70 @@ def _kart_pending_path(session_id: str) -> Path:
     safe = (session_id or "unknown")[:16].replace("/", "_")
     return Path(f"/tmp/willow-kart-pending-{safe}.json")
 
+
+# --- Task-tracking → ACTIVE_BUILD_FILE producer -----------------------------
+# prompt_submit.py's _run_build_continue() reads ACTIVE_BUILD_FILE
+# (/tmp/{agent}-active-build.json) but nothing ever wrote it — the feature
+# was structurally inert. TaskUpdate carries taskId + the new status
+# directly, so it's a real, harness-native "is a build actively in progress"
+# signal. Keep a small per-agent ledger of task statuses here and recompute
+# ACTIVE_BUILD_FILE from it on every TaskUpdate. Requires a PostToolUse
+# matcher on "TaskUpdate" in settings.json — it isn't wired to fire on that
+# tool otherwise.
+_TASK_LEDGER_FILE = Path(f"/tmp/willow-task-ledger-{require_agent_name()}.json")
+_ACTIVE_BUILD_FILE = Path(f"/tmp/{require_agent_name()}-active-build.json")
+
+
+def _read_task_ledger() -> dict:
+    try:
+        if _TASK_LEDGER_FILE.exists():
+            return json.loads(_TASK_LEDGER_FILE.read_text())
+    except Exception:
+        pass
+    return {}
+
+
+def _write_task_ledger(ledger: dict) -> None:
+    try:
+        tmp = _TASK_LEDGER_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(ledger))
+        tmp.rename(_TASK_LEDGER_FILE)
+    except Exception:
+        pass
+
+
+def _sync_active_build(ledger: dict) -> None:
+    active = [t for t in ledger.values() if t.get("status") == "in_progress"]
+    if not active:
+        _ACTIVE_BUILD_FILE.unlink(missing_ok=True)
+        return
+    label = active[0].get("label") or "task in progress"
+    try:
+        _ACTIVE_BUILD_FILE.write_text(json.dumps({"label": label}))
+    except Exception:
+        pass
+
+
+def _track_task_update(tool_input: dict) -> None:
+    task_id = str(tool_input.get("taskId", "")).strip()
+    status = tool_input.get("status")
+    if not task_id or status is None:
+        return  # owner/metadata/dependency-only updates carry no status change
+    ledger = _read_task_ledger()
+    if status in ("completed", "deleted"):
+        ledger.pop(task_id, None)
+    else:
+        label = (
+            tool_input.get("activeForm")
+            or tool_input.get("subject")
+            or ledger.get(task_id, {}).get("label")
+            or f"task {task_id}"
+        )
+        ledger[task_id] = {"status": status, "label": label}
+    _write_task_ledger(ledger)
+    _sync_active_build(ledger)
+
+
 _SIGNIFICANT = {
     "Edit", "Write",
     "mcp__willow__soil_put", "mcp__willow__soil_update",
@@ -217,6 +281,9 @@ def main():
             advisory = _dedup_check(file_path, offset=offset, limit=limit)
             if advisory:
                 print(advisory)
+
+    if tool_name == "TaskUpdate":
+        _track_task_update(tool_input)
 
     if tool_name == "ToolSearch":
         # PostToolUse can't emit a binding decision — this is advisory context
