@@ -1,0 +1,11 @@
+[Unit]
+Description=Willow hook wiring audit — daily host-side check (issue #603)
+Documentation=https://github.com/rudi193-cmd/willow-2.0/issues/603
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+Persistent=true
+Unit=hook-wiring-audit.service
+
+[Install]
+WantedBy=timers.target

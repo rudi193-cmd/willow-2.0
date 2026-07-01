@@ -1,0 +1,12 @@
+[Unit]
+Description=Willow hook wiring audit — host-side check of ~/.claude/settings.json (issue #603)
+Documentation=https://github.com/rudi193-cmd/willow-2.0/issues/603
+
+[Service]
+Type=oneshot
+Environment=WILLOW_ROOT=%h/github/willow-2.0
+Environment=PYTHONPATH=%h/github/willow-2.0
+ExecStart=/usr/bin/python3 %h/github/willow-2.0/scripts/hook_wiring_audit.py --emit-flag --gh-issue 603
+
+[Install]
+WantedBy=default.target
