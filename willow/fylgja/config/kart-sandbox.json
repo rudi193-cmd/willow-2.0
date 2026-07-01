@@ -99,7 +99,8 @@
     "{{HOME}}/SAFE",
     "{{HOME}}/safe-app-store",
     "{{HOME}}/.kaggle",
-    "/media/willow"
+    "/media/willow",
+    "{{HOME}}/.fly"
   ],
   "worktree_scan_roots": [
     "{{WILLOW_ROOT}}/worktrees"

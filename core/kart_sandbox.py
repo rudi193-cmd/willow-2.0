@@ -495,6 +495,7 @@ def kart_env(
     if _npm_prefix:
         _user_bins.append(str(Path(_npm_prefix) / "bin"))
     _user_bins.append(str(Path.home() / ".npm-global" / "bin"))
+    _user_bins.append(str(Path.home() / ".fly" / "bin"))
     _path_parts = env["PATH"].split(":")
     for _b in _user_bins:
         if _b not in _path_parts:
