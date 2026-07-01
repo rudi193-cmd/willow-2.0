@@ -262,7 +262,7 @@
         "next_bite_hit_rate",
         "cold_relevant_recall"
       ],
-      "refresh": "pytest && python3 scripts/retrieval_gold_check.py",
+      "refresh": "bash scripts/smoke_scorecard.sh",
       "related": [
         "fleet_retrieval_gold",
         "locomo_path_a",
