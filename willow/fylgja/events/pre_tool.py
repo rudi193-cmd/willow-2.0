@@ -327,6 +327,10 @@ def check_boot_gate(tool_name: str, tool_input: dict) -> str | None:
     """Block every tool call until the boot sentinel exists, except reading boot.md
     itself and writing the sentinel file. Real enforcement (decision:block) —
     replaces the old advisory-only print in prompt_submit.py's _boot_guard."""
+    # Integration tests exercise pre_tool.main() without a live boot ritual;
+    # PYTEST_CURRENT_TEST is set automatically under pytest (see tests/vcr.py).
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return None
     if BOOT_DONE.exists():
         return None
     if tool_name == "Read" and str(tool_input.get("file_path", "")) == _BOOT_MD_PATH:

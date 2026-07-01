@@ -61,6 +61,8 @@ def test_build_claude_hooks_block_uses_hook_runner():
     assert ".venv-dev" not in rendered
     assert "python3 -m willow.fylgja.hook_runner" not in rendered
     assert "SessionStart" in block
+    post_matchers = [e.get("matcher", "") for e in block.get("PostToolUse", [])]
+    assert "TaskUpdate" in post_matchers
 
 
 def test_status_strip_hook_is_managed_fylgja_entry():

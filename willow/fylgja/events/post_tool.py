@@ -290,7 +290,7 @@ def main():
         # only, not an enforceable precondition (there's no specific "wrong"
         # next tool call to intercept; the agent may legitimately gather more
         # context before invoking the fetched tool). Keep it descriptive.
-        print("[TOOL-SEARCH] Schema loaded for the fetched tool this turn.")
+        print("[TOOL-SEARCH-COMPLETE] Schema loaded for the fetched tool this turn.")
 
     if tool_name == "mcp__willow__agent_task_submit":
         tid = ""
