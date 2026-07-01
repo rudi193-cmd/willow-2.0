@@ -27,7 +27,7 @@
     ],
     "preToolUse": [
       {
-        "matcher": "Read|Write|Task",
+        "matcher": "Read|Write|Edit|StrReplace|Task",
         "command": "./willow/fylgja/bin/fylgja-hook cursor pre_tool",
         "timeout": 5
       }
