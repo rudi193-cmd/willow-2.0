@@ -2531,7 +2531,7 @@ async def mem_jeles_ask(
     sources:  list = [],
     limit:    int  = 2,
     perspectives: int = 0,
-    verify: bool = False,
+    verify: bool = True,
 ) -> dict:
     """Jeles: Answer a natural language question. Checks local corpus first (jeles_atoms);
     falls back to trusted institutional sources (LOC, arXiv, PubMed, etc.) on a corpus miss.
@@ -2541,9 +2541,10 @@ async def mem_jeles_ask(
     perspectives>=2 enables multi-perspective mode: routes to that many deliberately
     diverse domain lenses (e.g. scientific + philosophical) and synthesises an answer
     that contrasts what they agree and disagree on. Default 0 = single-answer mode.
-    verify=true adds a per-claim cross-source check: each atomic claim in the answer is
-    tagged corroborated (>=2 distinct institutions), single_source, or unsupported,
-    returned under a 'verification' key with a summary count."""
+    verify defaults to true: a per-claim cross-source check runs automatically, tagging
+    each atomic claim in the answer corroborated (>=2 distinct institutions), single_source,
+    or unsupported, returned under a 'verification' key with a summary count. Pass
+    verify=false to skip it for a faster/cheaper answer when verification isn't needed."""
     logger.info("[w2] mem_jeles_ask app_id=%s question=%r sources=%s perspectives=%s verify=%s",
                 app_id, question[:80], sources or "auto", perspectives, verify)
     from core.jeles_sources import (
