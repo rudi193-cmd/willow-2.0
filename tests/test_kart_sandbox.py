@@ -370,3 +370,31 @@ def test_uniform_error_absent_on_success(monkeypatch):
     status, result = run_shell_result_for_task("echo ok", timeout=10)
     assert status == "completed"
     assert "error" not in result
+
+
+def test_bwrap_argv_skips_symlink_when_bind_claims_destination(monkeypatch):
+    """A bind already claiming /bin must suppress the merged-usr --symlink —
+    bwrap hard-fails on a second entry at the same destination."""
+    from pathlib import Path as _P
+    import core.kart_sandbox as k
+
+    monkeypatch.setattr(k, "collect_bind_mounts", lambda root=None: [(_P("/usr/bin"), _P("/bin"), True)])
+    monkeypatch.setattr(k, "collect_config_symlinks", lambda root=None: [])
+    args = k.build_bwrap_argv()
+    symlink_dests = [args[i + 2] for i, a in enumerate(args) if a == "--symlink"]
+    assert "/bin" not in symlink_dests
+    bind_dests = [args[i + 2] for i, a in enumerate(args) if a in ("--bind", "--ro-bind")]
+    assert bind_dests.count("/bin") == 1
+
+
+def test_bwrap_argv_dedupes_repeated_config_symlinks(monkeypatch):
+    import core.kart_sandbox as k
+
+    monkeypatch.setattr(k, "collect_bind_mounts", lambda root=None: [])
+    monkeypatch.setattr(
+        k, "collect_config_symlinks",
+        lambda root=None: [("usr/bin", "/x-test-link"), ("usr/bin", "/x-test-link")],
+    )
+    args = k.build_bwrap_argv()
+    symlink_dests = [args[i + 2] for i, a in enumerate(args) if a == "--symlink"]
+    assert symlink_dests.count("/x-test-link") == 1

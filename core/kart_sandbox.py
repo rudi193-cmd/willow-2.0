@@ -289,9 +289,17 @@ def build_bwrap_argv(
         "--die-with-parent",
     ]
 
+    # Track every destination already claimed inside the sandbox so the
+    # symlink passes below never emit a second entry at the same path.
+    # bwrap hard-fails on a duplicate ("Can't make symlink at /bin:
+    # existing destination is usr/bin"), killing the task before its
+    # command ever runs (flag-kart-bwrap-merged-usr-symlink-race —
+    # 8.5% of "failed" tasks died in sandbox bring-up, not task logic).
+    _claimed: set[str] = set()
     for host, container, read_only in collect_bind_mounts(root):
         flag = "--ro-bind" if read_only else "--bind"
         args += [flag, str(host), str(container)]
+        _claimed.add(str(container))
 
     # On merged-usr systems /bin, /lib, /lib64, /sbin are symlinks → /usr/*.
     # Recreate them in the sandbox so ELF interpreters (e.g. /lib64/ld-linux*.so.2)
@@ -307,16 +315,20 @@ def build_bwrap_argv(
     for link_path, target in _MERGED_USR_LINKS:
         if not Path(link_path).is_symlink():
             continue
+        if link_path in _claimed:
+            continue
         args += ["--symlink", target, link_path]
+        _claimed.add(link_path)
 
     # S8/KP6b: any configured bind path that is a host symlink resolves away in
     # collect_bind_mounts (dedup by real path), so re-emit each one as --symlink
     # at its configured path. Generalizes the old hand-coded ~/.willow re-add —
     # the next symlinked store added to config needs no code change.
-    _emitted_links: set[str] = set()
     for _target, _link in collect_config_symlinks(root):
+        if _link in _claimed:
+            continue
         args += ["--symlink", _target, _link]
-        _emitted_links.add(_link)
+        _claimed.add(_link)
 
     # ~/.willow keeps one extra behavior the generic pass can't infer: on hosts
     # where the alias does not exist at all, create it anyway so legacy
@@ -326,7 +338,7 @@ def build_bwrap_argv(
     _home_willow = willow_home_alias()
     _canonical_willow = willow_home()
     if (
-        str(_home_willow) not in _emitted_links
+        str(_home_willow) not in _claimed
         and _canonical_willow.is_dir()
         and (_home_willow.is_symlink() or not _home_willow.exists())
     ):
