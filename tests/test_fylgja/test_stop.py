@@ -94,3 +94,27 @@ def test_stop_mcp_failure_does_not_crash():
         raise RuntimeError("MCP down")
     with patch("willow.fylgja.events.stop.call", fake_call):
         _run_stop({"session_id": "abc123"})  # must not raise
+
+
+def test_refresh_projects_atom_gates_duplicate_writes(tmp_path):
+    """Unchanged handoff content must not re-write the projects atom each turn."""
+    handoff = {"open_threads": ["t1"], "next_bite": "bite", "agreements": ["a"]}
+    calls = []
+
+    def fake_call(tool, args, timeout=5):
+        calls.append((tool, args))
+        if tool == "handoff_latest":
+            return dict(handoff)
+        return {}
+
+    def intake_writes():
+        return [c for c in calls if c[0] == "intake_write"]
+
+    with patch("willow.fylgja.events.stop.call", fake_call), \
+         patch("willow.fylgja.willow_home.willow_home", lambda *a, **k: tmp_path):
+        s._refresh_projects_atom("sess1")
+        s._refresh_projects_atom("sess1")
+        assert len(intake_writes()) == 1, "duplicate snapshot re-written"
+        handoff["open_threads"] = ["t1", "t2"]
+        s._refresh_projects_atom("sess1")
+        assert len(intake_writes()) == 2, "changed snapshot not written"

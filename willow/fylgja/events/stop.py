@@ -6,6 +6,7 @@ Heavy pipeline (handoff writing) lives in events/shutdown.py — run via /shutdo
 Personal signal scanner: scans last user turn for family/health/creative/emotion patterns,
 stages candidates to personal/candidates for Loki review → sean.db write gate.
 """
+import hashlib
 import json
 import re
 import sys
@@ -443,6 +444,11 @@ def _refresh_projects_atom(session_id: str) -> None:
 
     Gives the Discord responder accurate, vocabulary-matched context so it
     stops routing 'what are the open projects' to 3b with no KB grounding.
+
+    Stop fires on every assistant turn (via stop_slow.py), so the write is
+    gated on a content hash: a new atom lands only when the snapshot text
+    actually changed, not once per turn
+    (flag-stop-hook-projects-atom-per-turn-duplication).
     """
     if call is None:
         return
@@ -467,6 +473,20 @@ def _refresh_projects_atom(session_id: str) -> None:
         if not content:
             return
 
+        # Write-gate: skip when this exact snapshot was already written.
+        digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        marker = None
+        try:
+            from willow.fylgja.willow_home import willow_home
+
+            state_dir = willow_home() / "state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+            marker = state_dir / f"projects_atom_{_AGENT}.sha256"
+            if marker.is_file() and marker.read_text().strip() == digest:
+                return
+        except Exception:
+            marker = None
+
         call("intake_write", {
             "app_id": _AGENT,
             "title": f"Current open projects — Willow 2.0 fleet ({date})",
@@ -481,6 +501,11 @@ def _refresh_projects_atom(session_id: str) -> None:
             ],
             "tags": ["projects", "fleet-state", "responder-grounding", "auto-refresh"],
         }, timeout=10)
+        if marker is not None:
+            try:
+                marker.write_text(digest)
+            except Exception:
+                pass
     except Exception:
         pass
 
