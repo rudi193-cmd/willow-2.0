@@ -33,7 +33,7 @@ DEFAULTS = [
         "name": "anthropic",
         "enabled": False,
         "api_key": None,
-        "models": ["claude-sonnet-4-6", "claude-haiku-4-5"],
+        "models": ["claude-sonnet-5", "claude-sonnet-4-6", "claude-haiku-4-5"],
         "local": False,
     },
     {

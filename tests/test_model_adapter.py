@@ -20,6 +20,14 @@ def test_anthropic_provider_name():
     assert AnthropicAdapter(api_key="sk-ant-test").provider_name == "anthropic"
 
 
+def test_anthropic_default_and_available_models():
+    a = AnthropicAdapter(api_key="sk-ant-test")
+    assert a._model == "claude-sonnet-5"
+    models = a.available_models()
+    assert "claude-sonnet-5" in models
+    assert "claude-sonnet-4-6" in models
+
+
 def test_groq_provider_name():
     assert GroqAdapter(api_key="gsk_test").provider_name == "groq"
 
