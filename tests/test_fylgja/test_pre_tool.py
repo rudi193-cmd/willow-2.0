@@ -4,6 +4,7 @@ from unittest.mock import patch
 from willow.fylgja.events.pre_tool import (
     check_bash_block,
     check_agent_block,
+    check_hook_tamper_guard,
     check_kb_first,
     check_channel_enforce,
     check_native_web_block,
@@ -109,12 +110,87 @@ def test_allows_install_project_module():
 def test_blocks_explore_subagent():
     reason = check_agent_block("Explore")
     assert reason is not None
-    assert "MCP" in reason
+    assert "willow_find" in reason or "MCP" in reason
 
 
-def test_allows_general_purpose_agent():
+def test_blocks_general_purpose_subagent():
+    reason = check_agent_block("generalPurpose")
+    assert reason is not None
+    assert "blocked" in reason.lower()
+
+
+def test_blocks_explore_subagent_cursor_casing():
+    assert check_agent_block("explore") is not None
+
+
+def test_blocks_shell_subagent():
+    assert check_agent_block("shell") is not None
+
+
+def test_allows_review_subagents():
+    assert check_agent_block("bugbot") is None
+    assert check_agent_block("security-review") is None
+
+
+def test_blocks_git_after_cd():
+    result = check_bash_block("cd /home/sean/github/willow-2.0 && git status -sb")
+    assert result is not None
+    assert result[0] == "block"
+    assert "git" in result[1].lower() or "Kart" in result[1]
+
+
+def test_blocks_python_os_walk():
+    cmd = 'python3 -c "import os; print(list(os.walk(\".\")))"'
+    result = check_bash_block(cmd)
+    assert result is not None
+    assert result[0] == "block"
+
+
+def test_blocks_python_heredoc():
+    cmd = "python3 << 'EOF'\nimport os\nfor r, ds, fs in os.walk('.'): print(r)\nEOF"
+    result = check_bash_block(cmd)
+    assert result is not None
+    assert result[0] == "block"
+
+
+def test_blocks_rg_cli():
+    result = check_bash_block("rg -n check_boot_gate willow/")
+    assert result is not None
+    assert result[0] == "block"
+
+
+def test_hook_guard_blocks_read_of_pre_tool(monkeypatch):
+    monkeypatch.delenv("WILLOW_HOOK_MAINTENANCE", raising=False)
+    reason = check_hook_tamper_guard(
+        "Read",
+        {"file_path": "/home/sean/github/willow-2.0/willow/fylgja/events/pre_tool.py"},
+    )
+    assert reason is not None
+    assert "not readable" in reason
+
+
+def test_hook_guard_allows_with_maintenance_flag(monkeypatch):
+    monkeypatch.setenv("WILLOW_HOOK_MAINTENANCE", "1")
+    assert check_hook_tamper_guard(
+        "Read",
+        {"file_path": "/home/sean/github/willow-2.0/willow/fylgja/events/pre_tool.py"},
+    ) is None
+
+
+def test_blocks_general_purpose_agent_legacy():
     reason = check_agent_block("general-purpose")
-    assert reason is None
+    assert reason is not None
+
+
+def test_task_subagent_blocked_via_pre_tool():
+    out = _run_pre_tool({
+        "tool_name": "Task",
+        "tool_input": {"subagent_type": "generalPurpose", "description": "grep the repo"},
+        "session_id": "task-block-1",
+    })
+    assert out.strip()
+    data = json.loads(out)
+    assert data["decision"] == "block"
 
 
 def test_kb_first_returns_advisory_when_record_found():

@@ -42,6 +42,41 @@ def _cursor_to_claude(module: str, payload: dict) -> dict:
         }
 
     if module.endswith("pre_tool"):
+        sid = payload.get("conversation_id") or payload.get("parent_conversation_id", "")
+
+        if event == "subagentStart":
+            return {
+                "session_id": sid,
+                "tool_name": "Task",
+                "tool_input": {
+                    "subagent_type": payload.get("subagent_type", ""),
+                    "description": payload.get("task", ""),
+                },
+            }
+
+        if event == "preToolUse" or payload.get("tool_name"):
+            tool = payload.get("tool_name", "")
+            tool_map = {
+                "Shell": "Bash",
+                "Grep": "Grep",
+                "Write": "Write",
+                "Read": "Read",
+                "Task": "Task",
+                "Edit": "Edit",
+            }
+            mapped = tool_map.get(tool, tool)
+            tool_input = payload.get("tool_input") or {}
+            if not isinstance(tool_input, dict):
+                tool_input = {}
+            if mapped == "Bash" and "command" not in tool_input:
+                cmd = tool_input.get("command") or payload.get("command", "")
+                tool_input = {"command": cmd}
+            return {
+                "session_id": sid,
+                "tool_name": mapped,
+                "tool_input": tool_input,
+            }
+
         if event == "beforeMCPExecution":
             server = payload.get("server", "willow")
             tool = payload.get("tool_name", "")
@@ -54,14 +89,14 @@ def _cursor_to_claude(module: str, payload: dict) -> dict:
             if not isinstance(tool_input, dict):
                 tool_input = {}
             return {
-                "session_id": payload.get("conversation_id", ""),
+                "session_id": sid,
                 "tool_name": f"mcp__{server}__{tool}",
                 "tool_input": tool_input,
             }
 
         command = payload.get("command", "")
         return {
-            "session_id": payload.get("conversation_id", ""),
+            "session_id": sid,
             "tool_name": "Bash",
             "tool_input": {"command": command},
         }

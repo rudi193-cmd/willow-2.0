@@ -23,6 +23,8 @@ _SCRIPT = "agent_task_submit(script_body=...) — avoids MCP JSON quote breakage
 # bounce back to Bash and the block counter climbs. Route to lanes that exist.
 _RUN = f"{_KART} or willow_run(script_body=...)"
 
+_ENUM = f"willow_find(scope=code) · code_graph_search · cbm_search · {_RUN}"
+
 # shell habit → (decision, redirect message)
 BASH_TO_MCP: list[tuple[str, str, str]] = [
     (r"^\s*ls(\s|$)", "block", f"soil_list/app_list for Willow data · filesystem listing → {_RUN}"),
@@ -32,10 +34,18 @@ BASH_TO_MCP: list[tuple[str, str, str]] = [
     (r"^\s*pwd\s*$", "warn", "cwd is in context; fleet_status for roots"),
     (r"^\s*tree(\s|$)", "block", f"directory tree → {_RUN}"),
     (r"^\s*du(\s|$)", "warn", f"fleet_system_status · {_KART}"),
-    (r"^\s*git\s", "block", f"{_KART} · allow_net=True for push/fetch — agent Bash has no git creds"),
-    (r"^\s*gh\s", "block", f"{_KART} · allow_net=True — agent Bash has no gh creds"),
+    # Word-boundary git/gh — blocks `cd repo && git status` evasion of ^\s*git anchor.
+    (r"\bgit\s", "block", f"{_KART} · allow_net=True for push/fetch — agent Bash has no git creds"),
+    (r"\bgh\s", "block", f"{_KART} · allow_net=True — agent Bash has no gh creds"),
     (r"\bgrep\b", "block", f"willow_find(scope=code) · code_graph_search for code · kb_search/soil_search for Willow knowledge · raw text → {_RUN}"),
+    (r"\brg\b", "block", f"willow_find(scope=code) · code_graph_search · raw text → {_RUN}"),
     (r"\bfind\s", "block", f"code_graph_search · willow_find(scope=code) for code · file enumeration → {_RUN}"),
+    # Python enumeration / heredoc bypasses (Sonnet gremlin session e374e216).
+    (r"(?i)python3?\s+.*<<", "block", f"Python heredoc in agent Bash → {_SCRIPT}"),
+    (r"(?i)\bos\.walk\s*\(", "block", _ENUM),
+    (r"(?i)\.rglob\s*\(", "block", _ENUM),
+    (r"(?i)\bglob\.glob\s*\(", "block", _ENUM),
+    (r"(?i)\bos\.scandir\s*\(", "block", _ENUM),
     (r"(?i)python3?\s+-m\s+(willow|sap|core)\.", "block", "Matching MCP tool — sap/mcp_registry.json"),
     (r"(?i)python3?\s+(-c|--command)\s", "warn", _SCRIPT),
 ]

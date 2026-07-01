@@ -385,9 +385,68 @@ def check_kart_reuse(tool_name: str, tool_input: dict, session_id: str) -> str |
 
 
 def check_agent_block(subagent_type: str) -> str | None:
-    if subagent_type == "Explore":
-        return ("Explore subagent is blocked. Use MCP: soil_search, kb_search, "
-                "soil_get, soil_list — or Glob/Grep/Read directly.")
+    """Block subagents that replicate grep/find/shell lanes outside PreToolUse."""
+    raw = (subagent_type or "").strip()
+    norm = raw.replace("_", "-").lower()
+    if norm == "explore":
+        return (
+            "Explore subagent is blocked. Use MCP: willow_find, code_graph_search, "
+            "cbm_search, kb_search, soil_search — or willow_run(script_body=...) via Kart."
+        )
+    if norm in ("generalpurpose", "general-purpose"):
+        return (
+            "generalPurpose Task subagent is blocked for code/search work. "
+            "Use Willow MCP directly (willow_find, code_graph_search, cbm_search) "
+            "or willow_run / Kart — delegated subagents bypass hook enforcement."
+        )
+    if norm == "shell":
+        return (
+            "shell subagent is blocked. Use willow_run / agent_task_submit + kart_task_run."
+        )
+    return None
+
+
+_HOOK_GUARD_FRAGMENTS = (
+    "willow/fylgja/events/",
+    "willow/fylgja/hook_runner.py",
+    "willow/fylgja/bin/fylgja-hook",
+    "willow/fylgja/config/cursor-hooks.json",
+    ".cursor/hooks.json",
+    ".claude/settings.json",
+)
+
+
+def _normalize_path(path: str) -> str:
+    return str(Path(path).expanduser()).replace("\\", "/")
+
+
+def check_hook_tamper_guard(tool_name: str, tool_input: dict) -> str | None:
+    """Block agents from reading/editing Fylgja hook sources (Sonnet gremlin path)."""
+    if os.environ.get("WILLOW_HOOK_MAINTENANCE"):
+        return None
+    file_path = str(
+        tool_input.get("file_path")
+        or tool_input.get("path")
+        or tool_input.get("file")
+        or ""
+    )
+    if not file_path:
+        return None
+    norm = _normalize_path(file_path)
+    if not any(frag in norm for frag in _HOOK_GUARD_FRAGMENTS):
+        return None
+    if tool_name == "Read":
+        return (
+            "Fylgja hook source is not readable by agents (prevents bypass discovery). "
+            "Use docs/CONTRACT.md and willow/fylgja/skills/boot.md. "
+            "Maintainers: set WILLOW_HOOK_MAINTENANCE=1 for hook edits."
+        )
+    if tool_name in ("Write", "Edit", "StrReplace"):
+        return (
+            "Fylgja hook files cannot be edited via IDE tools. "
+            "Change hooks in a maintainer session (WILLOW_HOOK_MAINTENANCE=1) "
+            "or queue Kart work on the host."
+        )
     return None
 
 
@@ -679,6 +738,12 @@ def main():
         print(json.dumps({"decision": "block", "reason": kart_block}))
         sys.exit(0)
 
+    hook_guard = check_hook_tamper_guard(tool_name, tool_input)
+    if hook_guard:
+        _corpus_log_block(tool_name, hook_guard, session_id)
+        print(json.dumps({"decision": "block", "reason": hook_guard}))
+        sys.exit(0)
+
     # Safety gate — runs before all other checks
     block = _run_safety_gate(tool_name, tool_input, session_id)
     if block:
@@ -695,9 +760,9 @@ def main():
         print(block)
         sys.exit(0)
 
-    # Agent tool
-    subagent_type = tool_input.get("subagent_type", "")
-    if subagent_type or tool_name == "Agent":
+    # Agent / Task subagent tools
+    subagent_type = tool_input.get("subagent_type", "") or tool_input.get("agent_type", "")
+    if subagent_type or tool_name in ("Agent", "Task"):
         reason = check_agent_block(subagent_type) if subagent_type else None
         if reason:
             print(json.dumps({"decision": "block", "reason": reason}))

@@ -52,6 +52,8 @@ def test_cursor_hooks_template_uses_fylgja_hook():
     rendered = path.read_text(encoding="utf-8")
     assert "fylgja-hook" in rendered
     assert "session_start" in rendered
+    assert "preToolUse" in rendered
+    assert "subagentStart" in rendered
 
 
 def test_build_claude_hooks_block_uses_hook_runner():
@@ -63,6 +65,9 @@ def test_build_claude_hooks_block_uses_hook_runner():
     assert "SessionStart" in block
     post_matchers = [e.get("matcher", "") for e in block.get("PostToolUse", [])]
     assert "TaskUpdate" in post_matchers
+    pre_matchers = [e.get("matcher", "") for e in block.get("PreToolUse", [])]
+    assert "Agent|Task" in pre_matchers
+    assert "Write|Edit|StrReplace" in pre_matchers
 
 
 def test_status_strip_hook_is_managed_fylgja_entry():
