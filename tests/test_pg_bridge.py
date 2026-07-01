@@ -101,3 +101,39 @@ def test_routing_decisions_table():
     cur.execute("DELETE FROM routing_decisions WHERE id = %s", (rid,))
     conn.commit()
     conn.close()
+
+
+def test_knowledge_put_reconnects_after_conn_closed_during_embed(monkeypatch):
+    """embed() is out-of-band HTTP; PG must be re-acquired before INSERT."""
+    os.environ.setdefault("WILLOW_PG_DB", "willow_20_test")
+    from core import pg_bridge
+    from core.pg_bridge import PgBridge
+
+    bridge = PgBridge()
+    real_embed = pg_bridge.embed
+
+    def _embed_and_drop_conn(text):
+        try:
+            if bridge.conn is not None and not bridge.conn.closed:
+                bridge.conn.close()
+        except Exception:
+            pass
+        return real_embed(text)
+
+    monkeypatch.setattr(pg_bridge, "embed", _embed_and_drop_conn)
+    atom_id = "kp_idle_reconn_z99"
+    try:
+        bridge.knowledge_put({
+            "id": atom_id,
+            "project": "willow",
+            "title": "idle reconnect test",
+            "summary": "validates pg refresh after embed",
+        })
+        with bridge.cursor() as cur:
+            cur.execute("SELECT id FROM knowledge WHERE id = %s", (atom_id,))
+            assert cur.fetchone()[0] == atom_id
+    finally:
+        with bridge.cursor() as cur:
+            cur.execute("DELETE FROM knowledge WHERE id = %s", (atom_id,))
+        bridge.conn.commit()
+        bridge.close()

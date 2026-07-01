@@ -48,7 +48,7 @@ def draugr_scan(bridge, days: int = 60) -> list:
     """
     _ensure_pg(bridge)
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    with bridge.conn.cursor() as cur:
+    with bridge.cursor() as cur:
         cur.execute("""
             SELECT id FROM knowledge
             WHERE invalid_at IS NULL
@@ -66,7 +66,7 @@ def draugr_mark(bridge, atom_ids: list) -> int:
     if not atom_ids:
         return 0
     _ensure_pg(bridge)
-    with bridge.conn.cursor() as cur:
+    with bridge.cursor() as cur:
         cur.execute(
             "UPDATE knowledge SET category = 'draugr' "
             "WHERE id = ANY(%s) AND invalid_at IS NULL "
@@ -97,7 +97,7 @@ def serendipity_pass(bridge, recent_days: int = 7,
     old_min = now - timedelta(days=old_max_days)
     old_max = now - timedelta(days=old_min_days)
 
-    with bridge.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+    with bridge.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("""
             SELECT title, summary FROM knowledge
             WHERE invalid_at IS NULL AND created_at >= %s
@@ -120,7 +120,7 @@ def serendipity_pass(bridge, recent_days: int = 7,
     surfaced, seen = [], set()
     for kw in sorted(keywords)[:20]:
         _ensure_pg(bridge)
-        with bridge.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with bridge.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
                 SELECT * FROM knowledge
                 WHERE invalid_at IS NULL
@@ -190,7 +190,7 @@ def dark_matter_pass(bridge, min_overlap: int = 3, limit: int = 100) -> int:
     Returns count of atoms written.
     """
     _ensure_pg(bridge)
-    with bridge.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+    with bridge.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("""
             SELECT id, project, title, summary FROM knowledge
             WHERE invalid_at IS NULL
@@ -245,7 +245,7 @@ def revelation_pass(bridge, min_overlap: int = 3) -> int:
     Returns count of revelation atoms written.
     """
     _ensure_pg(bridge)
-    with bridge.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+    with bridge.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("""
             SELECT id, project, title, summary FROM knowledge
             WHERE invalid_at IS NULL AND source_type = 'community_detection'
@@ -298,7 +298,7 @@ def mirror_pass(bridge) -> int:
     Returns 1 if mirror atom written, 0 otherwise.
     """
     _ensure_pg(bridge)
-    with bridge.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+    with bridge.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("""
             SELECT id, project, title, summary FROM knowledge
             WHERE invalid_at IS NULL AND source_type = 'community_detection'
@@ -322,7 +322,7 @@ def mycorrhizal_pass(bridge, sparse_threshold: int = 5) -> int:
     Returns count of mycorrhizal atoms written.
     """
     _ensure_pg(bridge)
-    with bridge.conn.cursor() as cur:
+    with bridge.cursor() as cur:
         cur.execute("""
             SELECT project, COUNT(*) AS cnt FROM knowledge
             WHERE invalid_at IS NULL
@@ -336,7 +336,7 @@ def mycorrhizal_pass(bridge, sparse_threshold: int = 5) -> int:
         return 0
 
     _ensure_pg(bridge)
-    with bridge.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+    with bridge.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute("""
             SELECT id, project, title, summary FROM knowledge
             WHERE invalid_at IS NULL

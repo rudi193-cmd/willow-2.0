@@ -12,6 +12,7 @@ import os
 import threading
 import time
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -680,6 +681,10 @@ def _pg_kwargs() -> dict:
         host=os.environ.get("WILLOW_PG_HOST") or None,
         port=os.environ.get("WILLOW_PG_PORT") or None,
         connect_timeout=_PG_CONNECT_TIMEOUT,
+        keepalives=1,
+        keepalives_idle=30,
+        keepalives_interval=10,
+        keepalives_count=5,
         options=f"-c statement_timeout={_PG_STATEMENT_TIMEOUT} -c lock_timeout={_PG_LOCK_TIMEOUT}",
     )
     password = os.environ.get("WILLOW_PG_PASSWORD") or os.environ.get("PGPASSWORD")
@@ -917,6 +922,51 @@ class PgBridge:
             except Exception:
                 self.conn = None
 
+    def _reconnect_after_operational_error(self) -> None:
+        """Drop and replace conn after the server closed an in-flight session."""
+        try:
+            _discard_connection(self.conn)
+        except Exception:
+            pass
+        self.conn = None
+        self._ensure_conn()
+
+    def _run_pg(self, fn, *, retries: int = 2):
+        """Run a DB callable; reconnect once on OperationalError per attempt."""
+        last_err = None
+        for _ in range(retries):
+            self._ensure_conn()
+            try:
+                return fn()
+            except psycopg2.OperationalError as exc:
+                last_err = exc
+                self._reconnect_after_operational_error()
+        if last_err is not None:
+            raise last_err
+        raise RuntimeError("pg_bridge: _run_pg exhausted retries without result")
+
+    @contextmanager
+    def cursor(self, cursor_factory=None):
+        """Context manager with reconnect-on-OperationalError for one cursor scope."""
+        kwargs = {}
+        if cursor_factory is not None:
+            kwargs["cursor_factory"] = cursor_factory
+        last_err = None
+        for attempt in range(2):
+            self._ensure_conn()
+            try:
+                with self.conn.cursor(**kwargs) as cur:
+                    yield cur
+                return
+            except psycopg2.OperationalError as exc:
+                last_err = exc
+                self._reconnect_after_operational_error()
+                if attempt == 0:
+                    continue
+                raise
+        if last_err is not None:
+            raise last_err
+
     @staticmethod
     def gen_id(length: int = 5) -> str:
         """Generate a base-17 style short ID."""
@@ -1115,42 +1165,48 @@ class PgBridge:
         )
         vec = embed(self._knowledge_embedding_text(record))
         vec_str = str(vec) if vec is not None else None
-        with self.conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO knowledge
-                    (id, project, valid_at, invalid_at, title, summary, content,
-                     source_type, category, embedding, tier, confidence)
-                VALUES
-                    (%(id)s, %(project)s, %(valid_at)s, %(invalid_at)s,
-                     %(title)s, %(summary)s, %(content)s, %(source_type)s, %(category)s,
-                     %(embedding)s::vector, %(tier)s, %(confidence)s)
-                ON CONFLICT (id) DO UPDATE SET
-                    project     = EXCLUDED.project,
-                    valid_at    = EXCLUDED.valid_at,
-                    title       = EXCLUDED.title,
-                    summary     = EXCLUDED.summary,
-                    content     = EXCLUDED.content,
-                    source_type = EXCLUDED.source_type,
-                    category    = EXCLUDED.category,
-                    embedding   = EXCLUDED.embedding,
-                    tier        = EXCLUDED.tier,
-                    confidence  = EXCLUDED.confidence
-            """, {
-                "id":          record["id"],
-                "project":     record.get("project", "global"),
-                "valid_at":    record.get("valid_at", datetime.now(timezone.utc)),
-                "invalid_at":  record.get("invalid_at"),
-                "title":       record.get("title"),
-                "summary":     record.get("summary"),
-                "content":     psycopg2.extras.Json(record.get("content")),
-                "source_type": record.get("source_type"),
-                "category":    record.get("category"),
-                "embedding":   vec_str,
-                "tier":        normalize_tier(record.get("tier", "frontier")),
-                "confidence":  record.get("confidence", 1.0),
-            })
-        self.conn.commit()
-        return record["id"]
+        # embed() may block on HTTP — pool conn can idle out before INSERT.
+        self._ensure_conn()
+
+        def _write():
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO knowledge
+                        (id, project, valid_at, invalid_at, title, summary, content,
+                         source_type, category, embedding, tier, confidence)
+                    VALUES
+                        (%(id)s, %(project)s, %(valid_at)s, %(invalid_at)s,
+                         %(title)s, %(summary)s, %(content)s, %(source_type)s, %(category)s,
+                         %(embedding)s::vector, %(tier)s, %(confidence)s)
+                    ON CONFLICT (id) DO UPDATE SET
+                        project     = EXCLUDED.project,
+                        valid_at    = EXCLUDED.valid_at,
+                        title       = EXCLUDED.title,
+                        summary     = EXCLUDED.summary,
+                        content     = EXCLUDED.content,
+                        source_type = EXCLUDED.source_type,
+                        category    = EXCLUDED.category,
+                        embedding   = EXCLUDED.embedding,
+                        tier        = EXCLUDED.tier,
+                        confidence  = EXCLUDED.confidence
+                """, {
+                    "id":          record["id"],
+                    "project":     record.get("project", "global"),
+                    "valid_at":    record.get("valid_at", datetime.now(timezone.utc)),
+                    "invalid_at":  record.get("invalid_at"),
+                    "title":       record.get("title"),
+                    "summary":     record.get("summary"),
+                    "content":     psycopg2.extras.Json(record.get("content")),
+                    "source_type": record.get("source_type"),
+                    "category":    record.get("category"),
+                    "embedding":   vec_str,
+                    "tier":        normalize_tier(record.get("tier", "frontier")),
+                    "confidence":  record.get("confidence", 1.0),
+                })
+            self.conn.commit()
+            return record["id"]
+
+        return self._run_pg(_write)
 
     def _knowledge_embedding_text(self, record: dict) -> str:
         """Build embedding input from searchable atom fields, not summary alone."""
@@ -2292,6 +2348,7 @@ class PgBridge:
             atom_id = self.gen_id(8)
             vec = embed(f"{title or ''} {content}")
             vec_str = str(vec) if vec is not None else None
+            self._ensure_conn()
             with self.conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO opus_atoms
@@ -2312,6 +2369,7 @@ class PgBridge:
             content = record.get("content", "")
             vec = embed(f"{title or ''} {content}")
             vec_str = str(vec) if vec is not None else None
+            self._ensure_conn()
             with self.conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO opus_atoms
@@ -2593,6 +2651,7 @@ class PgBridge:
             aid = self.gen_id(8)
             vec = embed(f"{title or ''} {content}")
             vec_str = str(vec) if vec is not None else None
+            self._ensure_conn()
             with self.conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO jeles_atoms
