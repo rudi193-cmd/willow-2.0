@@ -195,7 +195,7 @@ Then a compact status list (no prose paragraph — one line each, no sub-bullets
 - **Corrections:** [N] loaded
 - **Next:** [next_bite ≤120 chars]
 
-Then write the boot sentinel: `Write(file_path="/tmp/willow-boot-done-{agent}.flag", content="booted")` — this clears the boot gate for this session. The sentinel is deleted by the Stop hook at session end.
+Then write the boot sentinel: `Write(file_path="/tmp/willow-boot-done-{agent}.flag", content="booted")` — this clears the boot gate for this session. SessionStart clears the sentinel on a **fresh** session (`startup` / `clear`); the Stop hook does **not** clear it (Stop runs every turn, not only at session end).
 
 Then respond to the user.
 

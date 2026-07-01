@@ -32,7 +32,6 @@ except Exception:
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
 THREAD_FILE = Path("/tmp/willow-context-thread.json")
 _AGENT = require_agent_name()
-BOOT_DONE = Path(f"/tmp/willow-boot-done-{_AGENT}.flag")
 
 
 def _log_hook_error(where: str, detail: dict) -> None:
@@ -624,8 +623,9 @@ def main():
 
     session_id = data.get("session_id", "")
 
-    # Clear boot sentinel — next session must boot again
-    BOOT_DONE.unlink(missing_ok=True)
+    # Boot sentinel: cleared only on SessionStart (fresh session), not here.
+    # Cursor/Claude fire Stop after every assistant turn — unlinking here forced
+    # re-writing /tmp/willow-boot-done-*.flag at the start of every turn.
 
     # Cleanup depth stack
     try:
