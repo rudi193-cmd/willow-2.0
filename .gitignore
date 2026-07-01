@@ -98,6 +98,9 @@ archive/*.db
 # Kart ephemeral scripts (agent_task_submit script_body)
 .kart-scripts/
 
+# Local agent scratch notes — never commit
+scratchpad/
+
 # Upstream steward clones + local worktrees (gitignored per worktree.md)
 worktrees/
 
