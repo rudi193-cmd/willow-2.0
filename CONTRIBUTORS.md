@@ -35,6 +35,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | feat(schema): add catalog-entry v2 JSON Schema + gitignore .cursor overlay | [PR #9](https://github.com/almanac-data/almanac-template/pull/9) merged |
 | [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | docs(schema): add catalog-entry v2 rationale (SCHEMA-V2.md) | [PR #8](https://github.com/almanac-data/almanac-template/pull/8) merged |
 | [almanac-data/.github](https://github.com/almanac-data/.github) | almanac-data | docs: agent guide and fleet overlay gitignore | [PR #1](https://github.com/almanac-data/.github/pull/1) merged |
 | [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | feat(check_links): headless-browser reachability fallback | [PR #39](https://github.com/almanac-data/climate-almanac/pull/39) merged |
