@@ -2448,7 +2448,7 @@ async def mem_jeles_web_search(
     sources:  list = [],
     limit:    int  = 3,
 ) -> dict:
-    """Jeles: Search trusted, citable sources (LOC, arXiv, PubMed, Smithsonian, Europeana, NASA, Crossref, Open Library). Results carry full source attribution for academic citation. Pass sources=[] for all 29 academic/institutional sources, or name specific ones. Wikipedia is opt-in only (general reference, not academic): pass sources=["wikipedia"] to include it."""
+    """Jeles: Search trusted, citable sources (LOC, arXiv, PubMed, Smithsonian, Europeana, NASA, Crossref, Open Library, and more — 64 registered sources across 36 subject domains). Results carry full source attribution for academic citation. Pass sources=[] to auto-route to the ~6 sources whose domain best matches the query (semantic routing over pre-built domain centroids), or name specific source IDs to override routing entirely. Returns both a per-source `results` dict and a cross-source `ranked` list (RRF-fused lexical + semantic rerank). Wikipedia is opt-in only (general reference, not academic): pass sources=["wikipedia"] to include it."""
     logger.info("[w2] mem_jeles_web_search app_id=%s query=%r sources=%s", app_id, query, sources or "all")
     from core.jeles_sources import search as jeles_search
     loop = asyncio.get_running_loop()
