@@ -3248,6 +3248,48 @@ def list_sources() -> list[dict]:
     ]
 
 
+def _rerank_combined(query: str, out: dict[str, list], top_n: int = 15) -> list[dict]:
+    """Cross-source rerank of jeles hits via the same RRF fusion the main KB uses
+    (willow/ranking/hybrid.py._rrf_fuse, k=60) — a lexical BM25 leg plus a cosine
+    leg over the local embedding model, fused rather than sorted by cosine alone.
+    Degrades to lexical-only when the embedder is unreachable (same graceful-degrade
+    pattern hybrid.py already uses for KB search)."""
+    from willow.ranking.hybrid import _tokenize, _build_bm25, _rrf_fuse
+
+    flat: list[dict] = []
+    for sid, hits in out.items():
+        for hit in hits:
+            row = dict(hit)
+            row["source"] = row.get("source") or sid
+            row["id"] = row.get("id") or f"{sid}:{hash((row.get('url'), row.get('title')))}"
+            flat.append(row)
+    if not flat:
+        return []
+
+    # Shape as {"title", "summary"} so hybrid.py's _row_text/_build_bm25 apply unmodified.
+    bm25_rows = [{"title": r.get("title", ""), "summary": r.get("snippet", "")} for r in flat]
+    bm25 = _build_bm25(bm25_rows)
+    query_tokens = _tokenize(query)
+    lexical_scores = bm25.get_scores(query_tokens)
+    lexical_ranked = [flat[i] for i in sorted(
+        range(len(flat)), key=lambda i: lexical_scores[i], reverse=True,
+    )]
+
+    ranked_lists = [lexical_ranked]
+    q_vec = _get_embedding(query)
+    if q_vec:
+        cosine_ranked = []
+        for row in flat:
+            v = _get_embedding(f"{row.get('title', '')} {row.get('snippet', '')}")
+            sim = _cosine(q_vec, v) if v else 0.0
+            cosine_ranked.append({**row, "_cosine_sim": sim})
+        cosine_ranked.sort(key=lambda r: -r["_cosine_sim"])
+        ranked_lists.append(cosine_ranked)
+
+    fused = _rrf_fuse(ranked_lists, weight_col=False)
+    return fused[:top_n]
+
+
 def search(
     query: str,
     sources: list[str] | None = None,
@@ -3255,18 +3297,27 @@ def search(
     wall_clock_limit: float = 20.0,
 ) -> dict:
     """Search across trusted sources. DB-registry dispatch via fn_name strings.
-    sources=None → all non-opt-in sources. Pass a list to target specific ones.
+    sources=None → auto-routed via route_sources_semantic() to the ~6 sources
+    whose domain best matches the query (falls back to all non-opt-in sources
+    only if routing is unavailable). Pass a list to target specific ones and
+    bypass routing entirely.
 
     Concurrent: up to 16 sources run in parallel via _SEARCH_EXECUTOR (module-level,
     shared across MCP calls). wall_clock_limit caps total wait time; per-source urllib
     timeout (_TIMEOUT) handles individual hangs. Sources not done within
-    wall_clock_limit are dropped."""
+    wall_clock_limit are dropped.
+
+    Results carry a cross-source `ranked` list (RRF-fused, see _rerank_combined)
+    in addition to the per-source `results` dict."""
     registry = _load_registry()
     if sources:
         active = sources
+        routed = False
     else:
-        active = [sid for sid, cfg in registry.items()
-                  if not cfg.get("opt_in") and cfg.get("enabled", True)]
+        # route_sources_semantic() always returns a non-empty list (falls back to
+        # _DEFAULT_SOURCES as its own last resort), so this always narrows the fan-out.
+        active = route_sources_semantic(query)
+        routed = True
 
     resolved: list[tuple[str, object]] = []
     for sid in active:
@@ -3306,12 +3357,15 @@ def search(
         )
 
     total = sum(len(v) for v in out.values())
+    ranked = _rerank_combined(query, out) if out else []
     if out:
         _write_cache(query, out)
     return {
         "query": query,
         "sources_queried": active,
+        "routed": routed,
         "total": total,
         "results": out,
+        "ranked": ranked,
         "note": NO_WIKIPEDIA_NOTE,
     }
