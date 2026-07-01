@@ -6229,6 +6229,7 @@ async def _willow_run_detached(
     script_body: str,
     script_name: str,
     allow_net: bool,
+    allow_localhost: bool = False,
 ) -> dict:
     """Launch a long job on the detached lane (no daemon timeout). Helper for willow_run."""
     if not pg:
@@ -6254,7 +6255,8 @@ async def _willow_run_detached(
     from core.kart_detached import launch_detached
 
     handle = await loop.run_in_executor(
-        _executor, lambda: launch_detached(cmd, allow_net=allow_net)
+        _executor,
+        lambda: launch_detached(cmd, allow_net=allow_net, allow_localhost=allow_localhost),
     )
     _rl_log_event("task_submit", ref=handle.get("task_id"))
     if script_path:
@@ -6273,10 +6275,15 @@ async def willow_run(
     task_id: str = "",
     run_now: bool = False,
     allow_net: bool = False,
+    allow_localhost: bool = False,
     agent: str = "kart",
     detached: bool = False,
 ) -> dict:
     """Facade: run or inspect local work through Kart.
+
+    allow_localhost=True grants loopback-only network (host Ollama /
+    embedder at localhost:11434) WITHOUT credential env vars — narrower
+    than allow_net; prefer it for embedding/semantic work in the sandbox.
 
     detached=True launches the job in a new session with NO timeout, bypassing the
     kart daemon's 30-min kill (KART_DAEMON_TIMEOUT). Use for genuinely long jobs —
@@ -6301,6 +6308,7 @@ async def willow_run(
         return await _willow_run_detached(
             app_id=app_id, task=task, script_body=script_body,
             script_name=script_name, allow_net=allow_net,
+            allow_localhost=allow_localhost,
         )
 
     submitted = await agent_task_submit(
@@ -6311,6 +6319,7 @@ async def willow_run(
         agent=agent,
         submitted_by=app_id,
         allow_net=allow_net,
+        allow_localhost=allow_localhost,
     )
     if run_now and not submitted.get("error"):
         from sap.willow_run_compact import compact_willow_run_outcome
