@@ -1058,6 +1058,10 @@ async def kb_search(
         tier_filter = tier or None
         lane_scope = _resolve_kb_lane_scope(app_id, scope=scope, project=project)
         explicit_project = (project or "").strip() or None
+        # Sidecar veto (ADR-20260702 step 2): sensitive jeles/opus rows are
+        # excluded unless the orchestrator asked for god-view — mirrors the
+        # personal-lane exclusion semantics on knowledge.
+        god_view = (scope or "").strip() == "*" and lane_scope.projects is None and not lane_scope.exclude
         if semantic:
             try:
                 knowledge = pg.knowledge_search_semantic(
@@ -1065,8 +1069,10 @@ async def kb_search(
                     fields=fields, tier=tier_filter, continuity=continuity,
                     project=explicit_project, lane_scope=lane_scope,
                 )
-                jeles    = pg.search_jeles_semantic(query, limit=limit // 2)
-                opus     = pg.search_opus_semantic(query, limit=limit // 2)
+                jeles    = pg.search_jeles_semantic(query, limit=limit // 2,
+                                                    include_sensitive=god_view)
+                opus     = pg.search_opus_semantic(query, limit=limit // 2,
+                                                   include_sensitive=god_view)
                 mode = "hybrid" if any("_rrf_score" in row for row in knowledge[:3]) else "semantic"
             except Exception:
                 knowledge = pg.knowledge_search(
@@ -1074,8 +1080,10 @@ async def kb_search(
                     fields=fields, tier=tier_filter,
                     project=explicit_project, lane_scope=lane_scope,
                 )
-                jeles = pg.jeles_keyword_search(query, limit=limit // 2)
-                opus  = pg.search_opus(query, limit=limit // 2)
+                jeles = pg.jeles_keyword_search(query, limit=limit // 2,
+                                                include_sensitive=god_view)
+                opus  = pg.search_opus(query, limit=limit // 2,
+                                       include_sensitive=god_view)
                 mode = "degraded"
         else:
             knowledge = pg.knowledge_search(
@@ -1083,8 +1091,10 @@ async def kb_search(
                 fields=fields, tier=tier_filter,
                 project=explicit_project, lane_scope=lane_scope,
             )
-            jeles = pg.jeles_keyword_search(query, limit=limit // 2)
-            opus  = pg.search_opus(query, limit=limit // 2)
+            jeles = pg.jeles_keyword_search(query, limit=limit // 2,
+                                            include_sensitive=god_view)
+            opus  = pg.search_opus(query, limit=limit // 2,
+                                   include_sensitive=god_view)
             mode = "keyword"
 
         neighbors: list = []
@@ -1115,17 +1125,11 @@ async def kb_search(
         for row in opus:
             row["_table"] = "opus_atoms"
         # Taint rule (ADR-20260702): max sensitivity over everything returned.
-        # jeles/opus sidecars carry no lane or sensitivity column yet (FINDINGS
-        # Q1); until step 2 tags them, any sidecar row taints the result set
-        # fail-closed. Advisory metadata only — no behavior change in step 1.
-        from core.canonical_lanes import (
-            SENSITIVITY_SENSITIVE,
-            atoms_taint,
-            max_sensitivity,
-        )
-        taint = atoms_taint(knowledge)
-        if jeles or opus:
-            taint = max_sensitivity([taint, SENSITIVITY_SENSITIVE])
+        # Sidecar rows now carry their own sensitivity (step 2); rows without a
+        # project resolve through atoms_taint fail-closed, so an untagged row
+        # still taints the set. Advisory metadata — enforcement is the gateway.
+        from core.canonical_lanes import atoms_taint
+        taint = atoms_taint(knowledge + jeles + opus)
         return {
             "knowledge": knowledge,
             "jeles_atoms": jeles,
@@ -6197,7 +6201,26 @@ async def willow_find(
             results["opus"] = await index_search(app_id=app_id, query=query, limit=limit)
         else:
             results[route] = {"error": f"unknown scope {route!r}"}
-    return {"facade": "willow_find", "scope": scope, "routes": routes, "results": results}
+    # Per-scope taint tags (ADR-20260702 step 2, advisory). SOIL, handoffs,
+    # sessions, and grove messages have no sensitivity structure yet →
+    # sensitive-by-default; code (public repo) and external (public web) are
+    # open; kb reports its own computed taint.
+    from core.canonical_lanes import max_sensitivity
+    _SCOPE_TAINT_DEFAULTS = {
+        "state": "sensitive", "handoff": "sensitive",
+        "sessions": "sensitive", "messages": "sensitive",
+        "code": "open", "external": "open", "opus": "sensitive",
+    }
+    by_scope = {}
+    for key in results:
+        if key == "kb":
+            kb_res = results["kb"]
+            by_scope["kb"] = kb_res.get("taint", "sensitive") if isinstance(kb_res, dict) else "sensitive"
+        else:
+            by_scope[key] = _SCOPE_TAINT_DEFAULTS.get(key, "sensitive")
+    taint = {"overall": max_sensitivity(by_scope.values()), "by_scope": by_scope}
+    return {"facade": "willow_find", "scope": scope, "routes": routes,
+            "results": results, "taint": taint}
 
 
 @mcp.tool()

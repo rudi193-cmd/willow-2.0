@@ -576,6 +576,32 @@ _MIGRATIONS = [
     END
     WHERE sensitivity IS NULL""",
     "CREATE INDEX IF NOT EXISTS idx_knowledge_sensitivity ON knowledge (sensitivity)",
+    # Sidecar sensitivity (ADR-20260702 step 2). Ratified 2026-07-02:
+    # jeles corpus is citable-public by design (extraction gate is the filter)
+    # → backfill all open; opus file_index rows describe the public repo → open,
+    # any other opus domain fails closed to sensitive.
+    "ALTER TABLE jeles_atoms ADD COLUMN IF NOT EXISTS sensitivity TEXT",
+    "ALTER TABLE opus_atoms ADD COLUMN IF NOT EXISTS sensitivity TEXT",
+    """DO $$ BEGIN
+        ALTER TABLE jeles_atoms DROP CONSTRAINT IF EXISTS jeles_sensitivity_check;
+        ALTER TABLE jeles_atoms ADD CONSTRAINT jeles_sensitivity_check CHECK (
+            sensitivity IS NULL OR sensitivity IN ('open', 'sensitive')
+        );
+    EXCEPTION WHEN others THEN NULL; END $$""",
+    """DO $$ BEGIN
+        ALTER TABLE opus_atoms DROP CONSTRAINT IF EXISTS opus_sensitivity_check;
+        ALTER TABLE opus_atoms ADD CONSTRAINT opus_sensitivity_check CHECK (
+            sensitivity IS NULL OR sensitivity IN ('open', 'sensitive')
+        );
+    EXCEPTION WHEN others THEN NULL; END $$""",
+    "UPDATE jeles_atoms SET sensitivity = 'open' WHERE sensitivity IS NULL",
+    """UPDATE opus_atoms SET sensitivity = CASE
+        WHEN domain = 'file_index' THEN 'open'
+        ELSE 'sensitive'
+    END
+    WHERE sensitivity IS NULL""",
+    "CREATE INDEX IF NOT EXISTS idx_jeles_atoms_sensitivity ON jeles_atoms (sensitivity)",
+    "CREATE INDEX IF NOT EXISTS idx_opus_atoms_sensitivity ON opus_atoms (sensitivity)",
 ]
 
 _INDEXES = """
@@ -1478,8 +1504,8 @@ class PgBridge:
         allowed = {
             "id", "project", "agent", "domain", "valid_at", "invalid_at",
             "created_at", "updated_at", "title", "summary", "content",
-            "source_type", "category", "tier", "confidence", "visit_count",
-            "weight", "last_visited", "fork_id", "embedding",
+            "source_type", "category", "tier", "confidence", "sensitivity",
+            "visit_count", "weight", "last_visited", "fork_id", "embedding",
         }
         meta_prefixes = ("_",)
         shaped: list[dict] = []
@@ -1817,24 +1843,28 @@ class PgBridge:
             row["_neighbor_relation"] = meta.get("relation")
         return rows
 
-    def search_opus_semantic(self, query: str, limit: int = 20) -> list:
+    def search_opus_semantic(self, query: str, limit: int = 20,
+                             include_sensitive: bool = False) -> list:
         vec = embed(query)
         if vec is None:
             raise EmbedDegradedError("embedder unavailable — keyword search only")
         self._ensure_conn()
         vec_str = str(vec)
+        # Veto filter (ADR-20260702 step 2): NULL fails closed via COALESCE.
+        sens = "" if include_sensitive else " AND COALESCE(sensitivity, 'sensitive') = 'open'"
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("""
+            cur.execute(f"""
                 SELECT *, embedding <=> %s::vector AS distance
-                FROM opus_atoms WHERE embedding IS NOT NULL
+                FROM opus_atoms WHERE embedding IS NOT NULL{sens}
                 ORDER BY distance ASC LIMIT %s
             """, (vec_str, limit))
             ann = [dict(r) for r in cur.fetchall()]
-        ilike = self.search_opus(query, limit=limit)
+        ilike = self.search_opus(query, limit=limit, include_sensitive=include_sensitive)
         return _rrf_merge(ann, ilike)[:limit]
 
     def search_jeles_semantic(self, query: str, limit: int = 20,
-                               days_ago: Optional[int] = None) -> list:
+                               days_ago: Optional[int] = None,
+                               include_sensitive: bool = False) -> list:
         vec = embed(query)
         if vec is None:
             raise EmbedDegradedError("embedder unavailable — keyword search only")
@@ -1842,13 +1872,16 @@ class PgBridge:
         vec_str = str(vec)
         filters = ["embedding IS NOT NULL", "invalid_at IS NULL"]
         params: list = [vec_str, limit]
+        if not include_sensitive:
+            # Veto filter (ADR-20260702 step 2): NULL fails closed.
+            filters.append("COALESCE(sensitivity, 'sensitive') = 'open'")
         if days_ago is not None:
             filters.append(f"created_at > now() - interval '{days_ago} days'")
         where = " AND ".join(filters)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 f"SELECT id, jsonl_id, agent, content, domain, depth, confidence,"
-                f" title, created_at, valid_at, invalid_at, summary,"
+                f" title, created_at, valid_at, invalid_at, summary, sensitivity,"
                 f" embedding <=> %s::vector AS distance"
                 f" FROM jeles_atoms WHERE {where}"
                 f" ORDER BY distance ASC LIMIT %s",
@@ -1856,13 +1889,16 @@ class PgBridge:
             )
             return [dict(r) for r in cur.fetchall()]
 
-    def jeles_keyword_search(self, query: str, limit: int = 20) -> list:
+    def jeles_keyword_search(self, query: str, limit: int = 20,
+                             include_sensitive: bool = False) -> list:
         """Keyword search across jeles_atoms (title + content ILIKE)."""
         self._ensure_conn()
+        # Veto filter (ADR-20260702 step 2): NULL fails closed.
+        sens = "" if include_sensitive else " AND COALESCE(sensitivity, 'sensitive') = 'open'"
         words = list(dict.fromkeys(query.split()))[:20]
         if not words:
             with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute("SELECT id, title, domain, confidence, created_at FROM jeles_atoms ORDER BY created_at DESC LIMIT %s", (limit,))
+                cur.execute(f"SELECT id, title, domain, confidence, created_at, sensitivity FROM jeles_atoms WHERE TRUE{sens} ORDER BY created_at DESC LIMIT %s", (limit,))
                 return [dict(r) for r in cur.fetchall()]
         filters = []
         params: list = []
@@ -1872,7 +1908,7 @@ class PgBridge:
         where = " AND ".join(f"({f})" for f in filters)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                f"SELECT id, title, domain, confidence, created_at FROM jeles_atoms WHERE {where} ORDER BY created_at DESC LIMIT %s",
+                f"SELECT id, title, domain, confidence, created_at, sensitivity FROM jeles_atoms WHERE {where}{sens} ORDER BY created_at DESC LIMIT %s",
                 params + [limit],
             )
             return [dict(r) for r in cur.fetchall()]
@@ -2426,12 +2462,15 @@ class PgBridge:
 
     # ── Opus ─────────────────────────────────────────────────────────────────
 
-    def search_opus(self, query: str, limit: int = 20) -> list:
+    def search_opus(self, query: str, limit: int = 20,
+                    include_sensitive: bool = False) -> list:
         self._ensure_conn()
+        # Veto filter (ADR-20260702 step 2): NULL fails closed.
+        sens = "" if include_sensitive else " AND COALESCE(sensitivity, 'sensitive') = 'open'"
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("""
+            cur.execute(f"""
                 SELECT * FROM opus_atoms
-                WHERE content ILIKE %s
+                WHERE content ILIKE %s{sens}
                 ORDER BY created_at DESC LIMIT %s
             """, (f"%{query}%", limit))
             return [dict(r) for r in cur.fetchall()]
@@ -2440,9 +2479,14 @@ class PgBridge:
                          depth: int = 1, source_session: Optional[str] = None,
                          agent: Optional[str] = None, title: Optional[str] = None,
                          summary: Optional[str] = None,
-                         confidence: float = 1.0) -> Optional[str]:
+                         confidence: float = 1.0,
+                         sensitivity: str = "") -> Optional[str]:
         self._ensure_conn()
         try:
+            from core.canonical_lanes import normalize_sensitivity
+            sens = normalize_sensitivity(sensitivity) or (
+                "open" if domain == "file_index" else "sensitive"
+            )
             atom_id = self.gen_id(8)
             vec = embed(f"{title or ''} {content}")
             vec_str = str(vec) if vec is not None else None
@@ -2450,9 +2494,9 @@ class PgBridge:
             with self.conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO opus_atoms
-                        (id, agent, title, summary, content, domain, depth, confidence, source_session, embedding)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector)
-                """, (atom_id, agent, title, summary, content, domain, depth, confidence, source_session, vec_str))
+                        (id, agent, title, summary, content, domain, depth, confidence, source_session, embedding, sensitivity)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector, %s)
+                """, (atom_id, agent, title, summary, content, domain, depth, confidence, source_session, vec_str, sens))
             self.conn.commit()
             return atom_id
         except Exception:
@@ -2469,11 +2513,16 @@ class PgBridge:
             vec_str = str(vec) if vec is not None else None
             self._ensure_conn()
             with self.conn.cursor() as cur:
+                from core.canonical_lanes import normalize_sensitivity
+                domain_val = record.get("domain", "file_index")
+                sens = normalize_sensitivity(record.get("sensitivity")) or (
+                    "open" if domain_val == "file_index" else "sensitive"
+                )
                 cur.execute("""
                     INSERT INTO opus_atoms
-                        (id, agent, title, summary, content, domain, depth, confidence, source_session, embedding)
+                        (id, agent, title, summary, content, domain, depth, confidence, source_session, embedding, sensitivity)
                     VALUES (%(id)s, %(agent)s, %(title)s, %(summary)s, %(content)s,
-                            %(domain)s, %(depth)s, %(confidence)s, %(source_session)s, %(embedding)s::vector)
+                            %(domain)s, %(depth)s, %(confidence)s, %(source_session)s, %(embedding)s::vector, %(sensitivity)s)
                     ON CONFLICT (id) DO UPDATE SET
                         agent          = EXCLUDED.agent,
                         title          = EXCLUDED.title,
@@ -2483,18 +2532,20 @@ class PgBridge:
                         depth          = EXCLUDED.depth,
                         confidence     = EXCLUDED.confidence,
                         source_session = EXCLUDED.source_session,
-                        embedding      = EXCLUDED.embedding
+                        embedding      = EXCLUDED.embedding,
+                        sensitivity    = EXCLUDED.sensitivity
                 """, {
                     "id": record["id"],
                     "agent": record.get("agent"),
                     "title": title,
                     "summary": record.get("summary"),
                     "content": content,
-                    "domain": record.get("domain", "file_index"),
+                    "domain": domain_val,
                     "depth": record.get("depth", 1),
                     "confidence": record.get("confidence", 1.0),
                     "source_session": record.get("source_session"),
                     "embedding": vec_str,
+                    "sensitivity": sens,
                 })
             self.conn.commit()
             return atom_id
@@ -2733,7 +2784,8 @@ class PgBridge:
     def jeles_extract_atom(self, agent: str, jsonl_id: str, content: str,
                            domain: str = "meta", depth: int = 1,
                            certainty: float = 0.98,
-                           title: Optional[str] = None) -> dict:
+                           title: Optional[str] = None,
+                           sensitivity: str = "") -> dict:
         self._ensure_conn()
         try:
             gate = self._jeles_gate_check(title or "", content, domain)
@@ -2747,15 +2799,19 @@ class PgBridge:
                 }
 
             aid = self.gen_id(8)
+            # Ratified 2026-07-02: the Jeles corpus is citable-public by design;
+            # the 5-condition extraction gate above is the admission filter.
+            from core.canonical_lanes import normalize_sensitivity
+            sens = normalize_sensitivity(sensitivity) or "open"
             vec = embed(f"{title or ''} {content}")
             vec_str = str(vec) if vec is not None else None
             self._ensure_conn()
             with self.conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO jeles_atoms
-                        (id, jsonl_id, agent, content, domain, depth, confidence, title, embedding)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector)
-                """, (aid, jsonl_id, agent, content, domain, depth, certainty, title, vec_str))
+                        (id, jsonl_id, agent, content, domain, depth, confidence, title, embedding, sensitivity)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector, %s)
+                """, (aid, jsonl_id, agent, content, domain, depth, certainty, title, vec_str, sens))
             self.conn.commit()
             out = {"id": aid, "status": "extracted"}
             if gate.get("gate_skipped"):
