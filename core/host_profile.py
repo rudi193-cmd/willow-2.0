@@ -51,6 +51,25 @@ def _kb_to_gib(kb: int) -> float:
     return round(kb / 1024 / 1024, 1)
 
 
+def _ollama_gpu_state() -> bool | None:
+    """Where Ollama's loaded models run: True = GPU (fully or split),
+    False = CPU only, None = nothing loaded right now (idle) or `ollama ps`
+    unavailable. Ollama unloads models after a few idle minutes, so idle is
+    the common case at boot — report unknown, not a false negative."""
+    try:
+        proc = subprocess.run(
+            ["ollama", "ps"], capture_output=True, text=True, timeout=5
+        )
+        if proc.returncode != 0:
+            return None
+        rows = [ln for ln in (proc.stdout or "").strip().splitlines()[1:] if ln.strip()]
+        if not rows:
+            return None
+        return any("gpu" in row.lower() for row in rows)
+    except Exception:
+        return None
+
+
 def _nvidia_probe() -> dict:
     result: dict = {
         "available": False,
@@ -58,7 +77,7 @@ def _nvidia_probe() -> dict:
         "driver": "",
         "vram_mib": None,
         "cuda": "",
-        "ollama_on_gpu": False,
+        "ollama_on_gpu": None,
     }
     try:
         proc = subprocess.run(
@@ -92,7 +111,11 @@ def _nvidia_probe() -> dict:
             cm = re.search(r"CUDA Version:\s*([\d.]+)", ver.stdout or "")
             if cm:
                 result["cuda"] = cm.group(1)
-            result["ollama_on_gpu"] = "ollama" in (ver.stdout or "").lower()
+        state = _ollama_gpu_state()
+        if state is None and "ollama" in (ver.stdout or "").lower():
+            # ollama ps idle/unavailable but nvidia-smi sees an ollama process
+            state = True
+        result["ollama_on_gpu"] = state
     except Exception:
         pass
     return result
