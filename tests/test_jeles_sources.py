@@ -1,5 +1,5 @@
-"""Tests for core/jeles_sources.py field coercion (#646, #647) and
-search() failure reporting (#654)."""
+"""Tests for core/jeles_sources.py field coercion (#646, #647),
+search() failure reporting (#654), and fetch resilience (#648-#668)."""
 
 import sys
 from pathlib import Path
@@ -146,3 +146,133 @@ def test_search_success_has_empty_failures(monkeypatch):
     assert out["failures"] == []
     # channel must be reset so later non-search calls don't leak into it
     assert getattr(js._FAILURES, "list", None) is None
+
+
+# ── fetch resilience: retry + circuit breaker (#648-#668) ─────────────────────
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _reset_breaker():
+    js._breaker.clear()
+    yield
+    js._breaker.clear()
+
+
+def _no_sleep(monkeypatch):
+    import time
+    monkeypatch.setattr(time, "sleep", lambda s: None)
+
+
+def test_get_retries_once_on_503(monkeypatch):
+    _no_sleep(monkeypatch)
+    calls = []
+
+    def flaky(url, headers, timeout, as_json):
+        calls.append(url)
+        if len(calls) == 1:
+            raise RuntimeError("HTTP Error 503: Service Unavailable")
+        return {"ok": True}
+
+    monkeypatch.setattr(js, "_fetch_once", flaky)
+    assert js._get("https://api.example.org/x") == {"ok": True}
+    assert len(calls) == 2
+
+
+def test_get_does_not_retry_on_404(monkeypatch):
+    _no_sleep(monkeypatch)
+    calls = []
+
+    def dead(url, headers, timeout, as_json):
+        calls.append(url)
+        raise RuntimeError("HTTP Error 404: Not Found")
+
+    monkeypatch.setattr(js, "_fetch_once", dead)
+    assert js._get("https://api.example.org/x") is None
+    assert len(calls) == 1
+
+
+def test_breaker_opens_after_threshold(monkeypatch):
+    _no_sleep(monkeypatch)
+    calls = []
+
+    def dead(url, headers, timeout, as_json):
+        calls.append(url)
+        raise RuntimeError("HTTP Error 404: Not Found")
+
+    monkeypatch.setattr(js, "_fetch_once", dead)
+    for _ in range(js._BREAKER_THRESHOLD):
+        js._get("https://down.example.org/x")
+    n = len(calls)
+    assert js._get("https://down.example.org/x") is None  # circuit open
+    assert len(calls) == n  # no fetch attempted
+    # a different host is unaffected
+    assert js._get("https://alive.example.org/x") is None
+    assert len(calls) == n + 1
+
+
+def test_breaker_resets_on_success(monkeypatch):
+    _no_sleep(monkeypatch)
+    state = {"fail": True}
+
+    def sometimes(url, headers, timeout, as_json):
+        if state["fail"]:
+            raise RuntimeError("HTTP Error 404: Not Found")
+        return {"ok": True}
+
+    monkeypatch.setattr(js, "_fetch_once", sometimes)
+    js._get("https://x.example.org/a")
+    js._get("https://x.example.org/a")
+    state["fail"] = False
+    assert js._get("https://x.example.org/a") == {"ok": True}
+    assert "x.example.org" not in js._breaker
+
+
+# ── per-source fixes ──────────────────────────────────────────────────────────
+
+def test_dblp_truncates_long_prose_query(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(js, "_get", lambda url, **kw: seen.update(url=url) or None)
+    js.search_dblp("constitutional rights of sentient cheese republic democracy political participation graffiti")
+    from urllib.parse import unquote
+    q = unquote(seen["url"].split("?q=")[1].split("&")[0])
+    assert len(q.split()) == 8
+
+
+def test_gdelt_uses_extended_timeout(monkeypatch):
+    seen = {}
+
+    def fake_get(url, headers=None, timeout=None):
+        seen["timeout"] = timeout
+        return None
+
+    monkeypatch.setattr(js, "_get", fake_get)
+    js.search_gdelt("liberty")
+    assert seen["timeout"] == 30
+
+
+def test_chronicling_america_new_endpoint(monkeypatch):
+    seen = {}
+    payload = {
+        "results": [
+            {
+                "title": "Image 1 of Grainger County news, October 3",
+                "url": "https://www.loc.gov/resource/sn99065781/1918-10-03/ed-1/?sp=1",
+                "id": "http://www.loc.gov/resource/sn99065781/1918-10-03/ed-1/?sp=1",
+                "date": "1918-10-03",
+                "description": ["County News", "DEVOTED TO GRAINGER COUNTY"],
+            }
+        ]
+    }
+
+    def fake_get(url, headers=None, timeout=None):
+        seen["url"] = url
+        return payload
+
+    monkeypatch.setattr(js, "_get", fake_get)
+    results = js.search_chronicling_america("liberty")
+    assert "loc.gov/collections/chronicling-america" in seen["url"]
+    assert len(results) == 1
+    assert results[0]["snippet"] == "County News DEVOTED TO GRAINGER COUNTY"
+    assert results[0]["url"].startswith("https://www.loc.gov/resource/")
