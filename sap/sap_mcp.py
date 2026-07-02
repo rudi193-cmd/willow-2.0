@@ -2068,11 +2068,26 @@ async def infer_chat(app_id: str, agent: str = "willow", message: str = "") -> d
         except Exception as e:
             return f"[{agent}] Inference unavailable: {e}", "none"
 
+    def _log_shadow(actual_provider: str):
+        # ADR-20260702 step 3: record the counterfactual rung/engine. infer_chat
+        # assembles no KB context, so its taint is genuinely unknown at this call
+        # site — logged as 'unknown' (fails closed to local), which is itself the
+        # signal motivating the step-5 gateway. Never breaks the inference path.
+        if not pg:
+            return
+        try:
+            from willow.routing.shadow import log_shadow
+            log_shadow(pg.conn, message, sensitivity="unknown",
+                       actual_engine=actual_provider, source="infer_chat")
+        except Exception:
+            pass
+
     try:
         response, provider = await asyncio.wait_for(
             loop.run_in_executor(_executor, _chat),
             timeout=timeout,
         )
+        await loop.run_in_executor(_executor, _log_shadow, provider)
         return {"agent": agent, "response": response, "provider": provider}
     except asyncio.TimeoutError:
         return {"error": "timeout", "tool": "infer_chat", "timeout_s": timeout}

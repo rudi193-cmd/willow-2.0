@@ -602,6 +602,15 @@ _MIGRATIONS = [
     WHERE sensitivity IS NULL""",
     "CREATE INDEX IF NOT EXISTS idx_jeles_atoms_sensitivity ON jeles_atoms (sensitivity)",
     "CREATE INDEX IF NOT EXISTS idx_opus_atoms_sensitivity ON opus_atoms (sensitivity)",
+    # Shadow routing instrumentation (ADR-20260702 step 3). Extends
+    # routing_decisions rather than minting a new table (ADR open question 3,
+    # working assumption). kind discriminates agent-route rows from complexity
+    # shadow rows; shadow_* columns hoist the analysis fields out of JSONB.
+    "ALTER TABLE routing_decisions ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'agent_route'",
+    "ALTER TABLE routing_decisions ADD COLUMN IF NOT EXISTS shadow_rung TEXT",
+    "ALTER TABLE routing_decisions ADD COLUMN IF NOT EXISTS shadow_engine TEXT",
+    "ALTER TABLE routing_decisions ADD COLUMN IF NOT EXISTS sensitivity TEXT",
+    "CREATE INDEX IF NOT EXISTS idx_routing_decisions_kind ON routing_decisions (kind, created_at DESC)",
 ]
 
 _INDEXES = """
