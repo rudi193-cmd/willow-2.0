@@ -29,6 +29,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -81,6 +82,18 @@ def _load_creds() -> dict:
         return {}
 
 
+# Per-thread failure channel: _get/_get_html log HTTP failures here so that
+# search() can report them per source (#654). Each source fn runs entirely in
+# one executor thread, so a thread-local list scopes failures to that source.
+_FAILURES = threading.local()
+
+
+def _note_failure(error: str) -> None:
+    lst = getattr(_FAILURES, "list", None)
+    if lst is not None:
+        lst.append(error)
+
+
 def _get(url: str, headers: dict | None = None) -> Optional[dict | list]:
     h = {"User-Agent": _UA, **(headers or {})}
     try:
@@ -96,6 +109,7 @@ def _get(url: str, headers: dict | None = None) -> Optional[dict | list]:
                 return json.loads(r.read())
         except Exception as e:
             log.warning("GET %s failed: %s", url[:80], e)
+            _note_failure(f"GET {url[:80]}: {e}")
             return None
 
 
@@ -113,6 +127,7 @@ def _get_html(url: str, headers: dict | None = None) -> Optional[str]:
                 return r.read().decode("utf-8", errors="replace")
         except Exception as e:
             log.warning("GET html %s failed: %s", url[:80], e)
+            _note_failure(f"GET html {url[:80]}: {e}")
             return None
 
 
@@ -3365,7 +3380,10 @@ def search(
     wall_clock_limit are dropped.
 
     Results carry a cross-source `ranked` list (RRF-fused, see _rerank_combined)
-    in addition to the per-source `results` dict."""
+    in addition to the per-source `results` dict. `failures` lists per-source
+    errors — HTTP failures noted by _get/_get_html, source exceptions, sources
+    dropped at wall_clock_limit, and unresolvable registry entries — so callers
+    can tell "no hits" from "source failed" (#654)."""
     registry = _load_registry()
     if sources:
         active = sources
@@ -3376,42 +3394,59 @@ def search(
         active = route_sources_semantic(query)
         routed = True
 
+    failures: list[dict] = []
+
+    def _fail(sid: str, error: str) -> None:
+        failures.append({"source": sid, "error": error, "query": query})
+
     resolved: list[tuple[str, object]] = []
     for sid in active:
         cfg = registry.get(sid)
         if not cfg:
             log.warning("Unknown source: %s", sid)
+            _fail(sid, "unknown source (not in registry)")
             continue
         fn = _resolve_fn(cfg["fn_name"])
         if not fn:
             log.warning("No function found for source %s (fn_name=%s)", sid, cfg["fn_name"])
+            _fail(sid, f"unresolvable fn_name: {cfg['fn_name']}")
             continue
         resolved.append((sid, fn))
 
     out: dict[str, list] = {}
 
-    def _call(sid: str, fn) -> tuple[str, list]:
+    def _call(sid: str, fn) -> tuple[str, list, list[str]]:
+        _FAILURES.list = []
         try:
-            return sid, fn(query, limit_per_source)
+            hits = fn(query, limit_per_source)
+            return sid, hits, list(_FAILURES.list)
         except Exception as e:
             log.warning("Source %s failed: %s", sid, e)
-            return sid, []
+            return sid, [], [*_FAILURES.list, str(e)]
+        finally:
+            # executor threads are reused across searches — don't leak the channel
+            _FAILURES.list = None
 
     futures = {_SEARCH_EXECUTOR.submit(_call, sid, fn): sid for sid, fn in resolved}
     try:
         for fut in _cf.as_completed(futures, timeout=wall_clock_limit):
             try:
-                sid, hits = fut.result()
+                sid, hits, errs = fut.result()
                 if hits:
                     out[sid] = hits
+                for err in errs:
+                    _fail(sid, err)
             except Exception as e:
                 log.warning("Source %s result error: %s", futures[fut], e)
+                _fail(futures[fut], str(e))
     except _cf.TimeoutError:
-        pending = sum(1 for f in futures if not f.done())
+        pending = [sid for f, sid in futures.items() if not f.done()]
         log.warning(
             "jeles.search wall-clock limit %.1fs reached — %d source(s) still pending",
-            wall_clock_limit, pending,
+            wall_clock_limit, len(pending),
         )
+        for sid in pending:
+            _fail(sid, f"dropped: wall_clock_limit {wall_clock_limit}s reached")
 
     total = sum(len(v) for v in out.values())
     ranked = _rerank_combined(query, out) if out else []
@@ -3424,5 +3459,6 @@ def search(
         "total": total,
         "results": out,
         "ranked": ranked,
+        "failures": failures,
         "note": NO_WIKIPEDIA_NOTE,
     }
