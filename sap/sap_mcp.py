@@ -1114,12 +1114,25 @@ async def kb_search(
             row["_table"] = "jeles_atoms"
         for row in opus:
             row["_table"] = "opus_atoms"
+        # Taint rule (ADR-20260702): max sensitivity over everything returned.
+        # jeles/opus sidecars carry no lane or sensitivity column yet (FINDINGS
+        # Q1); until step 2 tags them, any sidecar row taints the result set
+        # fail-closed. Advisory metadata only — no behavior change in step 1.
+        from core.canonical_lanes import (
+            SENSITIVITY_SENSITIVE,
+            atoms_taint,
+            max_sensitivity,
+        )
+        taint = atoms_taint(knowledge)
+        if jeles or opus:
+            taint = max_sensitivity([taint, SENSITIVITY_SENSITIVE])
         return {
             "knowledge": knowledge,
             "jeles_atoms": jeles,
             "opus_atoms": opus,
             "neighbors": neighbors,
             "total": len(knowledge) + len(jeles) + len(opus),
+            "taint": taint,
             "mode": mode,
             "lane_scope": {
                 "projects": list(lane_scope.projects) if lane_scope.projects is not None else None,
@@ -1290,6 +1303,7 @@ async def kb_ingest(
     confidence:     float = 1.0,
     quality_gate:   bool = False,
     quality_rubric: str  = "",
+    sensitivity:    str  = "",
 ) -> dict:
     """Add a knowledge atom to Willow's Postgres KB.
     Gates on REDUNDANT/CONTRADICTION — returns {blocked:true} if a duplicate or conflict
@@ -1298,7 +1312,9 @@ async def kb_ingest(
     tier: frontier|contested|canonical|superseded (legacy: hypothesis|observed|validated — auto-mapped).
     quality_gate=true: runs summary through the Groq rubric evaluator before ingestion.
       Rewrites content to meet the rubric if it fails (up to 2 iterations).
-      quality_rubric: custom rubric; omit to use the default KB quality rubric."""
+      quality_rubric: custom rubric; omit to use the default KB quality rubric.
+    sensitivity: explicit veto-axis override, open|sensitive (ADR-20260702).
+      Omit to inherit the lane default; unknown lanes fail closed to sensitive."""
     logger.info("[w2] kb_ingest app_id=%s title=%r force=%s quality_gate=%s",
                 app_id, title, force, quality_gate)
     if not pg:
@@ -1308,6 +1324,14 @@ async def kb_ingest(
     clean_summary   = _normalize_local_paths(summary)
     clean_source_id = _normalize_local_paths(source_id)
     effective_domain = domain or _MCP_AGENT
+
+    explicit_sensitivity = ""
+    if sensitivity:
+        from core.canonical_lanes import normalize_sensitivity
+        try:
+            explicit_sensitivity = normalize_sensitivity(sensitivity) or ""
+        except ValueError as se:
+            return {"error": str(se)}
 
     # ── Quality gate: evaluate + refine before touching the KB ────────────────
     quality_result: dict = {}
@@ -1413,6 +1437,7 @@ async def kb_ingest(
             tags=tags or [],
             tier=normalized_tier,
             confidence=confidence,
+            sensitivity=explicit_sensitivity,
         )
         out: dict = {"id": atom_id, "status": "ingested" if atom_id else "failed"}
         if not atom_id:
