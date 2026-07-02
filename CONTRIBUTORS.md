@@ -98,7 +98,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Seed catalog wave 1: 13 major climate datasets | [PR #2](https://github.com/almanac-data/climate-almanac/pull/2) merged |
 | [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Add agent guide, pyproject, and fleet development docs | [PR #1](https://github.com/almanac-data/climate-almanac/pull/1) merged |
 | [Filippo-Venturini/ctxvault](https://github.com/Filippo-Venturini/ctxvault) | Filippo-Venturini | feat: configurable embedding model per vault (#18) | [PR #34](https://github.com/Filippo-Venturini/ctxvault/pull/34) merged |
-| [Filippo-Venturini/ctxvault](https://github.com/Filippo-Venturini/ctxvault) | Filippo-Venturini | feat: configurable embedding model per vault (#18) | [PR #34](https://github.com/Filippo-Venturini/ctxvault/pull/34) merged |
 | [wanxingai/LightAgent](https://github.com/wanxingai/LightAgent) | wanxingai | docs: add vector memory adapter example | [PR #60](https://github.com/wanxingai/LightAgent/pull/60) merged |
 | [shinpr/mcp-local-rag](https://github.com/shinpr/mcp-local-rag) | shinpr | fix: report removedChunks and existed from delete_file | [PR #152](https://github.com/shinpr/mcp-local-rag/pull/152) merged |
 | [max-rh/sshelf](https://github.com/max-rh/sshelf) | max-rh | feat: print generated SSH command from CLI | [PR #3](https://github.com/max-rh/sshelf/pull/3) merged |
