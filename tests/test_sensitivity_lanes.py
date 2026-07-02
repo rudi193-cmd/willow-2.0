@@ -104,7 +104,7 @@ class TestMigrationsWired:
 
     def test_backfill_matches_ratified_lane_defaults(self):
         from core.pg_bridge import _MIGRATIONS
-        backfill = [m for m in _MIGRATIONS if "SET sensitivity = CASE" in m]
+        backfill = [m for m in _MIGRATIONS if "UPDATE knowledge SET sensitivity = CASE" in m]
         assert len(backfill) == 1
         stmt = backfill[0]
         for lane in SENSITIVE_LANES:
@@ -119,3 +119,54 @@ class TestMigrationsWired:
         from core.pg_bridge import PgBridge
         src = inspect.getsource(PgBridge._knowledge_select_cols)
         assert '"sensitivity"' in src
+
+
+class TestSidecarSensitivity:
+    """ADR-20260702 step 2 — jeles/opus columns, veto filters, real taint."""
+
+    def test_sidecar_migrations_present(self):
+        from core.pg_bridge import _MIGRATIONS
+        joined = "\n".join(_MIGRATIONS)
+        assert "ALTER TABLE jeles_atoms ADD COLUMN IF NOT EXISTS sensitivity TEXT" in joined
+        assert "ALTER TABLE opus_atoms ADD COLUMN IF NOT EXISTS sensitivity TEXT" in joined
+        assert "jeles_sensitivity_check" in joined
+        assert "opus_sensitivity_check" in joined
+        assert "idx_jeles_atoms_sensitivity" in joined
+        assert "idx_opus_atoms_sensitivity" in joined
+
+    def test_jeles_backfill_all_open_ratified(self):
+        from core.pg_bridge import _MIGRATIONS
+        stmts = [m for m in _MIGRATIONS
+                 if "UPDATE jeles_atoms SET sensitivity" in m]
+        assert len(stmts) == 1
+        assert "'open'" in stmts[0]
+        assert "WHERE sensitivity IS NULL" in stmts[0]
+
+    def test_opus_backfill_file_index_open_else_sensitive(self):
+        from core.pg_bridge import _MIGRATIONS
+        stmts = [m for m in _MIGRATIONS
+                 if "UPDATE opus_atoms SET sensitivity" in m]
+        assert len(stmts) == 1
+        assert "WHEN domain = 'file_index' THEN 'open'" in stmts[0]
+        assert "ELSE 'sensitive'" in stmts[0]
+        assert "WHERE sensitivity IS NULL" in stmts[0]
+
+    def test_sidecar_search_filters_fail_closed(self):
+        import inspect
+        from core.pg_bridge import PgBridge
+        for fn in (PgBridge.search_jeles_semantic, PgBridge.jeles_keyword_search,
+                   PgBridge.search_opus_semantic, PgBridge.search_opus):
+            src = inspect.getsource(fn)
+            assert "include_sensitive" in src, fn.__name__
+            assert "COALESCE(sensitivity, 'sensitive')" in src, fn.__name__
+
+    def test_shape_rows_pass_sensitivity_through(self):
+        import inspect
+        from core.pg_bridge import PgBridge
+        assert '"sensitivity"' in inspect.getsource(PgBridge._knowledge_shape_rows)
+
+    def test_atoms_taint_on_sidecar_rows(self):
+        tagged_open = {"sensitivity": "open"}          # no project — value wins
+        untagged = {}                                   # no project, no value → closed
+        assert atoms_taint([tagged_open]) == SENSITIVITY_OPEN
+        assert atoms_taint([tagged_open, untagged]) == SENSITIVITY_SENSITIVE
