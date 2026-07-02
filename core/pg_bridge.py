@@ -557,6 +557,25 @@ _MIGRATIONS = [
             ALTER TABLE outcome_runs ADD COLUMN skill_id TEXT;
         END IF;
     END $$""",
+    # Sensitivity veto axis (ADR-20260702-router-sensitivity-veto).
+    # NULL = unknown = fail-closed at read time; the backfill seeds ratified
+    # lane defaults in the same migration pass so existing atoms do not sit
+    # in a fleet-wide degraded window. Lane lists are literal SQL on purpose
+    # (keep in sync with core.canonical_lanes.SENSITIVE_LANES).
+    "ALTER TABLE knowledge ADD COLUMN IF NOT EXISTS sensitivity TEXT",
+    """DO $$ BEGIN
+        ALTER TABLE knowledge DROP CONSTRAINT IF EXISTS knowledge_sensitivity_check;
+        ALTER TABLE knowledge ADD CONSTRAINT knowledge_sensitivity_check CHECK (
+            sensitivity IS NULL OR sensitivity IN ('open', 'sensitive')
+        );
+    EXCEPTION WHEN others THEN NULL; END $$""",
+    """UPDATE knowledge SET sensitivity = CASE
+        WHEN project IN ('personal', 'epstein_network', 'rh-dirty') THEN 'sensitive'
+        WHEN project IN ('global', 'heimdallr', 'saps1', 'vishwakarma', 'willow') THEN 'open'
+        ELSE 'sensitive'
+    END
+    WHERE sensitivity IS NULL""",
+    "CREATE INDEX IF NOT EXISTS idx_knowledge_sensitivity ON knowledge (sensitivity)",
 ]
 
 _INDEXES = """
@@ -1215,12 +1234,22 @@ class PgBridge:
 
     def knowledge_put(self, record: dict) -> str:
         self._ensure_conn()
-        from core.canonical_lanes import normalize_project
+        from core.canonical_lanes import (
+            effective_sensitivity,
+            normalize_project,
+            normalize_sensitivity,
+        )
 
         record = dict(record)
         record["project"] = normalize_project(
             record.get("project"),
             source_type=record.get("source_type"),
+        )
+        # Explicit override wins (both directions); otherwise seed the lane
+        # default at write time so new atoms are never NULL/unknown.
+        explicit_sensitivity = normalize_sensitivity(record.get("sensitivity"))
+        record["sensitivity"] = explicit_sensitivity or effective_sensitivity(
+            record["project"], None
         )
         vec = embed(self._knowledge_embedding_text(record))
         vec_str = str(vec) if vec is not None else None
@@ -1232,11 +1261,11 @@ class PgBridge:
                 cur.execute("""
                     INSERT INTO knowledge
                         (id, project, valid_at, invalid_at, title, summary, content,
-                         source_type, category, embedding, tier, confidence)
+                         source_type, category, embedding, tier, confidence, sensitivity)
                     VALUES
                         (%(id)s, %(project)s, %(valid_at)s, %(invalid_at)s,
                          %(title)s, %(summary)s, %(content)s, %(source_type)s, %(category)s,
-                         %(embedding)s::vector, %(tier)s, %(confidence)s)
+                         %(embedding)s::vector, %(tier)s, %(confidence)s, %(sensitivity)s)
                     ON CONFLICT (id) DO UPDATE SET
                         project     = EXCLUDED.project,
                         valid_at    = EXCLUDED.valid_at,
@@ -1247,7 +1276,12 @@ class PgBridge:
                         category    = EXCLUDED.category,
                         embedding   = EXCLUDED.embedding,
                         tier        = EXCLUDED.tier,
-                        confidence  = EXCLUDED.confidence
+                        confidence  = EXCLUDED.confidence,
+                        sensitivity = CASE
+                            WHEN %(sensitivity_explicit)s THEN EXCLUDED.sensitivity
+                            WHEN knowledge.sensitivity = 'sensitive' THEN 'sensitive'
+                            ELSE EXCLUDED.sensitivity
+                        END
                 """, {
                     "id":          record["id"],
                     "project":     record.get("project", "global"),
@@ -1261,6 +1295,8 @@ class PgBridge:
                     "embedding":   vec_str,
                     "tier":        normalize_tier(record.get("tier", "frontier")),
                     "confidence":  record.get("confidence", 1.0),
+                    "sensitivity": record["sensitivity"],
+                    "sensitivity_explicit": explicit_sensitivity is not None,
                 })
             self.conn.commit()
             return record["id"]
@@ -1304,7 +1340,8 @@ class PgBridge:
                     source_id: str = "", category: str = "general",
                     domain: Optional[str] = None, keywords: Optional[list] = None,
                     tags: Optional[list] = None, tier: str = "frontier",
-                    confidence: float = 1.0) -> Optional[str]:
+                    confidence: float = 1.0,
+                    sensitivity: str = "") -> Optional[str]:
         """sap_mcp.py compatibility wrapper for willow_knowledge_ingest."""
         try:
             self._last_ingest_error = None
@@ -1339,6 +1376,7 @@ class PgBridge:
                 "category":    category,
                 "tier":        normalized_tier,
                 "confidence":  confidence,
+                "sensitivity": sensitivity,
             })
             return atom_id
         except Exception as e:
@@ -1380,6 +1418,7 @@ class PgBridge:
             "category",
             "tier",
             "confidence",
+            "sensitivity",
             "visit_count",
             "weight",
             "last_visited",

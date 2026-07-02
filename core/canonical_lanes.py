@@ -250,3 +250,82 @@ def apply_lane_scope_sql(
     if lane_scope.exclude:
         filters.append("NOT (project = ANY(%s))")
         params.append(list(lane_scope.exclude))
+
+
+# ── Sensitivity axis (ADR-20260702-router-sensitivity-veto) ───────────────────
+# Hard-veto axis: sensitive context must never reach cloud engines. Lane
+# defaults ratified 2026-07-02; unknown lanes and NULL stored values fail
+# closed. No ML in this path — every function here is deterministic.
+
+SENSITIVITY_OPEN = "open"
+SENSITIVITY_SENSITIVE = "sensitive"
+SENSITIVITY_VALUES: frozenset[str] = frozenset({
+    SENSITIVITY_OPEN,
+    SENSITIVITY_SENSITIVE,
+})
+
+# Lanes whose atoms default to sensitive at rollout. Keep in sync with the
+# backfill UPDATE in core/pg_bridge.py _MIGRATIONS (literal SQL by design —
+# the migration fingerprint must not depend on runtime imports).
+SENSITIVE_LANES: frozenset[str] = frozenset({
+    "personal",
+    "epstein_network",
+    "rh-dirty",
+})
+
+
+def normalize_sensitivity(value: Optional[str]) -> Optional[str]:
+    """Validate an explicit per-atom sensitivity override.
+
+    Returns the canonical value, or None when no explicit override was given.
+    Raises ValueError on a non-empty value outside SENSITIVITY_VALUES — a typo
+    on the veto axis must never silently fall back to a lane default.
+    """
+    raw = (value or "").strip().lower()
+    if not raw:
+        return None
+    if raw not in SENSITIVITY_VALUES:
+        raise ValueError(
+            f"sensitivity {value!r} is not valid "
+            f"({', '.join(sorted(SENSITIVITY_VALUES))})"
+        )
+    return raw
+
+
+def lane_default_sensitivity(lane: Optional[str]) -> str:
+    """Rollout default for a lane. Unknown or non-canonical lanes fail closed."""
+    lane = (lane or "").strip()
+    if lane in SENSITIVE_LANES:
+        return SENSITIVITY_SENSITIVE
+    if lane in CANONICAL_LANES:
+        return SENSITIVITY_OPEN
+    return SENSITIVITY_SENSITIVE
+
+
+def effective_sensitivity(project: Optional[str], sensitivity: Optional[str]) -> str:
+    """Resolve an atom's sensitivity: explicit stored value wins, else lane default.
+
+    Stored values outside SENSITIVITY_VALUES (including NULL) fall through to
+    the lane default, which itself fails closed for unknown lanes.
+    """
+    raw = (sensitivity or "").strip().lower()
+    if raw in SENSITIVITY_VALUES:
+        return raw
+    return lane_default_sensitivity(project)
+
+
+def max_sensitivity(values) -> str:
+    """Taint rule: sensitive if any input is sensitive; open otherwise."""
+    for v in values:
+        if (v or "").strip().lower() == SENSITIVITY_SENSITIVE:
+            return SENSITIVITY_SENSITIVE
+    return SENSITIVITY_OPEN
+
+
+def atoms_taint(atoms) -> str:
+    """max_sensitivity over retrieved atoms (dicts with project/sensitivity)."""
+    return max_sensitivity(
+        effective_sensitivity(a.get("project"), a.get("sensitivity"))
+        for a in atoms
+        if isinstance(a, dict)
+    )
