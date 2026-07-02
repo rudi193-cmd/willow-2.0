@@ -94,41 +94,87 @@ def _note_failure(error: str) -> None:
         lst.append(error)
 
 
-def _get(url: str, headers: dict | None = None) -> Optional[dict | list]:
-    h = {"User-Agent": _UA, **(headers or {})}
-    try:
-        import requests as _req
-        r = _req.get(url, headers=h, timeout=_TIMEOUT)
-        r.raise_for_status()
-        return r.json()
-    except Exception as _re:
-        # urllib fallback
-        try:
-            req = urllib.request.Request(url, headers=h)
-            with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
-                return json.loads(r.read())
-        except Exception as e:
-            log.warning("GET %s failed: %s", url[:80], e)
-            _note_failure(f"GET {url[:80]}: {e}")
-            return None
+# Per-host circuit breaker: after _BREAKER_THRESHOLD consecutive failures a
+# host is skipped for _BREAKER_COOLDOWN seconds instead of burning the fan-out
+# wall clock on a source that is down (#651). Shared across executor threads.
+_BREAKER_THRESHOLD = 3
+_BREAKER_COOLDOWN = 300.0
+_RETRY_BACKOFF = 0.8
+_RETRY_SIGNS = ("429", "503", "timed out", "timeout")
+_breaker_lock = threading.Lock()
+_breaker: dict[str, list] = {}  # host -> [consecutive_fails, open_until_monotonic]
 
 
-def _get_html(url: str, headers: dict | None = None) -> Optional[str]:
-    h = {"User-Agent": _UA, **(headers or {})}
+def _breaker_open(host: str) -> bool:
+    import time as _t
+    with _breaker_lock:
+        state = _breaker.get(host)
+        return bool(state and state[1] > _t.monotonic())
+
+
+def _breaker_record(host: str, ok: bool) -> None:
+    import time as _t
+    with _breaker_lock:
+        if ok:
+            _breaker.pop(host, None)
+            return
+        state = _breaker.setdefault(host, [0, 0.0])
+        state[0] += 1
+        if state[0] >= _BREAKER_THRESHOLD:
+            state[1] = _t.monotonic() + _BREAKER_COOLDOWN
+            log.warning("circuit open for %s (%d consecutive failures)", host, state[0])
+
+
+def _fetch_once(url: str, headers: dict, timeout: float, as_json: bool):
+    """One fetch attempt: requests first, urllib fallback. Raises on failure."""
     try:
         import requests as _req
-        r = _req.get(url, headers=h, timeout=_TIMEOUT)
+        r = _req.get(url, headers=headers, timeout=timeout)
         r.raise_for_status()
-        return r.text
+        return r.json() if as_json else r.text
     except Exception:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            raw = r.read()
+            return json.loads(raw) if as_json else raw.decode("utf-8", errors="replace")
+
+
+def _get_guarded(url: str, headers: dict | None, timeout: float | None,
+                 as_json: bool, tag: str):
+    import time as _t
+    h = {"User-Agent": _UA, **(headers or {})}
+    t = timeout or _TIMEOUT
+    host = urllib.parse.urlsplit(url).netloc
+    if _breaker_open(host):
+        _note_failure(f"{tag} {url[:80]}: circuit open for {host}")
+        return None
+    last_err: Exception | None = None
+    for attempt in (0, 1):
         try:
-            req = urllib.request.Request(url, headers=h)
-            with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
-                return r.read().decode("utf-8", errors="replace")
+            data = _fetch_once(url, h, t, as_json)
+            _breaker_record(host, ok=True)
+            return data
         except Exception as e:
-            log.warning("GET html %s failed: %s", url[:80], e)
-            _note_failure(f"GET html {url[:80]}: {e}")
-            return None
+            last_err = e
+            # retry once on rate-limit / overload / timeout signatures only
+            if attempt == 0 and any(s in str(e).lower() for s in _RETRY_SIGNS):
+                _t.sleep(_RETRY_BACKOFF)
+                continue
+            break
+    log.warning("%s %s failed: %s", tag, url[:80], last_err)
+    _note_failure(f"{tag} {url[:80]}: {last_err}")
+    _breaker_record(host, ok=False)
+    return None
+
+
+def _get(url: str, headers: dict | None = None,
+         timeout: float | None = None) -> Optional[dict | list]:
+    return _get_guarded(url, headers, timeout, as_json=True, tag="GET")
+
+
+def _get_html(url: str, headers: dict | None = None,
+              timeout: float | None = None) -> Optional[str]:
+    return _get_guarded(url, headers, timeout, as_json=False, tag="GET html")
 
 
 def _write_cache(query: str, results: dict[str, list]) -> None:
@@ -946,23 +992,26 @@ def search_openlibrary(query: str, limit: int = 5) -> list[dict]:
 
 
 def search_chronicling_america(query: str, limit: int = 5) -> list[dict]:
-    """Chronicling America — historic US newspapers 1770-1963. No key required."""
+    """Chronicling America — historic US newspapers 1770-1963. No key required.
+
+    The legacy chroniclingamerica.loc.gov JSON API was retired in 2026 — it
+    308-redirects to a 404 (#649). This uses the loc.gov collections API."""
     url = (
-        "https://chroniclingamerica.loc.gov/search/pages/results/?andtext="
+        "https://www.loc.gov/collections/chronicling-america/?q="
         + urllib.parse.quote(query)
-        + f"&format=json&rows={limit}"
+        + f"&fo=json&c={limit}"
     )
-    data = _get(url)
+    data = _get(url, timeout=25)
     if not data:
         return []
     results = []
-    for item in (data.get("items") or [])[:limit]:
+    for item in (data.get("results") or [])[:limit]:
         results.append(_result(
             title=item.get("title", ""),
-            url="https://chroniclingamerica.loc.gov" + (item.get("id") or ""),
+            url=item.get("url") or item.get("id") or "",
             source="chronicling_america",
-            institution=f"Chronicling America — {item.get('title_normal', '')}",
-            snippet=item.get("ocr_eng", "")[:300] or "",
+            institution="Chronicling America (Library of Congress)",
+            snippet=item.get("description", "") or "",  # can be a list — _text() coerces
             date=item.get("date", ""),
             rid=item.get("id", ""),
         ))
@@ -1260,6 +1309,8 @@ def search_base(query: str, limit: int = 5) -> list[dict]:
 
 def search_dblp(query: str, limit: int = 5) -> list[dict]:
     """DBLP — computer science bibliography. No key required."""
+    # DBLP's query parser 500s on long prose queries (#660) — keep it short
+    query = " ".join(query.split()[:8])
     url = (
         "https://dblp.org/search/publ/api?q="
         + urllib.parse.quote(query)
@@ -2107,7 +2158,9 @@ def search_gdelt(query: str, limit: int = 5) -> list[dict]:
         + urllib.parse.quote(query)
         + f"&mode=artlist&maxrecords={limit}&format=json&sourcelang=english"
     )
-    data = _get(url)
+    # GDELT routinely takes 10s+ to answer; 15s default reads as SSL
+    # handshake timeouts under fan-out load (#658)
+    data = _get(url, timeout=30)
     if not data:
         return []
     articles = (data.get("articles") or [])[:limit]
@@ -2469,7 +2522,7 @@ SOURCES: dict[str, dict] = {
     # Global weather/climate
     "open_meteo":       {"name": "Open-Meteo",              "domain": ["climate", "weather"],                   "key_required": False},
     # Patents
-    "patentsview":      {"name": "USPTO PatentsView",       "domain": ["patents", "technology", "science"],     "key_required": False},
+    "patentsview":      {"name": "USPTO PatentsView",       "domain": ["patents", "technology", "science"],     "key_required": False, "opt_in": True},  # API host DNS-dead since 2026 (#648)
     # Macroeconomics
     "imf":              {"name": "IMF DataMapper",          "domain": ["macroeconomics", "economics"],          "key_required": False},
     # Social science preprints
