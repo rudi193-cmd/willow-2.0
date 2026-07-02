@@ -333,9 +333,12 @@ def check_boot_gate(tool_name: str, tool_input: dict) -> str | None:
         return None
     if BOOT_DONE.exists():
         return None
-    if tool_name == "Read" and str(tool_input.get("file_path", "")) == _BOOT_MD_PATH:
+    target = str(
+        tool_input.get("file_path") or tool_input.get("path") or ""
+    )
+    if tool_name == "Read" and target == _BOOT_MD_PATH:
         return None
-    if tool_name == "Write" and str(tool_input.get("file_path", "")) == str(BOOT_DONE):
+    if tool_name == "Write" and target == str(BOOT_DONE):
         return None
     return (
         f"Boot sentinel absent for this session. Read {_BOOT_MD_PATH}, complete the "

@@ -614,6 +614,7 @@ def test_boot_gate_allows_write_sentinel(tmp_path, monkeypatch):
     monkeypatch.setattr(_pt, "BOOT_DONE", missing)
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     assert _pt.check_boot_gate("Write", {"file_path": str(missing)}) is None
+    assert _pt.check_boot_gate("Write", {"path": str(missing)}) is None
 
 
 def test_boot_gate_skipped_under_pytest(monkeypatch, tmp_path):
