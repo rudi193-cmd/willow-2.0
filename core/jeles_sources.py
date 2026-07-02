@@ -3415,6 +3415,26 @@ def _rerank_combined(query: str, out: dict[str, list], top_n: int = 15) -> list[
     return fused[:top_n]
 
 
+# Structured-lookup APIs that 4xx or return nonsense on prose queries (#650):
+# compound/drug/dataset/rate/weather/sports lookups want an entity or keyword,
+# not a sentence. Interim dumb gate until router step 4 promotes (ADR-20260702).
+PROSE_UNSAFE_SOURCES = frozenset({
+    "pubchem", "openfda", "datagov", "eu_data",       # named in #650
+    "frankfurter", "imf", "worldbank",                 # rates / macro indicators
+    "open_meteo", "nws", "carbon_intensity",           # weather / grid
+    "thesportsdb", "who_gho", "nominatim",             # sports / health stats / geocoding
+})
+
+_PROSE_WORD_THRESHOLD = 6
+
+
+def _is_prose(query: str) -> bool:
+    """Dumb prose test: 6+ words reads as a sentence, not an entity lookup.
+    'aspirin' or 'USD EUR rate' pass through; 'constitutional rights of
+    sentient cheese republic democracy' gets gated."""
+    return len(query.split()) >= _PROSE_WORD_THRESHOLD
+
+
 def search(
     query: str,
     sources: list[str] | None = None,
@@ -3436,7 +3456,10 @@ def search(
     in addition to the per-source `results` dict. `failures` lists per-source
     errors — HTTP failures noted by _get/_get_html, source exceptions, sources
     dropped at wall_clock_limit, and unresolvable registry entries — so callers
-    can tell "no hits" from "source failed" (#654)."""
+    can tell "no hits" from "source failed" (#654). `skipped` lists sources
+    gated out before dispatch — currently PROSE_UNSAFE_SOURCES on prose
+    queries (#650); applies to explicit source lists too, so absurd-pass
+    fan-outs stop 404-ing structured APIs."""
     registry = _load_registry()
     if sources:
         active = sources
@@ -3452,8 +3475,16 @@ def search(
     def _fail(sid: str, error: str) -> None:
         failures.append({"source": sid, "error": error, "query": query})
 
+    prose = _is_prose(query)
+    skipped: list[dict] = []
     resolved: list[tuple[str, object]] = []
     for sid in active:
+        if prose and sid in PROSE_UNSAFE_SOURCES:
+            skipped.append({
+                "source": sid,
+                "reason": "prose query vs structured-only source (#650)",
+            })
+            continue
         cfg = registry.get(sid)
         if not cfg:
             log.warning("Unknown source: %s", sid)
@@ -3513,5 +3544,6 @@ def search(
         "results": out,
         "ranked": ranked,
         "failures": failures,
+        "skipped": skipped,
         "note": NO_WIKIPEDIA_NOTE,
     }
