@@ -152,14 +152,22 @@ def _write_cache(query: str, results: dict[str, list]) -> None:
         log.warning("jeles cache write failed: %s", e)
 
 
+def _text(value) -> str:
+    """Coerce an API field to a string — sources return None or lists here
+    (Internet Archive description, CORE journal titles)."""
+    if isinstance(value, (list, tuple)):
+        return " ".join(_text(v) for v in value if v is not None)
+    return str(value) if value is not None else ""
+
+
 def _result(title: str, url: str, source: str, institution: str,
             snippet: str = "", date: str = "", rid: str = "") -> dict:
     return {
-        "title": (title or "").strip(),
+        "title": _text(title).strip(),
         "url": url,
         "source": source,
-        "institution": institution,
-        "snippet": (snippet or "").strip()[:400],
+        "institution": _text(institution).strip(),
+        "snippet": _text(snippet).strip()[:400],
         "date": date,
         "id": rid,
     }
@@ -271,7 +279,7 @@ def search_core(query: str, limit: int = 5) -> list[dict]:
             url=item.get("downloadUrl") or item.get("doi") or "",
             source="core",
             institution=item.get("publisher") or ", ".join(
-                j.get("title", "") for j in (item.get("journals") or [])[:1]
+                _text(j.get("title")) for j in (item.get("journals") or [])[:1]
             ),
             snippet=item.get("abstract", "") or "",
             date=str(item.get("yearPublished", "")),
