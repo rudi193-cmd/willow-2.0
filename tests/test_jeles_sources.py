@@ -99,6 +99,48 @@ def test_note_failure_noop_when_unarmed():
     js._note_failure("stray")
 
 
+def test_is_prose_threshold():
+    assert js._is_prose("constitutional rights of sentient cheese republic") is True
+    assert js._is_prose("aspirin") is False
+    assert js._is_prose("USD EUR exchange rate") is False
+
+
+def test_search_gates_prose_from_structured_sources(monkeypatch):
+    calls = []
+
+    def pubchem_fn(query, limit):
+        calls.append(query)
+        return []
+
+    def prose_ok_fn(query, limit):
+        return [js._result("t", "u", "arxiv", "i")]
+
+    _wire_search(monkeypatch, {"pubchem": pubchem_fn, "arxiv": prose_ok_fn})
+    out = js.search(
+        "constitutional rights of sentient cheese republic democracy",
+        sources=["pubchem", "arxiv"],
+    )
+    assert calls == []  # pubchem never dispatched
+    assert list(out["results"]) == ["arxiv"]
+    assert out["skipped"] == [
+        {"source": "pubchem", "reason": "prose query vs structured-only source (#650)"}
+    ]
+    assert out["failures"] == []  # a gate skip is not a failure
+
+
+def test_search_short_query_reaches_structured_sources(monkeypatch):
+    calls = []
+
+    def pubchem_fn(query, limit):
+        calls.append(query)
+        return []
+
+    _wire_search(monkeypatch, {"pubchem": pubchem_fn})
+    out = js.search("aspirin", sources=["pubchem"])
+    assert calls == ["aspirin"]
+    assert out["skipped"] == []
+
+
 def test_search_reports_source_exception(monkeypatch):
     def boom(query, limit):
         raise RuntimeError("HTTP Error 503: Service Unavailable")
