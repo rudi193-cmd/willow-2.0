@@ -116,6 +116,15 @@ jobs:
       PGPORT: 5432
       PGUSER: postgres
       PGPASSWORD: postgres
+      # Hang forensics (recurring ~59% pytest-matrix hang, 2026-07): a SELECT
+      # blocked on a Postgres lock sits inside libpq's C poll loop, which the
+      # default pytest-timeout signal method cannot interrupt — the job eats
+      # its full timeout-minutes and is canceled with no traceback. These
+      # server-side timeouts turn that silent hang into a fast, named error.
+      PGOPTIONS: >-
+        -c statement_timeout=90s
+        -c lock_timeout=60s
+        -c idle_in_transaction_session_timeout=120s
       COMFORT_SKIP_DUPLICATE_GUARDS: "1"
 
     steps:
@@ -150,11 +159,14 @@ jobs:
 
       - name: Run test suite
         run: |
+          # --timeout-method=thread: the watchdog dumps every thread's stack
+          # and exits even when the main thread is blocked in C (libpq),
+          # where the default signal method never fires.
           if [ "${{ matrix.with-coverage }}" = "true" ]; then
-            coverage run -m pytest --ignore=tests/adversarial/e2e -v --timeout=120
+            coverage run -m pytest --ignore=tests/adversarial/e2e -v --timeout=120 --timeout-method=thread
             coverage report -m --include='core/*,sap/*,willow/*' --fail-under=10
           else
-            python3 -m pytest --ignore=tests/adversarial/e2e -v --timeout=120
+            python3 -m pytest --ignore=tests/adversarial/e2e -v --timeout=120 --timeout-method=thread
           fi
 
   # Branch protection on master requires a check literally named "test".
