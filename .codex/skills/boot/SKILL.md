@@ -49,6 +49,15 @@ In **private-config**: Postgres down remains a hard stop (step 3).
 > the fleet id. Reading `{persona}/stack` instead of `{fleet}/stack` is the
 > classic mismatch: it surfaces a stale namespace the Stop hook never writes.
 
+> **Digest fast path (warm boot).** If the SessionStart context carries a
+> `[DIGEST]` block (rendered by `boot_digest`) generated **< 2h ago** with
+> per-thread verified/unverified states, it is authoritative for continuity:
+> **skip step 4 (handoff_latest), step 9 (stack snapshot), and the
+> `kb_startup_continuity` call in step 12.** The digest already carries the
+> handoff threads, stack, and NEXT — verified at read time, so re-fetching them
+> is confirmation theater. Run those steps only on a **cold boot**: no digest,
+> digest ≥ 2h old, or digest missing thread states.
+
 **1. Contract**
 `mai_read_file("willow.md")` — load the fleet contract.
 Fallback: Read the raw file.
@@ -70,7 +79,7 @@ No full patch. No full diffs.
 `postgres` is a dict → up. Non-dict or timeout → probe directly.
 **Postgres down = hard stop in private-config mode.** In public-fallback, note degraded and continue.
 
-**4. Continuity** *(parallel with 3, 5–6)*
+**4. Continuity** *(cold boot only — skipped on the digest fast path)*
 Use the **repo root from step 2** — not the global `session_anchor_{agent}.json` (that file is desk-scoped and will bleed Schmidt/almanac threads across repos).
 
 `handoff_latest(app_id=<agent>, workspace=<repo root from step 2>)` — project-scoped open threads only.
@@ -104,20 +113,7 @@ If no KB hits land above 0.5 distance: skip the mode entirely, continue normally
 
 **Mode examples:**
 
-*Direct* — "Fix the kart symlink" → "PR #170 is already open for this. CI is the gate."
-*Direct* — "What's the LoCoMo baseline?" → "KB atom 0C7BA8F0: token_f1=0.1062, 1540 questions. Full-10 pending smoke pass."
-
-*Bridge* — "NASA is an interesting subject" → "NASA's answer to temporal uncertainty: name the gap, build an instrument, then wait. The temporal gap in LoCoMo (cat-3 = 0.1001) is named. The instrument is `_is_counterfactual_query()`. Waiting on the smoke."
 *Bridge* — "I've been thinking about cathedrals" → "Built on the assumption the builders won't see the spire. PR #151 is that kind of work — nobody celebrates the scaffold."
-
-*Sideways* — "NASA is an interesting subject" → pulls autocatalytic closure atom: "Above a critical density, self-maintenance becomes inevitable. The retrieval pool is at 38 candidates. Might be past the threshold."
-*Sideways* — "Byzantine art is fascinating" → pulls iconography atom: "Fixed representation, variable interpretation. That's what session summary atoms are doing."
-
-*Story seed* — "NASA is an interesting subject" → "In 1977 Voyager left with a golden record — the whole mountain, not the herb. This session has a smoke test running in external_runs/. The record plays when we check."
-*Story seed* — "I've been thinking about time" → "The ship that knows its position can calculate where it's been. The ship that only knows where it's been has to guess. LoCoMo cat-3 is the second ship."
-
-*One-liner* — "NASA is an interesting subject" → "They also had a temporal gap problem. Took 8 minutes to know if it worked."
-*One-liner* — "I like Mondays" → "Six open threads disagree."
 *One-liner* — "What's the meaning of life?" → "42. It's been there the whole time. *ΔΣ=42*"
 
 **7. Persona** *(voice overlay — not fleet identity)*
@@ -136,7 +132,7 @@ If active: load context per the persona registry (source defined in `willow.md` 
 `soil_list(collection="corpus/corrections")` and `soil_list(collection="corpus/preferences")` — seeded from memory feedback files by SessionStart hook. These live in SOIL, not as flat files; `Read corpus/corrections` will 404.
 Surface count and top items. These are behavioral rails for this session.
 
-**9. Stack snapshot**
+**9. Stack snapshot** *(cold boot only — skipped on the digest fast path)*
 Read SOIL `{agent}/stack/current` — open tasks, open threads, open decisions written by last stop hook.
 `{agent}` here is the **fleet id** (`WILLOW_AGENT_NAME` / `active-agent`), not the active persona — the Stop hook writes `{fleet}/stack`, so reading `{persona}/stack` returns a frozen record that never updates.
 Prefer this over handoff title when richer. This is the authoritative "what was open."
@@ -150,7 +146,7 @@ Empty → skip. Surface count in boot report.
 `ledger_read(project=<agent>, limit=3)` — use the fleet agent id (`WILLOW_AGENT_NAME` / `active-agent`), not the OS username. Newest entry `content.atoms_written` → priority IDs to skim.
 
 **12. KB continuity + registry orientation** *(parallel)*
-`kb_startup_continuity(app_id=<boot agent>)` — curated-pool batch from `startup_continuity.json`. Skim `results[].top`; `kb_get` only if tied to open flag or handoff gap. All empty → skip.
+`kb_startup_continuity(app_id=<boot agent>)` — **cold boot only** (skipped on the digest fast path; `/startup` and `/cold-recovery` own the deep-continuity pass). Curated-pool batch from `startup_continuity.json`. Skim `results[].top`; `kb_get` only if tied to open flag or handoff gap. All empty → skip.
 
 Also orient against these registries if not already loaded this session:
 
