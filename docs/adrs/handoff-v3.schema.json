@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "willow://handoff/v3/machine-block",
+  "title": "Willow handoff v3 — machine block",
+  "description": "Schema for the single fenced JSON block in a v3 handoff file. Written by code (Stop hook / recovery sweep); model-authored fields arrive via tool call and are serialized by code. Verification verdicts (verified/failed/unverifiable + checked_at) are boot-digest OUTPUT stamped at read time and are never stored in this block. See ADR-20260703-handoff-v3-claims-record.md.",
+  "type": "object",
+  "required": ["format", "session", "agent", "project", "runtime", "written_at", "written_by", "skeleton", "claims", "next_bite"],
+  "additionalProperties": false,
+  "properties": {
+    "format": { "const": "v3" },
+    "session": {
+      "type": "string",
+      "description": "Session label: UTC date + letter, e.g. 2026-07-03c",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}[a-z]$"
+    },
+    "session_id": { "type": "string", "description": "Runtime session UUID when known" },
+    "agent": { "type": "string", "description": "Fleet identity (WILLOW_AGENT_NAME), never the persona" },
+    "project": { "type": "string" },
+    "runtime": { "type": "string", "description": "e.g. claude-code, cursor, codex, api" },
+    "written_at": { "type": "string", "format": "date-time", "description": "UTC ISO-8601" },
+    "written_by": {
+      "enum": ["stop_hook", "recovery_sweep", "model_tool_call"],
+      "description": "Provenance of the block itself. A crashed session yields stop_hook or recovery_sweep with empty narrative fields — still valid."
+    },
+    "skeleton": {
+      "type": "object",
+      "description": "Layer 1 — code-observed facts. All fields optional; empty arrays mean observed-none, absent fields mean not-observed.",
+      "additionalProperties": false,
+      "properties": {
+        "branches": { "type": "array", "items": { "type": "string" } },
+        "commits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["sha"],
+            "additionalProperties": false,
+            "properties": {
+              "sha": { "type": "string" },
+              "branch": { "type": "string" },
+              "subject": { "type": "string" }
+            }
+          }
+        },
+        "prs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["repo", "number", "state"],
+            "additionalProperties": false,
+            "properties": {
+              "repo": { "type": "string" },
+              "number": { "type": "integer" },
+              "state": { "enum": ["open", "merged", "closed", "draft"] },
+              "title": { "type": "string" }
+            }
+          }
+        },
+        "flags_delta": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "opened": { "type": "array", "items": { "type": "string" } },
+            "closed": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "kart_tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "status"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string" },
+              "status": { "type": "string" },
+              "summary": { "type": "string" }
+            }
+          }
+        },
+        "files_changed": { "type": "array", "items": { "type": "string" } },
+        "atoms_written": { "type": "array", "items": { "type": "string" } },
+        "ledger_entries": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "claims": {
+      "type": "array",
+      "description": "Layer 2 — open threads as typed claims. Replaces v2 Open Threads bullets.",
+      "items": { "$ref": "#/$defs/claim" }
+    },
+    "next_bite": {
+      "$ref": "#/$defs/claim",
+      "description": "The single next action. Replaces v2 Q17. kind=prose allowed but discouraged — prefer a verifiable kind."
+    },
+    "open_questions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Genuinely unresolved questions — as many as are real, NO fixed count, no padding (ADR-20260703: 17-Questions count retired, section kept). The next action does not belong here."
+    },
+    "agreements": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Decisions and constraints carried forward (narrative mirror of What We Agreed On)."
+    },
+    "summary": {
+      "type": "string",
+      "description": "One-paragraph narrative summary. Empty string when no model was present."
+    }
+  },
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "required": ["id", "text", "kind", "opened"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Plain slug unique within this file, e.g. 'boot-digest-build'. No b17. Cross-file identity = same id + carried_from chain.",
+          "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+        },
+        "text": { "type": "string", "description": "Terse English statement of the thread or action, <=200 chars preferred" },
+        "kind": { "$ref": "#/$defs/claimKind" },
+        "verify": {
+          "type": "object",
+          "description": "How the boot digest checks this claim at read time. Required for every kind except prose.",
+          "required": ["type", "subject"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "$ref": "#/$defs/claimKind" },
+            "subject": {
+              "type": "string",
+              "description": "What to check: branch name (branch_pushed), repo#number (pr_state), repo-relative path (file_exists), flag soil id (flag_open), SHA (sha_current)"
+            },
+            "expect": {
+              "description": "Expected value, kind-specific: pr_state -> open|merged|closed; file_exists -> true|false; flag_open -> true|false; branch_pushed -> true; sha_current -> true (subject SHA is an ancestor of origin/master HEAD... or equals booted head)"
+            }
+          }
+        },
+        "opened": { "type": "string", "format": "date", "description": "UTC date the claim first appeared" },
+        "carried_from": {
+          "type": "string",
+          "description": "Session label of the handoff this claim was carried from, e.g. 2026-07-03b. Absent on first appearance. Chains make age visible; content is never re-copied without this stamp."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "not": { "const": "prose" } } } },
+          "then": { "required": ["verify"] }
+        }
+      ]
+    },
+    "claimKind": {
+      "enum": ["branch_pushed", "pr_state", "file_exists", "flag_open", "sha_current", "prose"],
+      "description": "v1 claim kinds. prose = explicitly unverifiable; the digest stamps it 'unverifiable' rather than guessing."
+    }
+  }
+}
