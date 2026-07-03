@@ -134,6 +134,10 @@ def _sanitize_id(record_id: str) -> str:
 def _inject_soil_id(db_id: str, record: dict) -> dict:
     """Inject the DB row id into the record as _soil_id if no id field is present.
     Ensures every record returned by list/search is identifiable for soil_get/soil_update."""
+    if not isinstance(record, dict):
+        # Legacy rows whose data column holds a bare JSON scalar — item
+        # assignment on those took down the whole listing (boot flag triage).
+        return {"value": record, "_soil_id": db_id}
     if "id" not in record and "_id" not in record:
         record["_soil_id"] = db_id
     return record

@@ -48,6 +48,10 @@ def get(collection: str, record_id: str) -> dict | None:
 def all_records(collection: str) -> list[dict]:
     out = []
     for rec in _get_store().list(collection):
+        # Legacy collections hold occasional bare-string rows; setdefault on
+        # those raised and took the whole listing down (flags triage at boot).
+        if not isinstance(rec, dict):
+            rec = {"value": rec}
         rec.setdefault("_id", rec.get("id") or rec.get("_soil_id"))
         out.append(rec)
     return out
