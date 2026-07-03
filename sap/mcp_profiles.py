@@ -40,6 +40,14 @@ _FACADE_CORE = frozenset({
 })
 _ALWAYS = frozenset({"fleet_tool_guide"}) | _FACADE_MINIMAL
 
+# Public list for boot inventory / onboarding (13 intent-shaped facades).
+_FACADE_ALL = _FACADE_MINIMAL | _FACADE_CORE
+
+
+def willow_facade_names() -> list[str]:
+    """Sorted willow_* facade tool names (minimal + core tiers)."""
+    return sorted(_FACADE_ALL)
+
 # minimal — session boot
 _MINIMAL = _ALWAYS | {
     "fleet_status",

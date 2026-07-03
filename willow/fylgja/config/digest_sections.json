@@ -1,0 +1,42 @@
+{
+  "b17": "DSEC0",
+  "_note": "Boot digest section registry. Entries with provider are loaded at read time; builtin sections are composed in boot_digest.py but listed here for ordering and future providers.",
+  "sections": [
+    {
+      "id": "handoff",
+      "enabled": true,
+      "order": 10,
+      "builtin": true,
+      "description": "Latest handoff metadata (filename, date, format)"
+    },
+    {
+      "id": "claims",
+      "enabled": true,
+      "order": 20,
+      "builtin": true,
+      "description": "v3 claim verification + next_bite stamp"
+    },
+    {
+      "id": "attention",
+      "enabled": true,
+      "order": 30,
+      "builtin": true,
+      "description": "desk_attention summary lines",
+      "requires": "include_attention"
+    },
+    {
+      "id": "mcp_inventory",
+      "enabled": true,
+      "order": 40,
+      "provider": "willow.fylgja.digest_sections.mcp_inventory",
+      "description": "Wired MCP servers + Willow facade verbs + reuse rails for this workspace"
+    },
+    {
+      "id": "code_version",
+      "enabled": true,
+      "order": 50,
+      "builtin": true,
+      "description": "MCP server booted_sha / staleness from extra.code_version"
+    }
+  ]
+}
