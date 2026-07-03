@@ -197,9 +197,16 @@ def _kill_stale_instances() -> None:
             gc = psycopg2.connect(dbname=pg_db)
             gc.autocommit = True
             with gc.cursor() as c:
+                # Scope to our own database: pg_stat_activity is cluster-wide,
+                # and an unfiltered kill terminates idle-in-transaction sessions
+                # in EVERY database — production willow_20 included (observed
+                # 2026-07-03: test-suite sap_mcp spawns killing live fleet
+                # connections). Stale-instance leftovers only ever live in the
+                # database this instance connects to.
                 c.execute(
                     "SELECT pg_terminate_backend(pid) FROM pg_stat_activity"
                     " WHERE state IN ('idle in transaction', 'idle in transaction (aborted)')"
+                    "   AND datname = current_database()"
                     "   AND pid != pg_backend_pid()"
                 )
             gc.close()
