@@ -10,34 +10,32 @@ Stack position: this skill is the **end-of-session persistence** layer — it ab
 
 ## Sequence
 
-1. **Resolve open process flags** — call `soil_list(app_id, collection="{AGENT}/flags")` and filter for any
-   record where `flag_state` is `running`, `open`, or `awaiting authorization` and the `id`
-   starts with `process-`. For each one: check whether the process completed this session by
-   reading its log file (the flag's `note` field usually contains the log path) or checking
-   `pgrep`. If the process finished, close the flag with `soil_put` (`flag_state: complete`,
-   resolution note, elapsed time if known) **before** writing the handoff. If it is still
-   running, update the flag with current progress so the next session reads accurate state, not
-   the state from when the flag was first opened. A handoff with a stale open process flag is a
-   lie to the next session.
+1. **Close scan (mechanized)** — run the deterministic pre-handoff scan:
+   ```
+   willow_run(app_id, allow_net=True, task="python3 -m willow.fylgja.close_scan {AGENT} --apply")
+   ```
+   One pass does what used to be three model loops: closes provably-finished `process-*` flags
+   (pid gone), reconciles every PR-shaped open thread against live `gh pr view`, and lints
+   MEMORY.md for entries missing KB atom IDs. Read its JSON:
+   - `flags.still_running` → update each flag with current progress (`soil_put`) so the next
+     session reads accurate state. `flags.ambiguous` (no pid; log tail attached) → judge from
+     the log tail; close or annotate manually. A handoff over a stale flag is a lie.
+   - `threads.drop` → these PRs are MERGED/CLOSED and must **not** appear in the handoff. If one
+     left genuine follow-up work, write *that follow-up* as the thread — never the merge.
+   - `threads.keep` → carry forward with the refreshed `pr_status`. `threads.no_pr_ref` → carry
+     or close on judgment.
+   - `memory.missing_atom_id` → fix in step 3.
 
 2. **Write the handoff** — this runs early by design: it is the one artifact that must survive
    even if the session dies partway through the steps below.
 
-   a. **Load + reconcile current state** — call `handoff_latest` to see prior open threads. The
-      flag state from step 1 must appear in the handoff. Do not rely on memory; read SOIL.
-
-      **PR-thread reconciliation (required, before any thread reaches the draft).** Scan both the
-      prior `open_threads` and the ones you are about to write for PR/issue references
-      (`#NNN`, `PR #NNN`). For each, run `gh pr view <N> --json state,mergedAt` (via Kart —
-      `willow_run allow_net=True`). Then:
-      - **MERGED / CLOSED** → drop the thread. If a merged PR left genuine follow-up work, rewrite
-        the thread to describe *that follow-up*, never the merge itself.
-      - **OPEN** → keep, but refresh the one-line status (draft? checks? mergeable?) from the same
-        `gh pr view` so the next session reads current state, not last session's.
-
-      A handoff must never carry a merged PR forward as "needs merge" — that is the zombie-thread
-      bug (#402, #444, #446, #481 each lingered across sessions this way). Only threads that are
-      still genuinely open survive into 2b.
+   a. **Load + reconcile current state** — the step-1 scan already loaded the prior handoff's
+      threads and reconciled them against live PR state; write the draft from its
+      `threads.keep` + `threads.no_pr_ref` lists plus this session's new threads. Any *new*
+      thread you add that references a PR must also be checked (`gh pr view` via Kart) before
+      it reaches the draft. Never carry anything from `threads.drop` — a merged PR forwarded
+      as "needs merge" is the zombie-thread bug (#402, #444, #446, #481 each lingered across
+      sessions this way). The flag state from step 1 must appear in the handoff.
 
    b. **Draft** — copy [`docs/templates/HANDOFF.template.md`](../../docs/templates/HANDOFF.template.md)
       as the canonical v2 structure:
@@ -225,13 +223,14 @@ before the pipeline runs.
 - "What We Agreed On" = ratified decisions only — include ruled-out options to prevent
   re-litigation. This section is what makes CC CLI sessions legible to the next agent.
 - `open_threads` in the content JSONB is what `handoff_latest` returns. Keep them precise.
-- PR-shaped open threads must be reconciled against live `gh pr view` state in step 2a *before*
-  the handoff is written. Never carry a MERGED or CLOSED PR forward as an open thread — drop it,
-  or rewrite it as the remaining follow-up. This is the step that stops zombie threads.
+- PR-shaped open threads are reconciled by the step-1 `close_scan` *before* the handoff is
+  written; new threads added at draft time get the same `gh pr view` check. Never carry a MERGED
+  or CLOSED PR forward as an open thread — drop it, or rewrite it as the remaining follow-up.
+  This is the step that stops zombie threads.
 - Q17 must be a single concrete next bite, not a project description.
 - Phases 3+4 (atom synthesis + edge linking) only run if `WILLOW_ATOM_EXTRACTION=1`.
 - Stop hook is cleanup-only (depth stack + thread file). Pipeline only runs on explicit /shutdown.
-- Step 1 (process flag resolution) is not optional. A handoff written over a stale running flag is incorrect state — the next session will surface it as an open problem that is already solved.
+- Step 1 (close scan) is not optional. A handoff written over a stale running flag is incorrect state — the next session will surface it as an open problem that is already solved.
 - The draft template must keep **## Agent Notes for Human** and **## Human Notes to Agent** (matching `docs/templates/HANDOFF.template.md` and the v2 parser). Agent Notes = the agent's reflections to the operator; Human Notes = left empty at close for the operator to fill after, read live at next boot. Dropping either breaks parity with `handoff_latest`.
 - Step 7 (Session Close Report) is the final user-facing output — always render it. The user should never have to open the handoff file to see what the session did. In context-critical mode the floor is a minimal version: **Shipped** + **Next bite**.
 - Do NOT write to `docs/handoffs/` (deprecated, unindexed) or `~/Ashokoa/` (does not exist).
