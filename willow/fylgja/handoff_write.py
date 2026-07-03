@@ -19,21 +19,28 @@ def handoff_dir(agent: str) -> Path:
 
 
 def next_session_filename(agent: str, suffix: str = "") -> str:
-    """Return session_handoff-YYYY-MM-DD{sfx}_{agent}.md avoiding collisions."""
+    """Return session_handoff-YYYY-MM-DD{letter}_{agent}.md avoiding collisions.
+
+    Always lettered: handoff recency sorts by (date, suffix), and a letterless
+    name loses the suffix tiebreak to any lettered file from the same date —
+    handoff_latest would keep returning the older session. First session of
+    the day gets 'a'; an explicit free suffix is honored.
+    """
     # UTC is the canonical clock for all Willow artifacts — intentional, do NOT
     # localize. The harness reports "today" in local time, so this filename can be
     # one day ahead between ~18:00 local and midnight. That gap is correct; the
     # prompt_submit [CLOCK] line declares the relationship to agents each turn.
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    base = f"session_handoff-{today}{suffix}_{agent}.md"
     dest = handoff_dir(agent)
-    if not (dest / base).exists():
-        return base
-    for letter in "bcdefghijklmnopqrstuvwxyz":
+    if suffix:
+        candidate = f"session_handoff-{today}{suffix}_{agent}.md"
+        if not (dest / candidate).exists():
+            return candidate
+    for letter in "abcdefghijklmnopqrstuvwxyz":
         candidate = f"session_handoff-{today}{letter}_{agent}.md"
         if not (dest / candidate).exists():
             return candidate
-    return base
+    return f"session_handoff-{today}z_{agent}.md"
 
 
 def write_session_handoff(
