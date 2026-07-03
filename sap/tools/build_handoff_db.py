@@ -136,6 +136,14 @@ def _extract_bullet_items(block: str) -> list[str]:
 
 
 def parse_session_handoff(content: str, filename: str = "") -> dict:
+    try:
+        from willow.fylgja.handoff_v3 import is_v3_handoff, parse_v3_handoff
+
+        if is_v3_handoff(content):
+            v3 = parse_v3_handoff(content, filename)
+            return {**parse_session_meta(content, filename), **v3}
+    except ImportError:
+        pass
     result = parse_session_meta(content, filename)
     for marker in ("**Open Threads**", "## Open Threads"):
         if marker in content:

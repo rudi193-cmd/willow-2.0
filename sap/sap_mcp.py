@@ -3683,6 +3683,91 @@ async def handoff_rebuild(app_id: str) -> dict:
     return await loop.run_in_executor(_executor, _rebuild)
 
 
+@mcp.tool()
+@sap_gate()
+async def handoff_write_v3(
+    app_id: str,
+    summary: str = "",
+    claims: list | None = None,
+    next_bite: dict | None = None,
+    open_questions: list | None = None,
+    agreements: list | None = None,
+    agent_notes: list | None = None,
+    understanding: str = "",
+    project: str = "",
+    session_id: str = "",
+    workspace: str = "",
+) -> dict:
+    """Write a v3 session handoff (claims record carrying narrative).
+
+    Claims: [{id, text, kind, verify:{type, subject, expect}, opened, carried_from}].
+    Kinds: branch_pushed | pr_state | file_exists | flag_open | sha_current | prose.
+    Non-prose claims require verify.subject. Code collects the machine skeleton
+    and serializes the JSON block — do not author JSON in the narrative.
+    Schema: docs/adrs/handoff-v3.schema.json (ADR-20260703).
+    """
+    logger.info("[w2] handoff_write_v3 app_id=%s claims=%d", app_id, len(claims or []))
+    loop = asyncio.get_running_loop()
+
+    def _write():
+        from willow.fylgja.handoff_v3 import write_session_handoff_v3
+
+        try:
+            path = write_session_handoff_v3(
+                app_id,
+                summary=summary,
+                claims=[c for c in (claims or []) if isinstance(c, dict)],
+                next_bite=next_bite if isinstance(next_bite, dict) else None,
+                open_questions=[str(q) for q in (open_questions or [])],
+                agreements=[str(a) for a in (agreements or [])],
+                agent_notes=[str(n) for n in (agent_notes or [])],
+                understanding=understanding,
+                project=project,
+                session_id=session_id,
+                repo_root=workspace,
+                workspace=workspace,
+            )
+        except ValueError as exc:
+            return {"error": str(exc)}
+        return {"status": "ok", "filename": path.name, "path": str(path), "format": "v3"}
+
+    return await loop.run_in_executor(_executor, _write)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
+async def boot_digest(app_id: str, project: str = "", workspace: str = "") -> dict:
+    """Boot digest — latest handoff with claims verified at read time.
+
+    Returns {lines, digest}. lines are the model-facing terse rendering;
+    every action-driving item carries verified/STALE/unverified + checked_at.
+    Replaces stale copy chains (cross-runtime NEXT, anchor threads) at boot.
+    """
+    logger.info("[w2] boot_digest app_id=%s project=%s", app_id, project)
+    loop = asyncio.get_running_loop()
+
+    def _digest():
+        from willow.fylgja.boot_digest import build_boot_digest, render_lines
+
+        extra: dict = {}
+        try:
+            from core.code_version import staleness
+
+            extra["code_version"] = staleness()
+        except Exception:
+            pass
+        digest = build_boot_digest(
+            app_id,
+            project=project,
+            workspace=workspace,
+            repo_root=workspace or str(Path(__file__).resolve().parents[1]),
+            extra=extra or None,
+        )
+        return {"lines": render_lines(digest), "digest": digest}
+
+    return await loop.run_in_executor(_executor, _digest)
+
+
 # ── Tools — soul_ domain (tension detection + AutoDream) ──────────────────────
 
 @mcp.tool(annotations={"readOnlyHint": True})

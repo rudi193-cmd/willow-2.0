@@ -234,7 +234,7 @@ def scan_markdown_handoffs(agent: str, handoffs_root: Path, project: str = "") -
         if not isinstance(capabilities, list):
             capabilities = []
         mtime = path.stat().st_mtime
-        candidates.append({
+        candidate = {
             "filename": path.name,
             "date": parsed.get("handoff_date") or "",
             "project": stored_project,
@@ -246,7 +246,11 @@ def scan_markdown_handoffs(agent: str, handoffs_root: Path, project: str = "") -
             "_source": "markdown",
             "_valid_at": parsed.get("handoff_date") or "",
             "mtime": mtime,
-        })
+        }
+        if parsed.get("format") == "v3":
+            candidate["format"] = "v3"
+            candidate["claims"] = _parse_json_list(parsed.get("claims"))
+        candidates.append(candidate)
     return candidates
 
 
@@ -331,7 +335,7 @@ def _row_to_candidate(row: Mapping[str, object]) -> dict:
 
 def _candidate_to_result(candidate: dict) -> dict:
     """Public handoff_latest payload from an internal candidate."""
-    return {
+    result = {
         "filename": candidate.get("filename") or "",
         "date": candidate.get("date") or "",
         "project": candidate.get("project") or "",
@@ -341,6 +345,10 @@ def _candidate_to_result(candidate: dict) -> dict:
         "agreements": candidate.get("agreements") or [],
         "capabilities": candidate.get("capabilities") or [],
     }
+    if candidate.get("format") == "v3":
+        result["format"] = "v3"
+        result["claims"] = candidate.get("claims") or []
+    return result
 
 
 def fetch_latest_handoff(
