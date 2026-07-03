@@ -174,6 +174,145 @@ def collect_machine_skeleton(repo_root: str | Path = "") -> dict:
     return skeleton
 
 
+def _handoff_paths_for_agent(agent: str) -> list[Path]:
+    dest = handoff_dir(agent)
+    if not dest.is_dir():
+        return []
+    return sorted(dest.glob(f"session_handoff-*_{agent}.md"))
+
+
+def _block_for_session(agent: str, session_id: str, *, written_by: str) -> dict | None:
+    if not session_id:
+        return None
+    for path in reversed(_handoff_paths_for_agent(agent)):
+        try:
+            block = extract_machine_block(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if (
+            block
+            and block.get("written_by") == written_by
+            and str(block.get("session_id") or "") == session_id
+        ):
+            return block
+    return None
+
+
+def should_write_stop_hook_handoff(agent: str, session_id: str = "") -> bool:
+    """True when session_stop should emit a crash-safe skeleton handoff."""
+    if session_id and _block_for_session(agent, session_id, written_by="stop_hook"):
+        return False
+    if session_id and _block_for_session(agent, session_id, written_by="model_tool_call"):
+        return False
+    return True
+
+
+def skeleton_from_stack(stack: dict, repo_root: str | Path = "") -> dict:
+    """Merge session_stop stack snapshot into the machine skeleton."""
+    sk = collect_machine_skeleton(repo_root)
+    tasks = stack.get("open_tasks") or []
+    if tasks:
+        sk["kart_tasks"] = [
+            {
+                "id": str(t.get("id") or t.get("task_id") or ""),
+                "status": str(t.get("status") or ""),
+                "summary": str(t.get("task") or "")[:120],
+            }
+            for t in tasks
+            if isinstance(t, dict)
+        ]
+    flags = stack.get("open_flags") or []
+    if flags:
+        sk["flags_delta"] = {
+            "opened": [
+                str(f.get("title") or "")[:80]
+                for f in flags
+                if isinstance(f, dict)
+            ][:10],
+            "closed": [],
+        }
+    return sk
+
+
+def claims_from_stack(stack: dict) -> list[dict]:
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    claims: list[dict] = []
+    for i, flag in enumerate(stack.get("open_flags") or []):
+        if not isinstance(flag, dict):
+            continue
+        claims.append({
+            "id": f"stack-flag-{i}",
+            "text": str(flag.get("title") or "open flag")[:140],
+            "kind": "prose",
+            "opened": today,
+        })
+    for i, task in enumerate(stack.get("open_tasks") or []):
+        if not isinstance(task, dict):
+            continue
+        claims.append({
+            "id": f"stack-task-{i}",
+            "text": f"Kart {task.get('status', 'pending')}: {str(task.get('task') or '')[:100]}",
+            "kind": "prose",
+            "opened": today,
+        })
+    return claims[:8]
+
+
+def next_bite_from_stack(stack: dict) -> dict:
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    tasks = stack.get("open_tasks") or []
+    flags = stack.get("open_flags") or []
+    text = "Session ended without model handoff — resume from stack snapshot and skeleton claims."
+    if tasks and isinstance(tasks[0], dict) and tasks[0].get("task"):
+        text = str(tasks[0]["task"])[:160]
+    elif flags and isinstance(flags[0], dict):
+        fix = str(flags[0].get("fix_path") or "")
+        if fix:
+            text = fix[:160]
+        elif flags[0].get("title"):
+            text = str(flags[0]["title"])[:160]
+    return {"id": "next-bite", "text": text, "kind": "prose", "opened": today}
+
+
+def write_stop_hook_skeleton_handoff(
+    agent: str,
+    stack: dict,
+    *,
+    session_id: str = "",
+    repo_root: str | Path = "",
+    workspace: str | Path = "",
+    runtime: str = "unknown",
+    project: str = "",
+) -> Path | None:
+    """Crash-safe v3 handoff from session_stop — skeleton + stack-derived claims. Never raises."""
+    if not should_write_stop_hook_handoff(agent, session_id):
+        return None
+    try:
+        root = repo_root or workspace or Path.cwd()
+        return write_session_handoff_v3(
+            agent,
+            summary="Session stop skeleton handoff (crash-safe checkpoint)",
+            claims=claims_from_stack(stack),
+            next_bite=next_bite_from_stack(stack),
+            open_questions=[],
+            agreements=[],
+            agent_notes=[
+                f"stop_hook session_id={session_id or 'unknown'}",
+                "Narrative empty — model did not run handoff_write_v3 or /shutdown this session.",
+            ],
+            understanding="",
+            project=project,
+            runtime=runtime,
+            session_id=session_id,
+            skeleton=skeleton_from_stack(stack, root),
+            repo_root=root,
+            workspace=workspace,
+            written_by="stop_hook",
+        )
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Writer — code serializes; models pass fields via tool call
 # ---------------------------------------------------------------------------
