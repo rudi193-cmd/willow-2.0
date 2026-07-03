@@ -156,6 +156,8 @@ Also orient against these registries if not already loaded this session:
 
 | File | What it contains |
 |---|---|
+| `willow/fylgja/config/digest_sections.json` | Pluggable boot digest sections — `mcp_inventory` provider lists wired MCP servers + reuse rails |
+| `scripts/mcp_inventory.py` | Workspace/fleet MCP scan (digest provider; not run at boot unless `boot_digest` loads it) |
 | `docs/INDEX.md` | Doc router — workflows, runbooks, and template index |
 | `docs/templates/README.md` | Canonical agent artifact templates (handoff, audit, ADR, PR, atom, …) |
 | `sap/mcp_registry.json` | All MCP tools grouped by domain prefix — the authoritative tool reference |
@@ -163,7 +165,9 @@ Also orient against these registries if not already loaded this session:
 | `willow/fylgja/skills/plugin.json` | Fylgja skills manifest — LLM-agnostic behavioral skills |
 | `scripts/index_annotations.json` | Repo directory map — what lives where |
 
-Paths are relative to repo root. All six are dark by default — they do not self-announce. For session artifacts, copy from `docs/templates/` — do not improvise structure.
+Paths are relative to repo root. All eight are dark by default — they do not self-announce. For session artifacts, copy from `docs/templates/` — do not improvise structure.
+
+`boot_digest` renders a `tools:` line (wired MCP servers, registry count, reuse rule, CBM lane) from the `mcp_inventory` section — skim before inventing new tools or Kart inventory scripts.
 
 **13. Flag triage**
 `soil_list({agent}/flags, filter={"flag_state": "open"})` — surface open ones (max 5, one-line fix_path ≤150 chars).
