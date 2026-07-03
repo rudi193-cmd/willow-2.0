@@ -21,6 +21,7 @@ from pathlib import Path
 from sap.handoff_index import extract_next_bite, fetch_latest_handoff
 from sap.handoff_paths import resolve_agent_handoff_file
 from willow.fylgja.claim_verify import verify_claims
+from willow.fylgja.digest_registry import DigestContext, apply_pluggable_sections, render_pluggable_lines
 from willow.fylgja.handoff_v3 import extract_machine_block
 
 
@@ -59,6 +60,7 @@ def build_boot_digest(
         "claims": [],
         "next_bite": None,
         "attention": {},
+        "sections": {},
         "degraded": [],
     }
     if extra:
@@ -131,6 +133,21 @@ def build_boot_digest(
         except Exception as exc:
             digest["degraded"].append(f"attention: {exc}")
 
+    try:
+        apply_pluggable_sections(
+            digest,
+            DigestContext(
+                agent=agent,
+                project=project,
+                workspace=workspace,
+                repo_root=repo_root or workspace or "",
+                include_attention=include_attention,
+                extra=extra,
+            ),
+        )
+    except Exception as exc:
+        digest["degraded"].append(f"sections: {exc}")
+
     return digest
 
 
@@ -188,6 +205,7 @@ def render_lines(digest: dict) -> list[str]:
         lines.append(f"code: STALE — {code_version.get('note') or 'restart to activate merged code'}")
     elif code_version.get("booted_sha"):
         lines.append(f"code: current at {code_version['booted_sha']}")
+    lines.extend(render_pluggable_lines(digest))
     for issue in digest.get("degraded") or []:
         lines.append(f"degraded: {issue}")
     return lines
