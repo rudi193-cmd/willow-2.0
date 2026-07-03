@@ -44,11 +44,15 @@ def bridge_covers_handoff(
     return handoff_recency_key(bridge_source) >= live_key
 
 
-def ensure_fresh_bridge(agent: str, handoff_filename: str, handoff_date: str = "") -> dict:
-    """Return cross-runtime bridge; rebuild from disk handoffs when older than live handoff."""
-    bridge = read_bridge()
-    if bridge_covers_handoff(bridge, handoff_filename, handoff_date):
-        return bridge
+def ensure_fresh_bridge(agent: str, handoff_filename: str = "", handoff_date: str = "") -> dict:
+    """Return the cross-runtime bridge, rebuilt from disk at READ time.
+
+    ADR-20260703: the daily 06:00 timer artifact goes stale intra-day by
+    design; every consumer now pays the (cheap, local) rebuild instead of
+    inheriting a laundered copy. The cached file is only a fallback when the
+    rebuild itself fails. handoff_filename/handoff_date are kept for call-site
+    compatibility; they no longer gate the rebuild.
+    """
     try:
         from scripts.bridge_cross_runtime import BRIDGE_PATH as _path, HANDOFF_DIR, build_bridge
 
@@ -57,7 +61,7 @@ def ensure_fresh_bridge(agent: str, handoff_filename: str, handoff_date: str = "
         _path.write_text(json.dumps(fresh, indent=2) + "\n", encoding="utf-8")
         return fresh
     except Exception:
-        return bridge
+        return read_bridge()
 
 
 def read_bridge() -> dict:
@@ -71,40 +75,46 @@ def read_bridge() -> dict:
 
 
 def anchor_lines(max_open: int = 4) -> list[str]:
-    """Return [CROSS-RUNTIME] lines for session_start additionalContext."""
+    """Return [CROSS-RUNTIME] + [DIGEST] lines for session_start additionalContext.
+
+    Session metadata (which runtimes, how long, last topic) still comes from
+    the bridge. Open threads and the next bite now come from the boot digest,
+    which verifies each claim at read time — the bridge's copies are no longer
+    injected (ADR-20260703: no action-driving line without a verification
+    stamp).
+    """
     bridge = read_bridge()
-    if not bridge:
-        return []
+    lines: list[str] = []
+    if bridge:
+        lines.append("[CROSS-RUNTIME]")
+        for label in ("claude_latest", "cursor_latest"):
+            block = bridge.get(label)
+            if not isinstance(block, dict):
+                continue
+            sid = str(block.get("session_id", ""))[:8]
+            runtime = block.get("runtime", label.replace("_latest", ""))
+            duration = block.get("duration_minutes")
+            turns = block.get("turn_count") or block.get("user_message_count")
+            parts = [f"{runtime} {sid}"]
+            if duration is not None:
+                parts.append(f"{duration}min")
+            if turns is not None:
+                parts.append(f"{turns} turns")
+            lines.append("  " + " · ".join(parts))
+            topic = block.get("last_topic") or block.get("summary")
+            if topic:
+                lines.append(f"  last: {str(topic)[:120]}")
 
-    lines = ["[CROSS-RUNTIME]"]
-    for label in ("claude_latest", "cursor_latest"):
-        block = bridge.get(label)
-        if not isinstance(block, dict):
-            continue
-        sid = str(block.get("session_id", ""))[:8]
-        runtime = block.get("runtime", label.replace("_latest", ""))
-        duration = block.get("duration_minutes")
-        turns = block.get("turn_count") or block.get("user_message_count")
-        parts = [f"{runtime} {sid}"]
-        if duration is not None:
-            parts.append(f"{duration}min")
-        if turns is not None:
-            parts.append(f"{turns} turns")
-        lines.append("  " + " · ".join(parts))
-        topic = block.get("last_topic") or block.get("summary")
-        if topic:
-            lines.append(f"  last: {str(topic)[:120]}")
+    try:
+        import os
 
-    open_threads = bridge.get("open_threads") or []
-    if open_threads:
-        lines.append(f"open ({len(open_threads)}):")
-        for item in open_threads[:max_open]:
-            lines.append(f"  · {str(item)[:100]}")
-        if len(open_threads) > max_open:
-            lines.append(f"  · … +{len(open_threads) - max_open} more")
+        from willow.fylgja.boot_digest import build_boot_digest, render_lines
 
-    next_bite = bridge.get("next_bite")
-    if next_bite:
-        lines.append(f"next: {str(next_bite)[:140]}")
+        agent = (os.environ.get("WILLOW_AGENT_NAME") or "willow").strip()
+        # Boot-latency budget: verify at most 8 claims inline at session start.
+        digest = build_boot_digest(agent, include_attention=False, max_claims=8)
+        lines.extend(render_lines(digest))
+    except Exception as exc:
+        lines.append(f"[DIGEST] unavailable: {str(exc)[:100]}")
 
     return lines

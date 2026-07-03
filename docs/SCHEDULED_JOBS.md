@@ -14,14 +14,15 @@ enables the fleet units with `systemctl --user`. All timers set
 | `willow-metabolic.timer` | nightly `03:00` | `willow.sh metabolic` | Norn pass — KB metabolism (demote/retire stale atoms) |
 | `willow-w8-census.timer` | weekly `Mon 04:00` | `willow.sh w8-census` | W8 canonical-reconstruction census — the trust instrument's heartbeat |
 | `willow-wce.timer` | weekly `Mon 05:00` | `willow.sh wce` | WCE continuity eval — thread recall, next-bite, surfacing, staleness vector |
-| `willow-bridge-cross-runtime.timer` | daily `06:00` | `willow.sh bridge-cross-runtime` | Rebuild `cross-runtime.json` from latest handoff + session JSONL |
+| ~~`willow-bridge-cross-runtime.timer`~~ | ~~daily `06:00`~~ | — | **RETIRED** (ADR-20260703): bridge rebuilds at read time in `cross_runtime.ensure_fresh_bridge`; retire with `scripts/uninstall_bridge_timer.sh` |
 | `repo-fleet-sweep.timer` | weekly `Mon 04:00` | `repo-fleet-sweep.service` | Repo hygiene sweep (diverged/unpushed repos, branch litter) |
 | `hook-wiring-audit.timer` | daily `04:30` | `hook-wiring-audit.service` | Host-side check of `~/.claude/settings.json` hooks wiring (issue #603) |
 
 **Enablement:** `setup.sh` enables `willow-metabolic.socket` (on-demand Norn pass),
 `willow-metabolic.timer` (nightly `03:00`), `willow-w8-census.timer`, and
 `willow-wce.timer`. WCE timer only (existing install): `scripts/install_wce_timer.sh`.
-Bridge timer only (existing install): `scripts/install_bridge_timer.sh`.
+Bridge timer: **retired** — `scripts/install_bridge_timer.sh` is superseded by the
+read-time rebuild; remove an existing timer with `scripts/uninstall_bridge_timer.sh`.
 Hook-wiring-audit timer only (existing install): `scripts/install_hook_wiring_audit_timer.sh`.
 One-shot consecration on an existing install: `scripts/consecrate_metabolic.sh` (copies units,
 enables socket+timer, runs first Norn pass). Other units, including
