@@ -48,6 +48,7 @@ def build_boot_digest(
     repo_root: str | Path = "",
     include_attention: bool = True,
     extra: dict | None = None,
+    max_claims: int = 20,
 ) -> dict:
     """Compose the digest. Never raises; degraded sources are named in-line."""
     generated_at = datetime.now(timezone.utc).isoformat()
@@ -83,6 +84,7 @@ def build_boot_digest(
             claims + ([next_bite] if next_bite else []),
             repo_root=repo_root or workspace or "",
             agent=agent,
+            max_claims=max_claims,
         )
         if next_bite:
             digest["next_bite"] = verified[-1]
