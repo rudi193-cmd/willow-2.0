@@ -4,6 +4,7 @@ Writes SOIL {agent}/stack/current with open tasks, threads, and decisions
 so boot step 9 has reliable data even if /shutdown was not run.
 """
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -89,14 +90,38 @@ def main() -> None:
     if _is_isolated_directory():
         sys.exit(0)
 
+    session_id = ""
     try:
         raw = sys.stdin.read()
-        json.loads(raw) if raw.strip() else {}
+        if raw.strip():
+            session_id = str(json.loads(raw).get("session_id") or "")
     except Exception:
         pass
 
     stack = _gather_stack()
     ok = _write_stack(stack)
+
+    handoff_path = None
+    try:
+        from willow.fylgja.handoff_project import resolve_handoff_project
+        from willow.fylgja.handoff_v3 import write_stop_hook_skeleton_handoff
+
+        handoff_path = write_stop_hook_skeleton_handoff(
+            AGENT,
+            stack,
+            session_id=session_id,
+            repo_root=Path.cwd(),
+            workspace=Path.cwd(),
+            runtime=os.environ.get("WILLOW_RUNTIME", "unknown"),
+            project=resolve_handoff_project(workspace=Path.cwd()) or "",
+        )
+        if handoff_path is not None:
+            try:
+                call("handoff_rebuild", {"app_id": AGENT}, timeout=30)
+            except Exception:
+                pass
+    except Exception:
+        pass
 
     flag_count = len(stack.get("open_flags", []))
     init_count = len(stack.get("open_initiatives", []))
