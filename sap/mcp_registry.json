@@ -128,6 +128,8 @@
     "handoff_latest":     {"group": "handoff","description": "Read the most recent handoff for an agent. First thing after willow.md at boot."},
     "handoff_search":     {"group": "handoff","description": "Search handoff history by query."},
     "handoff_rebuild":    {"group": "handoff","description": "Rebuild the handoff index after writing a new handoff file."},
+    "handoff_write_v3":   {"group": "handoff","description": "Write a v3 session handoff (claims record). Fields via tool call; code serializes the machine block. ADR-20260703."},
+    "boot_digest":        {"group": "handoff","description": "Boot digest — latest handoff with claims verified at read time (OK/STALE/unverified + checked_at)."},
 
     "tension_scan":       {"group": "soul",   "description": "Scan KB atoms for semantic tensions or redundancies via nomic-embed + mistral:7b. write_kb=true saves findings as a tension atom."},
     "dream_check":        {"group": "soul",   "description": "Check whether AutoDream synthesis conditions are met."},
