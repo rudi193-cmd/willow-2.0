@@ -159,6 +159,11 @@ _ENV_SNAPSHOT_PREFIXES = ("WILLOW_", "GROVE_", "HOME", "USER", "PATH", "PGUSER",
 
 def _kill_stale_instances() -> None:
     """Terminate other sap_mcp.py processes FROM THIS REPO and their idle Postgres connections."""
+    # A shadow import (sap/reload.py generation swap) must never reach this:
+    # the "stale" process it would find is the live server performing the
+    # reload. Lifespan does not run on import today, but guard anyway.
+    if os.environ.get("WILLOW_MCP_SHADOW") == "1":
+        return
     import psutil  # type: ignore[import]
 
     my_pid = os.getpid()
@@ -741,11 +746,41 @@ async def fleet_agents(app_id: str) -> dict:
 @sap_gate()
 async def fleet_reload(app_id: str, target: str = "all") -> dict:
     """Hot-reload Willow modules without restarting the MCP server.
-    target: all | blast | inference | postgres | store | gate | kart
+    target: code | all | blast | inference | postgres | store | gate | kart
+    target 'code' (needs WILLOW_TRUE_HOTRELOAD=1): generation-swap reload of ALL
+    tool bodies, facades, and core.* via shadow import — no process exit, no /mcp
+    reconnect (ADR-20260704-mcp-true-hot-reload).
     target 'all' (and 'kart') also bounces the kart-worker systemd unit so merged
     Kart code goes live — skipped automatically while a Kart task is in-flight."""
     logger.info("[w2] fleet_reload app_id=%s target=%s", app_id, target)
     loop = asyncio.get_running_loop()
+
+    if target == "code":
+        if os.environ.get("WILLOW_TRUE_HOTRELOAD") != "1":
+            return {
+                "error": "disabled",
+                "hint": "generation-swap reload is gated behind WILLOW_TRUE_HOTRELOAD=1 "
+                        "(ADR-20260704). Use whitelist targets or fleet_restart.",
+            }
+        from sap.reload import generation_reload
+        result = await loop.run_in_executor(_executor, generation_reload, mcp)
+        if result.get("status") == "reloaded":
+            # Best-effort: tell the client the tool list may have changed so
+            # schema edits propagate without /mcp. Body changes work regardless.
+            try:
+                ctx = mcp.get_context()
+                await ctx.session.send_tool_list_changed()
+                result["list_changed"] = "sent"
+            except Exception as e:
+                result["list_changed"] = f"not_sent: {e}"
+            # Read staleness through the NEW generation's module — this closure
+            # belongs to the old one, whose _code_staleness would report the
+            # pre-reload boot SHA and falsely claim the server is still stale.
+            try:
+                result["code_version"] = sys.modules["core.code_version"].staleness()
+            except Exception:
+                result["code_version"] = _code_staleness()
+        return result
     timeout_s = float(os.environ.get("WILLOW_FLEET_RELOAD_TIMEOUT", "30"))
     try:
         return await asyncio.wait_for(
