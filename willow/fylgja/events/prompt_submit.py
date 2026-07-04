@@ -31,6 +31,17 @@ ACTIVE_BUILD_FILE = Path(f"/tmp/{AGENT}-active-build.json")
 DISPATCH_INBOX = Path(f"/tmp/willow-dispatch-inbox-{AGENT}.json")
 BOOT_DONE = Path(f"/tmp/willow-boot-done-{AGENT}.flag")
 
+def _boot_done(session_id: str = ""):
+    # Per-session sentinel: parallel windows all run as the same fleet
+    # identity, so the agent-keyed flag alone lets one window's
+    # SessionStart clear another's boot state mid-session (2026-07-04).
+    # Falls back to the legacy shared path when no session_id is given.
+    sid = "".join(c for c in (session_id or "") if c.isalnum() or c in "_-")[:16]
+    if sid:
+        return Path(f"/tmp/willow-boot-done-{AGENT}-{sid}.flag")
+    return BOOT_DONE
+
+
 try:
     from willow.routing.oracle import route as _routing_oracle
 except ImportError:
@@ -410,7 +421,7 @@ def _run_corpus_capture(prompt: str, session_id: str) -> None:
         pass
 
 
-def _boot_guard() -> None:
+def _boot_guard(session_id: str = "") -> None:
     """First turn only: informational note when boot sentinel is absent.
 
     This is advisory context, not enforcement — Claude Code only treats a
@@ -424,12 +435,13 @@ def _boot_guard() -> None:
     """
     if not is_first_turn():
         return
-    if BOOT_DONE.exists():
+    flag = _boot_done(session_id)
+    if flag.exists():
         return
     boot_path = str(Path(__file__).parent.parent / "skills" / "boot.md")
     print(
         f"[BOOT] Boot sentinel absent for this session. Boot guide: {boot_path}. "
-        f"Tool calls are gated (see PreToolUse) until {BOOT_DONE} is written."
+        f"Tool calls are gated (see PreToolUse) until {flag} is written."
     )
 
 
@@ -585,7 +597,7 @@ def main():
     prompt = data.get("prompt", "")
 
     _check_identity()
-    _boot_guard()
+    _boot_guard(session_id)
     _run_persona(prompt)
     increment_turn_count()
     prompt_count = bump_prompt_count(AGENT, session_id)
