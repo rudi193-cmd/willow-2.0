@@ -195,7 +195,7 @@ Then a compact status list (no prose paragraph — one line each, no sub-bullets
 - **Corrections:** [N] loaded
 - **Next:** [next_bite ≤120 chars]
 
-Then write the boot sentinel: `Write(file_path="/tmp/willow-boot-done-{agent}.flag", content="booted")` — this clears the boot gate for this session. SessionStart clears the sentinel on a **fresh** session (`startup` / `clear`); the Stop hook does **not** clear it (Stop runs every turn, not only at session end).
+Then write the boot sentinel: `Write(file_path="/tmp/willow-boot-done-{agent}-{session}.flag", content="booted")` — the **exact path is printed by the boot gate** (the `[BOOT]` line at session start and every PreToolUse block message); copy it verbatim rather than constructing it. The flag is keyed per session so parallel windows (all running as the same fleet identity) cannot clear each other's boot state. SessionStart clears only **its own** session's sentinel on a fresh session (`startup` / `clear`) and prunes flags older than 48h; the Stop hook does **not** clear it (Stop runs every turn, not only at session end).
 
 Then respond to the user.
 

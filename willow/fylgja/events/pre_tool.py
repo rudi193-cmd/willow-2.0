@@ -32,6 +32,17 @@ AGENT = require_agent_name()
 MAX_DEPTH = int(os.environ.get("WILLOW_AGENT_MAX_DEPTH", "3"))
 DEPTH_FILE = Path("/tmp/willow-agent-depth-stack.txt")
 BOOT_DONE = Path(f"/tmp/willow-boot-done-{AGENT}.flag")
+
+def _boot_done(session_id: str = ""):
+    # Per-session sentinel: parallel windows all run as the same fleet
+    # identity, so the agent-keyed flag alone lets one window's
+    # SessionStart clear another's boot state mid-session (2026-07-04).
+    # Falls back to the legacy shared path when no session_id is given.
+    sid = "".join(c for c in (session_id or "") if c.isalnum() or c in "_-")[:16]
+    if sid:
+        return Path(f"/tmp/willow-boot-done-{AGENT}-{sid}.flag")
+    return BOOT_DONE
+
 _BOOT_MD_PATH = str(Path(__file__).parent.parent / "skills" / "boot.md")
 _KART_PENDING_TTL = 1800  # seconds — backstop if kart_task_run is never called
 _BLOCK_FLAG_THRESHOLD = int(os.environ.get("WILLOW_BLOCK_FLAG_THRESHOLD", "10"))
@@ -323,7 +334,8 @@ def check_bash_block(command: str) -> tuple[str, str] | None:
     return None
 
 
-def check_boot_gate(tool_name: str, tool_input: dict) -> str | None:
+def check_boot_gate(tool_name: str, tool_input: dict,
+                    session_id: str = "") -> str | None:
     """Block every tool call until the boot sentinel exists, except reading boot.md
     itself and writing the sentinel file. Real enforcement (decision:block) —
     replaces the old advisory-only print in prompt_submit.py's _boot_guard."""
@@ -331,18 +343,19 @@ def check_boot_gate(tool_name: str, tool_input: dict) -> str | None:
     # PYTEST_CURRENT_TEST is set automatically under pytest (see tests/vcr.py).
     if os.environ.get("PYTEST_CURRENT_TEST"):
         return None
-    if BOOT_DONE.exists():
+    flag = _boot_done(session_id)
+    if flag.exists():
         return None
     target = str(
         tool_input.get("file_path") or tool_input.get("path") or ""
     )
     if tool_name == "Read" and target == _BOOT_MD_PATH:
         return None
-    if tool_name == "Write" and target == str(BOOT_DONE):
+    if tool_name == "Write" and target == str(flag):
         return None
     return (
         f"Boot sentinel absent for this session. Read {_BOOT_MD_PATH}, complete the "
-        f"steps there, then write {BOOT_DONE} to clear this gate."
+        f"steps there, then write {flag} to clear this gate."
     )
 
 
@@ -730,7 +743,7 @@ def main():
         print(json.dumps({"decision": "block", "reason": mai_block}))
         sys.exit(0)
 
-    boot_block = check_boot_gate(tool_name, tool_input)
+    boot_block = check_boot_gate(tool_name, tool_input, session_id)
     if boot_block:
         print(json.dumps({"decision": "block", "reason": boot_block}))
         sys.exit(0)
