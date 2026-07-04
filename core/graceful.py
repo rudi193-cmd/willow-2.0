@@ -35,12 +35,18 @@ class DegradedBridge:
 
     def knowledge_get(self, atom_id: str, include_invalid: bool = False,
                       include_embedding: bool = False,
-                      fields: Optional[list] = None) -> Optional[dict]:
-        # degraded mode: best-effort lookup by id from fallback store
+                      fields: Optional[list] = None,
+                      lane_scope=None) -> Optional[dict]:
+        # degraded mode: best-effort lookup by id from fallback store.
+        # lane_scope mirrors PgBridge — sap_mcp kb_get passes it positionally.
         results = self._store.search("knowledge/fallback", atom_id)
         for r in results:
             rid = r.get("id") or r.get("_id")
             if rid == atom_id:
+                if lane_scope is not None:
+                    from core.canonical_lanes import atom_in_lane_scope
+                    if not atom_in_lane_scope(r, lane_scope):
+                        return None
                 return r
         return None
 

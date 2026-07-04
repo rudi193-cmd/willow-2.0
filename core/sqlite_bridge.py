@@ -355,6 +355,15 @@ class SqliteBridge:
         rows = self._query(sql, params)
         return rows[0] if rows else None
 
+    def _columns(self, table: str) -> set:
+        # Snapshot DBs (pg-derived) and local fallback DBs carry different
+        # column sets (e.g. jeles_atoms.invalid_at, sensitivity); filters
+        # that reference optional columns must check here first.
+        try:
+            return {r["name"] for r in self._query(f"PRAGMA table_info({table})")}
+        except Exception:
+            return set()
+
     # ── Stats ──────────────────────────────────────────────────────────────────
 
     def stats(self) -> dict:
@@ -472,14 +481,25 @@ class SqliteBridge:
 
     def knowledge_get(self, atom_id: str, include_invalid: bool = False,
                       include_embedding: bool = False,
-                      fields: Optional[list] = None) -> Optional[dict]:
+                      fields: Optional[list] = None,
+                      lane_scope=None) -> Optional[dict]:
+        # Parameter order mirrors PgBridge.knowledge_get — sap_mcp kb_get
+        # passes all five args positionally via run_in_executor, so a
+        # missing/misplaced param TypeErrors on every fallback-lane call.
         sql = "SELECT * FROM knowledge WHERE id = ?"
         params: list = [atom_id]
         if not include_invalid:
             sql += " AND invalid_at IS NULL"
         sql += " LIMIT 1"
         rows = self._query(sql, params)
-        return rows[0] if rows else None
+        if not rows:
+            return None
+        row = rows[0]
+        if lane_scope is not None:
+            from core.canonical_lanes import atom_in_lane_scope
+            if not atom_in_lane_scope(row, lane_scope):
+                return None
+        return row
 
     def knowledge_search(self, query: str, project: Optional[str] = None,
                          include_invalid: bool = False, limit: int = 20,
@@ -544,7 +564,10 @@ class SqliteBridge:
         return _scope(self._query(like_sql, params))
 
     def knowledge_at(self, query: str, at_time: datetime,
-                     project: Optional[str] = None, limit: int = 20) -> list:
+                     project: Optional[str] = None, limit: int = 20,
+                     lane_scope=None) -> list:
+        # lane_scope mirrors PgBridge.knowledge_at; explicit project= wins,
+        # like knowledge_search above.
         at_upper = (at_time + timedelta(seconds=5)).isoformat()
         at_iso = at_time.isoformat()
         sql = """
@@ -560,7 +583,11 @@ class SqliteBridge:
             params.append(project)
         sql += " LIMIT ?"
         params.append(limit)
-        return self._query(sql, params)
+        rows = self._query(sql, params)
+        if project is None and lane_scope is not None:
+            from core.canonical_lanes import atom_in_lane_scope
+            rows = [r for r in rows if atom_in_lane_scope(r, lane_scope)]
+        return rows
 
     # ── CMB ───────────────────────────────────────────────────────────────────
 
@@ -578,6 +605,36 @@ class SqliteBridge:
             return atom_id
         except Exception:
             return None
+
+    def _cmb_row(self, row: dict) -> dict:
+        # pg stores content as jsonb (dict); sqlite stores json.dumps text.
+        row["content"] = _jload(row.get("content"))
+        return row
+
+    def cmb_get(self, atom_id: str) -> Optional[dict]:
+        row = self._query_one("SELECT * FROM cmb_atoms WHERE id = ?", (atom_id,))
+        return self._cmb_row(row) if row else None
+
+    def cmb_list(self, agent: Optional[str] = None, limit: int = 20) -> list:
+        if agent:
+            rows = self._query(
+                "SELECT * FROM cmb_atoms WHERE agent = ? ORDER BY created_at DESC LIMIT ?",
+                (agent, limit),
+            )
+        else:
+            rows = self._query(
+                "SELECT * FROM cmb_atoms ORDER BY created_at DESC LIMIT ?", (limit,)
+            )
+        return [self._cmb_row(r) for r in rows]
+
+    def cmb_search(self, query: str, limit: int = 20) -> list:
+        pattern = f"%{query}%"
+        rows = self._query(
+            "SELECT * FROM cmb_atoms WHERE title LIKE ? OR content LIKE ?"
+            " ORDER BY created_at DESC LIMIT ?",
+            (pattern, pattern, limit),
+        )
+        return [self._cmb_row(r) for r in rows]
 
     # ── Tasks ─────────────────────────────────────────────────────────────────
 
@@ -621,9 +678,16 @@ class SqliteBridge:
 
     # ── Opus ──────────────────────────────────────────────────────────────────
 
-    def search_opus(self, query: str, limit: int = 20) -> list:
+    def search_opus(self, query: str, limit: int = 20,
+                    include_sensitive: bool = False) -> list:
+        # include_sensitive mirrors PgBridge.search_opus. The sensitivity
+        # veto (fail-closed, ADR-20260702) applies only when the column
+        # exists — local fallback DBs predate it.
+        sens = ""
+        if not include_sensitive and "sensitivity" in self._columns("opus_atoms"):
+            sens = " AND COALESCE(sensitivity, 'sensitive') = 'open'"
         return self._query(
-            "SELECT * FROM opus_atoms WHERE content LIKE ? "
+            f"SELECT * FROM opus_atoms WHERE content LIKE ?{sens} "
             "ORDER BY created_at DESC LIMIT ?",
             (f"%{query}%", limit),
         )
@@ -742,6 +806,55 @@ class SqliteBridge:
     def jeles_atom_get(self, atom_id: str) -> Optional[dict]:
         return self._query_one(
             "SELECT * FROM jeles_atoms WHERE id = ?", (atom_id,)
+        )
+
+    def jeles_keyword_search(self, query: str, limit: int = 20,
+                             include_sensitive: bool = False) -> list:
+        """Keyword search across jeles_atoms (title + content LIKE).
+
+        Mirrors PgBridge.jeles_keyword_search. invalid_at / sensitivity
+        filters apply only when the column exists — snapshot DBs carry
+        invalid_at but not sensitivity; local fallback DBs carry neither.
+        """
+        cols = self._columns("jeles_atoms")
+        filters: list = []
+        params: list = []
+        for word in list(dict.fromkeys(query.split()))[:20]:
+            filters.append("(title LIKE ? OR content LIKE ?)")
+            params.extend([f"%{word}%", f"%{word}%"])
+        if "invalid_at" in cols:
+            filters.append("invalid_at IS NULL")
+        if not include_sensitive and "sensitivity" in cols:
+            # Veto filter (ADR-20260702 step 2): NULL fails closed.
+            filters.append("COALESCE(sensitivity, 'sensitive') = 'open'")
+        where = ("WHERE " + " AND ".join(filters)) if filters else ""
+        return self._query(
+            f"SELECT * FROM jeles_atoms {where} ORDER BY created_at DESC LIMIT ?",
+            params + [limit],
+        )
+
+    def search_jeles_semantic(self, query: str, limit: int = 20,
+                              days_ago: Optional[int] = None,
+                              include_sensitive: bool = False) -> list:
+        # No vector column in the sqlite lane — degrade to keyword matching
+        # rather than AttributeError (parity over crash). Semantic ranking
+        # is unavailable here; days_ago becomes a created_at window.
+        cols = self._columns("jeles_atoms")
+        filters: list = []
+        params: list = []
+        for word in list(dict.fromkeys(query.split()))[:20]:
+            filters.append("(title LIKE ? OR content LIKE ?)")
+            params.extend([f"%{word}%", f"%{word}%"])
+        if "invalid_at" in cols:
+            filters.append("invalid_at IS NULL")
+        if not include_sensitive and "sensitivity" in cols:
+            filters.append("COALESCE(sensitivity, 'sensitive') = 'open'")
+        if days_ago is not None:
+            filters.append(f"created_at > datetime('now', '-{int(days_ago)} days')")
+        where = ("WHERE " + " AND ".join(filters)) if filters else ""
+        return self._query(
+            f"SELECT * FROM jeles_atoms {where} ORDER BY created_at DESC LIMIT ?",
+            params + [limit],
         )
 
     def jeles_invalidate_atom(self, atom_id: str, reason: str = "") -> dict:
