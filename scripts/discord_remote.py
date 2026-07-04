@@ -11,7 +11,10 @@ Outbound (Grove 'hanuman' → Discord):
   Poll Grove 'hanuman' for messages from 'hanuman' sender → post to Discord
 
 Config (env, loaded from ~/.willow/env if not set in shell):
-  DISCORD_BOT_TOKEN   — bot token from Discord Developer Portal
+  DISCORD_BOT_TOKEN   — bot token from Discord Developer Portal; if absent from
+                        the env, read from the encrypted vault via
+                        sap.core.inference.load_credential (store with
+                        scripts/vault_set.py DISCORD_BOT_TOKEN)
   DISCORD_CHANNEL_ID  — channel snowflake (default: 1509605940578615487)
 
 State: ~/.willow/discord_remote_state.json
@@ -74,7 +77,14 @@ def _load_env() -> None:
 def _token() -> str:
     t = os.environ.get("DISCORD_BOT_TOKEN", "").strip()
     if not t:
-        raise RuntimeError("DISCORD_BOT_TOKEN not set — add to ~/.willow/env")
+        from sap.core.inference import load_credential
+
+        t = (load_credential("DISCORD_BOT_TOKEN") or "").strip()
+    if not t:
+        raise RuntimeError(
+            "DISCORD_BOT_TOKEN not set — store it with "
+            "scripts/vault_set.py DISCORD_BOT_TOKEN (or export it in the env)"
+        )
     return t
 
 
