@@ -51,6 +51,33 @@ INDEX_DIR = Path.home() / "agents" / AGENT / "index"
 THREAD_FILE = Path("/tmp/willow-context-thread.json")
 BOOT_DONE = Path(f"/tmp/willow-boot-done-{AGENT}.flag")
 
+def _boot_done(session_id: str = ""):
+    # Per-session sentinel: parallel windows all run as the same fleet
+    # identity, so the agent-keyed flag alone lets one window's
+    # SessionStart clear another's boot state mid-session (2026-07-04).
+    # Falls back to the legacy shared path when no session_id is given.
+    sid = "".join(c for c in (session_id or "") if c.isalnum() or c in "_-")[:16]
+    if sid:
+        return Path(f"/tmp/willow-boot-done-{AGENT}-{sid}.flag")
+    return BOOT_DONE
+
+
+def _clear_boot_sentinels(session_id: str) -> None:
+    # Fresh session: clear only THIS session's flag (plus the legacy
+    # shared one) and prune stale per-session flags. Never glob-delete
+    # live flags — that is the cross-window clobber this fixes.
+    import time as _t
+    _boot_done(session_id).unlink(missing_ok=True)
+    BOOT_DONE.unlink(missing_ok=True)
+    cutoff = _t.time() - 48 * 3600
+    for p in Path("/tmp").glob(f"willow-boot-done-{AGENT}-*.flag"):
+        try:
+            if p.stat().st_mtime < cutoff:
+                p.unlink()
+        except OSError:
+            pass
+
+
 
 # ---------------------------------------------------------------------------
 # Atom query helpers (used by tests and context-building paths)
@@ -753,7 +780,7 @@ def main():
     _clear_stale_thread()
     if is_fresh_source(session_source):
         reset_turn_count()  # fresh session — boot guard must fire exactly once
-        BOOT_DONE.unlink(missing_ok=True)
+        _clear_boot_sentinels(session_id)
     grove_status = _ensure_grove_mcp()  # instant local file check
     if session_id:
         _register_jeles(session_id)
