@@ -41,6 +41,7 @@ _CONFIG_FILE = _FLEET_HOME / "upstream_steward" / "config.yaml"
 _SOIL_PENDING = "upstream_steward/pending"
 _SOIL_LOG = "upstream_steward/log"
 _SOIL_DIGEST = "upstream_steward/digest"
+_SOIL_HEARTBEAT = "upstream_steward/heartbeat"  # read by core.watchmen / fleet_status
 
 POLL_INTERVAL = int(os.environ.get("UPSTREAM_WATCHER_INTERVAL", "900"))  # 15 min default
 
@@ -118,14 +119,21 @@ def _gh(*args: str) -> dict | list:
     return json.loads(result.stdout)
 
 
+# Last gh fetch outcome — folded into the heartbeat so a dead GitHub auth is
+# distinguishable from a genuinely quiet notification inbox.
+_gh_status: dict[str, Any] = {"ok": True, "error": ""}
+
+
 def _fetch_notifications(since: str | None) -> list[dict]:
     url = "/notifications?all=true&per_page=50"
     if since:
         url += f"&since={since}"
     try:
         data = _gh(url)
+        _gh_status.update(ok=True, error="")
         return data if isinstance(data, list) else []
     except Exception as exc:
+        _gh_status.update(ok=False, error=str(exc))
         print(f"upstream_watcher: gh notifications error — {exc}", file=sys.stderr, flush=True)
         return []
 
@@ -180,6 +188,34 @@ def _write_log(entry: dict) -> None:
     existing = soil.get(_SOIL_LOG, date_key) or {"entries": []}
     existing.setdefault("entries", []).append(entry)
     soil.put(_SOIL_LOG, date_key, existing)
+
+
+def _write_heartbeat(
+    interval_sec: int,
+    tick_ok: bool,
+    error: str = "",
+    counts: dict | None = None,
+) -> None:
+    """Prove the loop is alive — written every tick, success or failure.
+
+    fleet_status reads this via core.watchmen and flags it stale past
+    2× interval_sec. gh_ok=False means the loop runs but GitHub calls fail
+    (the silent 401 mode this heartbeat exists to expose).
+    """
+    record = {
+        "last_tick_at": datetime.now(timezone.utc).isoformat(),
+        "interval_sec": interval_sec,
+        "tick_ok": tick_ok,
+        "gh_ok": _gh_status["ok"],
+        "gh_error": _gh_status["error"],
+        "error": error,
+        "counts": counts or {},
+        "pid": os.getpid(),
+    }
+    try:
+        soil.put(_SOIL_HEARTBEAT, "main", record)
+    except Exception as exc:
+        print(f"upstream_watcher: heartbeat write error — {exc}", file=sys.stderr, flush=True)
 
 
 def _write_digest(pending_count: int, urgent_count: int) -> None:
@@ -358,12 +394,27 @@ def tick(config: dict, cursor: dict) -> dict:
         urgent_count=sum(1 for r in all_pending if r.get("lane") == "urgent"),
     )
 
-    if new_count or noise_count:
-        print(
-            f"upstream_watcher: tick — {new_count} new, {draft_count} draft, "
-            f"{urgent_count} urgent, {noise_count} noise",
-            flush=True,
-        )
+    counts = {
+        "new": new_count,
+        "draft": draft_count,
+        "urgent": urgent_count,
+        "noise": noise_count,
+        "pending": len(all_pending),
+    }
+    _write_heartbeat(
+        interval_sec=config.get("poll_interval_sec", POLL_INTERVAL),
+        tick_ok=True,
+        counts=counts,
+    )
+
+    # Always print — a silent success is indistinguishable from a dead loop
+    # in journalctl, and that ambiguity has already cost us once.
+    print(
+        f"upstream_watcher: tick ok — {new_count} new, {draft_count} draft, "
+        f"{urgent_count} urgent, {noise_count} noise, "
+        f"gh_ok={_gh_status['ok']}",
+        flush=True,
+    )
 
     return cursor
 
@@ -410,6 +461,7 @@ def watch(config: dict) -> None:
             _write_cursor(cursor)
         except Exception as exc:
             print(f"upstream_watcher: tick error — {exc}", file=sys.stderr, flush=True)
+            _write_heartbeat(interval_sec=interval, tick_ok=False, error=str(exc))
         time.sleep(interval)
 
 

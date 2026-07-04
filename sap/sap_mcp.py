@@ -622,6 +622,14 @@ async def fleet_status(app_id: str) -> dict:
         _gm = "unknown"
         _ghd = "unknown"
 
+    watchmen: dict = {}
+    try:
+        from core import soil as _soil
+        from core.watchmen import check_watchmen as _check_watchmen
+        watchmen = await loop.run_in_executor(_executor, _check_watchmen, _soil.get)
+    except Exception as e:
+        watchmen = {"error": str(e)}
+
     return {
         "local_store": {"collections": len(local_stats), "records": local_count},
         "postgres":    pg_stats if pg_stats else ("not_connected" if pg is None else "connected"),
@@ -632,6 +640,7 @@ async def fleet_status(app_id: str) -> dict:
         "kart":        kart_stats,
         "human_required": human_required,
         "frank_ledger": frank_ledger,
+        "watchmen":    watchmen,
         "gate_mode":   _gm,
         "gate_hostname_check": _ghd,
         "code_version": _code_staleness(),
