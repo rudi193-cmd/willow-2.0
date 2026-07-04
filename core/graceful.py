@@ -47,10 +47,22 @@ class DegradedBridge:
     def knowledge_search(self, query: str, project: Optional[str] = None,
                          include_invalid: bool = False, limit: int = 20,
                          include_embedding: bool = False,
-                         fields: Optional[list] = None) -> list:
+                         fields: Optional[list] = None,
+                         tier: Optional[str] = None,
+                         exclude_search_noise: bool = True,
+                         exclude_superseded: bool = True,
+                         lane_scope=None) -> list:
+        # Signature mirrors PgBridge.knowledge_search so degraded mode never
+        # TypeErrors on kwargs the caller passes unconditionally (lane_scope,
+        # tier). tier/noise/superseded are best-effort here.
         results = self._store.search("knowledge/fallback", query)
         if project:
             results = [r for r in results if r.get("project") == project]
+        elif lane_scope is not None:
+            from core.canonical_lanes import atom_in_lane_scope
+            results = [r for r in results if atom_in_lane_scope(r, lane_scope)]
+        if tier:
+            results = [r for r in results if r.get("tier") == tier]
         return results[:limit]
 
     def knowledge_close(self, old_id: str, new_valid_at: datetime) -> None:
