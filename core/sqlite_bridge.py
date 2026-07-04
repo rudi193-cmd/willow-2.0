@@ -485,7 +485,21 @@ class SqliteBridge:
                          include_invalid: bool = False, limit: int = 20,
                          include_embedding: bool = False,
                          fields: Optional[list] = None,
-                         tier: Optional[str] = None) -> list:
+                         tier: Optional[str] = None,
+                         exclude_search_noise: bool = True,
+                         exclude_superseded: bool = True,
+                         lane_scope=None) -> list:
+        # Signature mirrors PgBridge.knowledge_search — callers (sap_mcp
+        # kb_search) pass lane_scope unconditionally, so the fallback lane
+        # must accept it. Explicit project= wins over lane_scope, like pg.
+        # exclude_search_noise / exclude_superseded have no sqlite columns
+        # to filter on; accepted for signature parity only.
+        def _scope(rows: list) -> list:
+            if project or lane_scope is None:
+                return rows
+            from core.canonical_lanes import atom_in_lane_scope
+            return [r for r in rows if atom_in_lane_scope(r, lane_scope)]
+
         # Try FTS5 first, fall back to LIKE
         try:
             fts_sql = """
@@ -504,7 +518,7 @@ class SqliteBridge:
                 params.append(tier)
             fts_sql += " ORDER BY rank LIMIT ?"
             params.append(limit)
-            results = self._query(fts_sql, params)
+            results = _scope(self._query(fts_sql, params))
             if results:
                 return results
         except Exception:
@@ -527,7 +541,7 @@ class SqliteBridge:
             params.append(tier)
         like_sql += " ORDER BY weight DESC, visit_count DESC LIMIT ?"
         params.append(limit)
-        return self._query(like_sql, params)
+        return _scope(self._query(like_sql, params))
 
     def knowledge_at(self, query: str, at_time: datetime,
                      project: Optional[str] = None, limit: int = 20) -> list:

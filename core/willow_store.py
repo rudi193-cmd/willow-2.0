@@ -537,6 +537,11 @@ class WillowStore:
             rel = db_file.relative_to(self.root)
             parts = list(rel.parts)
             parts[-1] = parts[-1].replace(".db", "")
+            # Legacy pre-2026-06-12 layout leftovers ({collection}/store.db)
+            # are hard-rejected by _db_path; listing them makes search_all
+            # fail on a collection nothing can open. Same guard as _db_path.
+            if len(parts) > 1 and parts[-1] == "store" and "_archive" not in parts:
+                continue
             result.append("/".join(parts))
         return sorted(result)
 
