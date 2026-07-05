@@ -182,6 +182,16 @@ def run_pipeline(category: Optional[str] = None, run_id: Optional[str] = None) -
     Returns:
         Summary dict: {executed, stalled, errors, skipped, total_ms}
     """
+    # The pipeline IS the invocation point: hooks gate themselves on
+    # WILLOW_ATOM_EXTRACTION, and depending on an external env var nobody
+    # sets made the whole pipeline silently self-disable (2026-07-03 audit,
+    # bug 2 — hook_executions empty since 06-14). Subprocesses inherit this.
+    # An operator can still hard-disable with WILLOW_ATOM_EXTRACTION=0.
+    if os.environ.get("WILLOW_ATOM_EXTRACTION", "") == "":
+        os.environ["WILLOW_ATOM_EXTRACTION"] = "1"
+    elif os.environ["WILLOW_ATOM_EXTRACTION"] == "0":
+        os.environ.pop("WILLOW_ATOM_EXTRACTION")
+
     hooks = get_active_hooks(category)
 
     summary = {
@@ -210,7 +220,11 @@ def run_pipeline(category: Optional[str] = None, run_id: Optional[str] = None) -
             timeout=30,
         )
 
-        # Determine status
+        # Determine status. A clean exit IS success: hooks are quiet by
+        # design (they only print under WILLOW_ATOM_VERBOSE), so comparing
+        # stdout to the empty string marked every healthy run 'stalled' —
+        # the log field never distinguished "ran fine" from "did nothing"
+        # (2026-07-03 audit, bug 3). 'stalled' is retired as a status.
         if result['timed_out']:
             status = 'timeout'
             summary['errors'] += 1
@@ -218,26 +232,18 @@ def run_pipeline(category: Optional[str] = None, run_id: Optional[str] = None) -
             status = 'error'
             summary['errors'] += 1
         else:
-            # Hook succeeded — check for stall
-            output = result['stdout']
-            output_hash = _hash_content(output)
-            input_hash = _hash_content('')  # For now, empty input (hooks aren't data-driven)
+            status = 'ok'
+            summary['executed'] += 1
 
-            if _is_stalled(input_hash, output_hash):
-                status = 'stalled'
-                summary['stalled'] += 1
-            else:
-                status = 'ok'
-                summary['executed'] += 1
-
-        # Log execution
+        # Log execution. `changed` now means "the hook reported doing work"
+        # (printed something) — not a restatement of status.
         _log_execution(
             hook_name,
             run_id,
             status=status,
             input_hash=_hash_content(''),
             output_hash=_hash_content(result['stdout']),
-            changed=status == 'ok',
+            changed=bool(result['stdout'].strip()),
             elapsed_ms=result['elapsed_ms'],
             error=result['stderr'] if result['returncode'] != 0 else None,
         )

@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "properties": {
+    "headline": {"type": "string", "maxLength": 100},
+    "tone": {"type": "string", "enum": ["green", "amber", "red"]},
+    "bullets": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 5,
+      "items": {"type": "string", "maxLength": 140}
+    },
+    "attention_items": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {"type": "string", "maxLength": 140}
+    }
+  },
+  "required": ["headline", "tone", "bullets", "attention_items"],
+  "additionalProperties": false
+}

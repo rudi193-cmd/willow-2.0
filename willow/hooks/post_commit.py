@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-willow/hooks/post_commit.py — Post-commit hook entry point.
+willow/hooks/post_commit.py — Commit atom extraction entry point.
 
-Called by .git/hooks/post-commit after every commit.
-Extracts atom and writes to KB.
+Invoked by the hook pipeline (willow/hooks/runner.py, batched at session
+shutdown) — NOT wired as a per-commit .git/hooks/post-commit script in this
+checkout. The old docstring claimed per-commit timing that never existed
+(2026-07-03 audit, bug 1). Wire .git/hooks/post-commit to this file if
+per-commit granularity is ever needed; it extracts HEAD either way.
 """
 
 import sys
