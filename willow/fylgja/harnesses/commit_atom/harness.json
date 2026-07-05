@@ -1,0 +1,8 @@
+{
+  "name": "commit_atom",
+  "chore": "Extract a KB atom from one git commit (post_commit hook tenant)",
+  "model": "llama3.2:3b",
+  "verify_class": "coverage",
+  "completion_authority": "self, backed by the commits-vs-atoms daily recount",
+  "options": {"temperature": 0, "num_ctx": 4096}
+}

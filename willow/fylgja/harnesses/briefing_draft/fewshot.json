@@ -1,0 +1,31 @@
+[
+  {
+    "input": "{\"timestamp\": \"2026-07-01T09:00:12+00:00\", \"pass_errors\": {}, \"composted\": 41, \"communities\": 3, \"heartbeat\": 0.62, \"squeakdog\": true, \"demoted\": 12, \"draugr\": 0, \"serendipity\": 2, \"dark_matter\": 1, \"revelations\": 0, \"mirror\": 1, \"mycorrhizal\": 4, \"grove_indexed\": 17, \"insights_written\": 2, \"chunks_written\": 5, \"reflections_written\": 0, \"intake_promote\": {\"promoted\": 9, \"skipped\": 3}}",
+    "output": {
+      "headline": "Clean night: 9 intake records promoted, 41 turn atoms composted, heartbeat 0.62",
+      "tone": "green",
+      "bullets": [
+        "Intake promotion moved 9 records into the knowledge base and skipped 3.",
+        "Lifecycle passes retired 41 turn atoms and demoted 12 stale ones.",
+        "Community detection wrote 3 nodes; compression heartbeat is 0.62.",
+        "Grove ingest indexed 17 messages; 2 insights and 5 chunks were synthesized."
+      ],
+      "attention_items": []
+    }
+  },
+  {
+    "input": "{\"timestamp\": \"2026-07-02T09:00:44+00:00\", \"pass_errors\": {\"community\": \"connection already closed\"}, \"composted\": 38, \"communities\": 0, \"heartbeat\": 0.5, \"squeakdog\": false, \"demoted\": 10, \"draugr\": 1, \"serendipity\": 0, \"dark_matter\": 0, \"revelations\": 0, \"mirror\": 0, \"mycorrhizal\": 2, \"grove_indexed\": 5, \"insights_written\": 1, \"chunks_written\": 2, \"reflections_written\": 0, \"intake_promote\": {\"promoted\": 4, \"skipped\": 1}}",
+    "output": {
+      "headline": "Nightly run hit a Postgres error in community detection; everything else landed",
+      "tone": "amber",
+      "bullets": [
+        "Community detection (atom grouping) failed with: connection already closed. 0 community nodes written; heartbeat fell back to 0.5.",
+        "The rest of the run completed: 38 atoms composted, 10 demoted, 4 intake records promoted.",
+        "Grove ingest indexed 5 messages; 1 insight and 2 chunks were synthesized."
+      ],
+      "attention_items": [
+        "Check Postgres health around the nightly window — community pass error: connection already closed."
+      ]
+    }
+  }
+]

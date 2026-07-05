@@ -1,0 +1,24 @@
+[
+  {
+    "input": "hash: 6e12dfb9\ndate: 2026-07-05\nsubject: fix(pg_bridge): destructor pool self-deadlock — root cause of the ~59% CI hang\nbody:\nGC can run __del__ while the same thread holds the pool's non-reentrant lock.\nDestructors now enqueue to a lock-free deque; get_connection drains it.\ndiffstat:\ncore/pg_bridge.py | +48 -9\ntests/test_pg_bridge_pool_destructor.py | +110 -0",
+    "output": {
+      "title": "pg_bridge: destructor no longer touches pool — fixes ~59% CI hang",
+      "summary": "Fixed a self-deadlock where garbage collection ran PgBridge.__del__ while the same thread held the connection pool's non-reentrant lock. Destructors now enqueue the connection on a lock-free deque and get_connection drains it in normal context. Added a dedicated destructor test file.",
+      "category": "bugfix",
+      "files_touched": ["core/pg_bridge.py", "tests/test_pg_bridge_pool_destructor.py"],
+      "breaking_or_risky": false,
+      "risk_note": ""
+    }
+  },
+  {
+    "input": "hash: a1b2c3d4\ndate: 2026-06-20\nsubject: chore(ci): drop python 3.10 from pytest matrix\nbody:\ndiffstat:\n.github/workflows/test.yml | +1 -4",
+    "output": {
+      "title": "CI: python 3.10 dropped from pytest matrix",
+      "summary": "Removed python 3.10 from the pytest matrix in the CI workflow. The matrix now runs on the remaining configured versions only.",
+      "category": "infra",
+      "files_touched": [".github/workflows/test.yml"],
+      "breaking_or_risky": true,
+      "risk_note": "Code that only breaks on python 3.10 will no longer be caught by CI."
+    }
+  }
+]
