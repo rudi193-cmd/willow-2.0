@@ -151,20 +151,49 @@ class SoilClient:
             return bool(result.get("ok", result.get("deleted", False)))
         return False
 
-    def close(self):
-        if self._exit_stack and self._loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(
-                self._exit_stack.aclose(), self._loop
-            )
+    def close(self, timeout: float = 5.0):
+        """Shut down the MCP session, its subprocess, and the loop thread.
+
+        The exit stack is always closed BEFORE the loop stops — stopping first
+        strands the stdio_client context and orphans the spawned willow.sh
+        child. When called on the loop thread itself (e.g. GC), blocking on
+        the future would deadlock, so the shutdown coroutine is fire-and-
+        forget there; it still closes the stack before stopping the loop.
+        """
+        loop = getattr(self, "_loop", None)
+        if loop is None or not loop.is_running():
+            return
+        exit_stack, self._exit_stack = self._exit_stack, None
+        self._session = None
+        self._available = False
+
+        async def _shutdown():
             try:
-                future.result(timeout=5)
+                if exit_stack is not None:
+                    await exit_stack.aclose()
             except Exception:
                 pass
-        if self._loop.is_running():
-            self._loop.call_soon_threadsafe(self._loop.stop)
+            finally:
+                loop.stop()
+
+        future = asyncio.run_coroutine_threadsafe(_shutdown(), loop)
+        on_loop_thread = threading.current_thread() is getattr(self, "_thread", None)
+        if not on_loop_thread:
+            try:
+                future.result(timeout=timeout)
+            except Exception:
+                pass
+            thread = getattr(self, "_thread", None)
+            if thread is not None:
+                thread.join(timeout=2)
+                if not thread.is_alive() and not loop.is_running():
+                    try:
+                        loop.close()
+                    except Exception:
+                        pass
 
     def __del__(self):
         try:
-            self.close()
+            self.close(timeout=1.0)
         except Exception:
             pass

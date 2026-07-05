@@ -1039,10 +1039,17 @@ def _rrf_merge(ann_results: list, ilike_results: list, k: int = 60) -> list:
 class PgBridge:
     def __init__(self):
         self._local = threading.local()
+        # Every live checkout across ALL threads, keyed by id(conn). __del__
+        # runs on whichever thread GC picks, where thread-local storage only
+        # exposes THAT thread's conn — without this map, other threads'
+        # checkouts died un-putconn'd and leaked pool slots (post-#697
+        # residual). Plain dict: single-op mutations are GIL-atomic, and the
+        # destructor drains via popitem() without ever taking a lock.
+        self._outstanding: dict = {}
         self._last_ingest_error = None
         # Eagerly initialize for the calling thread so init_schema(pg.conn)
         # and other startup callers get a real connection immediately.
-        self._local.conn = get_connection()
+        self.conn = get_connection()
 
     # Thread-local conn: each thread in the MCP executor gets its own
     # connection from the pool, preventing concurrent-access corruption.
@@ -1053,11 +1060,56 @@ class PgBridge:
     @conn.setter
     def conn(self, value):
         self._local.conn = value
+        if value is not None:
+            outstanding = getattr(self, "_outstanding", None)
+            if outstanding is None:
+                # Legacy-shaped instance (built via __new__); lazy-create.
+                # Benign race: two threads may briefly build separate dicts,
+                # losing at worst one tracking entry — never a double-release.
+                outstanding = self._outstanding = {}
+            outstanding[id(value)] = (threading.current_thread(), value)
+
+    def _reap_dead_thread_conns(self) -> None:
+        """Return conns whose owning thread has exited (normal context only).
+
+        Without this, the tracking map would pin every dead thread's conn
+        alive indefinitely — under thread-heavy load (e.g. 100 workers on one
+        bridge) that pins ~100 open server connections and exhausts
+        Postgres max_connections. Reaping runs on the acquire path, never
+        from a destructor, so touching the pool here is safe.
+        """
+        outstanding = getattr(self, "_outstanding", None)
+        if not outstanding:
+            return
+        for key in list(outstanding.keys()):
+            entry = outstanding.get(key)
+            if entry is None:
+                continue
+            thread, conn = entry
+            if thread.is_alive():
+                continue
+            if outstanding.pop(key, None) is None:
+                continue  # another thread reaped it first
+            try:
+                release_connection(conn)
+            except Exception:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+    def _untrack(self, conn) -> None:
+        if conn is not None:
+            outstanding = getattr(self, "_outstanding", None)
+            if outstanding is not None:
+                outstanding.pop(id(conn), None)
 
     def close(self) -> None:
         """Return this thread's connection to pool. Safe to call multiple times."""
         if self.conn is not None:
-            release_connection(self.conn)
+            conn = self.conn
+            self._untrack(conn)
+            release_connection(conn)
             self.conn = None
 
     def __enter__(self):
@@ -1070,12 +1122,28 @@ class PgBridge:
         # NEVER touch the pool here: GC can run this while the same thread is
         # inside the pool's non-reentrant lock (getconn/putconn), and a
         # synchronous putconn self-deadlocks (the ~59% CI hang). Enqueue only;
-        # get_connection drains in normal context.
+        # get_connection drains in normal context. Drains the cross-thread
+        # _outstanding map, not just this thread's local — popitem() is
+        # GIL-atomic, so a concurrent close() cannot double-release a conn.
         try:
-            conn = getattr(getattr(self, "_local", None), "conn", None)
-            if conn is not None:
-                self._local.conn = None
-                _orphaned_conns.append(conn)
+            outstanding = getattr(self, "_outstanding", None)
+            if outstanding is not None:
+                while True:
+                    try:
+                        _, (_thread, conn) = outstanding.popitem()
+                    except KeyError:
+                        break
+                    _orphaned_conns.append(conn)
+                local = getattr(self, "_local", None)
+                if local is not None and getattr(local, "conn", None) is not None:
+                    local.conn = None
+            else:
+                # Legacy-shaped instance (no tracking map): fall back to the
+                # thread-local-only orphan path.
+                conn = getattr(getattr(self, "_local", None), "conn", None)
+                if conn is not None:
+                    self._local.conn = None
+                    _orphaned_conns.append(conn)
         except Exception:
             pass
 
@@ -1083,11 +1151,15 @@ class PgBridge:
 
     def _ensure_conn(self):
         """Acquire or re-acquire this thread's pool connection if dropped or stale."""
+        self._reap_dead_thread_conns()
         if self.conn is None or self.conn.closed:
+            self._untrack(self.conn)
             self.conn = get_connection()
             return
         if not _connection_alive(self.conn):
-            _discard_connection(self.conn)
+            dead = self.conn
+            self._untrack(dead)
+            _discard_connection(dead)
             try:
                 self.conn = get_connection()
             except Exception:
@@ -1096,6 +1168,7 @@ class PgBridge:
     def _reconnect_after_operational_error(self) -> None:
         """Drop and replace conn after the server closed an in-flight session."""
         try:
+            self._untrack(self.conn)
             _discard_connection(self.conn)
         except Exception:
             pass
