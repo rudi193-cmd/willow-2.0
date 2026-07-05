@@ -45,7 +45,39 @@ def test_conn_setter_tracks_checkouts():
     bridge = _tracked_bridge()
     conn = _SentinelConn()
     bridge.conn = conn
-    assert bridge._outstanding == {id(conn): conn}
+    thread, tracked = bridge._outstanding[id(conn)]
+    assert tracked is conn
+    assert thread is threading.current_thread()
+
+
+def test_reap_returns_dead_threads_conns(monkeypatch):
+    """A thread that exited must have its conn released, not pinned forever.
+
+    This is the regression CI caught on the first push: pinning 100 dead
+    workers' conns exhausted Postgres max_connections.
+    """
+    released = []
+    monkeypatch.setattr(pg_bridge, "release_connection", released.append)
+
+    bridge = _tracked_bridge()
+    worker_conn = _SentinelConn()
+
+    def _worker():
+        bridge.conn = worker_conn
+
+    t = threading.Thread(target=_worker)
+    t.start()
+    t.join()  # thread is now dead; its checkout is still tracked
+
+    bridge._reap_dead_thread_conns()
+
+    assert released == [worker_conn], "dead thread's conn must return to the pool"
+    assert id(worker_conn) not in bridge._outstanding
+    # Live thread's conn must never be reaped.
+    live_conn = _SentinelConn()
+    bridge.conn = live_conn
+    bridge._reap_dead_thread_conns()
+    assert id(live_conn) in bridge._outstanding
 
 
 def test_del_orphans_conns_from_all_threads(monkeypatch):

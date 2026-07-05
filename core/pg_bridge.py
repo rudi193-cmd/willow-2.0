@@ -1063,8 +1063,40 @@ class PgBridge:
         if value is not None:
             outstanding = getattr(self, "_outstanding", None)
             if outstanding is None:
+                # Legacy-shaped instance (built via __new__); lazy-create.
+                # Benign race: two threads may briefly build separate dicts,
+                # losing at worst one tracking entry — never a double-release.
                 outstanding = self._outstanding = {}
-            outstanding[id(value)] = value
+            outstanding[id(value)] = (threading.current_thread(), value)
+
+    def _reap_dead_thread_conns(self) -> None:
+        """Return conns whose owning thread has exited (normal context only).
+
+        Without this, the tracking map would pin every dead thread's conn
+        alive indefinitely — under thread-heavy load (e.g. 100 workers on one
+        bridge) that pins ~100 open server connections and exhausts
+        Postgres max_connections. Reaping runs on the acquire path, never
+        from a destructor, so touching the pool here is safe.
+        """
+        outstanding = getattr(self, "_outstanding", None)
+        if not outstanding:
+            return
+        for key in list(outstanding.keys()):
+            entry = outstanding.get(key)
+            if entry is None:
+                continue
+            thread, conn = entry
+            if thread.is_alive():
+                continue
+            if outstanding.pop(key, None) is None:
+                continue  # another thread reaped it first
+            try:
+                release_connection(conn)
+            except Exception:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def _untrack(self, conn) -> None:
         if conn is not None:
@@ -1098,7 +1130,7 @@ class PgBridge:
             if outstanding is not None:
                 while True:
                     try:
-                        _, conn = outstanding.popitem()
+                        _, (_thread, conn) = outstanding.popitem()
                     except KeyError:
                         break
                     _orphaned_conns.append(conn)
@@ -1119,6 +1151,7 @@ class PgBridge:
 
     def _ensure_conn(self):
         """Acquire or re-acquire this thread's pool connection if dropped or stale."""
+        self._reap_dead_thread_conns()
         if self.conn is None or self.conn.closed:
             self._untrack(self.conn)
             self.conn = get_connection()
