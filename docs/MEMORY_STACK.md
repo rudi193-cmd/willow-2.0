@@ -75,16 +75,6 @@ Caller → soil_* MCP | core.soil shim | SoilClient (SAFE apps)
 
 ---
 
-## Tier 2b — Generation cache (hot LRU)
-
-| What | Module | Access |
-|------|--------|--------|
-| Atom generation counters | `willow/memory/generation_store.py` | Direct (pickle LRU) |
-
-**Rule:** Ephemeral performance cache — not SOIL. Do not merge into `soil_put` or collection CRUD.
-
----
-
 ## Provenance — how atoms reach the KB
 
 Every KB atom carries a `source_type` field recording its origin. Intake tiers (observed → ratified) track confidence on the way in; `source_type` records where the content came from.
