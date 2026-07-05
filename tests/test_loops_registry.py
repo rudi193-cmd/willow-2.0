@@ -66,6 +66,14 @@ def test_recount_external_timers_excluded(monkeypatch):
     assert "sentinel-watchdog.timer" not in result["missing_in_reality"]
 
 
+def test_validate_registry_ignores_soil_meta_keys():
+    loop = dict(load_seed()["loops"][0])
+    loop["_id"] = loop["id"]
+    loop["_soil_id"] = loop["id"]
+    problems = validate_registry([loop])
+    assert problems == []
+
+
 def test_load_registry_soil_overlay():
     captured: dict[str, dict] = {}
 
@@ -75,10 +83,11 @@ def test_load_registry_soil_overlay():
     hw = next(
         loop for loop in load_seed()["loops"] if loop["id"] == "hook-wiring-audit"
     )
-    captured[hw["id"]] = {**hw, "attention": "overlay"}
+    captured[hw["id"]] = {**hw, "attention": "overlay", "_id": hw["id"]}
     rows = load_registry(soil_all=soil_all)
     by_id = {r["id"]: r for r in rows}
     assert by_id["hook-wiring-audit"]["attention"] == "overlay"
+    assert "_id" not in by_id["hook-wiring-audit"]
 
 
 def test_cli_validate_recount_exit_codes():
