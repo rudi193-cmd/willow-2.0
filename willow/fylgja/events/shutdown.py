@@ -314,13 +314,29 @@ def run_grove_ingest() -> None:
             pass
 
 
+
+def _extraction_enabled() -> bool:
+    """Default-enable atom extraction at the invocation point.
+
+    The pipeline used to gate on an env var nobody set, silently
+    self-disabling since 06-14 (2026-07-03 audit, bug 2; #705 fixed the
+    runner but these caller-side gates returned before reaching it).
+    WILLOW_ATOM_EXTRACTION=0 hard-disables; anything else enables and is
+    exported so child hook subprocesses inherit the decision.
+    """
+    val = os.environ.get("WILLOW_ATOM_EXTRACTION", "")
+    if val == "0":
+        return False
+    os.environ["WILLOW_ATOM_EXTRACTION"] = val or "1"
+    return True
+
 def run_edge_linking() -> None:
     """Phase 4: Edge linking — connect atoms into knowledge graph.
 
     Creates relationships between atoms so they form a connected graph.
     Links merge atoms to commits, creates cross-references, etc.
     """
-    if not os.environ.get("WILLOW_ATOM_EXTRACTION"):
+    if not _extraction_enabled():
         return
 
     try:
@@ -343,7 +359,7 @@ def run_atom_synthesis() -> None:
     Safety net for commits that didn't get atoms via post-commit hook.
     Only runs if WILLOW_ATOM_EXTRACTION is enabled.
     """
-    if not os.environ.get("WILLOW_ATOM_EXTRACTION"):
+    if not _extraction_enabled():
         return
 
     try:
@@ -425,7 +441,7 @@ def run_atom_synthesis() -> None:
 
 def run_hook_pipeline(run_id: str = "") -> None:
     """Phase 5: Run registered hooks with isolation, tracking, approval gates."""
-    if not os.environ.get("WILLOW_ATOM_EXTRACTION"):
+    if not _extraction_enabled():
         return
 
     try:

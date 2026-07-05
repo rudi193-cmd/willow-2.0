@@ -765,6 +765,17 @@ def main():
     session_source = data.get("source", "startup")  # startup | resume | clear | compact
     lite_inject = is_continuation_source(session_source)
 
+    # A continuation (compact/resume) is an already-booted conversation whose
+    # session id may have CHANGED — the pre_tool gate keys the sentinel on the
+    # current sid, so without migration the flag is orphaned under the old id
+    # and the gate re-arms mid-session (the recurring post-compact lockout;
+    # root-caused 2026-07-05, intake atom 3EA8E82A). Inherit booted state.
+    if lite_inject and session_id:
+        try:
+            _boot_done(session_id).write_text(f"booted (continuation: {session_source})")
+        except OSError:
+            pass
+
     if is_fresh_source(session_source):
         reset_prompt_count(AGENT, session_id)
         # Sweep stale per-session counters so they don't accumulate unbounded.
