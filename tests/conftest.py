@@ -60,24 +60,44 @@ def init_pg_schema():
         print(f"  pg schema init warning: {e}")
 
 
+# Per-test outcomes collected live. The old sessionfinish read
+# session.testspassed / session.testswarned — attributes pytest's Session has
+# never had — so it raised AttributeError on every run, invisibly, and the
+# report it meant to write carried a hardcoded-empty "tests" list anyway
+# (2026-07-03 audit, bugs 4 and 5). This is the real extraction.
+_TEST_OUTCOMES: dict = {}
+
+
+def pytest_runtest_logreport(report):
+    if report.when == "call":
+        _TEST_OUTCOMES[report.nodeid] = report.outcome
+    elif report.when == "setup" and report.outcome != "passed":
+        # setup-time skip or error is the test's outcome
+        _TEST_OUTCOMES[report.nodeid] = report.outcome
+
+
 def pytest_sessionfinish(session, exitstatus):
     """Hook: after test session completes, trigger atom extraction."""
     if not os.environ.get("WILLOW_ATOM_EXTRACTION"):
         return
 
     try:
-        # Generate pytest JSON report
+        from datetime import datetime, timezone
+
         report_path = Path(REPO_ROOT) / ".pytest_results.json"
+        tests = [
+            {"nodeid": nodeid, "outcome": outcome}
+            for nodeid, outcome in sorted(_TEST_OUTCOMES.items())
+        ]
         results = {
-            "total": session.testsfailed + session.testspassed + session.testswarned,
-            "passed": session.testspassed,
-            "failed": session.testsfailed,
-            "skipped": session.testswarned,
-            "duration": session.duration or 0,
-            "tests": [],  # Stub; full extraction would parse test items
+            "total": len(tests),
+            "passed": sum(1 for t in tests if t["outcome"] == "passed"),
+            "failed": sum(1 for t in tests if t["outcome"] == "failed"),
+            "skipped": sum(1 for t in tests if t["outcome"] == "skipped"),
+            "run_id": datetime.now(timezone.utc).isoformat(),
+            "tests": tests,
         }
 
-        # Write report
         with open(report_path, "w") as f:
             import json
             json.dump(results, f)
@@ -88,8 +108,8 @@ def pytest_sessionfinish(session, exitstatus):
         test_completion_main()
 
     except Exception as e:
-        if os.environ.get("WILLOW_ATOM_VERBOSE"):
-            print(f"[conftest] test_completion error: {e}")
+        # Never silent: extraction failing must leave at least one line.
+        print(f"[conftest] test_completion error: {e}", file=sys.stderr)
 
 
 @pytest.fixture
