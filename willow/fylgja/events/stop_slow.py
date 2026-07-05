@@ -27,6 +27,7 @@ from willow.fylgja.events.stop import (
 
 _t0 = _time.monotonic()
 session_id = sys.argv[1] if len(sys.argv) > 1 else ""
+_step_errors: dict = {}
 
 # Affect tagging + failure atom
 affect = "neutral"
@@ -35,45 +36,45 @@ try:
     affect, session_traces = _compute_affect_with_traces(session_id)
     if affect == "friction":
         _write_failure_atom(session_id, session_traces)
-except Exception:
-    pass
+except Exception as _e:
+    _step_errors["affect"] = str(_e)
 
 # Reflection atom (affect-gated)
 try:
     _write_reflection_atom(session_id, affect, session_traces)
-except Exception:
-    pass
+except Exception as _e:
+    _step_errors["reflection"] = str(_e)
 
 # Promote session summary (friction → intake; clean + rubric pass → KB)
 try:
     _promote_session_to_kb(session_id, affect, session_traces)
-except Exception:
-    pass
+except Exception as _e:
+    _step_errors["promote"] = str(_e)
 
 # Stack snapshot — authoritative "what's open" for next boot
 try:
     _write_stack_snapshot(session_id)
-except Exception:
-    pass
+except Exception as _e:
+    _step_errors["stack_snapshot"] = str(_e)
 
 # Rebuild handoff index so handoff_latest is current next session
 try:
     if call is not None:
         call("handoff_rebuild", {"app_id": _AGENT}, timeout=30)
-except Exception:
-    pass
+except Exception as _e:
+    _step_errors["handoff_rebuild"] = str(_e)
 
 # Refresh current-projects KB atom — keeps the responder grounded
 try:
     _refresh_projects_atom(session_id)
-except Exception:
-    pass
+except Exception as _e:
+    _step_errors["projects_atom"] = str(_e)
 
 # Drain pending Kart tasks
 try:
     _drain_kart_queue()
-except Exception:
-    pass
+except Exception as _e:
+    _step_errors["kart_drain"] = str(_e)
 
 # Timing log
 _dur_ms = int((_time.monotonic() - _t0) * 1000)
@@ -87,6 +88,7 @@ try:
             "hook": "stop_slow",
             "duration_ms": _dur_ms,
             "affect": affect,
+            "step_errors": _step_errors,
             "ts": datetime.now(timezone.utc).isoformat(),
         }) + "\n")
 except Exception:
