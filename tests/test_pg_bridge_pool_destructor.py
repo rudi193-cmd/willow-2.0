@@ -8,8 +8,6 @@ self-deadlocks the thread forever — the recurring ~59% CI pytest-matrix hang
 The fix: destructors enqueue the connection on a lock-free deque; the next
 normal-context get_connection() drains it back to the pool.
 """
-import gc
-
 import pytest
 
 from core import pg_bridge
@@ -48,11 +46,13 @@ def test_del_enqueues_instead_of_touching_pool(monkeypatch):
     sentinel = _SentinelConn()
     bridge = _bridge_with(sentinel)
 
+    # Full-suite runs can flush other tests' GC'd bridges into the shared
+    # queue, so assert membership/count for OUR sentinel, not exact contents.
     bridge.__del__()
-    del bridge
-    gc.collect()
+    assert sentinel in pg_bridge._orphaned_conns
 
-    assert list(pg_bridge._orphaned_conns) == [sentinel]
+    bridge.__del__()  # a second (GC) call must not double-enqueue
+    assert list(pg_bridge._orphaned_conns).count(sentinel) == 1
 
 
 def test_del_is_idempotent_after_close(monkeypatch):
@@ -65,7 +65,7 @@ def test_del_is_idempotent_after_close(monkeypatch):
 
     assert released == [sentinel]
     bridge.__del__()
-    assert not pg_bridge._orphaned_conns, "closed bridge must not re-orphan"
+    assert sentinel not in pg_bridge._orphaned_conns, "closed bridge must not re-orphan"
 
 
 def test_get_connection_drains_orphans_first(monkeypatch):
@@ -90,8 +90,8 @@ def test_get_connection_drains_orphans_first(monkeypatch):
     conn = pg_bridge.get_connection()
 
     assert conn is fresh
-    assert released == [orphan], "orphan must be returned before checkout"
-    assert not pg_bridge._orphaned_conns
+    assert orphan in released, "orphan must be returned before checkout"
+    assert orphan not in pg_bridge._orphaned_conns
 
 
 def test_drain_survives_release_errors(monkeypatch):
@@ -105,5 +105,5 @@ def test_drain_survives_release_errors(monkeypatch):
 
     pg_bridge._drain_orphaned_conns()
 
-    assert not pg_bridge._orphaned_conns
+    assert orphan not in pg_bridge._orphaned_conns
     assert orphan.closed_calls == 1, "unreturnable orphan must be closed, not leaked"
