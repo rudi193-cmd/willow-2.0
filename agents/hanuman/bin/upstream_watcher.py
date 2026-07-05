@@ -357,16 +357,22 @@ def groom(now: datetime | None = None) -> dict:
     never deleted. Returns counts per disposition.
     """
     now = now or datetime.now(timezone.utc)
-    counts = {"terminal": 0, "noise": 0, "watch": 0, "expired": 0}
+    # Count archive() *successes*, not attempts — the first live run reported
+    # 188 archived while 188 remained, because legacy raw-id rows were
+    # unaddressable and every disposition was counted unconditionally.
+    counts = {"terminal": 0, "noise": 0, "watch": 0, "expired": 0, "failed": 0}
 
     for r in soil.all_records(_SOIL_PENDING):
-        wid = r.get("work_id") or r.get("_id") or ""
+        wid = r.get("work_id") or r.get("_id") or r.get("_soil_id") or ""
         if not wid:
             continue
         status = r.get("status", "")
         lane = r.get("lane", "")
         deadline = _parse_iso(r.get("veto_deadline", ""))
         created = _parse_iso(r.get("created_at", ""))
+
+        bucket = None
+        record_override = None
 
         if status in _TERMINAL_STATUSES:
             settled = (
@@ -376,29 +382,38 @@ def groom(now: datetime | None = None) -> dict:
                 or created
             )
             if settled and (now - settled).days >= GROOM_TERMINAL_DAYS:
-                soil.archive(_SOIL_PENDING, wid)
-                counts["terminal"] += 1
+                bucket = "terminal"
 
         elif lane == "noise":
             past_deadline = deadline and deadline < now
             aged_out = created and (now - created).days >= GROOM_NOISE_DAYS
             if past_deadline or aged_out:
-                soil.archive(_SOIL_PENDING, wid)
-                counts["noise"] += 1
+                bucket = "noise"
 
         elif lane == "watch":
             ref = _parse_iso(r.get("updated_at", "")) or created
             if ref and (now - ref).days >= GROOM_WATCH_DAYS:
-                soil.archive(_SOIL_PENDING, wid)
-                counts["watch"] += 1
+                bucket = "watch"
 
         elif lane in ("draft", "urgent"):
             if deadline and now >= deadline + timedelta(days=GROOM_DRAFT_GRACE_DAYS):
-                r["status"] = "expired"
-                r["expired_at"] = now.isoformat()
-                soil.put(_SOIL_PENDING, wid, r)
-                soil.archive(_SOIL_PENDING, wid)
-                counts["expired"] += 1
+                bucket = "expired"
+                # Stamp the final status on the archive copy directly — a
+                # put() to pending would fork a sanitized twin of legacy rows.
+                record_override = {
+                    **r, "status": "expired", "expired_at": now.isoformat(),
+                }
+
+        if bucket is None:
+            continue
+        if soil.archive(_SOIL_PENDING, wid, record=record_override):
+            counts[bucket] += 1
+        else:
+            counts["failed"] += 1
+            print(
+                f"upstream_watcher: groom could not archive {wid}",
+                file=sys.stderr, flush=True,
+            )
 
     return counts
 

@@ -63,18 +63,26 @@ def delete(collection: str, record_id: str) -> bool:
     return _get_store().delete(collection, record_id)
 
 
-def archive(collection: str, record_id: str, date: str | None = None) -> str | None:
+def archive(collection: str, record_id: str, date: str | None = None,
+            record: dict | None = None) -> str | None:
     """Move a record to `_archive/{date}/{collection}` and remove the original.
+
+    Pass `record` to archive a modified copy (e.g. stamping a final status)
+    without an intermediate put() to the source collection — put() writes
+    under the sanitized id, so updating a legacy raw-id row that way forks a
+    sanitized twin instead of touching the original.
 
     Returns the archive collection name, or None if the record doesn't exist.
     """
-    record = get(collection, record_id)
+    if record is None:
+        record = get(collection, record_id)
     if record is None:
         return None
     date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     dest = f"_archive/{date}/{collection}"
     put(dest, record_id, record)
-    delete(collection, record_id)
+    if not delete(collection, record_id):
+        return None
     return dest
 
 
