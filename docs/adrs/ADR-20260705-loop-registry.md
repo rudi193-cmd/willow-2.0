@@ -7,7 +7,7 @@ Read with mai_read_file; write with mai_write_file; do not use IDE Read/Write on
 
 **b17:** ADRLR1 · ΔΣ=42
 
-**Status:** proposed
+**Status:** accepted
 **Date:** 2026-07-05
 **Deciders:** Sean (+ agents: willow, persona Ada)
 **Related:** [ADR-20260624-locomo-overfit-vs-continuity-eval](ADR-20260624-locomo-overfit-vs-continuity-eval.md) (WCE — an existing loop this ADR would register, not replace)
