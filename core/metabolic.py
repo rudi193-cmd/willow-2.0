@@ -305,10 +305,23 @@ def demote_stale_pass(dry_run: bool = False) -> int:
 
 def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> dict:
     """Run all Norn jobs including intelligence passes. Returns report dict."""
-    composted = compost_pass(dry_run=dry_run)
-    communities = community_pass(dry_run=dry_run)
-    heartbeat = measure_heartbeat()
-    demoted = demote_stale_pass(dry_run=dry_run)
+    # Each opening pass is isolated: one flaky Postgres moment must not abort
+    # the whole nightly run — the briefing, intake promote, and dream check
+    # below all still have to happen, with the failure recorded in the report.
+    pass_errors: dict[str, str] = {}
+
+    def _isolated(name: str, fn, default):
+        try:
+            return fn()
+        except Exception as exc:
+            print(f"[norn] {name} pass error: {exc}", file=sys.stderr)
+            pass_errors[name] = str(exc)
+            return default
+
+    composted = _isolated("compost", lambda: compost_pass(dry_run=dry_run), 0)
+    communities = _isolated("community", lambda: community_pass(dry_run=dry_run), 0)
+    heartbeat = _isolated("heartbeat", measure_heartbeat, 0.5)
+    demoted = _isolated("demote_stale", lambda: demote_stale_pass(dry_run=dry_run), 0)
 
     draugr_count = serendipity_count = dark_matter_count = 0
     revelation_count = mirror_count = mycorrhizal_count = 0
@@ -362,6 +375,7 @@ def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> di
 
     report = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "pass_errors": pass_errors,
         "composted": composted,
         "communities": communities,
         "heartbeat": heartbeat,

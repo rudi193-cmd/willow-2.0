@@ -22,9 +22,12 @@ Routing (handled by promote_intake.py, not here):
 """
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
+import tempfile
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -43,6 +46,23 @@ def _agent_dir(agent: str) -> Path:
     d = _intake_root() / agent
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+@contextmanager
+def _dir_lock(agent_dir: Path):
+    """Exclusive advisory lock serializing all mutations of one agent's intake dir.
+
+    Guards against two failure modes observed in the wild: interleaved appends
+    from concurrent writers, and lost updates when two promoters rewrite the
+    same JSONL (metabolic promote_fleet racing a manual intake_promote).
+    """
+    lock_path = agent_dir / ".intake.lock"
+    with open(lock_path, "w", encoding="utf-8") as lf:
+        fcntl.flock(lf, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lf, fcntl.LOCK_UN)
 
 
 def _record_id(content: str, created_at: str) -> str:
@@ -93,9 +113,11 @@ def write(
         record["extra"] = extra
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    path = _agent_dir(agent) / f"{today}.jsonl"
-    with open(path, "a", encoding="utf-8") as fh:
-        fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    agent_dir = _agent_dir(agent)
+    path = agent_dir / f"{today}.jsonl"
+    with _dir_lock(agent_dir):
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
 
     return record_id
 
@@ -174,28 +196,48 @@ def read_pending(agent: str, days: int = 7) -> list[dict]:
 
 
 def mark_promoted(agent: str, record_id: str, promote_tier: str) -> bool:
-    """Mark a record as promoted in its JSONL file. Returns True if found."""
+    """Mark a record as promoted in its JSONL file. Returns True if found.
+
+    Rewrite is atomic (temp file + fsync + os.replace) and serialized with all
+    other intake mutations via _dir_lock — a crash mid-rewrite must never
+    truncate an intake file, and concurrent promoters must not lose updates.
+    """
     agent_dir = _intake_root() / agent
     if not agent_dir.exists():
         return False
 
-    for path in sorted(agent_dir.glob("*.jsonl"), reverse=True):
-        lines = path.read_text(encoding="utf-8").splitlines()
-        updated = []
-        found = False
-        for line in lines:
-            try:
-                rec = json.loads(line)
-                if rec.get("id") == record_id:
-                    rec["promoted"] = True
-                    rec["promote_tier"] = promote_tier
-                    found = True
-                updated.append(json.dumps(rec, ensure_ascii=False))
-            except Exception:
-                updated.append(line)
-        if found:
-            path.write_text("\n".join(updated) + "\n", encoding="utf-8")
-            return True
+    with _dir_lock(agent_dir):
+        for path in sorted(agent_dir.glob("*.jsonl"), reverse=True):
+            lines = path.read_text(encoding="utf-8").splitlines()
+            updated = []
+            found = False
+            for line in lines:
+                try:
+                    rec = json.loads(line)
+                    if rec.get("id") == record_id:
+                        rec["promoted"] = True
+                        rec["promote_tier"] = promote_tier
+                        found = True
+                    updated.append(json.dumps(rec, ensure_ascii=False))
+                except Exception:
+                    updated.append(line)
+            if found:
+                fd, tmp_name = tempfile.mkstemp(
+                    dir=str(agent_dir), prefix=f".{path.name}.", suffix=".tmp"
+                )
+                try:
+                    with os.fdopen(fd, "w", encoding="utf-8") as tmp:
+                        tmp.write("\n".join(updated) + "\n")
+                        tmp.flush()
+                        os.fsync(tmp.fileno())
+                    os.replace(tmp_name, path)
+                except BaseException:
+                    try:
+                        os.unlink(tmp_name)
+                    except OSError:
+                        pass
+                    raise
+                return True
     return False
 
 

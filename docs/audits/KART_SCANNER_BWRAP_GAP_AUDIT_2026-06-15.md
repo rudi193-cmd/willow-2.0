@@ -8,7 +8,7 @@
 **Agent:** willow (Loki voice)
 **Mode:** read-only audit
 **Scope:** Kart shell-execution path (`agent_task_submit` → subprocess) vs. the Fylgja security scanner and the bubblewrap sandbox.
-**Instrument:** `codebase-memory-mcp` code knowledge graph (14,498 nodes / 47,007 edges), every finding verified against source before recording.
+**Instrument:** `codebase-memory-mcp` code knowledge graph (14,498 nodes / 47,007 edges), every finding verified against source before recording. **Instrument refresh (2026-07-05):** canonical upstream [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp); local clone `~/github/codebase-memory-mcp`; updated receipts in `docs/audits/CODEBASE_MEMORY_MCP_TOOL_EVAL_ADDENDUM_2026-07-05.md`.
 
 ## Executive Summary
 
@@ -87,9 +87,10 @@ The Fylgja command scanner (`scan_bash` / `scan_write` / `scan_output`) guards t
 
 | Type | Ref |
 |------|-----|
-| Tools | `codebase-memory-mcp` (`query_graph`, `trace_path`, `search_graph`, `get_code_snippet`, `search_code`), `grep` |
+| Tools | `codebase-memory-mcp` (`query_graph`, `trace_path`, `search_graph`, `get_code_snippet`, `search_code`), `grep`; Willow `cbm_*` facade (2026-07-05) |
 | Source | `core/kart_sandbox.py:37-44,485-583`, `core/kart_execute.py:99-113`, `willow/fylgja/events/pre_tool.py:23-25,267-287,513,531`, `willow/fylgja/events/post_tool.py:22,248` |
-| Graph | project `home-sean-campbell-github-willow-2.0`, 14,498 nodes / 47,007 edges, status `ready` |
+| Graph | project `home-sean-campbell-github-willow-2.0`, 14,498 nodes / 47,007 edges (June); see addendum for July refresh |
+| Tool-eval addendum | `docs/audits/CODEBASE_MEMORY_MCP_TOOL_EVAL_ADDENDUM_2026-07-05.md` |
 | Base | `origin/master` `7d859b06` |
 | Related | `SECURITY_AUDIT.md`, `docs/audits/KART_SANDBOX_AUDIT_2026-06-11.md`, `docs/audits/KART_DEEP_AUDIT_2026-06-04.md` |
 
