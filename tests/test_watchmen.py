@@ -128,3 +128,44 @@ def test_watcher_heartbeat_roundtrips_through_soil(store_root):
     uw._write_heartbeat(interval_sec=900, tick_ok=True)
     health = check_watchmen(soil.get)["upstream_watcher"]
     assert health["status"] == "ok"
+
+
+# ── sentinel watchdog (willow-config fleet-dispatch) registration ────────────
+
+def test_sentinel_watchdog_is_registered():
+    assert "sentinel_watchdog" in WATCHMEN
+    assert WATCHMEN["sentinel_watchdog"] == ("fleet_dispatch/heartbeat",
+                                             "sentinel_watchdog")
+
+
+def test_sentinel_watchdog_heartbeat_roundtrips_through_soil(store_root):
+    """The watchdog script lives in willow-config; this pins the contract:
+    the record shape it writes classifies correctly through the registry."""
+    from datetime import datetime, timezone
+    from core import soil
+
+    collection, record_id = WATCHMEN["sentinel_watchdog"]
+
+    # Absent before the first timer run — a never-installed watchdog is
+    # visible, not silent.
+    assert check_watchmen(soil.get)["sentinel_watchdog"]["status"] == "absent"
+
+    soil.put(collection, record_id, {
+        "last_tick_at": datetime.now(timezone.utc).isoformat(),
+        "interval_sec": 900,
+        "tick_ok": True,
+        "counts": {"active_sessions": 2, "missing_sentinel": 0},
+    })
+    health = check_watchmen(soil.get)["sentinel_watchdog"]
+    assert health["status"] == "ok"
+    assert health["interval_sec"] == 900
+
+    soil.put(collection, record_id, {
+        "last_tick_at": datetime.now(timezone.utc).isoformat(),
+        "interval_sec": 900,
+        "tick_ok": False,
+        "error": "store write failed",
+    })
+    health = check_watchmen(soil.get)["sentinel_watchdog"]
+    assert health["status"] == "degraded"
+    assert health["error"] == "store write failed"
