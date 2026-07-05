@@ -168,27 +168,27 @@ def _hook_names() -> set[str] | None:
 def recount(loops: list[dict] | None = None) -> dict:
     """Compare registry records to repo systemd units and hook_registry."""
     loops = loops if loops is not None else load_registry()
-    active = [l for l in loops if l.get("status", "active") != "retired"]
+    active = [loop for loop in loops if loop.get("status", "active") != "retired"]
 
     registry_timers = {
-        str((l.get("trigger") or {}).get("unit"))
-        for l in active
-        if (l.get("trigger") or {}).get("kind") == "timer"
+        str((loop.get("trigger") or {}).get("unit"))
+        for loop in active
+        if (loop.get("trigger") or {}).get("kind") == "timer"
     }
     registry_timers.discard("")
 
     external_timers = {
-        str((l.get("trigger") or {}).get("unit"))
-        for l in active
-        if (l.get("trigger") or {}).get("kind") == "timer"
-        and (l.get("trigger") or {}).get("external")
+        str((loop.get("trigger") or {}).get("unit"))
+        for loop in active
+        if (loop.get("trigger") or {}).get("kind") == "timer"
+        and (loop.get("trigger") or {}).get("external")
     }
     external_timers.discard("")
 
     registry_hooks = {
-        str((l.get("trigger") or {}).get("event") or (l.get("trigger") or {}).get("name"))
-        for l in active
-        if (l.get("trigger") or {}).get("kind") == "hook"
+        str((loop.get("trigger") or {}).get("event") or (loop.get("trigger") or {}).get("name"))
+        for loop in active
+        if (loop.get("trigger") or {}).get("kind") == "hook"
     }
     registry_hooks.discard("")
 

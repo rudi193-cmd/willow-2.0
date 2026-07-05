@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 
 from willow.fylgja.loops.registry import recount, sync_seed_to_soil, validate_registry
 

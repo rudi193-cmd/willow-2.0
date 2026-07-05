@@ -1,8 +1,6 @@
 """Loop registry — ADR-20260705 MVP."""
 from __future__ import annotations
 
-import pytest
-
 from willow.fylgja.loops.registry import (
     load_registry,
     load_seed,
@@ -74,14 +72,16 @@ def test_load_registry_soil_overlay():
     def soil_all(_collection: str) -> list[dict]:
         return list(captured.values())
 
-    hw = next(l for l in load_seed()["loops"] if l["id"] == "hook-wiring-audit")
+    hw = next(
+        loop for loop in load_seed()["loops"] if loop["id"] == "hook-wiring-audit"
+    )
     captured[hw["id"]] = {**hw, "attention": "overlay"}
     rows = load_registry(soil_all=soil_all)
     by_id = {r["id"]: r for r in rows}
     assert by_id["hook-wiring-audit"]["attention"] == "overlay"
 
 
-def test_cli_validate_recount_exit_codes(tmp_path, monkeypatch):
+def test_cli_validate_recount_exit_codes():
     from willow.fylgja.loops import __main__ as cli
 
     assert cli.main(["--validate", "--json"]) == 0
