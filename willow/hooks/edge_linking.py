@@ -131,9 +131,13 @@ class EdgeLinker:
             return 0
 
     def close(self):
-        """Close database connection."""
+        """Return the bridge's pooled connection.
+
+        Never call conn.close() directly — that destroys a pooled connection
+        the pool still counts as checked out, leaking the slot.
+        """
         try:
-            self.bridge.conn.close()
+            self.bridge.close()
         except Exception:
             pass
 
