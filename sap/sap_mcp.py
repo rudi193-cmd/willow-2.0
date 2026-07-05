@@ -3438,6 +3438,26 @@ async def hook_list(app_id: str, active_only: bool = True) -> dict:
 
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
+async def loop_list(app_id: str, status: str = "") -> dict:
+    """List declarative loop registry records (SOIL willow/loops overlaying seed JSON).
+    status: optional filter active|retired (omit for all)."""
+    logger.info("[w2] loop_list app_id=%s status=%s", app_id, status)
+    loop = asyncio.get_running_loop()
+
+    def _load():
+        from willow.fylgja.loops.registry import load_registry
+
+        rows = load_registry()
+        if status:
+            rows = [r for r in rows if r.get("status", "active") == status]
+        return rows
+
+    rows = await loop.run_in_executor(_executor, _load)
+    return {"loops": rows, "count": len(rows)}
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
 async def hook_log_read(app_id: str, hook_name: str = "", limit: int = 50) -> dict:
     """Read hook execution log, optionally filtered by hook_name."""
     logger.info("[w2] hook_log_read app_id=%s hook=%s", app_id, hook_name)

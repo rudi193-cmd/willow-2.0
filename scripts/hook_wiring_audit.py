@@ -29,6 +29,7 @@ sys.path.insert(0, str(_REPO))
 
 SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
 FLAG_ID = "flag-claude-settings-json-missing-hooks-wiring"
+LOOP_FLAG_ID = "flag-loop-registry-drift"
 EXPECTED_EVENTS = {"PreToolUse", "SessionStart", "Stop"}
 
 
@@ -85,6 +86,38 @@ def emit_flag(result: dict, agent: str) -> None:
     })
 
 
+def loop_registry_audit() -> dict:
+    """Validate seed/SOIL loop records and recount registry vs systemd/hooks."""
+    from willow.fylgja.loops.registry import recount, validate_registry
+
+    problems = validate_registry()
+    drift = recount()
+    return {
+        "validation_ok": not problems,
+        "problems": problems,
+        **drift,
+    }
+
+
+def emit_loop_flag(result: dict, agent: str) -> None:
+    from core.soil import put
+
+    ok = bool(result.get("validation_ok")) and bool(result.get("ok"))
+    put(f"{agent}/flags", LOOP_FLAG_ID, {
+        "kind": "loop_registry_recount",
+        "title": "Loop registry drift — registry records vs live timers/hooks",
+        "finding": result,
+        "flag_state": "resolved" if ok else "open",
+        "fix_path": (
+            "Registry matches live timers/hooks and passes validation."
+            if ok else
+            "Run python -m willow.fylgja.loops --validate --recount; "
+            "update willow/fylgja/config/loops.json or SOIL willow/loops."
+        ),
+        "source": "scripts/hook_wiring_audit.py",
+    })
+
+
 def sync_github_issue(result: dict, issue: int, repo: str) -> None:
     """Post a finding comment, and close the issue only once resolved."""
     ok = resolved(result)
@@ -126,19 +159,24 @@ def main() -> int:
 
     result = audit()
     new_state = "resolved" if resolved(result) else "open"
-
-    if args.json:
-        print(json.dumps(result, indent=2))
-    else:
-        print(f"[hook-wiring-audit] {SETTINGS_PATH}: "
-              f"has_hooks_key={result.get('has_hooks_key')} "
-              f"events={result.get('hook_events', [])}")
+    loop_result = loop_registry_audit()
 
     if args.emit_flag or args.gh_issue:
         prior_state = previous_state(args.agent)
 
     if args.emit_flag:
         emit_flag(result, args.agent)
+        emit_loop_flag(loop_result, args.agent)
+
+    payload = {**result, "loop_registry": loop_result}
+    if args.json:
+        print(json.dumps(payload, indent=2))
+    else:
+        print(f"[hook-wiring-audit] {SETTINGS_PATH}: "
+              f"has_hooks_key={result.get('has_hooks_key')} "
+              f"events={result.get('hook_events', [])}")
+        print(f"[hook-wiring-audit] loop_registry ok={loop_result.get('ok')} "
+              f"validation_ok={loop_result.get('validation_ok')}")
 
     if args.gh_issue and new_state != prior_state:
         # Only post/close on a state transition — a daily timer would

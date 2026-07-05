@@ -217,6 +217,7 @@
     "context_save":       {"group": "context","tier": "extended", "description": "Save a compact context summary to the DB when context depth is high."},
 
     "hook_list":          {"group": "hook",   "tier": "extended", "description": "List registered hooks from hook_registry. active_only=True filters to enabled hooks."},
+    "loop_list":          {"group": "loop",   "tier": "standard", "description": "List declarative loop registry records (SOIL willow/loops + seed JSON)."},
     "hook_log_read":      {"group": "hook",   "tier": "extended", "description": "Read hook execution log, optionally filtered by hook_name."},
 
     "human_attestation_create":      {"group": "human", "tier": "standard", "description": "Create a durable human attestation, rejection, or change-request record."},
