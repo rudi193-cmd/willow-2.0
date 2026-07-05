@@ -219,3 +219,78 @@ def test_get_pool_runs_and_records_when_fingerprint_stale(monkeypatch):
     pg_bridge._get_pool()
     assert calls["migrations"] == 1
     assert any("ON CONFLICT (id) DO UPDATE" in s for s in conn.executed)
+
+
+# ── Partial-failure gating: a failed migration must not stamp the fingerprint ──
+# (else the stored hash short-circuits every future process and the failed DDL
+# never retries — the #543 silent-skip mode.)
+
+
+class _FailingCursor:
+    """Executes everything except statements containing 'BAD'."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, sql, params=None):
+        if "BAD" in sql:
+            raise RuntimeError("syntax error at or near BAD")
+        self._conn.executed.append(sql)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+
+class _FailingConn:
+    def __init__(self):
+        self.executed = []
+        self.rollbacks = 0
+
+    def cursor(self, *args, **kwargs):
+        return _FailingCursor(self)
+
+    def rollback(self):
+        self.rollbacks += 1
+
+    def commit(self):
+        pass
+
+
+def test_run_migrations_returns_failed_statements(monkeypatch, capsys):
+    monkeypatch.setattr(
+        pg_bridge, "_MIGRATIONS",
+        ["ALTER TABLE t ADD COLUMN IF NOT EXISTS good text", "BAD STATEMENT"],
+    )
+    conn = _FailingConn()
+
+    failed = pg_bridge.run_migrations(conn)
+
+    assert failed == ["BAD STATEMENT"]
+    assert conn.rollbacks == 1
+    assert any("good" in s for s in conn.executed)  # good stmt still applied
+    assert "migration failed" in capsys.readouterr().err
+
+
+def test_run_migrations_returns_empty_on_clean_pass(monkeypatch):
+    monkeypatch.setattr(
+        pg_bridge, "_MIGRATIONS",
+        ["ALTER TABLE t ADD COLUMN IF NOT EXISTS a text"],
+    )
+    conn = _FailingConn()
+    assert pg_bridge.run_migrations(conn) == []
+
+
+def test_get_pool_does_not_stamp_fingerprint_when_migrations_fail(monkeypatch, capsys):
+    monkeypatch.setattr(
+        pg_bridge, "run_migrations", lambda c: ["BAD STATEMENT"],
+    )
+    conn = _StatefulConn(stored_hash="stale-fingerprint")
+    _arm_pool(monkeypatch, conn)
+
+    pg_bridge._get_pool()
+
+    assert not any("ON CONFLICT (id) DO UPDATE" in s for s in conn.executed)
+    assert "fingerprint not recorded" in capsys.readouterr().err

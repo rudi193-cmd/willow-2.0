@@ -784,8 +784,19 @@ def _get_pool() -> "psycopg2.pool.ThreadedConnectionPool":
                     # matching fingerprint short-circuits to one SELECT instead
                     # of replaying ~36 idempotent DDL round-trips per process.
                     if not migrations_current(conn):
-                        run_migrations(conn)
-                        record_migrations_applied(conn)
+                        _failed = run_migrations(conn)
+                        if _failed:
+                            # Do NOT stamp the fingerprint: a recorded hash would
+                            # short-circuit every future process and the failed
+                            # DDL would never retry (the #543 silent-skip mode).
+                            import sys as _sys
+                            print(
+                                f"[pg_bridge] {len(_failed)} migration(s) failed — "
+                                "fingerprint not recorded, will retry next process",
+                                file=_sys.stderr, flush=True,
+                            )
+                        else:
+                            record_migrations_applied(conn)
                 else:
                     init_schema(conn)
                     record_migrations_applied(conn)
@@ -952,10 +963,16 @@ def record_migrations_applied(conn: "psycopg2.connection") -> None:
             pass
 
 
-def run_migrations(conn: "psycopg2.connection") -> None:
+def run_migrations(conn: "psycopg2.connection") -> list[str]:
     """Run only the _MIGRATIONS list against an existing schema.
     Safe to call repeatedly — all statements use IF NOT EXISTS / IF EXISTS guards.
-    Uses a 5s lock_timeout so DDL never hangs indefinitely (e.g. in CI under contention)."""
+    Uses a 5s lock_timeout so DDL never hangs indefinitely (e.g. in CI under contention).
+
+    Returns the statements that failed. Callers gating the fingerprint stamp
+    (_get_pool) must only record on an empty return — stamping after a partial
+    apply makes the failure permanent, since every later process short-circuits
+    on the stored hash and the failed DDL never retries."""
+    failed: list[str] = []
     with conn.cursor() as cur:
         cur.execute("SET lock_timeout = '5s'")
     conn.commit()
@@ -964,8 +981,15 @@ def run_migrations(conn: "psycopg2.connection") -> None:
             with conn.cursor() as cur:
                 cur.execute(stmt)
             conn.commit()
-        except Exception:
+        except Exception as exc:
             conn.rollback()
+            failed.append(stmt)
+            import sys as _sys
+            print(
+                f"[pg_bridge] migration failed: {stmt[:100]!r} — {exc}",
+                file=_sys.stderr, flush=True,
+            )
+    return failed
 
 
 class EmbedDegradedError(RuntimeError):
