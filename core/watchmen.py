@@ -18,6 +18,10 @@ from typing import Callable
 # service name → (SOIL collection, record id) where its heartbeat lives
 WATCHMEN: dict[str, tuple[str, str]] = {
     "upstream_watcher": ("upstream_steward/heartbeat", "main"),
+    # boot-sentinel watchdog (willow-config fleet-dispatch, systemd user
+    # timer every 15 min) — the watchman that watches the boot gate needs
+    # a watchman of its own.
+    "sentinel_watchdog": ("fleet_dispatch/heartbeat", "sentinel_watchdog"),
 }
 
 # heartbeat older than STALE_FACTOR × interval ⇒ stale
