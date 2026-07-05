@@ -52,6 +52,7 @@ def willow_facade_names() -> list[str]:
 _MINIMAL = _ALWAYS | {
     "fleet_status",
     "fleet_health",
+    "loop_list",
     "handoff_latest",
     "mai_read_file",
     "kb_search",

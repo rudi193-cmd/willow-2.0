@@ -1,0 +1,215 @@
+{
+  "version": 1,
+  "loops": [
+    {
+      "id": "sentinel-watchdog",
+      "status": "active",
+      "trigger": {
+        "kind": "timer",
+        "spec": "OnUnitActiveSec=15min",
+        "unit": "sentinel-watchdog.timer",
+        "external": true
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow-config/fleet-dispatch/sentinel_watchdog.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "watchdog exits 0 and boot-sentinel stale rows are cleared or flagged"
+      },
+      "attention": "SOIL fleet_dispatch/heartbeat + /tmp/willow-boot-done-*.flag",
+      "exit": "one pass per timer tick",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "sentinel_watchdog",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "upstream-watcher",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "upstream-watcher.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "agents/hanuman/bin/upstream_watcher.py",
+        "model": null
+      },
+      "verify": {
+        "class": "coverage",
+        "predicate": "heartbeat fresh and gh_ok true when upstream repos are reachable"
+      },
+      "attention": "GitHub upstream repos configured for hanuman steward",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "upstream_watcher",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "hook-wiring-audit",
+      "status": "active",
+      "trigger": {
+        "kind": "timer",
+        "spec": "OnCalendar=*-*-* 04:30:00",
+        "unit": "hook-wiring-audit.timer"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "scripts/hook_wiring_audit.py",
+        "model": null
+      },
+      "verify": {
+        "class": "schema",
+        "predicate": "/home/sean-campbell/.claude/settings.json carries PreToolUse, SessionStart, Stop hook events"
+      },
+      "attention": "/home/sean-campbell/.claude/settings.json structural summary only",
+      "exit": "one audit pass",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "hook_wiring_audit",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "kb-snapshot-refresh",
+      "status": "active",
+      "trigger": {
+        "kind": "timer",
+        "spec": "fleet-config timer (not vendored in willow-2.0 repo)",
+        "unit": "kb-snapshot-refresh.timer",
+        "external": true
+      },
+      "task": {
+        "kind": "shell",
+        "ref": "willow-config/kb-snapshot-refresh",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "KB snapshot artifact mtime advances after each run"
+      },
+      "attention": "Postgres KB export path under WILLOW_HOME",
+      "exit": "one refresh pass",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "kb_snapshot_refresh",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "willow-metabolic",
+      "status": "active",
+      "trigger": {
+        "kind": "timer",
+        "spec": "OnCalendar=*-*-* 03:00:00",
+        "unit": "willow-metabolic.timer"
+      },
+      "task": {
+        "kind": "shell",
+        "ref": "willow.sh metabolic",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "Norn pass completes and metabolic status atom updates"
+      },
+      "attention": "KB atoms in frontier/contested tiers",
+      "exit": "one norn pass",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "willow_metabolic",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "repo-fleet-sweep",
+      "status": "active",
+      "trigger": {
+        "kind": "timer",
+        "spec": "OnCalendar=Mon *-*-* 04:00:00",
+        "unit": "repo-fleet-sweep.timer"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "scripts/repo_fleet_sweep.py",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "diverged/unpushed repo count recorded in sweep report"
+      },
+      "attention": "repos under ~/github and fleet manifest roots",
+      "exit": "one sweep pass",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "repo_fleet_sweep",
+        "interval_sec": 604800
+      },
+      "harness": null
+    },
+    {
+      "id": "willow-w8-census",
+      "status": "active",
+      "trigger": {
+        "kind": "timer",
+        "spec": "OnCalendar=Mon *-*-* 04:00:00",
+        "unit": "willow-w8-census.timer"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "scripts/w8_census_witness.py",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "recon-canonical.json cost metric written and alert if cost > W8_MAX_COST"
+      },
+      "attention": "canonical KB atoms + FRANK ledger provenance edges",
+      "exit": "one census witness",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "willow_w8_census",
+        "interval_sec": 604800
+      },
+      "harness": null
+    },
+    {
+      "id": "willow-wce",
+      "status": "active",
+      "trigger": {
+        "kind": "timer",
+        "spec": "OnCalendar=Mon *-*-* 05:00:00",
+        "unit": "willow-wce.timer"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "scripts/wce_witness.py",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "WCE metric vector written to SOIL wce/state and run json on disk"
+      },
+      "attention": "continuity eval tasks + handoff pairs",
+      "exit": "one WCE witness",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "willow_wce",
+        "interval_sec": 604800
+      },
+      "harness": null
+    }
+  ]
+}

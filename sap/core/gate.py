@@ -292,7 +292,7 @@ PERMISSION_GROUPS: dict[str, frozenset] = {
     "postgres_read_ext": frozenset({
         "pg_edge_list", "mem_jeles_get", "mem_ratify_list",
         "mem_binder_list_files", "mem_binder_list_edges",
-        "hook_list", "hook_log_read", "ledger_verify",
+        "hook_list", "hook_log_read", "loop_list", "ledger_verify",
         "routing_log_read",
         "cmb_get", "cmb_list", "cmb_search",
         "journal_read",
