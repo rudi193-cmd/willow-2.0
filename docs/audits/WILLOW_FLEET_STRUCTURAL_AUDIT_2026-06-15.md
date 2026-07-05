@@ -88,10 +88,13 @@ Findings 2, 3, 6, and 7 are not separate. They are one fact seen from four angle
 | Tools | `codebase-memory-mcp` (`query_graph`, `search_graph`, `trace_path`, `get_code_snippet`, `search_code`, `get_architecture`) |
 | Source verified | `core/soil.py:40`, `core/pg_bridge.py`, `willow/grove_listen.py`, `willow/nuke.py`, `core/intelligence.py`, `core/metabolic.py`, `willow/fylgja/events/pre_tool.py`, `post_tool.py` |
 | Tool-eval ledger | SOIL `hanuman/tool_eval/*` (F-001 → F-008) |
+| Tool-eval addendum | `docs/audits/CODEBASE_MEMORY_MCP_TOOL_EVAL_ADDENDUM_2026-07-05.md` |
 | Companion | `docs/audits/KART_SCANNER_BWRAP_GAP_AUDIT_2026-06-15.md` (Dimension 4), PR #395 |
 | Related | `docs/audits/SOIL_DUAL_LAYOUT_DIAGNOSIS_2026-06-12.md` |
 
 ## Appendix — `codebase-memory-mcp` tool evaluation
+
+> **Instrument refresh (2026-07-05):** Canonical upstream is [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) (public, active). Local clone: `~/github/codebase-memory-mcp`. The June worktree path `worktrees/upstream-codebase-memory-mcp` is gone. Updated receipts, index counts, fork lag, and F-001..F-008 spot re-check: `docs/audits/CODEBASE_MEMORY_MCP_TOOL_EVAL_ADDENDUM_2026-07-05.md`. Willow `cbm_*` facade shipped post-June.
 
 The graph is an excellent **discovery** instrument and an untrustworthy **measurement** one. Eight failures observed this session (full detail in SOIL `hanuman/tool_eval`):
 
@@ -108,7 +111,7 @@ The graph is an excellent **discovery** instrument and an untrustworthy **measur
 
 **The two that matter:** F-004 (misses edges) and F-007 (inflates edges) together mean the CALLS graph is **neither complete nor precise**. Use it to find where to look; never to measure what you found. Every finding in this audit that survived did so by verification against source.
 
-**Toward a custom toolset** (tracked in SOIL `hanuman/tool_eval/codebase-memory-mcp`): a Willow facade that (1) auto-bounds queries and enforces a timeout (F-003), (2) cross-checks dead-code/fan-in claims against grep before returning (F-004/F-007), (3) ships the six audit dimensions as named, pre-tested bounded queries (F-001/F-002/F-005), and (4) reconciles with Willow's existing native `code_graph_*` tools.
+**Toward a custom toolset** (tracked in SOIL `hanuman/tool_eval/codebase-memory-mcp`): a Willow facade that (1) auto-bounds queries and enforces a timeout (F-003), (2) cross-checks dead-code/fan-in claims against grep before returning (F-004/F-007), (3) ships the six audit dimensions as named, pre-tested bounded queries (F-001/F-002/F-005), and (4) reconciles with Willow's existing native `code_graph_*` tools. **Update (2026-07-05):** layers (1)–(3) shipped as `sap/cbm_facade.py` + `cbm_*` MCP tools.
 
 ---
 
