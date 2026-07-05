@@ -23,7 +23,7 @@ import os
 import subprocess
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
@@ -406,11 +406,17 @@ def cmd_skip(wid: str, reason: str = "") -> None:
     print(f"  Skipped: {wid}")
 
 
+# A draft is postable for this long after its veto window closes. Older drafts
+# are stale conversations — a month-late auto-post is worse than silence.
+AUTO_POST_STALE_DAYS = 7
+
+
 def cmd_auto_post_ready(ingest_kb: bool = False, dry_run: bool = False) -> None:
-    """Post all draft/urgent items whose veto_deadline has passed and aren't skipped."""
+    """Post draft/urgent items past veto_deadline — but never stale ones."""
     now = datetime.now(timezone.utc)
     candidates = _active_drafts(require_body=True)
     ready = []
+    stale_count = 0
     for r in candidates:
         deadline_str = r.get("veto_deadline", "")
         if not deadline_str:
@@ -421,8 +427,19 @@ def cmd_auto_post_ready(ingest_kb: bool = False, dry_run: bool = False) -> None:
                 deadline = deadline.replace(tzinfo=timezone.utc)
         except ValueError:
             continue
-        if deadline < now:
-            ready.append(r)
+        if deadline >= now:
+            continue
+        if now >= deadline + timedelta(days=AUTO_POST_STALE_DAYS):
+            stale_count += 1
+            print(
+                f"  stale — not posting {r.get('work_id', '')} "
+                f"(deadline {deadline_str[:10]}); groom will expire it"
+            )
+            continue
+        ready.append(r)
+
+    if stale_count:
+        print(f"auto-post-ready: {stale_count} stale item(s) withheld.")
 
     if not ready:
         print("auto-post-ready: no items past veto deadline.")

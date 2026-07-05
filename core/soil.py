@@ -11,6 +11,7 @@ Legacy `{collection}/store.db` files are merged by scripts/soil_merge_layouts.py
 and the `<name>/store` addressing is hard-rejected by WillowStore.
 """
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 
 from core.store_port import get_store_port
@@ -55,6 +56,26 @@ def all_records(collection: str) -> list[dict]:
         rec.setdefault("_id", rec.get("id") or rec.get("_soil_id"))
         out.append(rec)
     return out
+
+
+def delete(collection: str, record_id: str) -> bool:
+    """Remove a record. Prefer archive() — fleet policy is archive, not delete."""
+    return _get_store().delete(collection, record_id)
+
+
+def archive(collection: str, record_id: str, date: str | None = None) -> str | None:
+    """Move a record to `_archive/{date}/{collection}` and remove the original.
+
+    Returns the archive collection name, or None if the record doesn't exist.
+    """
+    record = get(collection, record_id)
+    if record is None:
+        return None
+    date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    dest = f"_archive/{date}/{collection}"
+    put(dest, record_id, record)
+    delete(collection, record_id)
+    return dest
 
 
 def stats() -> dict:

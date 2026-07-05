@@ -326,6 +326,83 @@ def _backfill_drafts() -> None:
                 print(f"upstream_watcher: backfill error {wid} — {exc}", file=sys.stderr, flush=True)
 
 
+# ── Groom ─────────────────────────────────────────────────────────────────────
+#
+# The pending collection is a work queue, not a log: without expiry it
+# fossilizes (188 records by 2026-07-05, none newer than the last scout run).
+# Worse, drafts left past their veto window stay armed for auto-post-ready —
+# a month-old draft must expire, never post.
+
+_TERMINAL_STATUSES = ("posted", "closed", "skipped", "expired")
+GROOM_TERMINAL_DAYS = 7    # terminal records stay visible for a week, then archive
+GROOM_WATCH_DAYS = 14      # stale watch snapshots; the poll loop re-discovers live items
+GROOM_NOISE_DAYS = 7       # noise with no veto_deadline (early records) ages out on created_at
+GROOM_DRAFT_GRACE_DAYS = 7 # drafts this far past veto_deadline expire instead of posting
+
+
+def _parse_iso(value: str) -> datetime | None:
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def groom(now: datetime | None = None) -> dict:
+    """Archive dead queue records; expire drafts too stale to auto-post.
+
+    Records are archived (moved to _archive/<date>/upstream_steward/pending),
+    never deleted. Returns counts per disposition.
+    """
+    now = now or datetime.now(timezone.utc)
+    counts = {"terminal": 0, "noise": 0, "watch": 0, "expired": 0}
+
+    for r in soil.all_records(_SOIL_PENDING):
+        wid = r.get("work_id") or r.get("_id") or ""
+        if not wid:
+            continue
+        status = r.get("status", "")
+        lane = r.get("lane", "")
+        deadline = _parse_iso(r.get("veto_deadline", ""))
+        created = _parse_iso(r.get("created_at", ""))
+
+        if status in _TERMINAL_STATUSES:
+            settled = (
+                _parse_iso(r.get("posted_at", ""))
+                or _parse_iso(r.get("skipped_at", ""))
+                or _parse_iso(r.get("expired_at", ""))
+                or created
+            )
+            if settled and (now - settled).days >= GROOM_TERMINAL_DAYS:
+                soil.archive(_SOIL_PENDING, wid)
+                counts["terminal"] += 1
+
+        elif lane == "noise":
+            past_deadline = deadline and deadline < now
+            aged_out = created and (now - created).days >= GROOM_NOISE_DAYS
+            if past_deadline or aged_out:
+                soil.archive(_SOIL_PENDING, wid)
+                counts["noise"] += 1
+
+        elif lane == "watch":
+            ref = _parse_iso(r.get("updated_at", "")) or created
+            if ref and (now - ref).days >= GROOM_WATCH_DAYS:
+                soil.archive(_SOIL_PENDING, wid)
+                counts["watch"] += 1
+
+        elif lane in ("draft", "urgent"):
+            if deadline and now >= deadline + timedelta(days=GROOM_DRAFT_GRACE_DAYS):
+                r["status"] = "expired"
+                r["expired_at"] = now.isoformat()
+                soil.put(_SOIL_PENDING, wid, r)
+                soil.archive(_SOIL_PENDING, wid)
+                counts["expired"] += 1
+
+    return counts
+
+
 # ── Main tick ─────────────────────────────────────────────────────────────────
 
 _notified_this_run: set[str] = set()
@@ -384,6 +461,13 @@ def tick(config: dict, cursor: dict) -> dict:
     # Backfill: enrich any existing draft/urgent items that still lack draft_body
     _backfill_drafts()
 
+    # Groom: expire the dead so the digest counts only live work
+    groom_counts: dict = {}
+    try:
+        groom_counts = groom()
+    except Exception as exc:
+        print(f"upstream_watcher: groom error — {exc}", file=sys.stderr, flush=True)
+
     # Update digest
     all_pending = [
         r for r in soil.all_records(_SOIL_PENDING)
@@ -400,6 +484,7 @@ def tick(config: dict, cursor: dict) -> dict:
         "urgent": urgent_count,
         "noise": noise_count,
         "pending": len(all_pending),
+        "groomed": sum(groom_counts.values()),
     }
     _write_heartbeat(
         interval_sec=config.get("poll_interval_sec", POLL_INTERVAL),
@@ -412,6 +497,7 @@ def tick(config: dict, cursor: dict) -> dict:
     print(
         f"upstream_watcher: tick ok — {new_count} new, {draft_count} draft, "
         f"{urgent_count} urgent, {noise_count} noise, "
+        f"groomed={sum(groom_counts.values())}, "
         f"gh_ok={_gh_status['ok']}",
         flush=True,
     )
@@ -482,6 +568,9 @@ if __name__ == "__main__":
         _cmd_pending()
     elif args[0] == "show" and len(args) > 1:
         _cmd_show(args[1])
+    elif args[0] == "groom":
+        result = groom()
+        print(f"upstream_watcher: groom — {json.dumps(result)}", flush=True)
     else:
-        print("Usage: upstream_watcher.py [watch|run-once|pending|show <work_id>]")
+        print("Usage: upstream_watcher.py [watch|run-once|pending|show <work_id>|groom]")
         sys.exit(1)
