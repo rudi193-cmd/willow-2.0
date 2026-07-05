@@ -18,6 +18,7 @@ import re
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 AUTO_RE = re.compile(r"^kart[_-][0-9a-f]{8,12}\.py$")
 
@@ -27,6 +28,48 @@ def kart_scripts_dir() -> Path:
     from willow.fylgja.kart_queue import kart_scripts_dir as _d
 
     return _d()
+
+
+def sweep_kart_scripts(
+    *,
+    apply: bool = False,
+    days: int = 14,
+    report_days: int = 60,
+) -> dict[str, Any]:
+    """Sweep kart script bodies. Returns summary dict for filesystem_groom_pass."""
+    root = kart_scripts_dir()
+    if not root.is_dir():
+        return {"scanned": 0, "deleted": [], "kept_auto": 0, "stale_named": [], "root": str(root)}
+
+    now = time.time()
+    deleted: list[str] = []
+    kept_auto = 0
+    stale_named: list[str] = []
+    scanned = 0
+
+    for p in sorted(root.iterdir()):
+        if not p.is_file():
+            continue
+        scanned += 1
+        age_days = (now - p.stat().st_mtime) / 86400
+        if AUTO_RE.match(p.name):
+            if age_days > days:
+                deleted.append(p.name)
+                if apply:
+                    p.unlink()
+            else:
+                kept_auto += 1
+        elif age_days > report_days:
+            stale_named.append(f"{p.name} ({age_days:.0f}d)")
+
+    return {
+        "scanned": scanned,
+        "deleted": deleted,
+        "kept_auto": kept_auto,
+        "stale_named": stale_named,
+        "root": str(root),
+        "apply": apply,
+    }
 
 
 def main() -> int:
@@ -39,27 +82,15 @@ def main() -> int:
                     help="actually delete (default: dry-run)")
     args = ap.parse_args()
 
-    root = kart_scripts_dir()
-    now = time.time()
-    deleted, kept_auto, stale_named = [], 0, []
-
-    for p in sorted(root.iterdir()):
-        if not p.is_file():
-            continue
-        age_days = (now - p.stat().st_mtime) / 86400
-        if AUTO_RE.match(p.name):
-            if age_days > args.days:
-                deleted.append(p.name)
-                if args.apply:
-                    p.unlink()
-            else:
-                kept_auto += 1
-        elif age_days > args.report_days:
-            stale_named.append(f"{p.name} ({age_days:.0f}d)")
-
+    summary = sweep_kart_scripts(
+        apply=args.apply,
+        days=args.days,
+        report_days=args.report_days,
+    )
     mode = "deleted" if args.apply else "would delete"
-    print(f"[kart-sweep] {root}: {mode} {len(deleted)} auto-generated bodies "
-          f"(> {args.days}d), kept {kept_auto} recent")
+    print(f"[kart-sweep] {summary['root']}: {mode} {len(summary['deleted'])} "
+          f"auto-generated bodies (> {args.days}d), kept {summary['kept_auto']} recent")
+    stale_named = summary["stale_named"]
     if stale_named:
         print(f"[kart-sweep] {len(stale_named)} named files older than "
               f"{args.report_days}d (report only, never auto-deleted):")

@@ -34,7 +34,7 @@ The June audit assumed a worktree at `willow-2.0/worktrees/upstream-codebase-mem
 
 | Project slug | Root path | Nodes | Edges | Mode | When |
 |--------------|-----------|------:|------:|------|------|
-| `home-sean-campbell-github-willow-2.0` | `~/github/willow-2.0` | 17,819 | 57,726 | prior full/moderate index | 2026-07-04 (cache) |
+| `home-sean-campbell-github-willow-2.0` | `~/github/willow-2.0` | 17,832 | 57,737 | cache (spot-check session) | 2026-07-05 |
 | `home-sean-campbell-github-codebase-memory-mcp` | `~/github/codebase-memory-mcp` | 11,080 | 40,775 | **moderate** (pre-sync index) | 2026-07-05 |
 
 June willow-2.0 figures were **14,498 / 47,007** — growth reflects codebase change + index mode, not a different product. **Re-index** `codebase-memory-mcp` after sync if auditing post-`affa223` source.
@@ -57,16 +57,51 @@ The June appendix proposed a custom facade. **Delivered:**
 
 | ID | June verdict | Re-check | Status |
 |----|--------------|----------|--------|
-| F-001 | Cypher subset rejects `coalesce()` in WHERE | `query_graph` with `coalesce(f.transitive_loop_depth,0)` → `unexpected operator at pos 33` | **Still open** |
+| F-001 | Cypher subset rejects `coalesce()` in WHERE | `query_graph` with `coalesce(f.transitive_loop_depth,0)` → `unexpected operator at pos 33` | **Still open** → [#874](https://github.com/DeusData/codebase-memory-mcp/issues/874) |
 | F-002 | No `<-` arrows / pattern predicates | Not re-run (parser unchanged in source) | **Assumed open** |
 | F-003 | Unbounded aggregate can kill stdio server | Not re-run (would disrupt session); facade blocks forbidden Cypher | **Mitigated in Willow; open upstream** |
-| F-004 | Aliased imports miss CALLS edges | `cbm_verify_callers(scan_bash)` — graph shows callers, grep 0 hits on alias pattern; June Kart-scanner lesson still applies | **Still open** |
-| F-005 | DISTINCT+ORDER BY+LIMIT truncates silently | Not re-run | **Assumed open** |
-| F-006 | Architecture folds test traffic | Not re-run | **Assumed open** |
-| F-007 | Common-name fan-in collapse | Not re-run; facade documents in LIMITATIONS | **Still open** |
-| F-008 | Recursion flags are artifacts | Not re-run | **Assumed open** |
+| F-004 | Aliased imports miss CALLS edges | `pre_tool.py`: `scan_bash as _scan_bash` → production callers invisible to `trace_path` | **Still open** → [#875](https://github.com/DeusData/codebase-memory-mcp/issues/875) |
+| F-005 | DISTINCT+ORDER BY+LIMIT truncates silently | See **F-005 recheck** below | **Verified open** → [#873](https://github.com/DeusData/codebase-memory-mcp/issues/873) (refs [#237](https://github.com/DeusData/codebase-memory-mcp/issues/237)) |
+| F-006 | Architecture folds test traffic | Not re-run; overlaps [#725](https://github.com/DeusData/codebase-memory-mcp/issues/725) | **Assumed open** |
+| F-007 | Common-name fan-in collapse | Not re-run; overlaps [#725](https://github.com/DeusData/codebase-memory-mcp/issues/725) / [#606](https://github.com/DeusData/codebase-memory-mcp/issues/606) | **Still open** |
+| F-008 | Recursion flags are artifacts | See **F-008 recheck** below | **Verified open** → [#876](https://github.com/DeusData/codebase-memory-mcp/issues/876) (refs [#599](https://github.com/DeusData/codebase-memory-mcp/issues/599)) |
 
-**Conclusion:** The June tool-evaluation appendix remains **methodologically valid**. Update the **instrument receipts** and treat **`cbm_*` + verify_callers** as the supported audit path — not raw `codebase-memory-mcp_*` without bounds.
+**Conclusion:** The June tool-evaluation appendix remains **methodologically valid**. Treat **`cbm_*` + verify_callers** as the supported audit path — not raw `codebase-memory-mcp_*` without bounds.
+
+### F-005 recheck (2026-07-05, binary v0.8.1, project `home-sean-campbell-github-willow-2.0`)
+
+Ground truth: **5** distinct node labels (`count(DISTINCT n.label)`).
+
+| Query | Rows | Correct? |
+|-------|------|----------|
+| `MATCH (n) RETURN DISTINCT n.label AS label ORDER BY label LIMIT 30` | 2 (Section, Variable) | **No** |
+| `MATCH (n:Function) RETURN DISTINCT n.file_path AS path ORDER BY path LIMIT 5` | 1 | **No** |
+| `MATCH (n) WITH DISTINCT n.label AS label RETURN label ORDER BY label LIMIT 20` | 5 | **Yes** (workaround) |
+| `MATCH (n:Function) WITH DISTINCT n.file_path AS path RETURN path ORDER BY path LIMIT 5` | 5 | **Yes** (workaround) |
+
+[#237](https://github.com/DeusData/codebase-memory-mcp/issues/237) was closed 2026-05-31; filed [#873](https://github.com/DeusData/codebase-memory-mcp/issues/873) for the remaining `RETURN DISTINCT … ORDER BY … LIMIT` shape on v0.8.1.
+
+### F-008 recheck (2026-07-05, same index)
+
+**14** functions flagged `unguarded_recursion=true`. Representative false positives (source read confirms no self-call):
+
+| Function | Flags | Actual callee |
+|----------|-------|---------------|
+| `core.soil.get` | `unguarded_recursion`, `self_recursive` | `_get_store().get(...)` |
+| `core.soil.put` | same | `_get_store().put(...)` |
+| `core.gleipnir.check` | `unguarded_recursion`, `recursive` | `_default.check(...)` |
+| `willow.nuke.execute` | `recursive=true` (not unguarded) | loops + I/O only — no self-call |
+
+[#599](https://github.com/DeusData/codebase-memory-mcp/issues/599) addressed `super()` / `axios.get`-style cases; filed [#876](https://github.com/DeusData/codebase-memory-mcp/issues/876) for delegation/store patterns.
+
+## Upstream issues filed (2026-07-05)
+
+| Willow ID | GitHub issue | Notes |
+|-----------|--------------|-------|
+| F-001 | [#874](https://github.com/DeusData/codebase-memory-mcp/issues/874) | `coalesce()` in WHERE |
+| F-004 | [#875](https://github.com/DeusData/codebase-memory-mcp/issues/875) | Python `import … as` → CALLS / trace_path |
+| F-005 | [#873](https://github.com/DeusData/codebase-memory-mcp/issues/873) | `RETURN DISTINCT … ORDER BY … LIMIT`; refs #237 |
+| F-008 | [#876](https://github.com/DeusData/codebase-memory-mcp/issues/876) | delegation/store recursion false positives; refs #599 |
 
 ## Source layout (from indexed clone)
 
@@ -88,7 +123,7 @@ Self-index via CBM works once the clone is indexed (`home-sean-campbell-github-c
 |--------|-------|--------|
 | `git fetch upstream && merge` on `~/github/codebase-memory-mcp` | operator | **done** (2026-07-05, `affa223`) |
 | Re-index CBM after sync (`index_repository` full or moderate) | willow | when next auditing CBM source |
-| Optional: file F-001..F-008 upstream (DeusData issues) | willow | when convenient |
+| File F-001 / F-004 / F-005 / F-008 upstream | willow | **done** — #873–#876 |
 | Replace stale SOIL `worktree` path | willow | done in this refresh |
 | Full six-dimension fleet re-audit | builder | only if authorized — out of scope here |
 
@@ -99,6 +134,7 @@ Self-index via CBM works once the clone is indexed (`home-sean-campbell-github-c
 | June audits | `docs/audits/WILLOW_FLEET_STRUCTURAL_AUDIT_2026-06-15.md`, `KART_SCANNER_BWRAP_GAP_AUDIT_2026-06-15.md` |
 | This addendum | `docs/audits/CODEBASE_MEMORY_MCP_TOOL_EVAL_ADDENDUM_2026-07-05.md` |
 | Upstream | `DeusData/codebase-memory-mcp` @ `affa223` (2026-07-05) |
+| Upstream issues | [#873](https://github.com/DeusData/codebase-memory-mcp/issues/873), [#874](https://github.com/DeusData/codebase-memory-mcp/issues/874), [#875](https://github.com/DeusData/codebase-memory-mcp/issues/875), [#876](https://github.com/DeusData/codebase-memory-mcp/issues/876) |
 | Local clone | `~/github/codebase-memory-mcp` @ `affa223` (synced with upstream) |
 | Binary | `~/.local/bin/codebase-memory-mcp` → `0.8.1` |
 | Willow facade | `sap/cbm_facade.py`, `tests/test_cbm_facade.py`, `sap/sap_mcp.py` (`cbm_*`) |
@@ -113,7 +149,7 @@ Self-index via CBM works once the clone is indexed (`home-sean-campbell-github-c
 
 - Upstream is **not dead** — the gap was a missing/stale local clone and a fork frozen mid-June.
 - June structural findings (inversion of care, pg_bridge, grove_listen) are **unchanged** by this addendum; only the **CBM instrument appendix** is refreshed.
-- Clone is synced; re-index when you next audit CBM source against `affa223`.
+- F-005/F-008 spot re-checks downgraded from “assumed” to **verified open** on v0.8.1; four issues filed upstream.
 
 ## Human Notes to Agent
 
