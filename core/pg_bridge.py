@@ -12,6 +12,7 @@ import os
 import threading
 import time
 import uuid
+from collections import deque
 from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -843,9 +844,35 @@ def _discard_connection(conn: "psycopg2.connection") -> None:
             pass
 
 
+# Connections orphaned by PgBridge.__del__. A destructor can fire via GC while
+# the SAME thread is inside the pool's non-reentrant lock (getconn/putconn) —
+# returning the connection synchronously there self-deadlocks the thread
+# forever (the recurring ~59% CI pytest-matrix hang; stack: getconn → GC →
+# __del__ → putconn). Destructors only append here — deque.append is atomic
+# and lock-free — and the next normal-context pool call drains the queue.
+_orphaned_conns: "deque" = deque()
+
+
+def _drain_orphaned_conns() -> None:
+    """Return destructor-orphaned connections to the pool (normal context only)."""
+    while True:
+        try:
+            conn = _orphaned_conns.popleft()
+        except IndexError:
+            return
+        try:
+            release_connection(conn)
+        except Exception:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
 def get_connection() -> "psycopg2.connection":
     if not _cb_check():
         raise RuntimeError("pg_bridge: circuit open — Postgres is degraded, not attempting connection")
+    _drain_orphaned_conns()
     _pool_warn_if_near_capacity()
     try:
         for _ in range(2):
@@ -1040,8 +1067,15 @@ class PgBridge:
         self.close()
 
     def __del__(self):
+        # NEVER touch the pool here: GC can run this while the same thread is
+        # inside the pool's non-reentrant lock (getconn/putconn), and a
+        # synchronous putconn self-deadlocks (the ~59% CI hang). Enqueue only;
+        # get_connection drains in normal context.
         try:
-            self.close()
+            conn = getattr(getattr(self, "_local", None), "conn", None)
+            if conn is not None:
+                self._local.conn = None
+                _orphaned_conns.append(conn)
         except Exception:
             pass
 
