@@ -10,6 +10,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -39,20 +40,23 @@ def load_test_results(path: str) -> Optional[dict]:
         return None
 
 
-def parse_pytest_json(data: dict) -> dict:
-    """Extract summary from pytest JSON report."""
+def _outcome_sets(data: dict) -> dict[str, set]:
+    """Nodeid sets per outcome from a pytest JSON report."""
     tests = data.get("tests", [])
-    return {
-        "total": len(tests),
-        "passed": sum(1 for t in tests if t["outcome"] == "passed"),
-        "failed": sum(1 for t in tests if t["outcome"] == "failed"),
-        "skipped": sum(1 for t in tests if t["outcome"] == "skipped"),
-        "duration": data.get("duration", 0),
-    }
+    sets: dict[str, set] = {"passed": set(), "failed": set(), "all": set()}
+    for t in tests:
+        nodeid = t.get("nodeid")
+        if not nodeid:
+            continue
+        sets["all"].add(nodeid)
+        outcome = t.get("outcome")
+        if outcome in ("passed", "failed"):
+            sets[outcome].add(nodeid)
+    return sets
 
 
-def find_test_fixing_commit(test_name: str) -> Optional[str]:
-    """Find which commit fixed a failing test."""
+def last_commit_touching(test_name: str) -> Optional[str]:
+    """Last commit that touched the test's file — context, not causation."""
     import subprocess
 
     if "::" not in test_name:
@@ -75,85 +79,97 @@ def find_test_fixing_commit(test_name: str) -> Optional[str]:
     return None
 
 
+def _bullet_list(names: list[str], cap: int = 5) -> str:
+    text = "\n".join(f"  • {n}" for n in names[:cap])
+    if len(names) > cap:
+        text += f"\n  ... and {len(names) - cap} more"
+    return text
+
+
 def extract_test_atoms(
     before_results: Optional[dict],
     after_results: dict,
     test_run_id: Optional[str] = None,
 ) -> list[Atom]:
-    """Extract atoms from test results changes."""
+    """Extract atoms by diffing nodeid SETS between runs.
+
+    Count-based diffing masked regressions (1 new pass + 1 new fail netted
+    to zero) and labeled every currently-passing test "fixed"
+    (2026-07-05 audit). Sets make both directions visible independently.
+    """
     atoms = []
 
     if not before_results:
         return atoms
 
-    before = parse_pytest_json(before_results)
-    after = parse_pytest_json(after_results)
+    before = _outcome_sets(before_results)
+    after = _outcome_sets(after_results)
 
-    newly_passing = after["passed"] - before["passed"]
-    if newly_passing > 0:
-        summary = f"{newly_passing} test(s) newly passing.\n\n"
+    newly_passing = sorted(after["passed"] - before["passed"])
+    # Passing→failing on tests present in both runs; removed tests are not
+    # regressions.
+    regressed = sorted(before["passed"] & after["failed"])
+    added = sorted(after["all"] - before["all"])
 
-        tests_list = []
-        for test_data in after_results.get("tests", []):
-            if test_data["outcome"] == "passed":
-                test_name = test_data.get("nodeid", "unknown")
-                fix_commit = find_test_fixing_commit(test_name)
-                if fix_commit:
-                    tests_list.append(f"{test_name} (fixed by {fix_commit[:7]})")
-                else:
-                    tests_list.append(test_name)
-
-        if tests_list:
-            summary += "Fixed:\n" + "\n".join(f"  • {t}" for t in tests_list[:5])
-            if len(tests_list) > 5:
-                summary += f"\n  ... and {len(tests_list) - 5} more"
-
-        atoms.append(
-            Atom(
-                title=f"Tests: {newly_passing} newly passing",
-                summary=summary,
-                category="test",
-                source_type="test_event",
-                content={
-                    "newly_passing": newly_passing,
-                    "test_count": len(tests_list),
-                    "run_id": test_run_id,
-                },
-            )
-        )
-
-    regressions = before["passed"] - after["passed"]
-    if regressions > 0:
+    if newly_passing:
+        details = []
+        for name in newly_passing[:5]:
+            commit = last_commit_touching(name)
+            details.append(f"{name} (last change: {commit[:7]})" if commit else name)
         summary = (
-            f"⚠️  {regressions} test(s) regressed (were passing, now failing).\n\n"
-            "Need investigation. Check latest commits for what broke these."
+            f"{len(newly_passing)} test(s) newly passing.\n\n"
+            "Newly passing:\n" + _bullet_list(details + newly_passing[5:])
         )
         atoms.append(
             Atom(
-                title=f"REGRESSION: {regressions} tests now failing",
+                title=f"Tests: {len(newly_passing)} newly passing",
                 summary=summary,
                 category="test",
                 source_type="test_event",
                 content={
-                    "regressions": regressions,
+                    "newly_passing": len(newly_passing),
+                    "nodeids": newly_passing[:50],
                     "run_id": test_run_id,
-                    "severity": "high" if regressions > 3 else "medium",
                 },
             )
         )
 
-    if after["total"] > before["total"]:
-        new_tests = after["total"] - before["total"]
+    if regressed:
+        summary = (
+            f"⚠️  {len(regressed)} test(s) regressed (were passing, now failing).\n\n"
+            "Regressed:\n" + _bullet_list(regressed)
+            + "\n\nNeed investigation. Check latest commits for what broke these."
+        )
         atoms.append(
             Atom(
-                title=f"Added {new_tests} test(s)",
-                summary=f"Test coverage improved by {new_tests} new test(s).",
+                title=f"REGRESSION: {len(regressed)} tests now failing",
+                summary=summary,
                 category="test",
                 source_type="test_event",
                 content={
-                    "new_tests": new_tests,
-                    "total_before": before["total"],
-                    "total_after": after["total"],
+                    "regressions": len(regressed),
+                    "nodeids": regressed[:50],
+                    "run_id": test_run_id,
+                    "severity": "high" if len(regressed) > 3 else "medium",
+                },
+            )
+        )
+
+    if added:
+        atoms.append(
+            Atom(
+                title=f"Added {len(added)} test(s)",
+                summary=(
+                    f"Test coverage grew by {len(added)} new test(s).\n\n"
+                    + _bullet_list(added)
+                ),
+                category="test",
+                source_type="test_event",
+                content={
+                    "new_tests": len(added),
+                    "nodeids": added[:50],
+                    "total_before": len(before["all"]),
+                    "total_after": len(after["all"]),
                 },
             )
         )
@@ -162,15 +178,28 @@ def extract_test_atoms(
 
 
 def write_atoms_to_kb(atoms: list[Atom]) -> int:
-    """Write all atoms to knowledge base. Returns count written."""
+    """Write all atoms to knowledge base. Returns count written.
+
+    Dedup key = title + run_id + involved nodeids, so identical re-runs
+    dedup but tomorrow's "Tests: 2 newly passing" is a distinct event
+    (title-only keying swallowed those forever — 2026-07-05 audit).
+    """
     if not atoms:
         return 0
+
+    import hashlib
 
     from willow.hooks.kb_writer import write_atom_to_kb
 
     count = 0
     for atom in atoms:
-        if write_atom_to_kb(atom, dedup_key=atom.title):
+        raw = "|".join([
+            atom.title,
+            str(atom.content.get("run_id", "")),
+            *atom.content.get("nodeids", []),
+        ])
+        dedup_key = hashlib.sha256(raw.encode()).hexdigest()[:16]
+        if write_atom_to_kb(atom, dedup_key=dedup_key):
             count += 1
 
     return count
@@ -196,7 +225,8 @@ def main() -> None:
         except Exception:
             pass
 
-    atoms = extract_test_atoms(previous, current, test_run_id=current.get("duration"))
+    run_id = current.get("run_id") or datetime.now(timezone.utc).isoformat()
+    atoms = extract_test_atoms(previous, current, test_run_id=run_id)
 
     if atoms:
         count = write_atoms_to_kb(atoms)
