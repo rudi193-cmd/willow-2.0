@@ -131,6 +131,20 @@ def _sanitize_id(record_id: str) -> str:
     return "".join(c for c in str(record_id) if c.isalnum() or c in "_-")
 
 
+def _id_candidates(record_id: str) -> tuple[str, ...]:
+    """Lookup keys for a record id: sanitized (canonical) first, raw second.
+
+    The 2026-06-12 layout-unification migration copied legacy row ids
+    verbatim, including characters _sanitize_id strips (':' in
+    upstream_steward work_ids). A sanitized-only lookup can list those rows
+    but never get/update/delete them — permanent husks. Both values are
+    bound as SQL parameters; the raw id never reaches the SQL text.
+    """
+    raw = str(record_id)
+    rid = _sanitize_id(raw)
+    return (rid,) if rid == raw else (rid, raw)
+
+
 def _inject_soil_id(db_id: str, record: dict) -> dict:
     """Inject the DB row id into the record as _soil_id if no id field is present.
     Ensures every record returned by list/search is identifiable for soil_get/soil_update."""
@@ -350,15 +364,22 @@ class WillowStore:
 
     def update(self, collection: str, record_id: str, record: dict,
                deviation: float = 0.0) -> tuple:
-        rid = _sanitize_id(str(record_id))
         action = angular_action(deviation, self.rubric)
         now = datetime.now().isoformat()
 
         with self._lock:
             conn = self._conn(collection)
-            existing = conn.execute(
-                "SELECT data FROM records WHERE id = ? AND deleted = 0", (rid,)
-            ).fetchone()
+            # Match legacy raw-id rows and write back under the id that
+            # matched — updating a legacy row must not fork a sanitized twin.
+            rid = _sanitize_id(str(record_id))
+            existing = None
+            for candidate in _id_candidates(record_id):
+                existing = conn.execute(
+                    "SELECT data FROM records WHERE id = ? AND deleted = 0", (candidate,)
+                ).fetchone()
+                if existing:
+                    rid = candidate
+                    break
             if existing:
                 merged = json.loads(existing["data"])
                 merged.update(record)
@@ -397,10 +418,13 @@ class WillowStore:
 
     def get(self, collection: str, record_id: str) -> Optional[dict]:
         conn = self._conn(collection)
-        row = conn.execute(
-            "SELECT data FROM records WHERE id = ? AND deleted = 0",
-            (_sanitize_id(str(record_id)),)
-        ).fetchone()
+        row = None
+        for rid in _id_candidates(record_id):
+            row = conn.execute(
+                "SELECT data FROM records WHERE id = ? AND deleted = 0", (rid,)
+            ).fetchone()
+            if row:
+                break
         conn.close()
         return json.loads(row["data"]) if row else None
 
@@ -471,20 +495,24 @@ class WillowStore:
 
     def delete(self, collection: str, record_id: str) -> bool:
         """Soft delete — invisible to read/search but preserved in audit trail."""
-        rid = _sanitize_id(str(record_id))
         now = datetime.now().isoformat()
         with self._lock:
             conn = self._conn(collection)
-            result = conn.execute(
-                "UPDATE records SET deleted = 1, updated_at = ? WHERE id = ? AND deleted = 0",
-                (now, rid)
-            )
-            if result.rowcount == 0:
+            matched = None
+            for rid in _id_candidates(record_id):
+                result = conn.execute(
+                    "UPDATE records SET deleted = 1, updated_at = ? WHERE id = ? AND deleted = 0",
+                    (now, rid)
+                )
+                if result.rowcount:
+                    matched = rid
+                    break
+            if matched is None:
                 conn.close()
                 return False
             conn.execute(
                 "INSERT INTO audit_log (record_id, operation, timestamp) VALUES (?, 'delete', ?)",
-                (rid, now)
+                (matched, now)
             )
             conn.commit()
             conn.close()

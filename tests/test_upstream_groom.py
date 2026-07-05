@@ -207,3 +207,66 @@ def test_grace_windows_are_consistent():
     # gap opens where a stale draft is neither postable nor expired (fine) or
     # both postable and expired (not fine). Keep them equal.
     assert AUTO_POST_STALE_DAYS == GROOM_DRAFT_GRACE_DAYS
+
+
+# ── legacy raw-id rows (2026-06-12 migration) ────────────────────────────────
+#
+# The layout-unification migration copied row ids verbatim — including ':'
+# which _sanitize_id strips. The first live groom run reported 188 archived
+# while all 188 remained: get/delete sanitized the lookup key and never
+# matched the raw ids. These tests seed rows exactly as the migration left
+# them and assert the store can actually touch them.
+
+import sqlite3  # noqa: E402
+
+
+def _make_legacy(collection: str, raw_id: str, record: dict) -> None:
+    """Seed a row whose db id keeps characters _sanitize_id strips."""
+    placeholder = "legacy-placeholder"
+    soil.put(collection, placeholder, record)
+    conn = sqlite3.connect(str(soil._db(collection)))
+    conn.execute("UPDATE records SET id = ? WHERE id = ?", (raw_id, placeholder))
+    conn.commit()
+    conn.close()
+
+
+def test_legacy_raw_id_is_gettable():
+    _make_legacy("some/queue", "b17:LEG-1", {"work_id": "b17:LEG-1", "payload": 7})
+    record = soil.get("some/queue", "b17:LEG-1")
+    assert record is not None
+    assert record["payload"] == 7
+
+
+def test_legacy_raw_id_is_deletable():
+    _make_legacy("some/queue", "b17:LEG-2", {"work_id": "b17:LEG-2"})
+    assert soil.delete("some/queue", "b17:LEG-2") is True
+    assert soil.get("some/queue", "b17:LEG-2") is None
+    assert soil.all_records("some/queue") == []
+
+
+def test_update_legacy_row_does_not_fork_sanitized_twin():
+    _make_legacy("some/queue", "b17:LEG-3", {"work_id": "b17:LEG-3", "n": 1})
+    soil._get_store().update("some/queue", "b17:LEG-3", {"n": 2})
+    records = soil.all_records("some/queue")
+    assert len(records) == 1
+    assert records[0]["n"] == 2
+
+
+def test_groom_archives_legacy_raw_id_records():
+    _make_legacy(_SOIL_PENDING, "b17:UPST1-noise-1", {
+        "work_id": "b17:UPST1-noise-1", "status": "noise", "lane": "noise",
+        "created_at": _iso(20), "veto_deadline": _iso(18),
+    })
+    _make_legacy(_SOIL_PENDING, "b17:UPST1-draft-1", {
+        "work_id": "b17:UPST1-draft-1", "status": "awaiting_human",
+        "lane": "draft", "created_at": _iso(20), "veto_deadline": _iso(18),
+        "draft_body": "fossil",
+    })
+
+    counts = groom(now=NOW)
+
+    assert counts == {"terminal": 0, "noise": 1, "watch": 0,
+                      "expired": 1, "failed": 0}
+    assert _pending_ids() == set()
+    expired = soil.get(ARCHIVE, "b17:UPST1-draft-1")
+    assert expired["status"] == "expired"
