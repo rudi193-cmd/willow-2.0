@@ -38,19 +38,21 @@ def write_atom_to_kb(atom: Atom, dedup_key: Optional[str] = None) -> bool:
 
         # Check deduplication if key provided
         if dedup_key:
-            # For commits: check content->>'commit'
-            # For merges: check content->>'commit' (merge commit hash)
-            # For tests: check title (unique enough)
+            # Commits/merges: the key is the commit hash. Everything else:
+            # the caller's key is stored in content->>'dedup_key' and matched
+            # exactly. Never dedup on title — recurring titles ("Tests: 2
+            # newly passing") collided forever, silently swallowing every
+            # later event with the same title (2026-07-05 audit).
             if atom.source_type in ('commit', 'merge'):
                 cur.execute(
                     "SELECT id FROM knowledge WHERE source_type = %s AND content->>'commit' = %s",
                     (atom.source_type, dedup_key)
                 )
             else:
-                # For test events, check by title + category
+                atom.content["dedup_key"] = dedup_key
                 cur.execute(
-                    "SELECT id FROM knowledge WHERE source_type = %s AND title = %s",
-                    (atom.source_type, atom.title)
+                    "SELECT id FROM knowledge WHERE source_type = %s AND content->>'dedup_key' = %s",
+                    (atom.source_type, dedup_key)
                 )
 
             if cur.fetchone():
