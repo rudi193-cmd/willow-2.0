@@ -482,6 +482,26 @@ def norn_pass(dry_run: bool = False, collections: list[str] | None = None) -> di
             report["signal_archive_error"] = str(_sae)
 
         try:
+            import importlib.util as _ilu
+            import os as _os
+            _fg_spec = _ilu.spec_from_file_location(
+                "filesystem_groom_pass", WILLOW_ROOT / "scripts" / "filesystem_groom_pass.py"
+            )
+            _fg_mod = _ilu.module_from_spec(_fg_spec)
+            _fg_spec.loader.exec_module(_fg_mod)
+            _apply_t1 = _os.environ.get("WILLOW_GROOM_NORN_APPLY_T1", "0") == "1"
+            _apply_t2 = _os.environ.get("WILLOW_GROOM_NORN_APPLY_T2", "0") == "1"
+            report["filesystem_groom"] = _fg_mod.groom_pass(
+                dry_run=not (_apply_t1 or _apply_t2),
+                apply_t1=_apply_t1,
+                apply_t2=_apply_t2,
+            )
+        except Exception as _fge:
+            import sys as _sys
+            print(f"[norn] filesystem groom pass error: {_fge}", file=_sys.stderr)
+            report["filesystem_groom_error"] = str(_fge)
+
+        try:
             from core import soil as _soil
             from core.dream_state import dream_conditions, queue_dream_task
             from core.wce_state import queue_wce_task, wce_conditions
