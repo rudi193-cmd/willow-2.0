@@ -1,0 +1,8 @@
+{
+  "name": "dream_synthesis",
+  "chore": "Cross-atom pattern synthesis for the AutoDream pipeline",
+  "model": "llama3.1:8b",
+  "verify_class": "containment",
+  "completion_authority": "mem_ratify queue only — synthesis is never fleet truth until ratified",
+  "options": {"temperature": 0.3, "num_ctx": 8192}
+}

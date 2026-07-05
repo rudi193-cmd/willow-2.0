@@ -1,0 +1,8 @@
+{
+  "name": "briefing_draft",
+  "chore": "Draft the operator's morning briefing from the nightly norn report",
+  "model": "llama3.2:3b",
+  "verify_class": "containment",
+  "completion_authority": "review surface only — the draft renders to the operator, it never acts",
+  "options": {"temperature": 0.2, "num_ctx": 4096}
+}

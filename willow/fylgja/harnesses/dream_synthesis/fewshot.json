@@ -1,0 +1,21 @@
+[
+  {
+    "input": "ATOMS:\n[A1] pg_bridge destructor deadlock fixed :: PgBridge.__del__ self-deadlocked psycopg2's pool lock during GC; destructors now enqueue to a lock-free deque.\n[A2] soil_client __del__ blocks 5s :: SoilClient.__del__ can block up to 5 seconds when GC'd on the event-loop thread while closing its exit stack.\n[A3] generation_store atexit clobber :: Per-instance atexit registration meant the oldest hot-reload generation persisted last, overwriting the pickle with stale data.\n[A4] jeles RRF fusion shipped :: Cross-source search results are now fused via shared reciprocal-rank fusion.",
+    "output": {
+      "insights": [
+        {
+          "kind": "recurring_cause",
+          "insight": "3 of 4 atoms (A1, A2, A3) are object-finalizer lifecycle bugs: cleanup logic running at GC/exit time interacted with a resource (pool lock, event loop, pickle file) whose state the finalizer cannot see. The fleet pattern is 'destructors must only enqueue, never operate'.",
+          "evidence_atom_ids": ["A1", "A2", "A3"],
+          "confidence": 0.85
+        }
+      ]
+    }
+  },
+  {
+    "input": "ATOMS:\n[B1] vault populated :: 3 API keys plus GH_TOKEN and DISCORD_BOT_TOKEN now live in the encrypted vault; gh authenticates via keyring.\n[B2] climate almanac scaffolded :: Catalog-first open index of public climate data; local repo only, org and domain unclaimed.",
+    "output": {
+      "insights": []
+    }
+  }
+]
