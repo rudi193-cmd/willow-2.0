@@ -322,11 +322,22 @@ from unittest.mock import MagicMock
 import willow.fylgja.events.pre_tool as _pt
 
 
-def _make_store(hit_count=0, flag_state=None):
-    """Return a mock WillowStore with configurable existing telemetry + flag state."""
+def _make_store(hit_count=0, flag_state=None, flag_opened=False):
+    """Return a mock WillowStore with configurable existing telemetry + flag state.
+
+    flag_opened models corpus/block_telemetry's one-shot marker (post-lifecycle-fix):
+    once True, _corpus_log_block never opens another willow/flags record for this
+    rule_key, regardless of hit_count or the flags collection's own flag_state —
+    that's what stops the board from re-cluttering on every later threshold multiple.
+    """
     store = MagicMock()
     telemetry_row = (
-        {"hit_count": hit_count, "runtimes": [], "first_seen": "2026-01-01T00:00:00+00:00"}
+        {
+            "hit_count": hit_count,
+            "runtimes": [],
+            "first_seen": "2026-01-01T00:00:00+00:00",
+            "flag_opened": flag_opened,
+        }
         if hit_count else {}
     )
     flag_row = {"flag_state": flag_state} if flag_state else {}
@@ -344,6 +355,10 @@ def _make_store(hit_count=0, flag_state=None):
 
 def _flag_puts(store):
     return [c for c in store.put.call_args_list if c.args and "flags" in str(c.args[0])]
+
+
+def _telemetry_puts(store):
+    return [c for c in store.put.call_args_list if c.args and "block_telemetry" in str(c.args[0])]
 
 
 def test_flag_not_opened_below_threshold():
@@ -370,10 +385,12 @@ def test_flag_opened_at_threshold():
     assert "Bash" in written.get("title", "")
     assert "Repeated enforcement" in written.get("title", "")
     assert written.get("source") == "block_telemetry"
+    telemetry = _telemetry_puts(store)
+    assert telemetry and telemetry[0].args[1].get("flag_opened") is True
 
 
 def test_flag_not_duplicated_when_already_open():
-    store = _make_store(hit_count=9, flag_state="open")
+    store = _make_store(hit_count=9, flag_state="open", flag_opened=True)
     with (
         patch("willow.fylgja.events.pre_tool._BLOCK_FLAG_THRESHOLD", 10),
         patch("core.store_port.get_store_port", return_value=store),
@@ -382,16 +399,21 @@ def test_flag_not_duplicated_when_already_open():
     assert not _flag_puts(store), "Should not re-open a flag that is already open"
 
 
-def test_flag_reopened_after_resolution():
-    store = _make_store(hit_count=9, flag_state="resolved")
+def test_flag_not_reopened_after_resolution():
+    """Lifecycle fix: once flag_opened is set, later threshold crossings (20, 30,
+    40, 70...) must NOT mint another willow/flags record even if the operator
+    resolved the earlier one — this is what stopped the board from re-cluttering
+    forever (flag-bash-attempt1-routing). The hit_count keeps climbing in
+    corpus/block_telemetry regardless; only the one-shot alert is suppressed."""
+    store = _make_store(hit_count=19, flag_state="resolved", flag_opened=True)
     with (
         patch("willow.fylgja.events.pre_tool._BLOCK_FLAG_THRESHOLD", 10),
         patch("core.store_port.get_store_port", return_value=store),
     ):
         _pt._corpus_log_block("Bash", "Use MCP instead of shell.", "sess1")
-    puts = _flag_puts(store)
-    assert puts, "Should reopen a flag that was previously resolved"
-    assert puts[0].args[1].get("flag_state") == "open"
+    assert not _flag_puts(store), "Should not reopen once flag_opened is set, even past another threshold multiple"
+    telemetry = _telemetry_puts(store)
+    assert telemetry and telemetry[0].args[1].get("hit_count") == 20, "Counter still climbs in telemetry"
 
 
 # ── Per-session Bash counter ──────────────────────────────────────────────────
