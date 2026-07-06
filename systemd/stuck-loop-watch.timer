@@ -1,0 +1,12 @@
+[Unit]
+Description=Willow Stuck-Loop Watchdog — periodic pass (15 min)
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+
+[Timer]
+OnUnitActiveSec=15min
+OnBootSec=5min
+Persistent=true
+Unit=stuck-loop-watch.service
+
+[Install]
+WantedBy=timers.target
