@@ -210,6 +210,156 @@
         "interval_sec": 604800
       },
       "harness": null
+    },
+    {
+      "id": "hook-post-commit",
+      "status": "active",
+      "trigger": {
+        "kind": "hook",
+        "event": "post_commit"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/hooks/post_commit.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "handler exits 0 and commit atoms reach intake when invoked"
+      },
+      "attention": "git commit metadata + changed paths in active repo",
+      "exit": "one invocation per post_commit event",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "hook_post_commit",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "hook-post-merge",
+      "status": "active",
+      "trigger": {
+        "kind": "hook",
+        "event": "post_merge"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/hooks/post_merge.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "handler exits 0 and merge atoms reach intake when invoked"
+      },
+      "attention": "git merge metadata + branch refs in active repo",
+      "exit": "one invocation per post_merge event",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "hook_post_merge",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "hook-test-completion",
+      "status": "active",
+      "trigger": {
+        "kind": "hook",
+        "event": "test_completion"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/hooks/completion_hook.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "handler exits 0 and test completion receipt is recorded"
+      },
+      "attention": "pytest completion payload + session context",
+      "exit": "one invocation per test_completion event",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "hook_test_completion",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "hook-edge-linking",
+      "status": "active",
+      "trigger": {
+        "kind": "hook",
+        "event": "edge_linking"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/hooks/edge_linking.py",
+        "model": null
+      },
+      "verify": {
+        "class": "schema",
+        "predicate": "proposed edges carry source_atom, target_atom, and edge_type"
+      },
+      "attention": "KB atoms eligible for binder edge proposals",
+      "exit": "one invocation per edge_linking event",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "hook_edge_linking",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "hook-stop-slow",
+      "status": "active",
+      "trigger": {
+        "kind": "hook",
+        "event": "stop_slow"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/fylgja/events/stop_slow.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "slow-stop handler exits 0 and session state is persisted"
+      },
+      "attention": "Fylgja Stop hook payload + active session context",
+      "exit": "one invocation per stop_slow event",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "hook_stop_slow",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "hook-shutdown",
+      "status": "active",
+      "trigger": {
+        "kind": "hook",
+        "event": "shutdown"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/fylgja/events/shutdown.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "shutdown pipeline exits 0 and handoff atoms are written"
+      },
+      "attention": "session handoff + KB audit pipeline on graceful close",
+      "exit": "one invocation per shutdown event",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "hook_shutdown",
+        "interval_sec": 86400
+      },
+      "harness": null
     }
   ]
 }
