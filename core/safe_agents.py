@@ -45,6 +45,8 @@ FLEET_AGENTS: dict[str, dict[str, str]] = {
     "loki":        {"trust": "OPERATOR", "role": "Fleet accountant."},
     "vishwakarma": {"trust": "ENGINEER", "role": "Divine architect. Builder of the SAFE App Store."},
     "orin":        {"trust": "ENGINEER", "role": "7b batch processor (Ollama sub-agent)."},
+    "schmidt":     {"trust": "WORKER",   "role": "Grant coordinator and proposal strategist for Schmidt Sciences Tier 1 (sean/schmidt workspace)."},
+    "publius":     {"trust": "WORKER",   "role": "Deliberative architect of institutions; debates, drafts, and ratifies."},
 }
 
 TRUST_TIERS: dict[str, list[str]] = {
@@ -128,6 +130,7 @@ AGENT_PERMISSION_EXTRA: dict[str, list[str]] = {
     ],
     "ada": ["fleet_health", "kb_backup"],
     "steve": ["agent_dispatch", "fleet_governance"],
+    "schmidt": ["store_write", "knowledge_write"],
 }
 
 # Full permission list (replaces trust tier)

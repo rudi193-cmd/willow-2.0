@@ -243,6 +243,24 @@
         "python": "fleet"
       },
       "note": "Civic Almanac vertical — same MCP env pattern as climate-almanac."
+    },
+    "schmidt": {
+      "path": "{{HOME}}/Desktop/Nest/schmidt",
+      "agent": "schmidt",
+      "profile": "core",
+      "servers": ["willow"],
+      "ides": ["cursor"],
+      "env": {
+        "WILLOW_HANDOFF_PROJECT": "sean/schmidt"
+      },
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": false,
+        "python": "fleet"
+      },
+      "note": "Schmidt Sciences Tier 1 grant workspace — SOIL lane sean/schmidt/*, agent schmidt."
     }
   }
 }
