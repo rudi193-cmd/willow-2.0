@@ -6,7 +6,6 @@ confirm-vs-override event classification, the intake poisoning regression
 corrections counter, and the rule-delta flag threshold.
 """
 
-import json
 from pathlib import Path
 
 import pytest
