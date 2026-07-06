@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 from willow.fylgja.loops.registry import (
+    HEARTBEAT_SOIL_COLLECTION,
+    WATCHMEN_SOIL_OVERRIDES,
     load_registry,
     load_seed,
     recount,
     validate_loop,
     validate_registry,
+    watchmen_targets,
 )
 
 
@@ -147,3 +150,27 @@ def test_cli_validate_recount_exit_codes():
     from willow.fylgja.loops import __main__ as cli
 
     assert cli.main(["--validate", "--json"]) == 0
+
+
+def test_watchmen_targets_cover_active_seed_loops():
+    loops = load_seed()["loops"]
+    active = [loop for loop in loops if loop.get("status") != "retired"]
+    targets = watchmen_targets(loops)
+    assert len(targets) == len(active)
+    assert targets["upstream_watcher"] == WATCHMEN_SOIL_OVERRIDES["upstream_watcher"]
+    assert targets["kart_worker"] == (HEARTBEAT_SOIL_COLLECTION, "kart_worker")
+    assert "willow_bridge_cross_runtime" not in targets
+
+
+def test_validate_registry_rejects_duplicate_watchmen_key():
+    loops = load_seed()["loops"]
+    dup = dict(loops[0])
+    dup["id"] = "dup-loop"
+    problems = validate_registry(loops + [dup])
+    assert any("duplicate watchmen_key" in p for p in problems)
+
+
+def test_get_watchmen_matches_registry():
+    from core.watchmen import get_watchmen
+
+    assert get_watchmen() == watchmen_targets(load_seed()["loops"])

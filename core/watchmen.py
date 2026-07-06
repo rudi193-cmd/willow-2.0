@@ -15,14 +15,16 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Callable
 
-# service name → (SOIL collection, record id) where its heartbeat lives
-WATCHMEN: dict[str, tuple[str, str]] = {
-    "upstream_watcher": ("upstream_steward/heartbeat", "main"),
-    # boot-sentinel watchdog (willow-config fleet-dispatch, systemd user
-    # timer every 15 min) — the watchman that watches the boot gate needs
-    # a watchman of its own.
-    "sentinel_watchdog": ("fleet_dispatch/heartbeat", "sentinel_watchdog"),
-}
+def get_watchmen() -> dict[str, tuple[str, str]]:
+    """Service name → (SOIL collection, record id); derived from the loop registry."""
+    try:
+        from willow.fylgja.loops.registry import watchmen_targets
+
+        return watchmen_targets()
+    except Exception:
+        from willow.fylgja.loops.registry import WATCHMEN_SOIL_OVERRIDES
+
+        return dict(WATCHMEN_SOIL_OVERRIDES)
 
 # heartbeat older than STALE_FACTOR × interval ⇒ stale
 STALE_FACTOR = 2.0
@@ -70,7 +72,7 @@ def heartbeat_health(record: dict | None, now: datetime | None = None) -> dict:
 def check_watchmen(soil_get: Callable[[str, str], dict | None]) -> dict:
     """Read every registered heartbeat via the provided soil getter."""
     out: dict = {}
-    for name, (collection, record_id) in WATCHMEN.items():
+    for name, (collection, record_id) in get_watchmen().items():
         try:
             out[name] = heartbeat_health(soil_get(collection, record_id))
         except Exception as exc:
