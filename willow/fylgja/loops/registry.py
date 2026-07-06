@@ -8,6 +8,12 @@ from pathlib import Path
 from typing import Callable
 
 SOIL_COLLECTION = "willow/loops"
+HEARTBEAT_SOIL_COLLECTION = "willow/loops/heartbeat"
+# Pre-registry services already write heartbeats outside the default collection.
+WATCHMEN_SOIL_OVERRIDES: dict[str, tuple[str, str]] = {
+    "upstream_watcher": ("upstream_steward/heartbeat", "main"),
+    "sentinel_watchdog": ("fleet_dispatch/heartbeat", "sentinel_watchdog"),
+}
 VERIFY_CLASSES = frozenset({"recount", "exitcode", "schema", "coverage", "containment"})
 ON_FAILURE = frozenset({"self_heal", "queue_decision", "open_flag"})
 REVIEW_QUEUES = frozenset({"mem_ratify", "human_required"})
@@ -132,15 +138,41 @@ def validate_loop(loop: dict) -> list[str]:
     return problems
 
 
+def watchmen_targets(loops: list[dict] | None = None) -> dict[str, tuple[str, str]]:
+    """Map watchmen_key → (SOIL collection, record id) for active loop records."""
+    loops = loops if loops is not None else load_registry()
+    out: dict[str, tuple[str, str]] = {}
+    for loop in loops:
+        if loop.get("status", "active") == "retired":
+            continue
+        hb = loop.get("heartbeat") or {}
+        key = str(hb.get("watchmen_key") or "").strip()
+        if not key:
+            continue
+        if key in WATCHMEN_SOIL_OVERRIDES:
+            out[key] = WATCHMEN_SOIL_OVERRIDES[key]
+        else:
+            coll = str(hb.get("soil_collection") or HEARTBEAT_SOIL_COLLECTION)
+            rid = str(hb.get("soil_record_id") or key)
+            out[key] = (coll, rid)
+    return out
+
+
 def validate_registry(loops: list[dict] | None = None) -> list[str]:
     loops = loops if loops is not None else load_registry()
     problems: list[str] = []
     seen: set[str] = set()
+    seen_watchmen: set[str] = set()
     for loop in loops:
         lid = str(loop.get("id") or "")
         if lid in seen:
             problems.append(f"duplicate id: {lid}")
         seen.add(lid)
+        wkey = str((loop.get("heartbeat") or {}).get("watchmen_key") or "").strip()
+        if wkey:
+            if wkey in seen_watchmen:
+                problems.append(f"duplicate watchmen_key: {wkey}")
+            seen_watchmen.add(wkey)
         problems.extend(validate_loop(loop))
     return problems
 

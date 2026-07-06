@@ -12,8 +12,8 @@ import pytest
 from core.watchmen import (
     DEFAULT_INTERVAL_S,
     STALE_FACTOR,
-    WATCHMEN,
     check_watchmen,
+    get_watchmen,
     heartbeat_health,
 )
 
@@ -92,8 +92,9 @@ def test_stale_wins_over_degraded():
 
 def test_check_watchmen_reads_registered_heartbeats():
     fresh = _hb(age_s=5)
+    targets = get_watchmen()
     result = check_watchmen(lambda coll, rid: fresh)
-    assert set(result) == set(WATCHMEN)
+    assert set(result) == set(targets)
     assert result["upstream_watcher"]["status"] == "ok"
 
 
@@ -114,7 +115,7 @@ def test_watcher_heartbeat_roundtrips_through_soil(store_root):
     uw._gh_status.update(ok=False, error="HTTP 401: Bad credentials")
     uw._write_heartbeat(interval_sec=900, tick_ok=True, counts={"new": 3})
 
-    collection, record_id = WATCHMEN["upstream_watcher"]
+    collection, record_id = get_watchmen()["upstream_watcher"]
     record = soil.get(collection, record_id)
     assert record is not None
     assert record["gh_ok"] is False
@@ -133,9 +134,10 @@ def test_watcher_heartbeat_roundtrips_through_soil(store_root):
 # ── sentinel watchdog (willow-config fleet-dispatch) registration ────────────
 
 def test_sentinel_watchdog_is_registered():
-    assert "sentinel_watchdog" in WATCHMEN
-    assert WATCHMEN["sentinel_watchdog"] == ("fleet_dispatch/heartbeat",
-                                             "sentinel_watchdog")
+    targets = get_watchmen()
+    assert "sentinel_watchdog" in targets
+    assert targets["sentinel_watchdog"] == ("fleet_dispatch/heartbeat",
+                                           "sentinel_watchdog")
 
 
 def test_sentinel_watchdog_heartbeat_roundtrips_through_soil(store_root):
@@ -144,7 +146,7 @@ def test_sentinel_watchdog_heartbeat_roundtrips_through_soil(store_root):
     from datetime import datetime, timezone
     from core import soil
 
-    collection, record_id = WATCHMEN["sentinel_watchdog"]
+    collection, record_id = get_watchmen()["sentinel_watchdog"]
 
     # Absent before the first timer run — a never-installed watchdog is
     # visible, not silent.
