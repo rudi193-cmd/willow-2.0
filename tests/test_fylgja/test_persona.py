@@ -96,11 +96,12 @@ def test_persona_boot_overlay_path_missing_persona():
     assert p.persona_boot_overlay_path("none") is None
 
 
-def test_boot_step7_documents_persona_overlay_convention():
+def test_boot_phase1_documents_persona_overlay_convention():
     boot = (p._repo_root() / "willow/fylgja/skills/boot.md").read_text(encoding="utf-8")
     assert "{persona}-boot.md" in boot
-    assert "skip silently" in boot
-    assert "oakenscroll" not in boot.split("**7. Persona**")[1].split("**8.")[0]
+    assert "when it exists" in boot
+    phase1 = boot.split("## Phase 1 — Persona")[1].split("## Phase 2")[0]
+    assert "oakenscroll" not in phase1
 
 
 def test_repo_persona_files_are_registered_and_have_boot_overlays():

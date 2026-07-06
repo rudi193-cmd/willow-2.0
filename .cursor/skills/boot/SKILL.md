@@ -160,7 +160,7 @@ Then respond to the user.
 
 ## Handoff authoring — v2 schema
 
-Write session handoffs to `$WILLOW_HOME/handoffs/{agent}/` — **not** `docs/handoffs/` (that directory contains old-format files and will produce the wrong schema).
+Write session handoffs to `$WILLOW_HOME/handoffs/{agent}/` — **not** `docs/handoffs/` (that directory contains old-format files and will produce the wrong schema). Artifact templates: `docs/templates/README.md`.
 
 Filename pattern: `session_handoff-{date}{letter}_{agent}.md` (e.g. `session_handoff-2026-05-26d_hanuman.md`).
 
