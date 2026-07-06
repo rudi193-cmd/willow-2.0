@@ -357,6 +357,7 @@ def groom(now: datetime | None = None) -> dict:
     never deleted. Returns counts per disposition.
     """
     now = now or datetime.now(timezone.utc)
+    archive_date = now.strftime("%Y-%m-%d")
     # Count archive() *successes*, not attempts — the first live run reported
     # 188 archived while 188 remained, because legacy raw-id rows were
     # unaddressable and every disposition was counted unconditionally.
@@ -406,7 +407,7 @@ def groom(now: datetime | None = None) -> dict:
 
         if bucket is None:
             continue
-        if soil.archive(_SOIL_PENDING, wid, record=record_override):
+        if soil.archive(_SOIL_PENDING, wid, date=archive_date, record=record_override):
             counts[bucket] += 1
         else:
             counts["failed"] += 1
