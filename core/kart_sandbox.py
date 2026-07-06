@@ -619,6 +619,41 @@ def unreachable_notes(cmd: str, manifest: dict) -> list[str]:
     return notes
 
 
+# Matches a standalone `rtk` command token (not part of another word or path)
+# so a rewritten command's `rtk <subcommand>` segments can be repointed at our
+# vetted binary regardless of its on-disk filename or PATH.
+_RTK_TOKEN_RE = re.compile(r"(?<![\w./-])rtk(?=\s)")
+
+
+def _rtk_rewrite(cmd: str, config: dict) -> str:
+    """Rewrite `cmd` through the vetted rtk-plus binary for output-token
+    compression, when enabled in kart-sandbox.json's rtk_compress block.
+    Fails open (returns cmd unchanged) on any error, missing binary, or when
+    rtk itself declines to rewrite — never blocks execution."""
+    rtk_cfg = (config or {}).get("rtk_compress") or {}
+    if not rtk_cfg.get("enabled"):
+        return cmd
+    binary = os.path.expanduser(rtk_cfg.get("binary", "~/.willow/bin/rtk-plus"))
+    if not os.path.isfile(binary):
+        return cmd
+    try:
+        result = subprocess.run(
+            [binary, "rewrite", cmd],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            env={"PATH": os.environ.get("PATH", ""), "RTK_TELEMETRY_DISABLED": "1"},
+        )
+    except Exception:
+        return cmd
+    if result.returncode != 0:
+        return cmd
+    rewritten = result.stdout.strip()
+    if not rewritten or rewritten == cmd:
+        return cmd
+    return _RTK_TOKEN_RE.sub(binary, rewritten)
+
+
 def run_shell(
     cmd: str,
     *,
@@ -647,6 +682,10 @@ def run_shell(
             "elapsed_s": 0.0,
             "sandbox": "none",
         }
+
+    original_cmd = cmd
+    cmd = _rtk_rewrite(cmd, load_sandbox_config())
+    rtk_rewritten = cmd != original_cmd
 
     # Use bash -c so shell operators (&&, |, $(), redirects) work correctly.
     bash = _sandbox_bash()
@@ -702,6 +741,8 @@ def run_shell(
             "elapsed_s": elapsed,
             "sandbox": sandbox,
         }
+        if rtk_rewritten:
+            out["rtk_rewritten"] = True
         if setup is not None:
             out["sandbox_setup"] = setup
             if setup == "failed":
