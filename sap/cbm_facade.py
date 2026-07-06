@@ -194,6 +194,54 @@ def search(
     return data
 
 
+def search_code(
+    pattern: str,
+    *,
+    limit: int = 10,
+    project: str = "",
+    mode: str = "compact",
+    file_pattern: str = "",
+    path_filter: str = "",
+    regex: bool = False,
+    context: int = 0,
+    exclude_tests: bool = True,
+) -> dict:
+    """Bounded search_code (grep-augmented-by-graph text/pattern search, F-003 LIMIT enforced).
+
+    This is the actual grep/rg/find replacement — search()/search_graph above is a
+    structural graph query, not free-text pattern search.
+    """
+    proj = project or project_name()
+    lim = _clamp(limit, MAX_LIMIT)
+    payload: dict[str, Any] = {
+        "pattern": pattern,
+        "project": proj,
+        "limit": lim,
+        "mode": mode,
+        "regex": bool(regex),
+    }
+    if file_pattern:
+        payload["file_pattern"] = file_pattern
+    if path_filter:
+        payload["path_filter"] = path_filter
+    if context:
+        payload["context"] = _clamp(context, 20)
+    data = cli("search_code", payload)
+    if data.get("error"):
+        return {**data, "limitations": LIMITATIONS}
+    results = data.get("results") or []
+    if exclude_tests:
+        filtered = [
+            r for r in results
+            if not _is_test_path(r.get("file") or r.get("file_path") or "")
+        ]
+        data["results"] = filtered[:lim]
+        data["filtered_tests"] = len(results) - len(filtered)
+    data["limitations"] = LIMITATIONS
+    data["project"] = proj
+    return data
+
+
 def trace(
     function_name: str,
     *,
