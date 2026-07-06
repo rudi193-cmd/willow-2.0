@@ -10,10 +10,10 @@ from willow.fylgja.loops.registry import (
 )
 
 
-def test_seed_loads_eight_loops():
+def test_seed_loads_twenty_five_loops():
     seed = load_seed()
     assert seed["version"] == 1
-    assert len(seed["loops"]) == 8
+    assert len(seed["loops"]) == 25
 
 
 def test_validate_registry_seed_ok():
@@ -56,6 +56,26 @@ def test_recount_repo_timers_match_seed(monkeypatch):
     assert result["reality_timer_source"] == "repo_systemd_dir"
     assert result["missing_in_reality"] == []
     assert result["untracked_timers"] == []
+    assert result["missing_daemon_in_reality"] == []
+    assert result["untracked_daemons"] == []
+
+
+def test_recount_daemon_repo_match_seed(monkeypatch):
+    monkeypatch.setattr(
+        "willow.fylgja.loops.registry._live_systemd_timers",
+        lambda: None,
+    )
+    loops = load_seed()["loops"]
+    daemon_units = {
+        str((loop.get("trigger") or {}).get("unit"))
+        for loop in loops
+        if (loop.get("trigger") or {}).get("kind") == "daemon"
+    }
+    result = recount(loops)
+    assert daemon_units
+    assert result["registry_daemon_count"] == len(daemon_units)
+    assert result["missing_daemon_in_reality"] == []
+    assert result["untracked_daemons"] == []
 
 
 def test_recount_external_timers_excluded(monkeypatch):
@@ -64,6 +84,39 @@ def test_recount_external_timers_excluded(monkeypatch):
     assert "sentinel-watchdog.timer" in result["external_timers"]
     assert "kb-snapshot-refresh.timer" in result["external_timers"]
     assert "sentinel-watchdog.timer" not in result["missing_in_reality"]
+
+
+def test_retired_bridge_timer_excluded_from_untracked(monkeypatch):
+    monkeypatch.setattr(
+        "willow.fylgja.loops.registry._live_systemd_timers",
+        lambda: None,
+    )
+    loops = load_seed()["loops"]
+    bridge = next(loop for loop in loops if loop["id"] == "willow-bridge-cross-runtime")
+    assert bridge["status"] == "retired"
+    result = recount(loops)
+    assert "willow-bridge-cross-runtime.timer" in result["retired_timers"]
+    assert "willow-bridge-cross-runtime.timer" not in result["untracked_timers"]
+
+
+def test_recount_hook_registry_match_seed(monkeypatch):
+    monkeypatch.setattr(
+        "willow.fylgja.loops.registry._live_systemd_timers",
+        lambda: None,
+    )
+    loops = load_seed()["loops"]
+    hook_events = {
+        str((loop.get("trigger") or {}).get("event"))
+        for loop in loops
+        if (loop.get("trigger") or {}).get("kind") == "hook"
+    }
+    monkeypatch.setattr(
+        "willow.fylgja.loops.registry._hook_names",
+        lambda: hook_events,
+    )
+    result = recount(loops)
+    assert result["hook_drift"]["missing_in_reality"] == []
+    assert result["hook_drift"]["missing_in_registry"] == []
 
 
 def test_validate_registry_ignores_soil_meta_keys():

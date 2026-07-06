@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 from typing import Callable
@@ -12,6 +13,14 @@ ON_FAILURE = frozenset({"self_heal", "queue_decision", "open_flag"})
 REVIEW_QUEUES = frozenset({"mem_ratify", "human_required"})
 _TRIGGER_KINDS = frozenset({"timer", "hook", "daemon"})
 _SOIL_META_KEYS = frozenset({"_id", "_soil_id"})
+_ONESHOT_SERVICE_UNITS = frozenset({
+    "hook-wiring-audit.service",
+    "repo-fleet-sweep.service",
+    "willow-bridge-cross-runtime.service",
+    "willow-metabolic.service",
+    "willow-w8-census.service",
+    "willow-wce.service",
+})
 
 
 def _strip_soil_meta(record: dict) -> dict:
@@ -146,6 +155,25 @@ def _repo_timer_units() -> set[str]:
     return units
 
 
+def _repo_daemon_units() -> set[str]:
+    """Long-running Type=simple (or non-oneshot) services vendored under systemd/."""
+    units: set[str] = set()
+    systemd = Path(__file__).resolve().parents[3] / "systemd"
+    if not systemd.is_dir():
+        return units
+    for svc in systemd.glob("*.service"):
+        if svc.name in _ONESHOT_SERVICE_UNITS:
+            continue
+        try:
+            text = svc.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if re.search(r"^Type\s*=\s*oneshot\b", text, re.MULTILINE | re.IGNORECASE):
+            continue
+        units.add(svc.name)
+    return units
+
+
 def _live_systemd_timers() -> set[str] | None:
     try:
         proc = subprocess.run(
@@ -198,7 +226,23 @@ def recount(loops: list[dict] | None = None) -> dict:
     }
     registry_hooks.discard("")
 
+    registry_daemons = {
+        str((loop.get("trigger") or {}).get("unit"))
+        for loop in active
+        if (loop.get("trigger") or {}).get("kind") == "daemon"
+    }
+    registry_daemons.discard("")
+
+    retired_timers = {
+        str((loop.get("trigger") or {}).get("unit"))
+        for loop in loops
+        if loop.get("status") == "retired"
+        and (loop.get("trigger") or {}).get("kind") == "timer"
+    }
+    retired_timers.discard("")
+
     repo_timers = _repo_timer_units()
+    repo_daemons = _repo_daemon_units()
     live_timers = _live_systemd_timers()
     live_hooks = _hook_names()
 
@@ -210,10 +254,10 @@ def recount(loops: list[dict] | None = None) -> dict:
         missing_in_reality = sorted(tracked_registry - repo_timers)
         reality_source = "repo_systemd_dir"
 
-    untracked_timers = sorted(
-        u for u in (repo_timers - registry_timers)
-        if "bridge-cross-runtime" not in u
-    )
+    untracked_timers = sorted(repo_timers - registry_timers - retired_timers)
+
+    missing_daemon_in_reality = sorted(registry_daemons - repo_daemons)
+    untracked_daemons = sorted(repo_daemons - registry_daemons)
 
     hook_drift: dict[str, list[str]] = {"missing_in_registry": [], "missing_in_reality": []}
     if live_hooks is not None and registry_hooks:
@@ -221,6 +265,7 @@ def recount(loops: list[dict] | None = None) -> dict:
         hook_drift["missing_in_registry"] = sorted(live_hooks - registry_hooks)
 
     ok = not missing_in_reality and not untracked_timers
+    ok = ok and not missing_daemon_in_reality and not untracked_daemons
     if live_hooks is not None and registry_hooks:
         ok = ok and not hook_drift["missing_in_reality"] and not hook_drift["missing_in_registry"]
 
@@ -231,6 +276,10 @@ def recount(loops: list[dict] | None = None) -> dict:
         "external_timers": sorted(external_timers),
         "missing_in_reality": missing_in_reality,
         "untracked_timers": untracked_timers,
+        "registry_daemon_count": len(registry_daemons),
+        "retired_timers": sorted(retired_timers),
+        "missing_daemon_in_reality": missing_daemon_in_reality,
+        "untracked_daemons": untracked_daemons,
         "hook_drift": hook_drift,
         "live_hooks_available": live_hooks is not None,
     }

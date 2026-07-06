@@ -55,6 +55,266 @@
       "harness": null
     },
     {
+      "id": "willow-grove-listen",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "willow-grove-listen.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/grove_listen.py",
+        "model": null
+      },
+      "verify": {
+        "class": "coverage",
+        "predicate": "grove-monitor.log advances when Postgres NOTIFY fires on watched channels"
+      },
+      "attention": "Postgres Grove LISTEN/NOTIFY + /tmp/grove-monitor.log",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "grove_listen",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "grove-serve",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "grove-serve.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "core/grove_serve.py",
+        "model": null
+      },
+      "verify": {
+        "class": "coverage",
+        "predicate": "HTTP /health responds and FRANK watch loop records last tick"
+      },
+      "attention": "Grove REST API + FRANK ledger watch loop on port 7777",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "grove_serve",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "grove-mcp",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "grove-mcp.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "grove/mcp_local.py",
+        "model": null
+      },
+      "verify": {
+        "class": "coverage",
+        "predicate": "streamable-HTTP MCP serves tools and NOTIFY push stays connected"
+      },
+      "attention": "Postgres Grove bus + MCP streamable-HTTP transport",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "grove_mcp",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "kart-worker",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "kart-worker.service"
+      },
+      "task": {
+        "kind": "shell",
+        "ref": "willow.sh kart-worker",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "pending tasks drain and completed tasks carry returncode in Postgres"
+      },
+      "attention": "Postgres tasks table + bwrap sandbox executor",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "kart_worker",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "willow-mcp",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "willow-mcp.service"
+      },
+      "task": {
+        "kind": "shell",
+        "ref": "sap/willow_mcp.sh --http",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "SAP MCP HTTP transport accepts /mcp health checks"
+      },
+      "attention": "Willow SAP MCP server process + IDE SSE clients",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "willow_mcp",
+        "interval_sec": 3600
+      },
+      "harness": null
+    },
+    {
+      "id": "orin-worker",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "orin-worker.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "agents/orin/worker.py",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "batch inference jobs dequeue and complete without backlog growth"
+      },
+      "attention": "Ollama mistral:7b batch queue + agents.orin worker loop",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "orin_worker",
+        "interval_sec": 3600
+      },
+      "harness": null
+    },
+    {
+      "id": "nest-watcher",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "nest-watcher.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "tools/nest_watcher.py",
+        "model": null
+      },
+      "verify": {
+        "class": "coverage",
+        "predicate": "new Nest drop items post Grove heimdallr notifications"
+      },
+      "attention": "Nest drop zones under ~/Desktop/Nest",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "nest_watcher",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "journal-watcher",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "journal-watcher.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "agents/hanuman/bin/journal_watcher.py",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "unresponded ::saga journal entries decrease after responder runs"
+      },
+      "attention": "Postgres journal_entries with ::saga tag",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "journal_watcher",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "willow-discord-responder",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "willow-discord-responder.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "scripts/willow_discord_responder.py",
+        "model": null
+      },
+      "verify": {
+        "class": "coverage",
+        "predicate": "Discord fallback responder polls Grove and posts replies when no IDE session is live"
+      },
+      "attention": "Discord REST bridge + Grove hanuman channel",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "willow_discord_responder",
+        "interval_sec": 3600
+      },
+      "harness": null
+    },
+    {
+      "id": "drop-server",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "drop-server.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "tools/drop_server.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "HTTPS upload endpoint accepts Nest intake without process exit"
+      },
+      "attention": "Nest HTTPS drop server + ~/Desktop/Nest upload path",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "drop_server",
+        "interval_sec": 3600
+      },
+      "harness": null
+    },
+    {
       "id": "hook-wiring-audit",
       "status": "active",
       "trigger": {
@@ -208,6 +468,182 @@
       "heartbeat": {
         "watchmen_key": "willow_wce",
         "interval_sec": 604800
+      },
+      "harness": null
+    },
+    {
+      "id": "hook-post-commit",
+      "status": "active",
+      "trigger": {
+        "kind": "hook",
+        "event": "post_commit"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/hooks/post_commit.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "handler exits 0 and commit atoms reach intake when invoked"
+      },
+      "attention": "git commit metadata + changed paths in active repo",
+      "exit": "one invocation per post_commit event",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "hook_post_commit",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "hook-post-merge",
+      "status": "active",
+      "trigger": {
+        "kind": "hook",
+        "event": "post_merge"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/hooks/post_merge.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "handler exits 0 and merge atoms reach intake when invoked"
+      },
+      "attention": "git merge metadata + branch refs in active repo",
+      "exit": "one invocation per post_merge event",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "hook_post_merge",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "hook-test-completion",
+      "status": "active",
+      "trigger": {
+        "kind": "hook",
+        "event": "test_completion"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/hooks/completion_hook.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "handler exits 0 and test completion receipt is recorded"
+      },
+      "attention": "pytest completion payload + session context",
+      "exit": "one invocation per test_completion event",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "hook_test_completion",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "hook-edge-linking",
+      "status": "active",
+      "trigger": {
+        "kind": "hook",
+        "event": "edge_linking"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/hooks/edge_linking.py",
+        "model": null
+      },
+      "verify": {
+        "class": "schema",
+        "predicate": "proposed edges carry source_atom, target_atom, and edge_type"
+      },
+      "attention": "KB atoms eligible for binder edge proposals",
+      "exit": "one invocation per edge_linking event",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "hook_edge_linking",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "hook-stop-slow",
+      "status": "active",
+      "trigger": {
+        "kind": "hook",
+        "event": "stop_slow"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/fylgja/events/stop_slow.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "slow-stop handler exits 0 and session state is persisted"
+      },
+      "attention": "Fylgja Stop hook payload + active session context",
+      "exit": "one invocation per stop_slow event",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "hook_stop_slow",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "hook-shutdown",
+      "status": "active",
+      "trigger": {
+        "kind": "hook",
+        "event": "shutdown"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/fylgja/events/shutdown.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "shutdown pipeline exits 0 and handoff atoms are written"
+      },
+      "attention": "session handoff + KB audit pipeline on graceful close",
+      "exit": "one invocation per shutdown event",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "hook_shutdown",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
+      "id": "willow-bridge-cross-runtime",
+      "status": "retired",
+      "trigger": {
+        "kind": "timer",
+        "spec": "OnCalendar=*-*-* 06:00:00 (retired ADR-20260703)",
+        "unit": "willow-bridge-cross-runtime.timer"
+      },
+      "task": {
+        "kind": "shell",
+        "ref": "willow.sh bridge-cross-runtime",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "cross_runtime.ensure_fresh_bridge rebuilds handoff bridge at read time without a scheduled timer"
+      },
+      "attention": "SOIL cross-runtime bridge artifact (superseded by SessionStart read-time rebuild)",
+      "exit": "timer retired \u2014 disable with scripts/uninstall_bridge_timer.sh on existing installs",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "willow_bridge_cross_runtime",
+        "interval_sec": 86400
       },
       "harness": null
     }
