@@ -21,11 +21,9 @@ from pathlib import Path
 
 from willow.fylgja.willow_home import willow_home
 
-_FLEET_HOME = willow_home()
+from sap.core import nest_rules
 
-# Version of the classification ruleset below. Bump when keyword lists change
-# so stored predictions indict the ruleset that actually made them.
-CLASSIFIER_VERSION = "b2da2-seed-1"
+_FLEET_HOME = willow_home()
 
 # Overrides of the same (predicted → outcome, ext) pattern before a
 # rule-delta flag opens for human ratification.
@@ -56,47 +54,8 @@ TRACK_TO_DEST = {
 
 
 def _classify(filename: str) -> str | None:
-    """Inline classifier — mirrors classify.py without import dependency."""
-    import re
-    n = filename.lower()
-    ext = Path(filename).suffix.lower()
-
-    if re.match(r"^\d{4}-\d{2}-\d{2}\.md$", filename):
-        return "journal"
-
-    legal = ["earnings_statement", "form_b", "debtor", "bankruptcy", "loa_extension",
-             "physical therapy", "work status report", "healthcare and workers",
-             "debtorcc", "approved leave", "return to work", "notice leave",
-             "adobe scan", "3dkxz"]
-    if any(k in n for k in legal):
-        return "legal"
-
-    handoffs = ["session_handoff", "handoff_", "master_handoff"]
-    if any(k in n for k in handoffs):
-        return "handoffs"
-
-    knowledge = ["knowledge_extraction", "campbell_sean_knowledge", "aionic_record"]
-    if any(k in n for k in knowledge):
-        return "knowledge"
-
-    specs = ["architecture", "utety", "willow", "working_paper", "llmphysics",
-             "world_bible", "oakenscroll", "readme", "changelog", "specs"]
-    if any(k in n for k in specs):
-        return "specs"
-
-    narrative = ["regarding jane", "chapter", "dispatch", "gerald", "professor",
-                 "author's note", "books of mann"]
-    if any(k in n for k in narrative):
-        return "narrative"
-
-    if ext in (".jpg", ".jpeg", ".png"):
-        if any(k in n for k in ["feeld", "facebook", "messages"]):
-            return "photos_personal"
-        if re.match(r"^\d{8}_\d{6}|^\d{13}\.", filename):
-            return "photos_camera"
-        return "screenshots"
-
-    return None
+    """Classify via the rules store (seed template + local overrides)."""
+    return nest_rules.classify(filename)
 
 
 def _track_for_dest(dest: Path) -> str:
@@ -123,7 +82,7 @@ def _prediction_for(filename: str, proposed_dest: str | None) -> dict:
         "dest": proposed_dest,
         "method": "heuristic" if track else "none",
         "confidence": 0.70 if track else 0.0,
-        "classifier_version": CLASSIFIER_VERSION,
+        "classifier_version": nest_rules.version(),
     }
 
 
@@ -264,9 +223,10 @@ def _record_correction(prediction: dict, outcome_track: str, filename: str, agen
                 "hit_count": int(record["count"]),
                 "sample_reason": f"e.g. {samples}",
                 "fix_path": (f"Propose keyword/rule delta moving this pattern to "
-                             f"'{outcome_track}' in nest classify (see "
+                             f"'{outcome_track}' in the nest rules store (see "
                              f"corpus/nest_corrections {record_id}); human ratifies, "
-                             f"then bump CLASSIFIER_VERSION."),
+                             f"delta applies to $WILLOW_HOME/nest_rules.json and "
+                             f"bumps its version."),
                 "opened_at": now,
                 "b17": "B2DA2",
             })

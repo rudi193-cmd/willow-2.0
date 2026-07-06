@@ -1,0 +1,88 @@
+{
+  "schema": "nest-rules/v1",
+  "version": "seed-1",
+  "history": [],
+  "ignore": {
+    "names": [
+      "desktop.ini", "thumbs.db", "ntuser.dat", "ntuser.ini",
+      "boot.ini", "bootmgr", "pagefile.sys", "hiberfil.sys",
+      "swapfile.sys", "autorun.inf", "config.sys",
+      ".ds_store", ".localized"
+    ],
+    "dot_prefix": true
+  },
+  "tracks": {
+    "journal": {
+      "patterns": ["^\\d{4}-\\d{2}-\\d{2}\\.md$"],
+      "keywords": []
+    },
+    "legal": {
+      "patterns": [],
+      "keywords": [
+        "earnings_statement", "form_b", "debtor", "bankruptcy",
+        "physical therapy", "work status report", "loa_extension",
+        "healthcare and workers", "gmail - re_", "isd 408", "cse 600",
+        "3dkxz", "debtorcc", "approved leave", "return to work",
+        "notice leave", "adobe scan mar", "adobe scan"
+      ]
+    },
+    "handoffs": {
+      "patterns": [],
+      "keywords": [
+        "session_handoff", "handoff_", "master_handoff",
+        "handoff_vibes", "handoff_consciousness", "handoff_seventeen"
+      ]
+    },
+    "knowledge": {
+      "patterns": [],
+      "keywords": [
+        "knowledge_extraction", "campbell_sean_knowledge",
+        "sean_campbell_knowledge", "knowledge_extraction_v1",
+        "aionic_record", "books_of_life"
+      ]
+    },
+    "specs": {
+      "patterns": [],
+      "keywords": [
+        "cerr", "awa_", "project_manifest", "readme", "changelog",
+        "deployment_guide", "independence_debates", "production_plan",
+        "philosophical_foundations", "oakland", "oakenscroll",
+        "foia", "request_", "philosophical",
+        "white_paper", "sovereign_schema", "utety", "willow_safe",
+        "project willow", "safe os", "architecture", "arch_ui",
+        "jeles-prime", "chaos-prime", "jeles_prime",
+        "llmphysics", "linkedin_corpus", "working_paper", "working paper",
+        "huntsville", "paperclip", "trump administration",
+        "assessment visibility", "appendices",
+        "albuquerque", "reddit_analytics", "context_for",
+        "knowledge_extraction_prompt", "vibes_paper",
+        "squeakdog", "consciousness_emergence", "seventeen_burns",
+        "the library is on fire", "the sovereign", "the architecture of attention",
+        "north_america_scooter", "akram", "prompt -  system override",
+        "gmail - [final notice]", "timestamp_audio",
+        "willow_extraction_engine", "utf covo", "working_paper_13",
+        "agent_10_", "agent_19_", "agent_28_"
+      ]
+    },
+    "narrative": {
+      "patterns": [],
+      "keywords": [
+        "regarding jane", "chapter", "dispatch", "dispach", "gerald",
+        "soundtrack", "author's note", "form 301", "books of mann",
+        "world bible", "world_bible", "professor", "letter under blue sky",
+        "douglas adams", "ridiculous story", "bring a towel",
+        "step 2", "untitled document"
+      ]
+    }
+  },
+  "images": {
+    "exts": [".jpg", ".jpeg", ".png"],
+    "personal_keywords": ["feeld", "facebook", "messages"],
+    "screenshot_keywords": ["reddit", "screenshot 2026"],
+    "camera_patterns": ["^\\d{8}_\\d{6}", "^\\d{13}\\."],
+    "personal_track": "photos_personal",
+    "screenshot_track": "screenshots",
+    "camera_track": "photos_camera",
+    "default_track": "screenshots"
+  }
+}
