@@ -5864,6 +5864,42 @@ async def cbm_search(
 
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
+async def cbm_search_code(
+    app_id: str,
+    pattern: str,
+    limit: int = 10,
+    file_pattern: str = "",
+    path_filter: str = "",
+    regex: bool = False,
+    context: int = 0,
+    exclude_tests: bool = True,
+    project: str = "",
+) -> dict:
+    """Bounded search_code — graph-augmented grep/text pattern search (F-003 LIMIT enforced).
+
+    This is the grep/rg/find replacement: cbm_search/cbm_query run a structural
+    graph query, not free-text search. Use this one for "find this string/pattern".
+    """
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        from sap.cbm_facade import search_code
+        return search_code(
+            pattern,
+            limit=limit,
+            project=project,
+            file_pattern=file_pattern,
+            path_filter=path_filter,
+            regex=regex,
+            context=context,
+            exclude_tests=exclude_tests,
+        )
+
+    return await loop.run_in_executor(_executor, _run)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+@sap_gate()
 async def cbm_trace(
     app_id: str,
     function_name: str,

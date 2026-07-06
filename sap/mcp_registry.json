@@ -184,7 +184,8 @@
     "code_graph_suggest": {"group": "code_graph", "description": "Suggest related symbols based on code graph proximity."},
 
     "cbm_status":         {"group": "cbm", "description": "Resolve indexed CBM project + F-001..F-008 guardrail reference."},
-    "cbm_search":         {"group": "cbm", "description": "Bounded codebase-memory search_graph (LIMIT enforced, tests filtered)."},
+    "cbm_search":         {"group": "cbm", "description": "Bounded codebase-memory search_graph — structural/graph query, not free text (LIMIT enforced, tests filtered)."},
+    "cbm_search_code":    {"group": "cbm", "description": "Bounded codebase-memory search_code — graph-augmented grep/text pattern search (LIMIT enforced, tests filtered). The grep/rg/find replacement."},
     "cbm_trace":          {"group": "cbm", "description": "Bounded trace_path with capped caller/callee lists."},
     "cbm_query":          {"group": "cbm", "description": "Bounded query_graph — auto-appends LIMIT when missing."},
     "cbm_verify_callers": {"group": "cbm", "description": "Graph inbound callers + ripgrep cross-check (F-004/F-007)."},

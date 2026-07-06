@@ -23,7 +23,7 @@ _SCRIPT = "agent_task_submit(script_body=...) — avoids MCP JSON quote breakage
 # bounce back to Bash and the block counter climbs. Route to lanes that exist.
 _RUN = f"{_KART} or willow_run(script_body=...)"
 
-_ENUM = f"willow_find(scope=code) · code_graph_search · cbm_search · {_RUN}"
+_ENUM = f"cbm_search_code (text/pattern) · willow_find(scope=code) · code_graph_search (symbol name) · {_RUN}"
 
 # shell habit → (decision, redirect message)
 BASH_TO_MCP: list[tuple[str, str, str]] = [
@@ -37,9 +37,9 @@ BASH_TO_MCP: list[tuple[str, str, str]] = [
     # Word-boundary git/gh — blocks `cd repo && git status` evasion of ^\s*git anchor.
     (r"\bgit\s", "block", f"{_KART} · allow_net=True for push/fetch — agent Bash has no git creds"),
     (r"\bgh\s", "block", f"{_KART} · allow_net=True — agent Bash has no gh creds"),
-    (r"\bgrep\b", "block", f"willow_find(scope=code) · code_graph_search for code · kb_search/soil_search for Willow knowledge · raw text → {_RUN}"),
-    (r"\brg\b", "block", f"willow_find(scope=code) · code_graph_search · raw text → {_RUN}"),
-    (r"\bfind\s", "block", f"code_graph_search · willow_find(scope=code) for code · file enumeration → {_RUN}"),
+    (r"\bgrep\b", "block", f"cbm_search_code (text/pattern search) · kb_search/soil_search for Willow knowledge · symbol lookup → willow_find(scope=code)/code_graph_search · {_RUN}"),
+    (r"\brg\b", "block", f"cbm_search_code (text/pattern search) · symbol lookup → willow_find(scope=code)/code_graph_search · {_RUN}"),
+    (r"\bfind\s", "block", f"cbm_search_code(mode='files') for file enumeration by content · code_graph_search/willow_find(scope=code) for symbols · {_RUN}"),
     # Python enumeration / heredoc bypasses (Sonnet gremlin session e374e216).
     (r"(?i)python3?\s+.*<<", "block", f"Python heredoc in agent Bash → {_SCRIPT}"),
     (r"(?i)\bos\.walk\s*\(", "block", _ENUM),
