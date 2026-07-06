@@ -233,6 +233,14 @@ def recount(loops: list[dict] | None = None) -> dict:
     }
     registry_daemons.discard("")
 
+    retired_timers = {
+        str((loop.get("trigger") or {}).get("unit"))
+        for loop in loops
+        if loop.get("status") == "retired"
+        and (loop.get("trigger") or {}).get("kind") == "timer"
+    }
+    retired_timers.discard("")
+
     repo_timers = _repo_timer_units()
     repo_daemons = _repo_daemon_units()
     live_timers = _live_systemd_timers()
@@ -246,16 +254,10 @@ def recount(loops: list[dict] | None = None) -> dict:
         missing_in_reality = sorted(tracked_registry - repo_timers)
         reality_source = "repo_systemd_dir"
 
-    untracked_timers = sorted(
-        u for u in (repo_timers - registry_timers)
-        if "bridge-cross-runtime" not in u
-    )
+    untracked_timers = sorted(repo_timers - registry_timers - retired_timers)
 
     missing_daemon_in_reality = sorted(registry_daemons - repo_daemons)
-    untracked_daemons = sorted(
-        u for u in (repo_daemons - registry_daemons)
-        if "bridge-cross-runtime" not in u
-    )
+    untracked_daemons = sorted(repo_daemons - registry_daemons)
 
     hook_drift: dict[str, list[str]] = {"missing_in_registry": [], "missing_in_reality": []}
     if live_hooks is not None and registry_hooks:
@@ -275,6 +277,7 @@ def recount(loops: list[dict] | None = None) -> dict:
         "missing_in_reality": missing_in_reality,
         "untracked_timers": untracked_timers,
         "registry_daemon_count": len(registry_daemons),
+        "retired_timers": sorted(retired_timers),
         "missing_daemon_in_reality": missing_daemon_in_reality,
         "untracked_daemons": untracked_daemons,
         "hook_drift": hook_drift,
