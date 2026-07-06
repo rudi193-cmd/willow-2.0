@@ -337,28 +337,59 @@ def check_bash_block(command: str) -> tuple[str, str] | None:
     return None
 
 
+def _is_mcp_tool_name(tool_name: str) -> bool:
+    return (tool_name or "").startswith("mcp__")
+
+
 def check_boot_gate(tool_name: str, tool_input: dict,
                     session_id: str = "") -> str | None:
-    """Block every tool call until the boot sentinel exists, except reading boot.md
-    itself and writing the sentinel file. Real enforcement (decision:block) —
-    replaces the old advisory-only print in prompt_submit.py's _boot_guard."""
-    # Integration tests exercise pre_tool.main() without a live boot ritual;
-    # PYTEST_CURRENT_TEST is set automatically under pytest (see tests/vcr.py).
+    """Two-phase boot gate (decision:block).
+
+    Phase 1 — persona not confirmed: allow persona-phase file reads and writing
+    the persona-done sentinel only.
+    Phase 2 — persona confirmed: allow MCP/Kart + reads; block shell/edits until
+    the final boot-done sentinel is written.
+    """
     if os.environ.get("PYTEST_CURRENT_TEST"):
         return None
-    flag = _boot_done(session_id)
-    if flag.exists():
-        return None
-    target = str(
-        tool_input.get("file_path") or tool_input.get("path") or ""
+    from core.boot_gate import (
+        boot_done_path,
+        persona_done_path,
+        is_persona_phase_read,
+        paths_equal,
     )
-    if tool_name == "Read" and target == _BOOT_MD_PATH:
+
+    boot_flag = boot_done_path(AGENT, session_id)
+    persona_flag = persona_done_path(AGENT, session_id)
+    if boot_flag.exists():
         return None
-    if tool_name == "Write" and target == str(flag):
+
+    target = str(tool_input.get("file_path") or tool_input.get("path") or "")
+    tn = (tool_name or "").strip()
+    tn_lower = tn.lower()
+
+    if tn_lower == "write" and paths_equal(target, str(boot_flag)):
+        return None
+
+    if not persona_flag.exists():
+        if tn_lower == "write" and paths_equal(target, str(persona_flag)):
+            return None
+        if tn_lower == "read" and is_persona_phase_read(target):
+            return None
+        return (
+            f"Persona not confirmed for this session. Show the picker, confirm "
+            f"(number, name, or 'continue'), read willow/fylgja/skills/{{persona}}-boot.md, "
+            f"then write {persona_flag} (or confirm persona — the hook writes it). "
+            f"Allowed reads: boot.md, willow.md, personas/*.md, skills/*-boot.md."
+        )
+
+    if _is_mcp_tool_name(tn):
+        return None
+    if tn_lower in ("read", "grep", "glob"):
         return None
     return (
-        f"Boot sentinel absent for this session. Read {_BOOT_MD_PATH}, complete the "
-        f"steps there, then write {flag} to clear this gate."
+        f"Boot incomplete — persona confirmed, MCP/Kart are available. Finish /boot "
+        f"(fleet_status, continuity, ledger, …), then write {boot_flag}."
     )
 
 

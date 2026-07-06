@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from core.boot_gate import boot_done_path, is_booted
+from core.boot_gate import boot_done_path, is_booted, persona_done_path
 from willow.fylgja.events import pre_tool as _pt
 from willow.fylgja.events import prompt_submit as _ps
 from willow.fylgja.events import session_start as _ss
@@ -59,23 +59,35 @@ def test_is_booted_per_session(tmp_path, monkeypatch):
 
 def test_check_boot_gate_session_scoped(tmp_path, monkeypatch):
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-    legacy = tmp_path / "willow-boot-done-willow.flag"
-    monkeypatch.setattr(_pt, "BOOT_DONE", legacy)
-
     sid = "gate-sess-1"
-    flag = _pt._boot_done(sid)
-    flag.unlink(missing_ok=True)
+    boot = tmp_path / f"boot-{sid}.flag"
+    persona = tmp_path / f"persona-{sid}.flag"
+    monkeypatch.setattr(
+        "core.boot_gate.boot_done_path",
+        lambda a=None, s="": boot if s == sid or not s else tmp_path / "other-boot.flag",
+    )
+    monkeypatch.setattr(
+        "core.boot_gate.persona_done_path",
+        lambda a=None, s="": persona if s == sid or not s else tmp_path / "other-persona.flag",
+    )
+    boot.unlink(missing_ok=True)
+    persona.unlink(missing_ok=True)
     try:
         reason = _pt.check_boot_gate("Bash", {"command": "echo hi"}, sid)
         assert reason is not None
-        # the gate must tell the agent the exact session-scoped path
-        assert str(flag) in reason
-        # writing that exact path is exempt from the gate
-        assert _pt.check_boot_gate("Write", {"file_path": str(flag)}, sid) is None
-        flag.write_text("booted")
+        assert str(persona) in reason
+        assert _pt.check_boot_gate("Write", {"file_path": str(persona)}, sid) is None
+        persona.write_text("persona-ready")
+        assert _pt.check_boot_gate("mcp__willow__fleet_status", {}, sid) is None
+        reason = _pt.check_boot_gate("Bash", {"command": "echo hi"}, sid)
+        assert reason is not None
+        assert str(boot) in reason
+        assert _pt.check_boot_gate("Write", {"file_path": str(boot)}, sid) is None
+        boot.write_text("booted")
         assert _pt.check_boot_gate("Bash", {"command": "echo hi"}, sid) is None
     finally:
-        flag.unlink(missing_ok=True)
+        boot.unlink(missing_ok=True)
+        persona.unlink(missing_ok=True)
 
 
 def test_fresh_session_does_not_clobber_other_sessions(tmp_path, monkeypatch):
@@ -119,11 +131,18 @@ def test_clear_prunes_only_stale_flags(tmp_path, monkeypatch):
 def test_boot_guard_message_names_session_flag(capsys, monkeypatch):
     monkeypatch.setattr(_ps, "is_first_turn", lambda: True)
     sid = "guard-sess-9"
-    flag = _ps._boot_done(sid)
-    flag.unlink(missing_ok=True)
+    boot_flag = _ps._boot_done(sid)
+    persona_flag = persona_done_path(_ps.AGENT, sid)
+    boot_flag.unlink(missing_ok=True)
+    persona_flag.unlink(missing_ok=True)
     _ps._boot_guard(sid)
     out = capsys.readouterr().out
-    assert str(flag) in out
+    assert str(persona_flag) in out
+    persona_flag.write_text("persona-ready")
+    _ps._boot_guard(sid)
+    out2 = capsys.readouterr().out
+    assert str(boot_flag) in out2
+    persona_flag.unlink(missing_ok=True)
 
 
 def test_pre_tool_main_gate_uses_payload_session_id(monkeypatch, capsys):
@@ -133,8 +152,9 @@ def test_pre_tool_main_gate_uses_payload_session_id(monkeypatch, capsys):
 
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     sid = "main-sess-42"
-    flag = _pt._boot_done(sid)
-    flag.unlink(missing_ok=True)
+    from core.boot_gate import persona_done_path
+    persona = persona_done_path(_pt.AGENT, sid)
+    persona.unlink(missing_ok=True)
     payload = json.dumps({
         "tool_name": "Bash",
         "tool_input": {"command": "echo hi"},
@@ -146,4 +166,4 @@ def test_pre_tool_main_gate_uses_payload_session_id(monkeypatch, capsys):
     out = capsys.readouterr().out
     data = json.loads(out.strip().splitlines()[0])
     assert data["decision"] == "block"
-    assert str(flag) in data["reason"]
+    assert str(persona) in data["reason"]

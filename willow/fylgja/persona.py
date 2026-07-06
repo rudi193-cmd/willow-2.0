@@ -545,6 +545,12 @@ def parse_selection(prompt: str) -> str | None:
     if lower in personas and len(lower.split()) == 1:
         return lower
 
+    # Confirm active persona without re-picking
+    if lower in ("continue", "go", "yes", "ok", "proceed", "same"):
+        active = active_persona()
+        if active:
+            return active
+
     return None
 
 
@@ -553,13 +559,29 @@ def anchor_lines() -> str:
     return render_picker(active_persona())
 
 
-def prompt_submit_block(*, is_first: bool, prompt: str) -> str:
+def prompt_submit_block(*, is_first: bool, prompt: str, session_id: str = "") -> str:
     """Build persona lines for beforeSubmitPrompt."""
+    from core.boot_gate import mark_persona_ready
+
     parts: list[str] = []
     active = active_persona()
 
     if is_first:
         choice = parse_selection(prompt)
+        binding, locked = _project_binding_info()
+        if locked and binding and not choice:
+            set_active_persona(binding)
+            mark_persona_ready(session_id=session_id)
+            active = binding
+            parts.append(render_picker(active, blocking=False))
+            parts.append(
+                f"[PERSONA-LOCK] Project locked to {binding!r} — persona-ready sentinel written."
+            )
+            parts.append(persona_identity_banner(binding, switched=False))
+            context = load_persona(binding)
+            if context:
+                parts.append(context)
+            return "\n".join(parts)
         if choice == _CREATE_KEY:
             parts.append(render_create_prompt())
             return "\n".join(parts)
@@ -586,6 +608,7 @@ def prompt_submit_block(*, is_first: bool, prompt: str) -> str:
                 return "\n".join(parts)
             active = choice
             switched = True
+            mark_persona_ready(session_id=session_id)
             parts.append(persona_identity_banner(choice, switched=switched))
             if collision_msg:
                 parts.append(f"[PERSONA-WARN] {collision_msg}")
@@ -603,8 +626,8 @@ def prompt_submit_block(*, is_first: bool, prompt: str) -> str:
             label = personas.get(active, {}).get("label", active.capitalize()) if active else "None"
             parts.append(
                 f"[PERSONA-GATE] No persona confirmed this session yet. Currently active: {label}. "
-                "Picker is shown above for the user to switch or confirm. "
-                "Advisory state only — not a directive; respond to the user's actual request."
+                "Picker is shown above — reply with a number, name, or 'continue' to confirm. "
+                "Until persona-ready, only persona boot files are readable; MCP unlocks after confirm."
             )
             return "\n".join(parts)
     elif active:
