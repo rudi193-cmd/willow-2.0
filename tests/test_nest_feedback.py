@@ -10,12 +10,14 @@ from pathlib import Path
 
 import pytest
 
-from sap.core import nest_intake
+from sap.core import nest_intake, nest_rules
 
 
 @pytest.fixture
 def nest_env(tmp_path, monkeypatch):
-    """Isolated drop zone, queue, and track destinations under tmp_path."""
+    """Isolated drop zone, queue, rules store, and track destinations under tmp_path."""
+    monkeypatch.setenv("WILLOW_NEST_RULES", str(tmp_path / "nest_rules.json"))
+    nest_rules._reset_cache()
     drop = tmp_path / "Nest"
     drop.mkdir()
     dests = {
@@ -71,7 +73,7 @@ def test_scan_freezes_prediction(nest_env):
     pred = item["prediction"]
     assert pred["track"] == "journal"
     assert pred["method"] == "heuristic"
-    assert pred["classifier_version"] == nest_intake.CLASSIFIER_VERSION
+    assert pred["classifier_version"] == nest_rules.version()
     assert pred["confidence"] > 0
 
 
@@ -152,7 +154,7 @@ def test_flag_opens_at_threshold(nest_env):
     assert flag["flag_state"] == "open"
     assert flag["source"] == "nest_feedback"
     assert "journal" in flag["title"] and "legal" in flag["title"]
-    assert "CLASSIFIER_VERSION" in flag["fix_path"]
+    assert "nest_rules.json" in flag["fix_path"]
 
 
 def test_skip_writes_observed_record(nest_env):
