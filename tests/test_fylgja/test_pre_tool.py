@@ -615,28 +615,41 @@ def test_web_fetch_pre_tool_blocks():
 # ── Boot gate + Kart reuse (salvaged from #597) ────────────────────────────────
 
 
-def test_boot_gate_blocks_without_sentinel(tmp_path, monkeypatch):
-    missing = tmp_path / "willow-boot-done-willow.flag"
-    monkeypatch.setattr(_pt, "BOOT_DONE", missing)
+def test_boot_gate_blocks_without_persona(tmp_path, monkeypatch):
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    boot = tmp_path / "boot.flag"
+    persona = tmp_path / "persona.flag"
+    monkeypatch.setattr("core.boot_gate.boot_done_path", lambda a=None, s="": boot)
+    monkeypatch.setattr("core.boot_gate.persona_done_path", lambda a=None, s="": persona)
     reason = _pt.check_boot_gate("Bash", {"command": "echo hi"})
     assert reason is not None
-    assert "Boot sentinel absent" in reason
+    assert "Persona not confirmed" in reason
 
 
 def test_boot_gate_allows_read_boot_md(tmp_path, monkeypatch):
-    missing = tmp_path / "willow-boot-done-willow.flag"
-    monkeypatch.setattr(_pt, "BOOT_DONE", missing)
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    boot = tmp_path / "boot.flag"
+    persona = tmp_path / "persona.flag"
+    monkeypatch.setattr("core.boot_gate.boot_done_path", lambda a=None, s="": boot)
+    monkeypatch.setattr("core.boot_gate.persona_done_path", lambda a=None, s="": persona)
     assert _pt.check_boot_gate("Read", {"file_path": _pt._BOOT_MD_PATH}) is None
 
 
-def test_boot_gate_allows_write_sentinel(tmp_path, monkeypatch):
-    missing = tmp_path / "willow-boot-done-willow.flag"
-    monkeypatch.setattr(_pt, "BOOT_DONE", missing)
+def test_boot_gate_two_phase_sentinels(tmp_path, monkeypatch):
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-    assert _pt.check_boot_gate("Write", {"file_path": str(missing)}) is None
-    assert _pt.check_boot_gate("Write", {"path": str(missing)}) is None
+    boot = tmp_path / "boot.flag"
+    persona = tmp_path / "persona.flag"
+    monkeypatch.setattr("core.boot_gate.boot_done_path", lambda a=None, s="": boot)
+    monkeypatch.setattr("core.boot_gate.persona_done_path", lambda a=None, s="": persona)
+    assert _pt.check_boot_gate("Write", {"file_path": str(persona)}) is None
+    persona.write_text("persona-ready")
+    assert _pt.check_boot_gate("mcp__willow__fleet_status", {}) is None
+    reason = _pt.check_boot_gate("Bash", {"command": "echo hi"})
+    assert reason is not None
+    assert "Boot incomplete" in reason
+    assert _pt.check_boot_gate("Write", {"path": str(boot)}) is None
+    boot.write_text("booted")
+    assert _pt.check_boot_gate("Bash", {"command": "echo hi"}) is None
 
 
 def test_boot_gate_skipped_under_pytest(monkeypatch, tmp_path):

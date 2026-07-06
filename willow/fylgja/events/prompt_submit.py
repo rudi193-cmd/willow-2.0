@@ -435,13 +435,24 @@ def _boot_guard(session_id: str = "") -> None:
     """
     if not is_first_turn():
         return
-    flag = _boot_done(session_id)
-    if flag.exists():
+    from core.boot_gate import boot_done_path, persona_done_path
+
+    boot_flag = boot_done_path(AGENT, session_id)
+    if boot_flag.exists():
         return
+    persona_flag = persona_done_path(AGENT, session_id)
     boot_path = str(Path(__file__).parent.parent / "skills" / "boot.md")
+    if not persona_flag.exists():
+        print(
+            f"[BOOT] Phase 1 — persona not confirmed. Boot guide: {boot_path}. "
+            f"Confirm persona (picker / 'continue'), read *-boot.md, then "
+            f"persona sentinel {persona_flag} (hook may write on confirm). "
+            f"MCP unlocks after persona."
+        )
+        return
     print(
-        f"[BOOT] Boot sentinel absent for this session. Boot guide: {boot_path}. "
-        f"Tool calls are gated (see PreToolUse) until {flag} is written."
+        f"[BOOT] Phase 2 — persona confirmed; finish /boot via MCP, then write "
+        f"{boot_flag}."
     )
 
 
@@ -528,12 +539,14 @@ def _inject_stabilization_brief() -> None:
         pass
 
 
-def _run_persona(prompt: str) -> None:
+def _run_persona(prompt: str, session_id: str = "") -> None:
     """Inject persona picker context and apply selection from user message."""
     try:
         from willow.fylgja.persona import prompt_submit_block
 
-        block = prompt_submit_block(is_first=is_first_turn(), prompt=prompt)
+        block = prompt_submit_block(
+            is_first=is_first_turn(), prompt=prompt, session_id=session_id,
+        )
         if block:
             print(block)
     except Exception:
@@ -598,7 +611,7 @@ def main():
 
     _check_identity()
     _boot_guard(session_id)
-    _run_persona(prompt)
+    _run_persona(prompt, session_id)
     increment_turn_count()
     prompt_count = bump_prompt_count(AGENT, session_id)
     _inject_context_sentinel(prompt_count)

@@ -1,7 +1,13 @@
 """core.boot_gate — shared boot-sentinel check used by both the PreToolUse
 hook and agent_task_submit() (Kart), since PreToolUse never fires for
 mcp__willow__* tool calls."""
-from core.boot_gate import boot_done_path, is_booted
+from core.boot_gate import (
+    boot_done_path,
+    is_booted,
+    is_persona_ready,
+    mark_persona_ready,
+    persona_done_path,
+)
 
 
 def test_boot_done_path_keyed_to_agent_name():
@@ -9,9 +15,29 @@ def test_boot_done_path_keyed_to_agent_name():
     assert boot_done_path("hanuman").name == "willow-boot-done-hanuman.flag"
 
 
+def test_persona_done_path_keyed_to_agent_name():
+    assert persona_done_path("willow").name == "willow-persona-done-willow.flag"
+
+
+def test_is_persona_ready_true_under_pytest(monkeypatch):
+    monkeypatch.setenv("PYTEST_CURRENT_TEST", "test_boot_gate.py::x")
+    assert is_persona_ready("nonexistent-agent-xyz") is True
+
+
 def test_is_booted_true_under_pytest(monkeypatch):
     monkeypatch.setenv("PYTEST_CURRENT_TEST", "test_boot_gate.py::x")
     assert is_booted("nonexistent-agent-xyz") is True
+
+
+def test_mark_persona_ready(tmp_path, monkeypatch):
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    p = persona_done_path("fixture-agent-abc", "sess-1")
+    try:
+        assert mark_persona_ready("fixture-agent-abc", "sess-1") is True
+        assert p.exists()
+        assert is_persona_ready("fixture-agent-abc", "sess-1") is True
+    finally:
+        p.unlink(missing_ok=True)
 
 
 def test_is_booted_false_without_sentinel(monkeypatch):

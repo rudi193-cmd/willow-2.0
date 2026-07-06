@@ -63,19 +63,12 @@ def _boot_done(session_id: str = ""):
 
 
 def _clear_boot_sentinels(session_id: str) -> None:
-    # Fresh session: clear only THIS session's flag (plus the legacy
-    # shared one) and prune stale per-session flags. Never glob-delete
-    # live flags — that is the cross-window clobber this fixes.
-    import time as _t
+    from core.boot_gate import clear_session_boot_flags
+
+    clear_session_boot_flags(AGENT, session_id)
+    # Legacy module constants (tests monkeypatch BOOT_DONE to tmp paths).
     _boot_done(session_id).unlink(missing_ok=True)
     BOOT_DONE.unlink(missing_ok=True)
-    cutoff = _t.time() - 48 * 3600
-    for p in Path("/tmp").glob(f"willow-boot-done-{AGENT}-*.flag"):
-        try:
-            if p.stat().st_mtime < cutoff:
-                p.unlink()
-        except OSError:
-            pass
 
 
 
@@ -772,7 +765,10 @@ def main():
     # root-caused 2026-07-05, intake atom 3EA8E82A). Inherit booted state.
     if lite_inject and session_id:
         try:
+            from core.boot_gate import mark_persona_ready
+
             _boot_done(session_id).write_text(f"booted (continuation: {session_source})")
+            mark_persona_ready(AGENT, session_id)
         except OSError:
             pass
 
