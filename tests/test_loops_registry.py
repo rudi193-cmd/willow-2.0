@@ -10,10 +10,10 @@ from willow.fylgja.loops.registry import (
 )
 
 
-def test_seed_loads_fourteen_loops():
+def test_seed_loads_twenty_four_loops():
     seed = load_seed()
     assert seed["version"] == 1
-    assert len(seed["loops"]) == 14
+    assert len(seed["loops"]) == 24
 
 
 def test_validate_registry_seed_ok():
@@ -56,6 +56,26 @@ def test_recount_repo_timers_match_seed(monkeypatch):
     assert result["reality_timer_source"] == "repo_systemd_dir"
     assert result["missing_in_reality"] == []
     assert result["untracked_timers"] == []
+    assert result["missing_daemon_in_reality"] == []
+    assert result["untracked_daemons"] == []
+
+
+def test_recount_daemon_repo_match_seed(monkeypatch):
+    monkeypatch.setattr(
+        "willow.fylgja.loops.registry._live_systemd_timers",
+        lambda: None,
+    )
+    loops = load_seed()["loops"]
+    daemon_units = {
+        str((loop.get("trigger") or {}).get("unit"))
+        for loop in loops
+        if (loop.get("trigger") or {}).get("kind") == "daemon"
+    }
+    result = recount(loops)
+    assert daemon_units
+    assert result["registry_daemon_count"] == len(daemon_units)
+    assert result["missing_daemon_in_reality"] == []
+    assert result["untracked_daemons"] == []
 
 
 def test_recount_external_timers_excluded(monkeypatch):

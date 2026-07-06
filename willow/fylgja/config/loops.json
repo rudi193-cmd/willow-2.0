@@ -55,6 +55,266 @@
       "harness": null
     },
     {
+      "id": "willow-grove-listen",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "willow-grove-listen.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/grove_listen.py",
+        "model": null
+      },
+      "verify": {
+        "class": "coverage",
+        "predicate": "grove-monitor.log advances when Postgres NOTIFY fires on watched channels"
+      },
+      "attention": "Postgres Grove LISTEN/NOTIFY + /tmp/grove-monitor.log",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "grove_listen",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "grove-serve",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "grove-serve.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "core/grove_serve.py",
+        "model": null
+      },
+      "verify": {
+        "class": "coverage",
+        "predicate": "HTTP /health responds and FRANK watch loop records last tick"
+      },
+      "attention": "Grove REST API + FRANK ledger watch loop on port 7777",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "grove_serve",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "grove-mcp",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "grove-mcp.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "grove/mcp_local.py",
+        "model": null
+      },
+      "verify": {
+        "class": "coverage",
+        "predicate": "streamable-HTTP MCP serves tools and NOTIFY push stays connected"
+      },
+      "attention": "Postgres Grove bus + MCP streamable-HTTP transport",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "grove_mcp",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "kart-worker",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "kart-worker.service"
+      },
+      "task": {
+        "kind": "shell",
+        "ref": "willow.sh kart-worker",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "pending tasks drain and completed tasks carry returncode in Postgres"
+      },
+      "attention": "Postgres tasks table + bwrap sandbox executor",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "kart_worker",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "willow-mcp",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "willow-mcp.service"
+      },
+      "task": {
+        "kind": "shell",
+        "ref": "sap/willow_mcp.sh --http",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "SAP MCP HTTP transport accepts /mcp health checks"
+      },
+      "attention": "Willow SAP MCP server process + IDE SSE clients",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "willow_mcp",
+        "interval_sec": 3600
+      },
+      "harness": null
+    },
+    {
+      "id": "orin-worker",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "orin-worker.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "agents/orin/worker.py",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "batch inference jobs dequeue and complete without backlog growth"
+      },
+      "attention": "Ollama mistral:7b batch queue + agents.orin worker loop",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "orin_worker",
+        "interval_sec": 3600
+      },
+      "harness": null
+    },
+    {
+      "id": "nest-watcher",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "nest-watcher.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "tools/nest_watcher.py",
+        "model": null
+      },
+      "verify": {
+        "class": "coverage",
+        "predicate": "new Nest drop items post Grove heimdallr notifications"
+      },
+      "attention": "Nest drop zones under ~/Desktop/Nest",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "nest_watcher",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "journal-watcher",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "journal-watcher.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "agents/hanuman/bin/journal_watcher.py",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "unresponded ::saga journal entries decrease after responder runs"
+      },
+      "attention": "Postgres journal_entries with ::saga tag",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "journal_watcher",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "willow-discord-responder",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "willow-discord-responder.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "scripts/willow_discord_responder.py",
+        "model": null
+      },
+      "verify": {
+        "class": "coverage",
+        "predicate": "Discord fallback responder polls Grove and posts replies when no IDE session is live"
+      },
+      "attention": "Discord REST bridge + Grove hanuman channel",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "willow_discord_responder",
+        "interval_sec": 3600
+      },
+      "harness": null
+    },
+    {
+      "id": "drop-server",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "drop-server.service"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "tools/drop_server.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "HTTPS upload endpoint accepts Nest intake without process exit"
+      },
+      "attention": "Nest HTTPS drop server + ~/Desktop/Nest upload path",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "drop_server",
+        "interval_sec": 3600
+      },
+      "harness": null
+    },
+    {
       "id": "hook-wiring-audit",
       "status": "active",
       "trigger": {
