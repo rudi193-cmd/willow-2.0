@@ -8,9 +8,10 @@ No subprocess. No stale binary. No init handshake. No auth gap.
 Tool groups:
   store_*                → core.store_port.StorePort (WillowStoreAdapter)
   grove_*                → core.grove_client
-  willow_knowledge_*     → core.pg_bridge + core.embedder
-  willow_handoff_*       → sap.sap_mcp (via subprocess fallback)
-  everything else        → subprocess fallback (willow-mcp binary)
+  soil_*                 → core.store_port.StorePort (WillowStoreAdapter)
+  kb_search              → core.pg_bridge.PgBridge (lane-scope + taint parity with sap_mcp.kb_search)
+  everything else        → subprocess fallback (willow-mcp binary — currently
+                            unreachable; see issue #628/#629, not yet migrated)
 """
 import json
 import os
@@ -40,6 +41,127 @@ def _get_store():
         from core.store_port import get_store_port
         _store = get_store_port()
     return _store
+
+
+# ---------------------------------------------------------------------------
+# Direct KB dispatch — mirrors sap/sap_mcp.py's kb_search (lane-scope security +
+# taint tagging + relevance-gated promotion), called synchronously and without
+# importing sap_mcp's whole FastMCP module graph. Fixes #628/#629: kb_search
+# used to fall through to the subprocess fallback below, which shells to a
+# willow-mcp binary that doesn't exist — every caller silently degraded (or,
+# for rh_harness with no fallback of its own, silently returned nothing).
+# ---------------------------------------------------------------------------
+
+_pg = None
+_pg_failed = False
+
+
+def _get_pg():
+    global _pg, _pg_failed
+    if _pg is None and not _pg_failed:
+        import sys
+        if str(_REPO_ROOT) not in sys.path:
+            sys.path.insert(0, str(_REPO_ROOT))
+        try:
+            from core.pg_bridge import PgBridge
+            _pg = PgBridge()
+        except Exception:
+            _pg_failed = True
+    return _pg
+
+
+def _dispatch_kb(tool_name: str, arguments: dict):
+    pg = _get_pg()
+    if pg is None:
+        return {"error": "pg_unavailable", "tool": tool_name}
+
+    if tool_name != "kb_search":
+        return {"error": f"unknown kb tool: {tool_name}"}
+
+    from core.canonical_lanes import atoms_taint, resolve_lane_read_scope
+    from core.promotion_policy import select_promotion_ids
+
+    query = arguments.get("query", "")
+    limit = arguments.get("limit", 20)
+    semantic = arguments.get("semantic", True)
+    include_embedding = arguments.get("include_embedding", False)
+    fields = arguments.get("fields")
+    tier_filter = arguments.get("tier") or None
+    expand_neighbors = arguments.get("expand_neighbors", True)
+    continuity = arguments.get("continuity", False)
+    scope = arguments.get("scope", "")
+    project = arguments.get("project", "")
+    app_id = arguments.get("app_id", "")
+
+    lane_scope = resolve_lane_read_scope(app_id, scope=scope, project=project or None)
+    explicit_project = (project or "").strip() or None
+    # Sidecar veto (ADR-20260702 step 2): sensitive jeles/opus rows are excluded
+    # unless the caller asked for god-view — mirrors sap_mcp.kb_search exactly.
+    god_view = (scope or "").strip() == "*" and lane_scope.projects is None and not lane_scope.exclude
+
+    if semantic:
+        try:
+            knowledge = pg.knowledge_search_semantic(
+                query, limit=limit, include_embedding=include_embedding,
+                fields=fields, tier=tier_filter, continuity=continuity,
+                project=explicit_project, lane_scope=lane_scope,
+            )
+            jeles = pg.search_jeles_semantic(query, limit=limit // 2, include_sensitive=god_view)
+            opus = pg.search_opus_semantic(query, limit=limit // 2, include_sensitive=god_view)
+            mode = "hybrid" if any("_rrf_score" in row for row in knowledge[:3]) else "semantic"
+        except Exception:
+            knowledge = pg.knowledge_search(
+                query, limit=limit, include_embedding=include_embedding,
+                fields=fields, tier=tier_filter,
+                project=explicit_project, lane_scope=lane_scope,
+            )
+            jeles = pg.jeles_keyword_search(query, limit=limit // 2, include_sensitive=god_view)
+            opus = pg.search_opus(query, limit=limit // 2, include_sensitive=god_view)
+            mode = "degraded"
+    else:
+        knowledge = pg.knowledge_search(
+            query, limit=limit, include_embedding=include_embedding,
+            fields=fields, tier=tier_filter,
+            project=explicit_project, lane_scope=lane_scope,
+        )
+        jeles = pg.jeles_keyword_search(query, limit=limit // 2, include_sensitive=god_view)
+        opus = pg.search_opus(query, limit=limit // 2, include_sensitive=god_view)
+        mode = "keyword"
+
+    neighbors: list = []
+    if expand_neighbors and knowledge:
+        seed_ids = [a["id"] for a in knowledge[:10] if a.get("id")]
+        try:
+            neighbors = pg.knowledge_expand_neighbors(seed_ids, limit=max(5, limit // 3), lane_scope=lane_scope)
+        except Exception:
+            neighbors = []
+        seen = {a["id"] for a in knowledge if a.get("id")}
+        knowledge = knowledge + [n for n in neighbors if n.get("id") not in seen]
+
+    for atom_id in select_promotion_ids(knowledge):
+        try:
+            pg.promote(atom_id)
+        except Exception:
+            pass
+    for row in jeles:
+        row["_table"] = "jeles_atoms"
+    for row in opus:
+        row["_table"] = "opus_atoms"
+
+    taint = atoms_taint(knowledge + jeles + opus)
+    return {
+        "knowledge": knowledge,
+        "jeles_atoms": jeles,
+        "opus_atoms": opus,
+        "neighbors": neighbors,
+        "total": len(knowledge) + len(jeles) + len(opus),
+        "taint": taint,
+        "mode": mode,
+        "lane_scope": {
+            "projects": list(lane_scope.projects) if lane_scope.projects is not None else None,
+            "exclude": list(lane_scope.exclude),
+        },
+    }
 
 
 def _dispatch_store(tool_name: str, arguments: dict):
@@ -405,5 +527,11 @@ def call(tool_name: str, arguments: dict, timeout: int = 10) -> dict:
             return _dispatch_soil(tool_name, arguments)
         except Exception as e:
             return {"error": f"soil dispatch error: {e}", "tool": tool_name}
+
+    if tool_name == "kb_search":
+        try:
+            return _dispatch_kb(tool_name, arguments)
+        except Exception as e:
+            return {"error": f"kb dispatch error: {e}", "tool": tool_name}
 
     return _subprocess_call(tool_name, timeout=timeout, arguments=arguments)
