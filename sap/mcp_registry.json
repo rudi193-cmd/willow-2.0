@@ -275,5 +275,19 @@
     "workflow_list":        {"group": "workflow", "tier": "extended", "description": "List all defined workflows."},
     "workflow_run":         {"group": "workflow", "tier": "extended", "description": "Start a workflow run. input is JSON variables as {{input.key}} in phases."},
     "workflow_status":      {"group": "workflow", "tier": "extended", "description": "Get workflow run status — phases, outputs, current state."}
+  },
+
+  "external_mcp_servers": {
+    "_note": "Raw stdio MCP servers wired directly in .mcp.json (gitignored, host-local) — not proxied through a sap_mcp.py facade. Documented here so their presence and provenance are discoverable from a tracked file.",
+    "codebase-memory-mcp": {
+      "purpose": "Graph-augmented code search and architecture queries across indexed repos.",
+      "install": "Compiled binary at ~/.local/bin/codebase-memory-mcp.",
+      "facade": "Also exposed inside the willow server via the bounded cbm_* tool group (sap/sap_mcp.py) for callers that want the narrower F-001..F-008 surface instead of the full raw tool set."
+    },
+    "atom-of-thoughts": {
+      "purpose": "Structured reasoning (Atom of Thoughts: premise/reasoning/hypothesis/verification/conclusion chain with confidence tracking and a local D3 visualization + human-approval gate).",
+      "install": "dioptx/mcp-atom-of-thoughts fork, built from source (not npx) into ~/.willow/mcp-servers/mcp-atom-of-thoughts, invoked via the fnm-managed node binary. Reviewed 2026-07-05: production deps are only @modelcontextprotocol/sdk, chalk, zod; its local approval-callback HTTP server binds 127.0.0.1 only on an OS-assigned port; no outbound network calls anywhere in source. Decision record: project-dioptx-tooling-integration-decision.md.",
+      "facade": "None — wired as-is per the original decision (self-contained, already speaks MCP)."
+    }
   }
 }

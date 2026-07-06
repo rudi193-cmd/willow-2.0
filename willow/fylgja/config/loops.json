@@ -29,6 +29,32 @@
       "harness": null
     },
     {
+      "id": "stuck-loop-watch",
+      "status": "active",
+      "trigger": {
+        "kind": "timer",
+        "spec": "OnUnitActiveSec=15min",
+        "unit": "stuck-loop-watch.timer"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/fylgja/stuck_loop_watch.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "watchdog exits 0 and recent-session stuck-loop chains are cleared or flagged"
+      },
+      "attention": "recently-modified Claude Code session JSONL under ~/.claude/projects/",
+      "exit": "one pass per timer tick",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "stuck_loop_watch",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
       "id": "upstream-watcher",
       "status": "active",
       "trigger": {

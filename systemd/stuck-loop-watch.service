@@ -1,0 +1,11 @@
+[Unit]
+Description=Willow Stuck-Loop Watchdog — retrospective same-tool chain-failure detector
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+
+[Service]
+Type=oneshot
+Environment=WILLOW_ROOT=%h/github/willow-2.0
+ExecStart=/usr/bin/python3 %h/github/willow-2.0/willow/fylgja/stuck_loop_watch.py
+
+[Install]
+WantedBy=default.target
