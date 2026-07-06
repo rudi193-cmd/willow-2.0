@@ -11,6 +11,12 @@ VERIFY_CLASSES = frozenset({"recount", "exitcode", "schema", "coverage", "contai
 ON_FAILURE = frozenset({"self_heal", "queue_decision", "open_flag"})
 REVIEW_QUEUES = frozenset({"mem_ratify", "human_required"})
 _TRIGGER_KINDS = frozenset({"timer", "hook", "daemon"})
+_SOIL_META_KEYS = frozenset({"_id", "_soil_id"})
+
+
+def _strip_soil_meta(record: dict) -> dict:
+    """Drop SOIL store metadata before schema validation or API return."""
+    return {k: v for k, v in record.items() if k not in _SOIL_META_KEYS}
 
 
 def repo_root() -> Path:
@@ -45,7 +51,7 @@ def load_soil_records(soil_all: Callable[[str], list[dict]] | None = None) -> di
             continue
         lid = str(row.get("id") or row.get("_id") or "").strip()
         if lid:
-            out[lid] = row
+            out[lid] = _strip_soil_meta(row)
     return out
 
 
@@ -113,7 +119,7 @@ def validate_loop(loop: dict) -> list[str]:
         problems.append(f"{lid}: trigger.unit required for {kind}")
     if kind == "hook" and not str(trigger.get("event") or trigger.get("name") or "").strip():
         problems.append(f"{lid}: trigger.event required for hook")
-    problems.extend(_validate_schema(loop))
+    problems.extend(_validate_schema(_strip_soil_meta(loop)))
     return problems
 
 
