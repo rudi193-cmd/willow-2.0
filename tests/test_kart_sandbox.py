@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from core.kart_sandbox import (
+    _rtk_rewrite,
     build_bwrap_argv,
     bwrap_available,
     collect_bind_mounts,
@@ -398,3 +399,56 @@ def test_bwrap_argv_dedupes_repeated_config_symlinks(monkeypatch):
     args = k.build_bwrap_argv()
     symlink_dests = [args[i + 2] for i, a in enumerate(args) if a == "--symlink"]
     assert symlink_dests.count("/x-test-link") == 1
+
+
+def _fake_rtk_binary(tmp_path, *, rewritten: str | None, exit_code: int = 0):
+    """Write a fake rtk-plus stand-in that echoes `rewritten` and exits `exit_code`,
+    mirroring the real binary's `rtk rewrite <cmd>` contract (non-zero = no rewrite)."""
+    script = tmp_path / "fake-rtk"
+    body = "#!/bin/sh\n"
+    if rewritten is not None:
+        body += f"echo '{rewritten}'\n"
+    body += f"exit {exit_code}\n"
+    script.write_text(body)
+    script.chmod(0o755)
+    return str(script)
+
+
+def test_rtk_rewrite_disabled_by_default(tmp_path):
+    binary = _fake_rtk_binary(tmp_path, rewritten="rtk git status")
+    assert _rtk_rewrite("git status", {"rtk_compress": {"enabled": False, "binary": binary}}) == "git status"
+    assert _rtk_rewrite("git status", {}) == "git status"
+
+
+def test_rtk_rewrite_missing_binary_fails_open(tmp_path):
+    missing = str(tmp_path / "does-not-exist")
+    cfg = {"rtk_compress": {"enabled": True, "binary": missing}}
+    assert _rtk_rewrite("git status", cfg) == "git status"
+
+
+def test_rtk_rewrite_no_rewrite_available_fails_open(tmp_path):
+    binary = _fake_rtk_binary(tmp_path, rewritten=None, exit_code=1)
+    cfg = {"rtk_compress": {"enabled": True, "binary": binary}}
+    assert _rtk_rewrite("echo hi", cfg) == "echo hi"
+
+
+def test_rtk_rewrite_repoints_rtk_token_to_full_binary_path(tmp_path):
+    binary = _fake_rtk_binary(tmp_path, rewritten="rtk git status")
+    cfg = {"rtk_compress": {"enabled": True, "binary": binary}}
+    assert _rtk_rewrite("git status", cfg) == f"{binary} git status"
+
+
+def test_rtk_rewrite_repoints_every_segment_of_a_compound_command(tmp_path):
+    binary = _fake_rtk_binary(tmp_path, rewritten="rtk git status && rtk cargo test")
+    cfg = {"rtk_compress": {"enabled": True, "binary": binary}}
+    assert _rtk_rewrite("git status && cargo test", cfg) == f"{binary} git status && {binary} cargo test"
+
+
+def test_rtk_rewrite_does_not_touch_unrelated_rtk_substrings(tmp_path):
+    """A command that merely contains the letters 'rtk' inside another word
+    (e.g. a path or arg) must not be mangled by the token substitution."""
+    binary = _fake_rtk_binary(tmp_path, rewritten="rtk cat /var/log/artk.log")
+    cfg = {"rtk_compress": {"enabled": True, "binary": binary}}
+    result = _rtk_rewrite("cat /var/log/artk.log", cfg)
+    assert result == f"{binary} cat /var/log/artk.log"
+    assert "artk.log" in result
