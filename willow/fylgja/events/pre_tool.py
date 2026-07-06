@@ -123,9 +123,14 @@ def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
     (a) Increment a per-rule counter in corpus/block_telemetry (one row per rule:
         hit_count, first/last_seen, runtimes) instead of writing a fresh correction
         atom every time.
-    (b) When hit_count crosses a multiple of WILLOW_BLOCK_FLAG_THRESHOLD, open a
-        SOIL flag in willow/flags so operators see repeated enforcement — agents
-        keep attempting a blocked pattern despite redirects.
+    (b) The first time hit_count crosses WILLOW_BLOCK_FLAG_THRESHOLD, open one SOIL
+        flag in willow/flags so operators see repeated enforcement — agents keep
+        attempting a blocked pattern despite redirects. Only ever opened ONCE per
+        rule_key (tracked via flag_opened on the telemetry row) — without this the
+        board re-clutters forever, since every later threshold multiple (20, 30,
+        40, 70...) used to mint a fresh flag with no auto-resolve path
+        (see flag-bash-attempt1-routing). The counter keeps climbing in telemetry;
+        only the alert is one-shot.
     """
     try:
         if _REPO_ROOT not in sys.path:
@@ -142,6 +147,8 @@ def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
         runtimes = set(existing.get("runtimes") or [])
         runtimes.add(runtime)
         new_count = int(existing.get("hit_count") or 0) + 1
+        flag_opened = bool(existing.get("flag_opened"))
+        should_open = not flag_opened and new_count >= _BLOCK_FLAG_THRESHOLD
         _store.put("corpus/block_telemetry", {
             "id": key,
             "type": "block_telemetry",
@@ -152,32 +159,32 @@ def _corpus_log_block(tool_name: str, reason: str, session_id: str) -> None:
             "last_seen": now,
             "last_session_id": session_id,
             "runtimes": sorted(runtimes),
+            "flag_opened": flag_opened or should_open,
             "b17": "BTEL0",
         }, record_id=key)
-        # Phase 4(b): repetition trigger — open a flag at each threshold crossing.
-        if new_count % _BLOCK_FLAG_THRESHOLD == 0:
+        # Phase 4(b): one-shot repetition alert — never reopened for this rule_key.
+        if should_open:
             flag_id = f"flag-{key}"
-            existing_flag = _store.get("willow/flags", flag_id) or {}
-            if existing_flag.get("flag_state") != "open":
-                _store.put("willow/flags", {
-                    "id": flag_id,
-                    "type": "flag",
-                    "flag_state": "open",
-                    "title": (
-                        f"Repeated enforcement: '{tool_name}' blocked {new_count}× fleet-wide"
-                    ),
-                    "source": "block_telemetry",
-                    "rule_key": key,
-                    "hit_count": new_count,
-                    "sample_reason": reason[:200],
-                    "fix_path": (
-                        "Agents still attempting this pattern — check boot tool_denial "
-                        "injection and pre_tool warn escalation; review BASH_BLOCKS / "
-                        "_MCP_BASH_TO_MCP redirects"
-                    ),
-                    "opened_at": now,
-                    "b17": "BFLAG0",
-                }, record_id=flag_id)
+            _store.put("willow/flags", {
+                "id": flag_id,
+                "type": "flag",
+                "flag_state": "open",
+                "title": (
+                    f"Repeated enforcement: '{tool_name}' blocked {new_count}× fleet-wide"
+                ),
+                "source": "block_telemetry",
+                "rule_key": key,
+                "hit_count": new_count,
+                "sample_reason": reason[:200],
+                "fix_path": (
+                    "Agents still attempting this pattern — check boot tool_denial "
+                    "injection and pre_tool warn escalation; review BASH_BLOCKS / "
+                    "_MCP_BASH_TO_MCP redirects. Ongoing hit_count lives in "
+                    "corpus/block_telemetry — this flag will not reopen once resolved."
+                ),
+                "opened_at": now,
+                "b17": "BFLAG0",
+            }, record_id=flag_id)
         # Signal taxonomy: also write a tool_denial preference signal.
         from willow.fylgja.tool_denials import upsert_tool_denial
         upsert_tool_denial(_store, tool_name=tool_name, reason=reason, session_id=session_id)
