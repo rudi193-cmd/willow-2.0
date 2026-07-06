@@ -192,6 +192,61 @@ def test_no_binding_falls_back_to_global_state(tmp_path, monkeypatch):
     assert p.active_persona() == "skirnir"
 
 
+def _bind_project_locked(monkeypatch, tmp_path, project, persona):
+    import json
+    cfg = tmp_path / "project_personas.json"
+    cfg.write_text(
+        json.dumps({"version": 1, "bindings": {project: {"persona": persona, "locked": True}}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(p, "_project_personas_file", lambda: cfg)
+    monkeypatch.setattr(p, "STATE_FILE", tmp_path / "active-persona")
+    monkeypatch.setenv("WILLOW_HANDOFF_PROJECT", project)
+
+
+def test_locked_binding_reported(tmp_path, monkeypatch):
+    _bind_project_locked(monkeypatch, tmp_path, "willow", "ada")
+    assert p.project_persona_binding() == "ada"
+    assert p.project_persona_locked() is True
+    # Unlocked string form stays unlocked.
+    _bind_project(monkeypatch, tmp_path, "almanac-data", "ada")
+    assert p.project_persona_locked() is False
+
+
+def test_locked_binding_refuses_in_project_pick(tmp_path, monkeypatch):
+    _bind_project_locked(monkeypatch, tmp_path, "willow", "ada")
+    monkeypatch.setenv("WILLOW_PERSONA_AGENT_BLOCK", "warn")
+    monkeypatch.setattr(p, "fleet_agent_id", lambda: "willow")
+    assert p.set_active_persona("loki") is False
+    assert p.active_persona() == "ada"
+    # Re-picking the locked persona itself is allowed (no-op confirm).
+    assert p.set_active_persona("ada") is True
+    assert p.active_persona() == "ada"
+
+
+def test_locked_binding_does_not_leak_to_other_projects(tmp_path, monkeypatch):
+    _bind_project_locked(monkeypatch, tmp_path, "willow", "ada")
+    monkeypatch.setenv("WILLOW_PERSONA_AGENT_BLOCK", "warn")
+    monkeypatch.setattr(p, "fleet_agent_id", lambda: "willow")
+    monkeypatch.setenv("WILLOW_HANDOFF_PROJECT", "some-other-repo")
+    assert p.set_active_persona("loki") is True
+    assert p.active_persona() == "loki"
+    # Back in the locked project: lock wins over the pick made elsewhere.
+    monkeypatch.setenv("WILLOW_HANDOFF_PROJECT", "willow")
+    assert p.active_persona() == "ada"
+
+
+def test_prompt_submit_block_emits_persona_lock_message(tmp_path, monkeypatch):
+    _bind_project_locked(monkeypatch, tmp_path, "willow", "ada")
+    monkeypatch.setenv("WILLOW_PERSONA_AGENT_BLOCK", "warn")
+    monkeypatch.setattr(p, "fleet_agent_id", lambda: "willow")
+    block = p.prompt_submit_block(is_first=True, prompt="loki")
+    assert "PERSONA-LOCK" in block
+    assert "PERSONA-VISIBLE" not in block
+    # Picker advertises the lock.
+    assert "Locked: this project always speaks as" in p.render_picker("ada")
+
+
 def test_real_config_binds_almanac_repos_to_ada():
     binding = p._project_personas_file()
     assert binding.exists()
@@ -199,3 +254,4 @@ def test_real_config_binds_almanac_repos_to_ada():
     data = json.loads(binding.read_text(encoding="utf-8"))
     assert data["bindings"]["almanac-data"] == "ada"
     assert data["bindings"]["almanac-data-dotgithub"] == "ada"
+    assert data["bindings"]["willow"] == {"persona": "willow", "locked": True}

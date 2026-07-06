@@ -1,9 +1,12 @@
 {
   "version": 1,
-  "_note": "Maps a project key (WILLOW_HANDOFF_PROJECT, else workspace dir name) to a default persona. Persona is a voice overlay only — it does not change fleet identity, MCP app_id, Grove sender, or SOIL namespace. An explicit in-project pick overrides the binding. Read by willow.fylgja.persona.project_persona_binding().",
+  "_note": "Maps a project key (WILLOW_HANDOFF_PROJECT, else workspace dir name) to a default persona. Persona is a voice overlay only — it does not change fleet identity, MCP app_id, Grove sender, or SOIL namespace. A string value is a default (an explicit in-project pick overrides it); an object {\"persona\": key, \"locked\": true} is a hard lock — picks in that project are refused. Read by willow.fylgja.persona.project_persona_binding() / project_persona_locked().",
   "bindings": {
     "almanac-data": "ada",
     "almanac-data-dotgithub": "ada",
-    "willow": "willow"
+    "willow": {
+      "persona": "willow",
+      "locked": true
+    }
   }
 }

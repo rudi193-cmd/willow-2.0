@@ -58,24 +58,47 @@ def current_project_key() -> str:
     return ""
 
 
-def project_persona_binding(project: str = "") -> str:
-    """Persona key bound to the current (or given) project, or '' if none/invalid."""
+def _project_binding_info(project: str = "") -> tuple[str, bool]:
+    """(persona_key, locked) bound to the current (or given) project.
+
+    A binding value is either a plain persona-key string (unlocked default) or
+    an object {"persona": <key>, "locked": true} — a hard lock: explicit picks
+    in that project are refused and the binding always wins.
+    Returns ("", False) when there is no valid binding.
+    """
     proj = (project or current_project_key()).strip()
     if not proj:
-        return ""
+        return "", False
     path = _project_personas_file()
     if not path.exists():
-        return ""
+        return "", False
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         bindings = data.get("bindings", {}) if isinstance(data, dict) else {}
     except Exception:
-        return ""
-    key = str(bindings.get(proj, "")).strip().lower()
+        return "", False
+    raw = bindings.get(proj, "")
+    locked = False
+    if isinstance(raw, dict):
+        locked = bool(raw.get("locked"))
+        raw = raw.get("persona", "")
+    key = str(raw).strip().lower()
     if not key:
-        return ""
+        return "", False
     personas, _ = get_personas()
-    return key if key in personas else ""
+    if key not in personas:
+        return "", False
+    return key, locked
+
+
+def project_persona_binding(project: str = "") -> str:
+    """Persona key bound to the current (or given) project, or '' if none/invalid."""
+    return _project_binding_info(project)[0]
+
+
+def project_persona_locked(project: str = "") -> bool:
+    """True when the project's binding is a hard lock (picks refused)."""
+    return _project_binding_info(project)[1]
 
 
 
@@ -296,6 +319,8 @@ def active_persona() -> str:
     """Resolve the active persona.
 
     Precedence:
+      0. A *locked* project binding — always wins; picks in that project are
+         refused by set_active_persona().
       1. An explicit pick made *in the current project* (global state whose
          recorded project matches) — so switching inside a bound project sticks.
       2. The project's configured persona binding (config/project_personas.json).
@@ -310,6 +335,12 @@ def active_persona() -> str:
         state = ""
 
     proj = current_project_key()
+    binding, locked = _project_binding_info(proj)
+
+    # 0. Hard lock — the binding is the persona, no override.
+    if binding and locked:
+        return binding
+
     state_proj = ""
     spf = _state_project_file()
     if spf.exists():
@@ -320,7 +351,6 @@ def active_persona() -> str:
         return state
 
     # 2. Project binding is the default for bound projects.
-    binding = project_persona_binding(proj)
     if binding:
         return binding
 
@@ -332,6 +362,9 @@ def set_active_persona(name: str) -> bool:
     key = (name or "").strip().lower()
     personas, _ = get_personas()
     if key not in personas:
+        return False
+    binding, locked = _project_binding_info()
+    if locked and binding and key != binding:
         return False
     allowed, _msg = check_persona_fleet_collision(key)
     if not allowed:
@@ -364,6 +397,12 @@ def render_picker(active: str = "", *, blocking: bool = False) -> str:
     if fleet:
         lines.append(
             f"  Fleet identity: **{fleet}** (persona is voice only — does not switch agent)"
+        )
+    binding, locked = _project_binding_info()
+    if locked and binding:
+        lines.append(
+            f"  🔒 Locked: this project always speaks as **{personas[binding]['label']}** "
+            "(project_personas.json)."
         )
     if active:
         if blocking:
@@ -535,7 +574,15 @@ def prompt_submit_block(*, is_first: bool, prompt: str) -> str:
                 return "\n".join(parts)
             if not set_active_persona(choice):
                 parts.append(render_picker(active, blocking=True))
-                parts.append("[PERSONA-BLOCK] Could not set persona — invalid choice.")
+                binding, locked = _project_binding_info()
+                if locked and binding and choice != binding:
+                    parts.append(
+                        f"[PERSONA-LOCK] This project is locked to persona {binding!r} "
+                        "(config/project_personas.json). Picks are refused here — "
+                        "edit the binding to change it."
+                    )
+                else:
+                    parts.append("[PERSONA-BLOCK] Could not set persona — invalid choice.")
                 return "\n".join(parts)
             active = choice
             switched = True
