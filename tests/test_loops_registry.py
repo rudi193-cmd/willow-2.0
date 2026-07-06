@@ -10,10 +10,10 @@ from willow.fylgja.loops.registry import (
 )
 
 
-def test_seed_loads_twenty_four_loops():
+def test_seed_loads_twenty_five_loops():
     seed = load_seed()
     assert seed["version"] == 1
-    assert len(seed["loops"]) == 24
+    assert len(seed["loops"]) == 25
 
 
 def test_validate_registry_seed_ok():
@@ -84,6 +84,19 @@ def test_recount_external_timers_excluded(monkeypatch):
     assert "sentinel-watchdog.timer" in result["external_timers"]
     assert "kb-snapshot-refresh.timer" in result["external_timers"]
     assert "sentinel-watchdog.timer" not in result["missing_in_reality"]
+
+
+def test_retired_bridge_timer_excluded_from_untracked(monkeypatch):
+    monkeypatch.setattr(
+        "willow.fylgja.loops.registry._live_systemd_timers",
+        lambda: None,
+    )
+    loops = load_seed()["loops"]
+    bridge = next(loop for loop in loops if loop["id"] == "willow-bridge-cross-runtime")
+    assert bridge["status"] == "retired"
+    result = recount(loops)
+    assert "willow-bridge-cross-runtime.timer" in result["retired_timers"]
+    assert "willow-bridge-cross-runtime.timer" not in result["untracked_timers"]
 
 
 def test_recount_hook_registry_match_seed(monkeypatch):

@@ -620,6 +620,32 @@
         "interval_sec": 86400
       },
       "harness": null
+    },
+    {
+      "id": "willow-bridge-cross-runtime",
+      "status": "retired",
+      "trigger": {
+        "kind": "timer",
+        "spec": "OnCalendar=*-*-* 06:00:00 (retired ADR-20260703)",
+        "unit": "willow-bridge-cross-runtime.timer"
+      },
+      "task": {
+        "kind": "shell",
+        "ref": "willow.sh bridge-cross-runtime",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "cross_runtime.ensure_fresh_bridge rebuilds handoff bridge at read time without a scheduled timer"
+      },
+      "attention": "SOIL cross-runtime bridge artifact (superseded by SessionStart read-time rebuild)",
+      "exit": "timer retired \u2014 disable with scripts/uninstall_bridge_timer.sh on existing installs",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "willow_bridge_cross_runtime",
+        "interval_sec": 86400
+      },
+      "harness": null
     }
   ]
 }
