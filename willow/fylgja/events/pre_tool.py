@@ -223,13 +223,9 @@ BASH_BLOCKS = [
     (r"(?i)python3?\s+.*\b(pg_bridge|sqlite_bridge|willow_store|promote_intake|sap_mcp)\b", "warn",
      "Willow Python entrypoint in Bash — prefer MCP if a tool exists. "
      "→ agent_task_submit(app_id, task='python3 /tmp/job.py') + kart_task_run."),
-    (r"\bgrep\b", "warn",
-     "grep detected. Prefer MCP over shell grep — it searches indexed content without a subprocess. "
-     "→ kb_search({app_id, query}) · code_graph_search({query}) · soil_search({collection, query})"),
-    (r"\bfind\s", "warn",
-     "find detected. Prefer MCP for code/file discovery. "
-     "→ code_graph_search({query: '<symbol>'}) · willow_find(scope=code) · "
-     "file enumeration → willow_run(script_body=...) / Kart"),
+    # grep/find entries removed 2026-07-06: dead code. check_bash_block() checks
+    # _MCP_BASH_TO_MCP (mcp_routing.BASH_TO_MCP) first, which already matches
+    # \bgrep\b and \bfind\s and returns before this list is ever reached.
     (r"^\s*bash\s+", "warn",
      "bash <script> detected. Prefer Kart for script execution. "
      "→ agent_task_submit(app_id, task='bash scripts/foo.sh') + kart_task_run(app_id)"),
