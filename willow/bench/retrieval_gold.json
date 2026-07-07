@@ -7,7 +7,7 @@
       "id": "open_projects_fleet",
       "query": "open projects Willow fleet",
       "expect_ids": ["FF2E4E49"],
-      "expect_title_contains": [],
+      "expect_title_contains": ["open projects"],
       "k": 5,
       "semantic": true
     },
@@ -57,6 +57,22 @@
       "expect_ids": ["FF2E4E49"],
       "expect_title_contains": [],
       "k": 5,
+      "semantic": true
+    },
+    {
+      "id": "syscall_table_decision",
+      "query": "Willow fleet syscall table fourteen verbs ratified",
+      "expect_ids": [],
+      "expect_title_contains": ["Syscall Table"],
+      "k": 10,
+      "semantic": true
+    },
+    {
+      "id": "hub_doctrine_decision",
+      "query": "Willow universal hub py-chunk execution not per-agent Kart",
+      "expect_ids": [],
+      "expect_title_contains": ["universal hub"],
+      "k": 10,
       "semantic": true
     }
   ]
