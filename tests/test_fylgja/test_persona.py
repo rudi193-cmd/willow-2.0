@@ -17,6 +17,8 @@ def test_parse_selection_by_number():
 def test_parse_selection_by_name():
     assert p.parse_selection("hanuman") == "hanuman"
     assert p.parse_selection("switch to skirnir") == "skirnir"
+    assert p.parse_selection("hanuman go") == "hanuman"
+    assert p.parse_selection("Hanuman go") == "hanuman"
 
 
 def test_set_and_read_active_persona(tmp_path, monkeypatch):

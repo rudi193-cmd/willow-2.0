@@ -545,6 +545,11 @@ def parse_selection(prompt: str) -> str | None:
     if lower in personas and len(lower.split()) == 1:
         return lower
 
+    # "{persona} go" / "hanuman continue" — common boot confirm phrasing
+    m = re.fullmatch(r"([a-z_]+)\s+(go|proceed|continue|yes|ok)\b", lower)
+    if m and m.group(1) in personas:
+        return m.group(1)
+
     # Confirm active persona without re-picking
     if lower in ("continue", "go", "yes", "ok", "proceed", "same"):
         active = active_persona()

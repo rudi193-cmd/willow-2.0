@@ -75,3 +75,31 @@ def test_cursor_pretool_use_explicit_file_path_wins():
     }
     out = _cursor_to_claude("willow.fylgja.events.pre_tool", payload)
     assert out["tool_input"]["file_path"] == "/tmp/a.py"
+
+
+def test_cursor_before_mcp_execution_maps_mcp_prefix():
+    """Regression: beforeMCPExecution must not fall through to preToolUse (flag-cursor-boot-gate-sentinel)."""
+    payload = {
+        "hook_event_name": "beforeMCPExecution",
+        "server": "willow",
+        "tool_name": "fleet_status",
+        "tool_input": {"app_id": "willow"},
+        "conversation_id": "conv-mcp-1",
+    }
+    out = _cursor_to_claude("willow.fylgja.events.pre_tool", payload)
+    assert out["tool_name"] == "mcp__willow__fleet_status"
+    assert out["tool_input"] == {"app_id": "willow"}
+    assert out["session_id"] == "conv-mcp-1"
+
+
+def test_cursor_before_mcp_execution_parses_json_tool_input():
+    payload = {
+        "hook_event_name": "beforeMCPExecution",
+        "server": "willow",
+        "tool_name": "fleet_status",
+        "tool_input": '{"app_id": "willow"}',
+        "conversation_id": "conv-mcp-2",
+    }
+    out = _cursor_to_claude("willow.fylgja.events.pre_tool", payload)
+    assert out["tool_name"] == "mcp__willow__fleet_status"
+    assert out["tool_input"] == {"app_id": "willow"}
