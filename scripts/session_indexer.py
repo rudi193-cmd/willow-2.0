@@ -4,11 +4,17 @@ Session indexer — parses all Claude Code JSONL session files and writes:
   - per-session metadata to public.session_index
   - per-turn user messages to public.session_messages
 Both tables live in willow_20.
+
+Usage:
+  python3 scripts/session_indexer.py
+  python3 scripts/session_indexer.py --fleet --since 2026-07-03
 """
+import argparse
 import json
 import os
 import glob
-from datetime import datetime, timezone
+import sys
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 try:
@@ -302,9 +308,35 @@ def upsert_messages(conn, sessions: list[dict]):
 
 
 def main():
-    print(f"[index] Scanning {SESSION_ROOT}...")
-    files = glob.glob(os.path.join(SESSION_ROOT, "**", "*.jsonl"), recursive=True)
-    print(f"[index] Found {len(files)} JSONL files.")
+    ap = argparse.ArgumentParser(description="Index Claude/Cursor JSONL sessions into Postgres")
+    ap.add_argument("--fleet", action="store_true", help="Scan four fleet repos (Claude + Cursor)")
+    ap.add_argument("--since", default="", metavar="YYYY-MM-DD", help="Only JSONL with mtime on/after date")
+    args = ap.parse_args()
+
+    since_date = date.fromisoformat(args.since) if args.since else None
+
+    if args.fleet:
+        sys_path = Path(__file__).resolve().parent
+        if str(sys_path) not in sys.path:
+            sys.path.insert(0, str(sys_path))
+        from fleet_repos import discover_jsonl_paths
+
+        files = [str(p) for p, _ in discover_jsonl_paths(since=since_date)]
+        print(f"[index] Fleet scan since={since_date or 'all'}: {len(files)} JSONL files.")
+    else:
+        print(f"[index] Scanning {SESSION_ROOT}...")
+        files = glob.glob(os.path.join(SESSION_ROOT, "**", "*.jsonl"), recursive=True)
+        if since_date:
+            filtered = []
+            for fp in files:
+                try:
+                    mtime = datetime.fromtimestamp(Path(fp).stat().st_mtime, tz=timezone.utc).date()
+                except OSError:
+                    continue
+                if mtime >= since_date:
+                    filtered.append(fp)
+            files = filtered
+        print(f"[index] Found {len(files)} JSONL files.")
 
     conn = psycopg2.connect(**DB_PARAMS)
     create_tables(conn)
