@@ -16,10 +16,14 @@ to the same top-results on all probe queries.
 
 ## Two runs
 
-| Run ID | Folder | Description |
-|--------|--------|-------------|
-| `clean` | TBD — Rendereason curated | Hand-cleaned, no deprecated iterations |
-| `dirty` | TBD — raw dump | Full folder including dead ends and noise |
+| Run ID | Folder | Description | Status |
+|--------|--------|--------------|--------|
+| `clean` | none provided | Hand-cleaned, no deprecated iterations | **pending — maybe never** (2026-07-01: Sean doubts Rendereason will ever hand over a curated folder; do not treat this as an open blocker) |
+| `dirty` | ingested | Full folder including dead ends and noise | ingested, 659 KB atoms live |
+
+Without a `clean` run, R1 (probe overlap) and R3 (noise suppression) can only be evaluated
+qualitatively against the dirty run's own internal signals (e.g. does "deprecated" material
+still rank low on its own), not against a true ground truth.
 
 ## Steps
 
@@ -43,6 +47,13 @@ python -m sandbox.rh_harness.ingest --folder /path/to/dirty --run-id dirty
 ```bash
 python -m sandbox.rh_harness.compare > results/comparison.md
 ```
+
+> **Known issue (2026-07-01):** `willow_shim.py` calls a `python -m willow.cli mcp-call`
+> entrypoint that does not exist in the current venv (`No module named willow.cli`).
+> Every `search_kb()` call silently fails and returns an empty hit list, so `compare.py`
+> currently reports a false "PASS" (empty converges with empty). The shim needs to call
+> the real MCP `kb_search` tool instead. Not yet fixed — do not trust a `compare.py` run
+> until this is addressed.
 
 ## Probe queries
 
