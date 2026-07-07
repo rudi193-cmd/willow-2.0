@@ -54,6 +54,25 @@ def _cursor_to_claude(module: str, payload: dict) -> dict:
                 },
             }
 
+        # beforeMCPExecution payloads also carry tool_name — must run before the
+        # generic preToolUse branch or boot_gate sees "fleet_status" not mcp__* .
+        if event == "beforeMCPExecution":
+            server = payload.get("server", "willow")
+            tool = payload.get("tool_name", "")
+            tool_input = payload.get("tool_input")
+            if isinstance(tool_input, str):
+                try:
+                    tool_input = json.loads(tool_input)
+                except json.JSONDecodeError:
+                    tool_input = {}
+            if not isinstance(tool_input, dict):
+                tool_input = {}
+            return {
+                "session_id": sid,
+                "tool_name": f"mcp__{server}__{tool}",
+                "tool_input": tool_input,
+            }
+
         if event == "preToolUse" or payload.get("tool_name"):
             tool = payload.get("tool_name", "")
             tool_map = {
@@ -83,23 +102,6 @@ def _cursor_to_claude(module: str, payload: dict) -> dict:
             return {
                 "session_id": sid,
                 "tool_name": mapped,
-                "tool_input": tool_input,
-            }
-
-        if event == "beforeMCPExecution":
-            server = payload.get("server", "willow")
-            tool = payload.get("tool_name", "")
-            tool_input = payload.get("tool_input")
-            if isinstance(tool_input, str):
-                try:
-                    tool_input = json.loads(tool_input)
-                except json.JSONDecodeError:
-                    tool_input = {}
-            if not isinstance(tool_input, dict):
-                tool_input = {}
-            return {
-                "session_id": sid,
-                "tool_name": f"mcp__{server}__{tool}",
                 "tool_input": tool_input,
             }
 
