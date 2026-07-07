@@ -87,6 +87,18 @@ def anchor_lines(max_open: int = 4) -> list[str]:
     lines: list[str] = []
     if bridge:
         lines.append("[CROSS-RUNTIME]")
+        # Ambient marker: this block describes OTHER sessions/runtimes, not
+        # this session's own memory. A resumed session has no structural way
+        # to tell a hook-injected summary apart from something it actually
+        # said earlier in this same conversation — without this line, "last:
+        # <topic>" reads exactly like a recalled turn (observed: FRANK
+        # a6986a1a, a resumed session reported another session's closing
+        # words as its own).
+        lines.append(
+            "  (ambient — other sessions' state, injected by the SessionStart "
+            "hook; never report this as this session's own memory or as "
+            "something you said)"
+        )
         for label in ("claude_latest", "cursor_latest"):
             block = bridge.get(label)
             if not isinstance(block, dict):

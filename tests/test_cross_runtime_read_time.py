@@ -69,6 +69,9 @@ def test_anchor_lines_inject_digest_not_bridge_threads(monkeypatch):
     assert "[DIGEST]" in text
     assert "STALE COPY" not in text
     assert "STALE NEXT" not in text
+    # Ambient marker: a resumed session must not mistake another session's
+    # digest for its own memory (FRANK a6986a1a contamination incident).
+    assert "this session's own memory" in text
 
 
 def test_anchor_lines_survive_digest_failure(monkeypatch):
