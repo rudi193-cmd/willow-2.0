@@ -17,13 +17,14 @@ enables the fleet units with `systemctl --user`. All timers set
 | ~~`willow-bridge-cross-runtime.timer`~~ | ~~daily `06:00`~~ | — | **RETIRED** (ADR-20260703): bridge rebuilds at read time in `cross_runtime.ensure_fresh_bridge`; retire with `scripts/uninstall_bridge_timer.sh` |
 | `repo-fleet-sweep.timer` | weekly `Mon 04:00` | `repo-fleet-sweep.service` | Repo hygiene sweep (diverged/unpushed repos, branch litter) |
 | `hook-wiring-audit.timer` | daily `04:30` | `hook-wiring-audit.service` | Host-side check of `~/.claude/settings.json` hooks wiring (issue #603) |
+| `stuck-loop-watch.timer` | every `15min` | `stuck-loop-watch.service` | Retrospective stuck-loop chain detector on recent Claude Code sessions |
 
 **Enablement:** `setup.sh` enables `willow-metabolic.socket` (on-demand Norn pass),
-`willow-metabolic.timer` (nightly `03:00`), `willow-w8-census.timer`, and
-`willow-wce.timer`. WCE timer only (existing install): `scripts/install_wce_timer.sh`.
-Bridge timer: **retired** — `scripts/install_bridge_timer.sh` is superseded by the
-read-time rebuild; remove an existing timer with `scripts/uninstall_bridge_timer.sh`.
+`willow-metabolic.timer` (nightly `03:00`), `willow-w8-census.timer`,
+`willow-wce.timer`, `hook-wiring-audit.timer`, and `stuck-loop-watch.timer`.
+WCE timer only (existing install): `scripts/install_wce_timer.sh`.
 Hook-wiring-audit timer only (existing install): `scripts/install_hook_wiring_audit_timer.sh`.
+Stuck-loop-watch timer only (existing install): `scripts/install_stuck_loop_watch_timer.sh`.
 One-shot consecration on an existing install: `scripts/consecrate_metabolic.sh` (copies units,
 enables socket+timer, runs first Norn pass). Other units, including
 `repo-fleet-sweep.timer`, are linked and can be enabled on demand with

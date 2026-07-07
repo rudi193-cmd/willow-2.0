@@ -146,6 +146,18 @@ def test_load_registry_soil_overlay():
     assert "_id" not in by_id["hook-wiring-audit"]
 
 
+def test_recount_pending_install_when_live_systemd_missing_unit(monkeypatch):
+    loops = load_seed()["loops"]
+    monkeypatch.setattr(
+        "willow.fylgja.loops.registry._live_systemd_timers",
+        lambda: {"hook-wiring-audit.timer"},
+    )
+    result = recount(loops)
+    assert "stuck-loop-watch.timer" in result["pending_install"]
+    assert "stuck-loop-watch.timer" not in result["missing_in_reality"]
+    assert result["ok"] is False
+
+
 def test_cli_validate_recount_exit_codes():
     from willow.fylgja.loops import __main__ as cli
 

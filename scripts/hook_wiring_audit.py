@@ -112,7 +112,8 @@ def emit_loop_flag(result: dict, agent: str) -> None:
             "Registry matches live timers/hooks and passes validation."
             if ok else
             "Run python -m willow.fylgja.loops --validate --recount; "
-            "update willow/fylgja/config/loops.json or SOIL willow/loops."
+            "update willow/fylgja/config/loops.json or SOIL willow/loops; "
+            "for vendored timers in pending_install run the matching scripts/install_*_timer.sh."
         ),
         "source": "scripts/hook_wiring_audit.py",
     })

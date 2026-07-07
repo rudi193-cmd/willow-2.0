@@ -22,6 +22,7 @@ _SOIL_META_KEYS = frozenset({"_id", "_soil_id"})
 _ONESHOT_SERVICE_UNITS = frozenset({
     "hook-wiring-audit.service",
     "repo-fleet-sweep.service",
+    "stuck-loop-watch.service",
     "willow-bridge-cross-runtime.service",
     "willow-metabolic.service",
     "willow-w8-census.service",
@@ -280,10 +281,13 @@ def recount(loops: list[dict] | None = None) -> dict:
 
     tracked_registry = registry_timers - external_timers
     if live_timers is not None:
-        missing_in_reality = sorted(tracked_registry - live_timers)
+        not_live = tracked_registry - live_timers
+        pending_install = sorted(not_live & repo_timers)
+        missing_in_reality = sorted(not_live - repo_timers)
         reality_source = "systemd"
     else:
         missing_in_reality = sorted(tracked_registry - repo_timers)
+        pending_install = []
         reality_source = "repo_systemd_dir"
 
     untracked_timers = sorted(repo_timers - registry_timers - retired_timers)
@@ -296,7 +300,7 @@ def recount(loops: list[dict] | None = None) -> dict:
         hook_drift["missing_in_reality"] = sorted(registry_hooks - live_hooks)
         hook_drift["missing_in_registry"] = sorted(live_hooks - registry_hooks)
 
-    ok = not missing_in_reality and not untracked_timers
+    ok = not missing_in_reality and not untracked_timers and not pending_install
     ok = ok and not missing_daemon_in_reality and not untracked_daemons
     if live_hooks is not None and registry_hooks:
         ok = ok and not hook_drift["missing_in_reality"] and not hook_drift["missing_in_registry"]
@@ -307,6 +311,7 @@ def recount(loops: list[dict] | None = None) -> dict:
         "reality_timer_source": reality_source,
         "external_timers": sorted(external_timers),
         "missing_in_reality": missing_in_reality,
+        "pending_install": pending_install,
         "untracked_timers": untracked_timers,
         "registry_daemon_count": len(registry_daemons),
         "retired_timers": sorted(retired_timers),
