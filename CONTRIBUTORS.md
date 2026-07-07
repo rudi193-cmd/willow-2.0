@@ -37,6 +37,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 |---------|-----------|---------------------|--------|
 | [almanac-data/economy-almanac](https://github.com/almanac-data/economy-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #10](https://github.com/almanac-data/economy-almanac/pull/10) merged |
 | [almanac-data/agriculture-almanac](https://github.com/almanac-data/agriculture-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #4](https://github.com/almanac-data/agriculture-almanac/pull/4) merged |
+| [almanac-data/agriculture-almanac](https://github.com/almanac-data/agriculture-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #4](https://github.com/almanac-data/agriculture-almanac/pull/4) merged |
 | [almanac-data/education-almanac](https://github.com/almanac-data/education-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #4](https://github.com/almanac-data/education-almanac/pull/4) merged |
 | [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #43](https://github.com/almanac-data/climate-almanac/pull/43) merged |
 | [almanac-data/transportation-almanac](https://github.com/almanac-data/transportation-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #4](https://github.com/almanac-data/transportation-almanac/pull/4) merged |
