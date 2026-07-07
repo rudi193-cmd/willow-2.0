@@ -53,9 +53,10 @@ Boot runs in **three phases**. The PreToolUse hook enforces them:
 > **`{agent}` = fleet identity** (`WILLOW_AGENT_NAME` / `.willow/active-agent`) — never the persona.
 > Persona is voice only; SOIL, handoffs, ledger, and sentinels key off the fleet id.
 
-> **Digest fast path (warm boot).** If SessionStart injected `[DIGEST]` **< 2h old** with
-> verified thread states, skip step 8 (handoff_latest), step 13 (stack snapshot), and
-> `kb_startup_continuity` in step 16 on the cold-boot path.
+> **Digest fast path (warm boot).** Read `fast_path: yes|no` on the `[DIGEST]` block —
+> **not** the `generated:` timestamp (always session-fresh; self-referential). When
+> `fast_path: yes`, skip step 7 (handoff_latest), step 13 (stack snapshot), and
+> `kb_startup_continuity` in step 14. When `fast_path: no`, run those cold-boot steps.
 
 ---
 

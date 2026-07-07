@@ -102,3 +102,81 @@ def test_digest_degraded_when_no_handoff(monkeypatch):
     assert digest["handoff"]["format"] == "none"
     assert digest["degraded"]
     assert any("degraded:" in line for line in render_lines(digest))
+
+
+def test_warm_boot_eligible_v3_verified(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("hello")
+    monkeypatch.setattr(
+        "willow.fylgja.handoff_write.willow_home", lambda: tmp_path, raising=True
+    )
+    path = write_session_handoff_v3(
+        "testagent",
+        summary="digest warm boot",
+        claims=[
+            {
+                "id": "readme-there", "text": "README exists", "kind": "file_exists",
+                "opened": "2026-07-03",
+                "verify": {"type": "file_exists", "subject": "README.md"},
+            },
+        ],
+        next_bite={
+            "id": "next-bite", "text": "verify the verifier", "kind": "file_exists",
+            "opened": "2026-07-03",
+            "verify": {"type": "file_exists", "subject": "README.md"},
+        },
+        project="willow-2.0",
+        skeleton={},
+        repo_root=repo,
+    )
+
+    monkeypatch.setattr(boot_digest_mod, "fetch_latest_handoff", _fake_fetch(path))
+    monkeypatch.setattr(boot_digest_mod, "resolve_agent_handoff_file", lambda a, f: path)
+
+    digest = build_boot_digest(
+        "testagent", workspace=str(repo), repo_root=str(repo), include_attention=False
+    )
+    eligible, reason = boot_digest_mod.warm_boot_eligible(digest)
+    assert eligible is True
+    assert "verified" in reason
+    assert digest["handoff"].get("mtime_iso")
+
+    lines = render_lines(digest)
+    assert any(line.startswith("fast_path: yes") for line in lines)
+
+
+def test_warm_boot_not_eligible_v2(monkeypatch):
+    def fetch(agent, *, project="", workspace=""):
+        return {
+            "filename": "session_handoff-2026-07-01a_testagent.md",
+            "date": "2026-07-01", "project": "willow-2.0", "summary": "old v2",
+            "open_threads": ["push the thing"],
+            "questions": ["What is the next single bite? push feat/x"],
+        }
+
+    monkeypatch.setattr(boot_digest_mod, "fetch_latest_handoff", fetch)
+    monkeypatch.setattr(boot_digest_mod, "resolve_agent_handoff_file", lambda a, f: None)
+
+    digest = build_boot_digest("testagent", include_attention=False)
+    eligible, reason = boot_digest_mod.warm_boot_eligible(digest)
+    assert eligible is False
+    assert "v2" in reason or "format=" in reason
+    assert any(line.startswith("fast_path: no") for line in render_lines(digest))
+
+
+def test_warm_boot_not_eligible_stale_claim(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("hello")
+    path = _write_v3(tmp_path, monkeypatch, repo)
+
+    monkeypatch.setattr(boot_digest_mod, "fetch_latest_handoff", _fake_fetch(path))
+    monkeypatch.setattr(boot_digest_mod, "resolve_agent_handoff_file", lambda a, f: path)
+
+    digest = build_boot_digest(
+        "testagent", workspace=str(repo), repo_root=str(repo), include_attention=False
+    )
+    eligible, reason = boot_digest_mod.warm_boot_eligible(digest)
+    assert eligible is False
+    assert "STALE" in reason
