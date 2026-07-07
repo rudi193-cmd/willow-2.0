@@ -108,6 +108,23 @@ class TestScanBashDestructive:
         issues = scan_bash("rm /tmp/myfile.txt")
         assert not issues
 
+    def test_rm_rf_worktree_under_home_allowed(self):
+        wt = "/home/u/github/willow-2.0/worktrees/kart-phase0"
+        issues = scan_bash(f"rm -rf {wt}")
+        assert not any(i.category == "destructive" for i in issues)
+
+    def test_rm_rf_home_non_worktree_blocked(self):
+        issues = scan_bash("rm -rf /home/u/important")
+        assert any(i.category == "destructive" for i in issues)
+        assert worst(issues).severity == SEV_HIGH
+
+    def test_rm_rf_mixed_worktree_and_home_flags_home(self):
+        wt = "/home/u/github/willow-2.0/worktrees/a"
+        issues = scan_bash(f"rm -rf {wt} /home/u/important")
+        assert any(
+            i.category == "destructive" and "important" in i.message for i in issues
+        )
+
 
 # ── scan_bash: suspicious install ────────────────────────────────────────────
 
