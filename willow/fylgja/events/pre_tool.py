@@ -959,6 +959,15 @@ def main():
                 print(json.dumps({"decision": "block", "reason": f5}))
         sys.exit(0)
 
+    # Read tool — advise KB-first when the file is already indexed
+    if tool_name == "Read":
+        file_path = tool_input.get("file_path", "")
+        if file_path:
+            advisory = check_kb_first(file_path)
+            if advisory:
+                print(json.dumps({"decision": "warn", "reason": advisory}))
+        sys.exit(0)
+
     # Channel enforcement — warn on #fleet exceeding char limit
     warn = check_channel_enforce(tool_name, tool_input)
     if warn:

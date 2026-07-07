@@ -225,6 +225,33 @@ def _run_pre_tool(stdin_data: dict) -> str:
     return out.getvalue()
 
 
+def test_read_tool_wires_check_kb_first_into_main():
+    """check_kb_first was implemented + unit-tested but never called from
+    main() (flag-check-kb-first-unwired) — main() had no Read branch at all.
+    """
+    mock_result = [{"id": "abc", "title": "README.md", "collection": "hanuman/file-index"}]
+    with patch("willow.fylgja.events.pre_tool._mcp_store_search", return_value=mock_result):
+        out = _run_pre_tool({
+            "tool_name": "Read",
+            "tool_input": {"file_path": "/home/sean/project/README.md"},
+            "session_id": "abc123",
+        })
+    assert out.strip(), "Expected a warn response, got empty output"
+    data = json.loads(out)
+    assert data["decision"] == "warn"
+    assert "KB-FIRST" in data["reason"]
+
+
+def test_read_tool_silent_when_not_indexed():
+    with patch("willow.fylgja.events.pre_tool._mcp_store_search", return_value=[]):
+        out = _run_pre_tool({
+            "tool_name": "Read",
+            "tool_input": {"file_path": "/some/unknown/file.py"},
+            "session_id": "abc123",
+        })
+    assert out.strip() == ""
+
+
 def test_safety_gate_blocks_training_tool_without_consent():
     out = _run_pre_tool({
         "tool_name": "mcp__willow__index_feedback_write",
