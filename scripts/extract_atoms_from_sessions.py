@@ -16,6 +16,7 @@ import json
 import os
 import re
 import sqlite3
+import sys
 from collections import Counter
 from datetime import date
 from pathlib import Path
@@ -500,7 +501,7 @@ def _session_files(
         kept: list[Path] = []
         for p in files:
             try:
-                mtime = datetime.fromtimestamp(p.stat().st_mtime, tz=timezone.utc).date()
+                mtime = dt.datetime.fromtimestamp(p.stat().st_mtime, tz=dt.timezone.utc).date()
             except OSError:
                 continue
             if mtime >= since:
