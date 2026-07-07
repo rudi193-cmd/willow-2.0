@@ -1953,20 +1953,24 @@ async def kart_task_run(
 
         timeout = kart_timeout("poll")
         grace = min(2, timeout)
-        _time.sleep(grace)
-        deadline = _time.monotonic() + timeout
-        seen: set = set()
-        results = []
 
-        # Snapshot active task IDs at call start so we only report tasks that
-        # were pending/running when this call began — not historical completed
-        # tasks sitting in Postgres from prior sessions.
+        # Snapshot active task IDs BEFORE the grace sleep so we only report
+        # tasks that were pending/running when this call began — not historical
+        # completed tasks sitting in Postgres from prior sessions. Snapshotting
+        # after the sleep let a fast kart-worker finish a task during grace,
+        # completing it before the snapshot ran — dropping it from
+        # initial_active_ids and reporting executed:0 for work that had
+        # actually already succeeded.
         initial_active_ids = {
             r["id"]
             for r in pg.tasks_by_status(
                 agent=agent, statuses=["pending", "running"], limit=limit * 4
             )
         }
+        _time.sleep(grace)
+        deadline = _time.monotonic() + timeout
+        seen: set = set()
+        results = []
 
         while _time.monotonic() < deadline:
             rows = pg.tasks_by_status(agent=agent, limit=limit * 4)
