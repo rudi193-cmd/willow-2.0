@@ -73,9 +73,14 @@ def test_check_bash_block_allows_worktree_cleanup():
 
 
 def test_carveout_is_load_bearing():
-    """Without the exception the raw destructive scan flags a /home worktree path —
-    proving the security-scan skip is necessary, not cosmetic."""
+    """Worktree paths under /home must not false-positive the depth-aware rm -rf scan."""
     bad = worst(scan_bash(f"rm -rf {_WT}"))
+    assert bad is None
+
+
+def test_worktree_rm_allowed_but_home_still_blocked():
+    assert worst(scan_bash(f"rm -rf {_WT}")) is None
+    bad = worst(scan_bash("rm -rf /home/u/important"))
     assert bad is not None and bad.severity >= SEV_HIGH
 
 
