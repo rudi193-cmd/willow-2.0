@@ -36,13 +36,35 @@ def _nest_pending() -> int:
         return 0
 
 
-def _open_flags() -> int:
-    anchor = willow_home() / "session_anchor.json"
-    if not anchor.is_file():
-        return 0
+def _open_flags(agent: str = "") -> int:
+    """Live count of open {agent}/gaps + {agent}/flags (mirrors session_start._open_attention_items).
+
+    Previously read a cached session_anchor.json written under a filename
+    (session_anchor_path()) that nothing here ever matched, so this always
+    reported 0 regardless of actual open flags.
+    """
+    who = (agent or os.environ.get("WILLOW_AGENT") or "willow").strip()
     try:
-        data = json.loads(anchor.read_text())
-        return int(data.get("open_flags") or 0)
+        from core.store_port import get_store_port
+        from willow.fylgja.willow_home import resolve_store_root
+
+        root = os.environ.get(
+            "WILLOW_STORE_ROOT",
+            str(resolve_store_root(Path(__file__).resolve().parents[2])),
+        )
+        store = get_store_port(root=root)
+        count = 0
+        for gap in store.all(f"{who}/gaps") or []:
+            if gap.get("status") == "open":
+                count += 1
+        for flag in store.all(f"{who}/flags") or []:
+            if flag.get("flag_state") != "open":
+                continue
+            title = str(flag.get("title") or "")
+            if title.startswith("Blessed path"):
+                continue
+            count += 1
+        return count
     except Exception:
         return 0
 
@@ -125,7 +147,7 @@ def fetch_attention_summary(
     """Build attention summary. Pass inbox rows from grove_inbox when available."""
     summary = AttentionSummary()
     summary.nest_pending = _nest_pending()
-    summary.open_flags = _open_flags()
+    summary.open_flags = _open_flags(agent)
     summary.running_tasks, summary.pending_tasks, summary.done_today = _kart_counts()
     summary.dream_due = _dream_due(agent)
     (
