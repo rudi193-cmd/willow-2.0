@@ -98,9 +98,6 @@ _SECRET_ACCESS = _compile([
 _DESTRUCTIVE = _compile([
     (r"rm\s+-rf\s+/\s", SEV_CRITICAL, "rm -rf / (root filesystem)"),
     (r"rm\s+-rf\s+/\*", SEV_CRITICAL, "rm -rf /* (root filesystem wildcard)"),
-    (r"rm\s+(-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*|-[a-zA-Z]*f[a-zA-Z]*r[a-zA-Z]*)"
-     r"\s+(\*|~|/(?:usr|etc|var|home|opt|bin|sbin|lib))",
-     SEV_HIGH, "Forced recursive deletion of important path"),
     (r"git\s+push\s+.*--force\s+.*(main|master)", SEV_HIGH, "Force push to main/master"),
     (r"git\s+reset\s+--hard", SEV_HIGH, "git reset --hard (discards changes)"),
     (r"git\s+clean\s+-fd", SEV_HIGH, "git clean -fd (deletes untracked files)"),
@@ -109,6 +106,64 @@ _DESTRUCTIVE = _compile([
     (r"chmod\s+(-R\s+)?777\s+/", SEV_HIGH, "Setting world-writable permissions on system path"),
     (r"chown\s+-R\s+.*\s+/", SEV_HIGH, "Recursive ownership change on system path"),
 ])
+
+_RM_RF_RE = re.compile(
+    r"rm\s+(-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*|-[a-zA-Z]*f[a-zA-Z]*r[a-zA-Z]*)\s+([^;&|`\n]+)",
+    re.IGNORECASE,
+)
+_SYSTEM_ROOT_RE = re.compile(r"^/(?:usr|etc|var|opt|bin|sbin|lib)(?:/|$)")
+
+
+def _rm_rf_targets(command: str) -> list[str]:
+    """Whitespace-split rm -rf targets (no full shell parse)."""
+    targets: list[str] = []
+    for match in _RM_RF_RE.finditer(command):
+        tail = match.group(2).strip().split("#", 1)[0].strip()
+        for token in tail.split():
+            if token and not token.startswith("-"):
+                targets.append(token)
+    return targets
+
+
+def _is_destructive_rm_target(target: str) -> bool:
+    """Depth-aware rm -rf check — /home/* is not blanket-dangerous when under /worktrees/."""
+    path = target.strip().rstrip("/")
+    if not path or path == "*":
+        return True
+    if path in ("/", "/*"):
+        return True
+    if path == "~" or path.startswith("~/"):
+        return True
+    normalized = path.replace("\\", "/")
+    if "/worktrees/" in normalized:
+        return False
+    if _SYSTEM_ROOT_RE.match(path):
+        return True
+    if path == "/home" or path.startswith("/home/"):
+        return True
+    return False
+
+
+def _check_destructive_rm(command: str) -> list[ScanIssue]:
+    issues: list[ScanIssue] = []
+    for target in _rm_rf_targets(command):
+        if not _is_destructive_rm_target(target):
+            continue
+        critical = target.strip() in ("/", "/*")
+        issues.append(
+            ScanIssue(
+                category="destructive",
+                severity=SEV_CRITICAL if critical else SEV_HIGH,
+                pattern="rm-rf",
+                message=(
+                    "rm -rf / (root filesystem)"
+                    if critical
+                    else f"Forced recursive deletion of important path: {target}"
+                ),
+            )
+        )
+    return issues
+
 
 _SUSPICIOUS_INSTALL = _compile([
     (r"curl\s+.*\|\s*(sudo\s+)?(ba)?sh", SEV_HIGH, "Piping curl output to shell"),
@@ -244,6 +299,7 @@ def scan_bash(command: str, allowed_patterns: Sequence[str] = ()) -> list[ScanIs
     issues.extend(_check(command, _EXFIL, "exfiltration"))
     issues.extend(_check(command, _SECRET_ACCESS, "secret_access"))
     issues.extend(_check(command, _DESTRUCTIVE, "destructive"))
+    issues.extend(_check_destructive_rm(command))
     issues.extend(_check(command, _SUSPICIOUS_INSTALL, "suspicious_install"))
     issues.extend(_check(command, _OBFUSCATION, "obfuscation"))
     return issues
