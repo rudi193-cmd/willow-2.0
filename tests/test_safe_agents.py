@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.safe_agents import (  # noqa: E402
+    AGENT_PERMISSION_EXTRA,
     FLEET_AGENTS,
     TRUST_TIERS,
     build_manifest,
@@ -17,6 +18,21 @@ from core.safe_agents import (  # noqa: E402
 class TestSafeAgents(unittest.TestCase):
     def test_fleet_includes_skirnir(self):
         self.assertIn("skirnir", FLEET_AGENTS)
+
+    def test_fleet_includes_schmidt_and_publius(self):
+        self.assertIn("schmidt", FLEET_AGENTS)
+        self.assertIn("publius", FLEET_AGENTS)
+        self.assertEqual(FLEET_AGENTS["schmidt"]["trust"], "WORKER")
+
+    def test_schmidt_gets_store_and_knowledge_write(self):
+        perms = permissions_for_agent("schmidt")
+        self.assertIn("store_write", perms)
+        self.assertIn("knowledge_write", perms)
+        self.assertNotIn("fleet_admin", perms)
+        self.assertEqual(
+            AGENT_PERMISSION_EXTRA.get("schmidt"),
+            ["store_write", "knowledge_write"],
+        )
 
     def test_worker_tier_has_read_not_fleet_admin(self):
         perms = permissions_for_agent("gerald")
