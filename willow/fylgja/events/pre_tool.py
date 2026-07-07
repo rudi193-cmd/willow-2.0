@@ -291,6 +291,26 @@ F5_PROSE_TOOLS = {
     "mcp__willow__kb_ingest": "content",
 }
 
+_SCHMIDT_SOIL_PREFIX = "sean/schmidt"
+_SCHMIDT_SOIL_WRITE_TOOLS = frozenset({
+    "mcp__willow__soil_put",
+    "mcp__willow__soil_update",
+    "mcp__willow__soil_delete",
+})
+
+
+def check_agent_soil_write_scope(tool_name: str, tool_input: dict) -> str | None:
+    """schmidt may only mutate SOIL under sean/schmidt/*."""
+    if AGENT != "schmidt" or tool_name not in _SCHMIDT_SOIL_WRITE_TOOLS:
+        return None
+    collection = str(tool_input.get("collection", "")).strip()
+    if collection.startswith(_SCHMIDT_SOIL_PREFIX + "/") or collection == _SCHMIDT_SOIL_PREFIX:
+        return None
+    return (
+        f"schmidt agent may only write SOIL under {_SCHMIDT_SOIL_PREFIX}/ "
+        f"(attempted {collection!r})."
+    )
+
 FLEET_CHANNEL_MAX_CHARS = 400
 
 
@@ -792,6 +812,12 @@ def main():
     if hook_guard:
         _corpus_log_block(tool_name, hook_guard, session_id)
         print(json.dumps({"decision": "block", "reason": hook_guard}))
+        sys.exit(0)
+
+    soil_scope = check_agent_soil_write_scope(tool_name, tool_input)
+    if soil_scope:
+        _corpus_log_block(tool_name, soil_scope, session_id)
+        print(json.dumps({"decision": "block", "reason": soil_scope}))
         sys.exit(0)
 
     # Safety gate — runs before all other checks

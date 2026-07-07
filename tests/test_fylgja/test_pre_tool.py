@@ -4,6 +4,7 @@ from unittest.mock import patch
 from willow.fylgja.events.pre_tool import (
     check_bash_block,
     check_agent_block,
+    check_agent_soil_write_scope,
     check_hook_tamper_guard,
     check_kb_first,
     check_channel_enforce,
@@ -610,6 +611,64 @@ def test_web_fetch_pre_tool_blocks():
     data = json.loads(out)
     assert data["decision"] == "block"
     assert "willow_web_fetch" in data["reason"] or "MCP" in data["reason"]
+
+
+# ── schmidt SOIL write scope ───────────────────────────────────────────────────
+
+
+def test_schmidt_soil_scope_allows_lane_prefix(monkeypatch):
+    import willow.fylgja.events.pre_tool as pt
+
+    monkeypatch.setattr(pt, "AGENT", "schmidt")
+    assert check_agent_soil_write_scope(
+        "mcp__willow__soil_put",
+        {"collection": "sean/schmidt/grants", "record": {"id": "x"}},
+    ) is None
+    assert check_agent_soil_write_scope(
+        "mcp__willow__soil_update",
+        {"collection": "sean/schmidt", "record_id": "x", "record": {}},
+    ) is None
+
+
+def test_schmidt_soil_scope_blocks_out_of_lane(monkeypatch):
+    import willow.fylgja.events.pre_tool as pt
+
+    monkeypatch.setattr(pt, "AGENT", "schmidt")
+    reason = check_agent_soil_write_scope(
+        "mcp__willow__soil_delete",
+        {"collection": "willow/flags", "record_id": "x"},
+    )
+    assert reason is not None
+    assert "sean/schmidt" in reason
+    assert "willow/flags" in reason
+
+
+def test_schmidt_soil_scope_ignores_other_agents(monkeypatch):
+    import willow.fylgja.events.pre_tool as pt
+
+    monkeypatch.setattr(pt, "AGENT", "willow")
+    assert check_agent_soil_write_scope(
+        "mcp__willow__soil_put",
+        {"collection": "willow/flags", "record": {"id": "x"}},
+    ) is None
+
+
+def test_schmidt_soil_scope_pre_tool_blocks(monkeypatch):
+    import willow.fylgja.events.pre_tool as pt
+
+    monkeypatch.setattr(pt, "AGENT", "schmidt")
+    out = _run_pre_tool({
+        "tool_name": "mcp__willow__soil_put",
+        "tool_input": {
+            "app_id": "schmidt",
+            "collection": "willow/agreements",
+            "record": {"id": "x"},
+        },
+        "session_id": "schmidt-soil-1",
+    })
+    data = json.loads(out)
+    assert data["decision"] == "block"
+    assert "sean/schmidt" in data["reason"]
 
 
 # ── Boot gate + Kart reuse (salvaged from #597) ────────────────────────────────

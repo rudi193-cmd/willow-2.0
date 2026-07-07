@@ -39,8 +39,8 @@ fi
 # WILLOW_COMPLETION_REQUIRE_EVIDENCE. The file is documented as
 # "set -a && source ~/github/.willow/env && set +a"; honor that here so the MCP
 # server actually picks it up instead of relying only on the launcher's
-# .mcp.json env block. The active-agent file below still wins for
-# WILLOW_AGENT_NAME, and secrets.sh (sourced next) still overrides any secret.
+# .mcp.json env block. Project active-agent (WILLOW_PROJECT_ROOT) or explicit
+# WILLOW_AGENT_NAME wins over repo active-agent; secrets.sh still overrides secrets.
 if [[ -f "${WILLOW_HOME}/env" ]]; then
     set -a
     # shellcheck disable=SC1091
@@ -63,20 +63,6 @@ export PYTHONPATH="${REPO_ROOT}:${GROVE_ROOT}"
 export WILLOW_ROOT="${REPO_ROOT}"
 export WILLOW_HOME="${WILLOW_HOME}"
 export WILLOW_PYTHON
-ACTIVE_FILE="${REPO_ROOT}/.willow/active-agent"
-ACTIVE_AGENT=""
-if [[ -f "${ACTIVE_FILE}" ]]; then
-    ACTIVE_AGENT="$(tr -d '[:space:]' < "${ACTIVE_FILE}")"
-fi
-if [[ -n "${ACTIVE_AGENT}" ]]; then
-    WILLOW_AGENT_NAME="${ACTIVE_AGENT}"
-elif [[ -z "${WILLOW_AGENT_NAME:-}" ]]; then
-    WILLOW_AGENT_NAME="hanuman"
-fi
-export WILLOW_AGENT_NAME
-export WILLOW_MCP_SERVER=1
-export GROVE_SENDER="${WILLOW_AGENT_NAME}"
-export GROVE_NAME="${WILLOW_AGENT_NAME}"
 export WILLOW_PG_DB="${WILLOW_PG_DB:-willow_20}"
 export WILLOW_PG_URL="${WILLOW_PG_URL:-postgresql://${USER:-$(id -un)}@localhost/${WILLOW_PG_DB}}"
 export WILLOW_SAFE_ROOT="${WILLOW_SAFE_ROOT:-${HOME}/github/SAFE/Applications}"
@@ -85,6 +71,22 @@ export WILLOW_PGP_FINGERPRINT="${WILLOW_PGP_FINGERPRINT:-9B6F87BEB4AE56E23D3D055
 export MAI_SECURITY_CONFIG="${MAI_SECURITY_CONFIG:-${HOME}/.markdownai/security.json}"
 # Tool picker size: minimal | core | standard (default) | full
 export WILLOW_MCP_PROFILE="${WILLOW_MCP_PROFILE:-standard}"
+
+# Agent identity: project active-agent (out-of-tree) > explicit env > repo active-agent > hanuman
+if [[ -n "${WILLOW_PROJECT_ROOT:-}" && -f "${WILLOW_PROJECT_ROOT}/.willow/active-agent" ]]; then
+    WILLOW_AGENT_NAME="$(tr -d '[:space:]' < "${WILLOW_PROJECT_ROOT}/.willow/active-agent")"
+elif [[ -z "${WILLOW_AGENT_NAME:-}" ]]; then
+    ACTIVE_FILE="${REPO_ROOT}/.willow/active-agent"
+    if [[ -f "${ACTIVE_FILE}" ]]; then
+        WILLOW_AGENT_NAME="$(tr -d '[:space:]' < "${ACTIVE_FILE}")"
+    else
+        WILLOW_AGENT_NAME="hanuman"
+    fi
+fi
+export WILLOW_AGENT_NAME
+export WILLOW_MCP_SERVER=1
+export GROVE_SENDER="${GROVE_SENDER:-${WILLOW_AGENT_NAME}}"
+export GROVE_NAME="${GROVE_NAME:-${WILLOW_AGENT_NAME}}"
 
 cd "${REPO_ROOT}"
 exec "${WILLOW_PYTHON}" -m sap.unified_mcp "$@"
