@@ -18,13 +18,21 @@ def handoff_dir(agent: str) -> Path:
     return willow_home() / "handoffs" / agent
 
 
+_LETTERS = "abcdefghijklmnopqrstuvwxyz"
+
+
 def next_session_filename(agent: str, suffix: str = "") -> str:
     """Return session_handoff-YYYY-MM-DD{letter}_{agent}.md avoiding collisions.
 
     Always lettered: handoff recency sorts by (date, suffix), and a letterless
     name loses the suffix tiebreak to any lettered file from the same date —
     handoff_latest would keep returning the older session. First session of
-    the day gets 'a'; an explicit free suffix is honored.
+    the day gets 'a'; an explicit free suffix is honored only when it would
+    sort after every existing lettered file for the date — an explicit suffix
+    that is free but sorts at-or-before the current max letter would lose the
+    same recency tiebreak (intake 640ECA8B recurrence, flag
+    flag-handoff-v3-explicit-suffix-ordering), so it is rejected in favor of
+    the first free letter after that max.
     """
     # UTC is the canonical clock for all Willow artifacts — intentional, do NOT
     # localize. The harness reports "today" in local time, so this filename can be
@@ -32,15 +40,27 @@ def next_session_filename(agent: str, suffix: str = "") -> str:
     # prompt_submit [CLOCK] line declares the relationship to agents each turn.
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     dest = handoff_dir(agent)
+    prefix = f"session_handoff-{today}"
+    existing_letters = sorted(
+        m.group(1)
+        for p in dest.glob(f"{prefix}*_{agent}.md")
+        if (m := re.match(rf"^{re.escape(prefix)}([a-z])_{re.escape(agent)}\.md$", p.name))
+    )
+    max_existing = existing_letters[-1] if existing_letters else None
     if suffix:
-        candidate = f"session_handoff-{today}{suffix}_{agent}.md"
+        candidate = f"{prefix}{suffix}_{agent}.md"
+        is_lettered = len(suffix) == 1 and suffix.isalpha()
+        in_order = max_existing is None or suffix > max_existing
+        if not (dest / candidate).exists() and (not is_lettered or in_order):
+            return candidate
+        # else: explicit suffix is stale/out-of-order — fall through and
+        # auto-allocate the first free letter after the current max.
+    start = _LETTERS.index(max_existing) + 1 if max_existing else 0
+    for letter in _LETTERS[start:]:
+        candidate = f"{prefix}{letter}_{agent}.md"
         if not (dest / candidate).exists():
             return candidate
-    for letter in "abcdefghijklmnopqrstuvwxyz":
-        candidate = f"session_handoff-{today}{letter}_{agent}.md"
-        if not (dest / candidate).exists():
-            return candidate
-    return f"session_handoff-{today}z_{agent}.md"
+    return f"{prefix}z_{agent}.md"
 
 
 def write_session_handoff(

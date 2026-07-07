@@ -47,6 +47,32 @@ def test_explicit_free_suffix_honored(monkeypatch, tmp_path):
     )
 
 
+def test_explicit_out_of_order_suffix_bumped_past_max(monkeypatch, tmp_path):
+    """A free but out-of-order explicit suffix (e.g. 'h' after 'j' already
+    exists) must not be honored — it would lose the recency tiebreak in
+    handoff_latest_sort_key, same as the letterless-base bug (flag
+    flag-handoff-v3-explicit-suffix-ordering, session be24d8e6)."""
+    today = _patch_dir(monkeypatch, tmp_path)
+    dest = tmp_path / "hanuman"
+    dest.mkdir(parents=True)
+    (dest / f"session_handoff-{today}j_hanuman.md").write_text("x")
+    assert (
+        next_session_filename("hanuman", suffix="h")
+        == f"session_handoff-{today}k_hanuman.md"
+    )
+
+
+def test_explicit_suffix_equal_to_max_falls_through(monkeypatch, tmp_path):
+    today = _patch_dir(monkeypatch, tmp_path)
+    dest = tmp_path / "hanuman"
+    dest.mkdir(parents=True)
+    (dest / f"session_handoff-{today}j_hanuman.md").write_text("x")
+    assert (
+        next_session_filename("hanuman", suffix="j")
+        == f"session_handoff-{today}k_hanuman.md"
+    )
+
+
 def test_result_always_matches_lettered_pattern(monkeypatch, tmp_path):
     _patch_dir(monkeypatch, tmp_path)
     name = next_session_filename("hanuman")
