@@ -52,6 +52,51 @@ def test_prompt_submit_block_first_turn_with_selection_emits_visible(tmp_path, m
     assert "Fleet identity remains **hanuman**" in block
 
 
+def test_prompt_submit_block_confirms_on_later_turn_if_not_yet_ready(tmp_path, monkeypatch):
+    # Regression: is_first is driven by a turn counter shared across every
+    # concurrent session under this agent identity, so it can already be
+    # spent (by this session's own earlier turn, or by another window's
+    # traffic) before the user's confirm reply ever arrives. A selection
+    # must still be honored on a later turn if THIS session hasn't written
+    # its own persona-done sentinel yet — otherwise the picker banner is
+    # stale forever with no way to confirm.
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    state = tmp_path / "active-persona"
+    monkeypatch.setattr(p, "STATE_FILE", state)
+    monkeypatch.setattr(p, "fleet_agent_id", lambda: "hanuman")
+    from core.boot_gate import persona_done_path
+
+    session_id = "test-session-confirm-not-first-turn"
+    flag = persona_done_path(session_id=session_id)
+    flag.unlink(missing_ok=True)
+    try:
+        block = p.prompt_submit_block(is_first=False, prompt="hanuman", session_id=session_id)
+        assert "PERSONA-VISIBLE" in block
+        assert flag.exists()
+    finally:
+        flag.unlink(missing_ok=True)
+
+
+def test_prompt_submit_block_later_turn_status_only_once_ready(tmp_path, monkeypatch):
+    # Once this session's own sentinel exists, later turns fall back to
+    # status-only — no re-parsing a stray persona keyword mid-conversation.
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    state = tmp_path / "active-persona"
+    monkeypatch.setattr(p, "STATE_FILE", state)
+    monkeypatch.setattr(p, "fleet_agent_id", lambda: "hanuman")
+    from core.boot_gate import persona_done_path
+
+    session_id = "test-session-already-ready"
+    flag = persona_done_path(session_id=session_id)
+    flag.write_text("persona-ready\n")
+    try:
+        block = p.prompt_submit_block(is_first=False, prompt="hanuman", session_id=session_id)
+        assert "PERSONA-VISIBLE" not in block
+        assert "PERSONA-GATE" not in block
+    finally:
+        flag.unlink(missing_ok=True)
+
+
 def test_persona_identity_banner_on_switch(tmp_path, monkeypatch):
     state = tmp_path / "active-persona"
     monkeypatch.setattr(p, "STATE_FILE", state)

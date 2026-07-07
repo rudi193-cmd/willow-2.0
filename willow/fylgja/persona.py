@@ -560,13 +560,23 @@ def anchor_lines() -> str:
 
 
 def prompt_submit_block(*, is_first: bool, prompt: str, session_id: str = "") -> str:
-    """Build persona lines for beforeSubmitPrompt."""
-    from core.boot_gate import mark_persona_ready
+    """Build persona lines for beforeSubmitPrompt.
+
+    is_first alone under-gates this: it's driven by a turn counter shared
+    across every concurrent session under this agent identity, so it can
+    already be spent by turn 1 (or by another window's traffic) before the
+    user ever replies with a selection — leaving the picker banner stale
+    forever with no way to confirm. Widen the window to "this session's own
+    persona-done sentinel doesn't exist yet", which is scoped per session_id
+    and isn't affected by other turns/sessions.
+    """
+    from core.boot_gate import mark_persona_ready, is_persona_ready
 
     parts: list[str] = []
     active = active_persona()
+    awaiting_confirm = is_first or not is_persona_ready(session_id=session_id)
 
-    if is_first:
+    if awaiting_confirm:
         choice = parse_selection(prompt)
         binding, locked = _project_binding_info()
         if locked and binding and not choice:
@@ -634,7 +644,7 @@ def prompt_submit_block(*, is_first: bool, prompt: str, session_id: str = "") ->
         parts.append(render_status(active))
         parts.append(persona_identity_banner(active, switched=False))
 
-    if is_first and active and active != "none":
+    if awaiting_confirm and active and active != "none":
         context = load_persona(active)
         if context:
             parts.append(context)
