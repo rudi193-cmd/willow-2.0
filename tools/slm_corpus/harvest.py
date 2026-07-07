@@ -468,9 +468,14 @@ def main() -> int:
                     pg.conn.rollback()
                 except Exception:
                     pass
-        fresh = [r for r in recs if r["id"] not in existing]
-        for r in fresh:
-            existing.add(r["id"])
+        fresh = []
+        for r in recs:
+            # incremental add: dedups duplicates WITHIN one harvester's output,
+            # not just against prior runs (duplicate KB windows produce
+            # identical payloads → identical ids)
+            if r["id"] not in existing:
+                existing.add(r["id"])
+                fresh.append(r)
         new_records.extend(fresh)
         for r in fresh:
             stats[r["task_type"]] = stats.get(r["task_type"], 0) + 1
