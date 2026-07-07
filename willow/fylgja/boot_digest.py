@@ -76,6 +76,14 @@ def build_boot_digest(
         "project": handoff.get("project") or project or "",
         "summary": (handoff.get("summary") or "")[:300],
     }
+    try:
+        handoff_path = resolve_agent_handoff_file(agent, str(handoff.get("filename") or ""))
+        if handoff_path is not None and handoff_path.exists():
+            digest["handoff"]["mtime_iso"] = datetime.fromtimestamp(
+                handoff_path.stat().st_mtime, tz=timezone.utc
+            ).isoformat()
+    except Exception:
+        pass
 
     claims, next_bite = _load_claims_for(agent, str(handoff.get("filename") or ""))
     fmt = "v3" if (claims or next_bite) else ("v2" if handoff else "none")
@@ -154,6 +162,59 @@ def build_boot_digest(
 _STATUS_MARK = {"verified": "OK", "failed": "STALE", "unverifiable": "unverified"}
 
 
+def warm_boot_eligible(
+    digest: dict,
+    *,
+    max_handoff_age_hours: float = 2.0,
+) -> tuple[bool, str]:
+    """Whether SessionStart digest may skip cold-boot handoff/stack/continuity steps.
+
+    Do not use digest['generated_at'] for age — it is rebuilt every SessionStart and
+    is always session-fresh (self-referential; see flag-boot-digest-freshness).
+    Eligibility uses handoff file mtime plus v3 claim verification instead.
+    """
+    degraded = digest.get("degraded") or []
+    if degraded:
+        return False, f"degraded: {str(degraded[0])[:100]}"
+
+    handoff = digest.get("handoff") or {}
+    fmt = handoff.get("format")
+    if fmt != "v3":
+        return False, f"format={fmt or 'none'} — run cold boot steps"
+
+    next_bite = digest.get("next_bite")
+    if next_bite:
+        nb_status = str((next_bite.get("verdict") or {}).get("status") or "unverifiable")
+        if nb_status == "failed":
+            return False, "next bite STALE — re-fetch handoff"
+        if nb_status != "verified":
+            return False, "next bite unverified — run handoff_latest"
+
+    for claim in digest.get("claims") or []:
+        if claim.get("kind") == "prose":
+            continue
+        status = str((claim.get("verdict") or {}).get("status") or "")
+        if status == "failed":
+            label = str(claim.get("id") or claim.get("text") or "claim")[:60]
+            return False, f"STALE claim: {label}"
+
+    mtime_iso = handoff.get("mtime_iso")
+    if not mtime_iso:
+        return False, "handoff mtime unknown — run cold boot"
+
+    try:
+        mtime = datetime.fromisoformat(mtime_iso.replace("Z", "+00:00"))
+        if mtime.tzinfo is None:
+            mtime = mtime.replace(tzinfo=timezone.utc)
+        age_h = (datetime.now(timezone.utc) - mtime).total_seconds() / 3600.0
+        if age_h > max_handoff_age_hours:
+            return False, f"handoff file {age_h:.1f}h old (max {max_handoff_age_hours}h)"
+    except (TypeError, ValueError):
+        return False, "handoff mtime unparseable"
+
+    return True, "v3 handoff fresh with verified next"
+
+
 def _claim_line(claim: dict) -> str:
     verdict = claim.get("verdict") or {}
     status = str(verdict.get("status") or "unverifiable")
@@ -174,6 +235,8 @@ def render_lines(digest: dict) -> list[str]:
     lines = [
         f"[DIGEST] agent: {digest.get('agent')} · generated: {str(digest.get('generated_at'))[:16]}Z"
     ]
+    eligible, fp_reason = warm_boot_eligible(digest)
+    lines.append(f"fast_path: {'yes' if eligible else 'no'} — {fp_reason}")
     handoff = digest.get("handoff") or {}
     if handoff.get("filename"):
         lines.append(
