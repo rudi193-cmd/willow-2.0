@@ -17,6 +17,7 @@ import os
 import re
 import sqlite3
 from collections import Counter
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -481,20 +482,51 @@ def _upsert_atoms(conn: sqlite3.Connection, atoms: list[dict[str, Any]]) -> None
         )
 
 
-def _session_files(source_dir: Path, session_ids: set[str] | None, recursive: bool = False) -> list[Path]:
-    files = sorted(source_dir.rglob("*.jsonl") if recursive else source_dir.glob("*.jsonl"))
+def _session_files(
+    source_dir: Path,
+    session_ids: set[str] | None,
+    recursive: bool = False,
+    *,
+    since: date | None = None,
+    fleet_paths: list[Path] | None = None,
+) -> list[Path]:
+    if fleet_paths is not None:
+        files = sorted(fleet_paths)
+    else:
+        files = sorted(source_dir.rglob("*.jsonl") if recursive else source_dir.glob("*.jsonl"))
     if session_ids:
         files = [p for p in files if p.stem in session_ids]
+    if since is not None:
+        kept: list[Path] = []
+        for p in files:
+            try:
+                mtime = datetime.fromtimestamp(p.stat().st_mtime, tz=timezone.utc).date()
+            except OSError:
+                continue
+            if mtime >= since:
+                kept.append(p)
+        files = kept
     return files
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
-    source_dir = Path(args.source_dir).expanduser()
     db_path = Path(args.db_path).expanduser()
     session_ids = set(args.session_id) if args.session_id else None
+    since_date = date.fromisoformat(args.since) if getattr(args, "since", "") else None
 
-    if not source_dir.exists():
-        raise FileNotFoundError(f"source dir not found: {source_dir}")
+    fleet_paths: list[Path] | None = None
+    if getattr(args, "fleet", False):
+        _scripts = Path(__file__).resolve().parent
+        if str(_scripts) not in sys.path:
+            sys.path.insert(0, str(_scripts))
+        from fleet_repos import discover_jsonl_paths
+
+        fleet_paths = [p for p, _ in discover_jsonl_paths(since=since_date)]
+        source_dir = fleet_paths[0].parent if fleet_paths else Path(".")
+    else:
+        source_dir = Path(args.source_dir).expanduser()
+        if not source_dir.exists():
+            raise FileNotFoundError(f"source dir not found: {source_dir}")
     if args.write:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(str(db_path))
@@ -510,7 +542,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         conn.commit()
         conn.close()
 
-    files = _session_files(source_dir, session_ids, recursive=getattr(args, "recursive", False))
+    files = _session_files(
+        source_dir,
+        session_ids,
+        recursive=getattr(args, "recursive", False),
+        since=since_date if not getattr(args, "fleet", False) else None,
+        fleet_paths=fleet_paths,
+    )
     if args.limit > 0:
         files = files[: args.limit]
 
@@ -563,6 +601,8 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--db-path", default=str(DEFAULT_DB_PATH), help="SQLite DB path with `records` table.")
     ap.add_argument("--session-id", action="append", help="Specific session id to process (repeatable).")
     ap.add_argument("--recursive", action="store_true", help="Recurse into subdirectories for JSONL files.")
+    ap.add_argument("--fleet", action="store_true", help="Scan four fleet repos (Claude + Cursor JSONL)")
+    ap.add_argument("--since", default="", metavar="YYYY-MM-DD", help="Only JSONL with mtime on/after date")
     ap.add_argument("--limit", type=int, default=0, help="Process at most N sessions (0 = all after filters).")
     ap.add_argument(
         "--max-semantic-candidates",
