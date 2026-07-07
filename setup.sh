@@ -173,7 +173,7 @@ if command -v systemctl >/dev/null 2>&1; then
     systemctl --user enable --now willow-metabolic.socket willow-metabolic.timer grove-mcp.service \
         willow-grove-listen.service drop-server.service nest-watcher.service \
         journal-watcher.service willow-w8-census.timer willow-wce.timer \
-        willow-bridge-cross-runtime.timer 2>/dev/null \
+        hook-wiring-audit.timer stuck-loop-watch.timer 2>/dev/null \
         && ok "Fleet units enabled" || warn "Some systemd units failed to enable"
 else
     warn "systemctl not available"
