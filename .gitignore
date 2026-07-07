@@ -17,6 +17,8 @@ agents/*/config/mcp.json
 
 # Symlink at repo root from fleet home — canonical lives in willow-config or .willow/generated
 /willow.md
+# Dev-machine symlink to grove u2u module (broken in clones; stubs/u2u covers mypy)
+/u2u
 willow/fylgja/config/fleet.env
 willow/fylgja/config/settings.global.json
 willow/fylgja/config/settings.local.json
@@ -25,6 +27,7 @@ willow/fylgja/config/settings.local.json
 .willow/generated/
 
 # .willow/ runtime artifacts — config (mcp.json) is tracked, these are not
+.willow/upstream-*.txt
 .willow/store/
 .willow/*.db
 .willow/vault.db

@@ -5,14 +5,13 @@
       "command": "bash",
       "args": ["sap/unified_mcp.sh"],
       "env": {
-        "WILLOW_AGENT_NAME": "heimdallr",
-        "WILLOW_GROVE_ROOT": "/home/sean-campbell/github/safe-app-willow-grove",
+        "WILLOW_AGENT_NAME": "willow",
+        "WILLOW_GROVE_ROOT": "~/github/safe-app-willow-grove",
         "WILLOW_PG_DB": "willow_20",
-        "WILLOW_SAFE_ROOT": "/home/sean-campbell/github/SAFE/Applications",
-        "WILLOW_AGENTS_ROOT": "/home/sean-campbell/github/SAFE/Agents"
+        "WILLOW_SAFE_ROOT": "~/github/SAFE/Applications",
+        "WILLOW_AGENTS_ROOT": "~/github/SAFE/Agents"
       }
-    }
-    ,
+    },
     "codebase-memory-mcp": {
       "type": "stdio",
       "command": "codebase-memory-mcp",
