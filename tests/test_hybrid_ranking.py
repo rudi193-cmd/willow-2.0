@@ -22,6 +22,7 @@ from willow.ranking.hybrid import (
     _rrf_fuse,
     _retrieval_weight_factor,
     _apply_lexical_coverage_bias,
+    _apply_tier_bias,
     temporal_rerank,
     hybrid_search,
     bm25_search,
@@ -278,6 +279,24 @@ class TestLexicalCoverageBias:
     def test_empty_query_tokens_leave_results_unchanged(self):
         row = _atom("A")
         assert _apply_lexical_coverage_bias([row], []) == [row]
+
+
+class TestTierBias:
+    def test_canonical_ranks_above_frontier_at_equal_rrf(self):
+        canonical = _atom("CAN", title="governance decision")
+        canonical["tier"] = "canonical"
+        canonical["_rrf_score"] = 0.08
+        frontier = _atom("FRO", title="textual docs scrape")
+        frontier["tier"] = "frontier"
+        frontier["_rrf_score"] = 0.10
+
+        ranked = _apply_tier_bias([frontier, canonical])
+
+        assert ranked[0]["id"] == "CAN"
+        assert ranked[0]["_tier_bias"] == 1.30
+
+    def test_empty_results_unchanged(self):
+        assert _apply_tier_bias([]) == []
 
 
 # ── Temporal re-ranking ───────────────────────────────────────────────────────

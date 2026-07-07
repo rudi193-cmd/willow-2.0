@@ -46,6 +46,13 @@ WEIGHT_MODES: tuple[str, ...] = ("full", "off", "log", "cap", "cosine_bypass")
 DEFAULT_WEIGHT_CAP: float = 1.4  # WCE cap-sweep knee (20260625T043656Z): cold 0.180 vs log 0.150
 DEFAULT_COSINE_BYPASS: float = 0.55
 
+# Post-RRF tier promotion — canonical decisions surface above doc-scrape noise.
+TIER_BIAS: dict[str, float] = {
+    "canonical": 1.30,
+    "contested": 1.12,
+    "frontier": 1.0,
+}
+
 # ── Tokenizer (mirrors claude-echoes _tokenize) ───────────────────────────────
 
 _TOK_RE = re.compile(r"[a-z0-9]+")
@@ -284,7 +291,11 @@ def _bm25_search(
     pg._ensure_conn()
     with pg.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
         cur.execute(
-            f"SELECT * FROM knowledge {where} LIMIT %s",
+            f"SELECT * FROM knowledge {where}"
+            f" ORDER BY CASE COALESCE(tier, 'frontier')"
+            f" WHEN 'canonical' THEN 0 WHEN 'contested' THEN 1 ELSE 2 END,"
+            f" visit_count DESC NULLS LAST, created_at DESC"
+            f" LIMIT %s",
             params,
         )
         candidates = [dict(r) for r in cur.fetchall()]
@@ -408,6 +419,24 @@ def _apply_lexical_coverage_bias(results: list[dict], query_tokens: list[str]) -
         })
 
     biased.sort(key=lambda r: -r["_hybrid_score"])
+    return biased
+
+
+def _apply_tier_bias(results: list[dict]) -> list[dict]:
+    """Mild post-fusion boost for canonical/contested tiers (governance recall)."""
+    if not results:
+        return results
+    biased = []
+    for row in results:
+        tier = str(row.get("tier") or "frontier").lower()
+        multiplier = TIER_BIAS.get(tier, 1.0)
+        base = float(row.get("_hybrid_score") or row.get("_rrf_score") or 0.0)
+        biased.append({
+            **row,
+            "_tier_bias": multiplier,
+            "_hybrid_score": base * multiplier,
+        })
+    biased.sort(key=lambda r: -float(r.get("_hybrid_score") or 0.0))
     return biased
 
 
@@ -611,6 +640,7 @@ def hybrid_search(
     from core.pg_bridge import embed  # type: ignore
 
     ranked_lists: list[list[dict]] = []
+    vector_leg = False
 
     # --- Leg 1: pgvector ANN ---
     try:
@@ -626,6 +656,7 @@ def hybrid_search(
             )
             if vec_rows:
                 ranked_lists.append(vec_rows)
+                vector_leg = True
     except Exception:
         pass  # Ollama down or table issue — continue to BM25
 
@@ -648,7 +679,25 @@ def hybrid_search(
         except Exception:
             pass
 
-    # --- Fallback: ILIKE ---
+    # --- Leg 3: ILIKE keyword AND-match when embed/vector leg unavailable ---
+    if not vector_leg:
+        try:
+            ilike_rows = pg.knowledge_search(
+                query,
+                limit=wide_k,
+                project=project,
+                include_invalid=include_invalid,
+                tier=tier,
+                exclude_search_noise=exclude_search_noise,
+                exclude_superseded=exclude_superseded,
+                lane_scope=lane_scope,
+            )
+            if ilike_rows:
+                ranked_lists.append(ilike_rows)
+        except Exception:
+            pass
+
+    # --- Fallback: ILIKE-only ---
     if not ranked_lists:
         return pg.knowledge_search(query, project=project,
                                    include_invalid=include_invalid, limit=limit,
@@ -663,6 +712,7 @@ def hybrid_search(
         weight_cap=weight_cap, cosine_bypass=cosine_bypass,
     )
     fused = _apply_lexical_coverage_bias(fused, query_tokens)
+    fused = _apply_tier_bias(fused)
 
     # --- Temporal re-ranking ---
     if temporal:
