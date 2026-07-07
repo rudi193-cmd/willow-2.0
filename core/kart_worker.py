@@ -117,7 +117,9 @@ def kart_loop(interval: int = 5) -> None:
             if reaped:
                 logger.warning("kart reaped stale running tasks: %s", reaped)
 
-            batch = pg.claim_kart_tasks(limit=1)
+            batch = pg.claim_kart_tasks(limit=1, lane="fast")
+            if not batch:
+                batch = pg.claim_kart_tasks(limit=1, lane="batch")
             if not batch:
                 time.sleep(interval)
                 continue

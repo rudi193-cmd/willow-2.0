@@ -1829,6 +1829,7 @@ async def agent_task_submit(
     submitted_by: str = "ganesha",
     allow_net:    bool = False,
     allow_localhost: bool = False,
+    lane:         str = "fast",
 ) -> dict:
     """Queue shell work for Kart (execution plane). Returns task_id immediately.
 
@@ -1839,6 +1840,8 @@ async def agent_task_submit(
 
     Set allow_net=True for git push, gh, curl, etc.
     Set allow_localhost=True for loopback-only work (Ollama embeds) without credentials.
+    lane: fast (default, interactive) | batch (long GPU/CPU; does not block kart_task_run).
+    For 13h+ jobs prefer detached=True on willow_run instead of batch lane.
     After submit, call kart_task_run(app_id) or wait for kart-worker / Stop kart_poll."""
     logger.info(
         "[w2] agent_task_submit app_id=%s agent=%s allow_net=%s allow_localhost=%s",
@@ -1878,11 +1881,22 @@ async def agent_task_submit(
         return blocked
 
     def _submit():
-        task_id = pg.submit_task(task_text, submitted_by=submitted_by or app_id, agent=agent)
+        task_id = pg.submit_task(
+            task_text,
+            submitted_by=submitted_by or app_id,
+            agent=agent,
+            lane=lane,
+        )
         if not task_id:
             return {"error": "failed to submit task"}
         _rl_log_event("task_submit", ref=task_id)
-        out = {"task_id": task_id, "status": "pending", "agent": agent, "command": cmd}
+        out = {
+            "task_id": task_id,
+            "status": "pending",
+            "agent": agent,
+            "lane": lane,
+            "command": cmd,
+        }
         if script_path:
             out["script_path"] = script_path
         return out
@@ -1945,6 +1959,7 @@ async def kart_task_run(
     def _run():
         import time as _time
         from core.kart_execute import drain_claimed_tasks, kart_timeout
+        from core.kart_lanes import KART_LANE_FAST
 
         stale_s = int(os.environ.get("KART_STALE_SECONDS", "3600"))
         reaped = pg.reap_stale_tasks(
@@ -1961,10 +1976,14 @@ async def kart_task_run(
         # completing it before the snapshot ran — dropping it from
         # initial_active_ids and reporting executed:0 for work that had
         # actually already succeeded.
+        # Only the fast lane is interactive — batch lane must not block sessions.
         initial_active_ids = {
             r["id"]
             for r in pg.tasks_by_status(
-                agent=agent, statuses=["pending", "running"], limit=limit * 4
+                agent=agent,
+                statuses=["pending", "running"],
+                limit=limit * 4,
+                lane=KART_LANE_FAST,
             )
         }
         _time.sleep(grace)
@@ -1973,7 +1992,9 @@ async def kart_task_run(
         results = []
 
         while _time.monotonic() < deadline:
-            rows = pg.tasks_by_status(agent=agent, limit=limit * 4)
+            rows = pg.tasks_by_status(
+                agent=agent, limit=limit * 4, lane=KART_LANE_FAST
+            )
             active = [r for r in rows if r.get("status") in ("pending", "running")]
             done = [
                 r
@@ -1995,13 +2016,15 @@ async def kart_task_run(
             _time.sleep(1)
 
         pending = pg.tasks_by_status(
-            agent=agent, statuses=["pending"], limit=limit
+            agent=agent, statuses=["pending"], limit=limit, lane=KART_LANE_FAST
         )
         running = pg.tasks_by_status(
-            agent=agent, statuses=["running"], limit=1
+            agent=agent, statuses=["running"], limit=1, lane=KART_LANE_FAST
         )
         if pending and not running:
-            batch = pg.claim_kart_tasks(limit=limit, agent=agent)
+            batch = pg.claim_kart_tasks(
+                limit=limit, agent=agent, lane=KART_LANE_FAST
+            )
             for task_id, status, result in drain_claimed_tasks(
                 pg, batch, context="poll", log_prefix="kart_task_run"
             ):
@@ -6537,12 +6560,16 @@ async def willow_run(
     allow_localhost: bool = False,
     agent: str = "kart",
     detached: bool = False,
+    lane: str = "fast",
 ) -> dict:
     """Facade: run or inspect local work through Kart.
 
     allow_localhost=True grants loopback-only network (host Ollama /
     embedder at localhost:11434) WITHOUT credential env vars — narrower
     than allow_net; prefer it for embedding/semantic work in the sandbox.
+
+    lane: fast (default) | batch — batch jobs run when the daemon has no fast
+    work pending and do not block kart_task_run polling.
 
     detached=True launches the job in a new session with NO timeout, bypassing the
     kart daemon's 30-min kill (KART_DAEMON_TIMEOUT). Use for genuinely long jobs —
@@ -6579,6 +6606,7 @@ async def willow_run(
         submitted_by=app_id,
         allow_net=allow_net,
         allow_localhost=allow_localhost,
+        lane=lane,
     )
     if run_now and not submitted.get("error"):
         from sap.willow_run_compact import compact_willow_run_outcome

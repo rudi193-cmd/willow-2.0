@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     submitted_by     TEXT,
     submitter_run_id TEXT,
     agent            TEXT DEFAULT 'kart',
+    lane             TEXT NOT NULL DEFAULT 'fast',
     status           TEXT DEFAULT 'pending',
     result           TEXT,
     created_at       TEXT NOT NULL DEFAULT (datetime('now')),
@@ -236,6 +237,7 @@ _MIGRATIONS = [
     # tasks: run-ledger linkage (parity with PgBridge) — submitter's run_id
     # captured at submit time so Kart runs nest under their real parent.
     "ALTER TABLE tasks ADD COLUMN submitter_run_id TEXT",
+    "ALTER TABLE tasks ADD COLUMN lane TEXT NOT NULL DEFAULT 'fast'",
 ]
 
 _FTS_TRIGGERS = """
@@ -640,17 +642,21 @@ class SqliteBridge:
 
     def submit_task(self, task: str, submitted_by: str = "ganesha",
                     agent: str = "kart",
-                    submitter_run_id: Optional[str] = None) -> Optional[str]:
+                    submitter_run_id: Optional[str] = None,
+                    lane: str = "fast") -> Optional[str]:
         # Capture the submitting session's run_id here (submitter's process) so
         # the kart worker can nest the run correctly — parity with PgBridge.
+        from core.kart_lanes import normalize_lane
+
+        lane = normalize_lane(lane)
         if submitter_run_id is None:
             submitter_run_id = _current_run_id_safe()
         try:
             task_id = self.gen_id(8)
             self._exec(
-                "INSERT INTO tasks (id, task, submitted_by, submitter_run_id, agent)"
-                " VALUES (?, ?, ?, ?, ?)",
-                (task_id, task, submitted_by, submitter_run_id, agent),
+                "INSERT INTO tasks (id, task, submitted_by, submitter_run_id, agent, lane)"
+                " VALUES (?, ?, ?, ?, ?, ?)",
+                (task_id, task, submitted_by, submitter_run_id, agent, lane),
             )
             return task_id
         except Exception:
