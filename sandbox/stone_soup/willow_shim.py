@@ -87,6 +87,25 @@ def _kb_search_pg(
                 rows = pg.knowledge_search(query, limit=limit, project=project or None)
             else:
                 raise
+
+        if not rows and not semantic and project:
+            # Project scope already narrows to the right corpus. The keyword
+            # path ANDs every word in the query as a separate ILIKE filter
+            # (core/pg_bridge.py knowledge_search), so a query describing the
+            # harness itself ("discernment", "harness") rather than words that
+            # actually appear in the corpus can miss real content even though
+            # plenty exists. Retry with progressively fewer leading words
+            # before giving up — project scoping is the real filter here, not
+            # the full literal phrase.
+            words = query.split()
+            for n in range(len(words) - 1, 0, -1):
+                relaxed_rows = pg.knowledge_search(
+                    " ".join(words[:n]), limit=limit, project=project
+                )
+                if relaxed_rows:
+                    rows = relaxed_rows
+                    break
+
         return rows if isinstance(rows, list) else []
     except Exception as exc:
         print(f"[stone_soup] kb_search PgBridge fallback failed: {exc}", file=sys.stderr)
