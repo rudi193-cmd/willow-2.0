@@ -6228,7 +6228,7 @@ async def willow_attention(app_id: str, limit: int = 10) -> dict:
 
     loop = asyncio.get_running_loop()
     inbox = await loop.run_in_executor(_executor, _grove_inbox_simple, app_id, 0, limit)
-    summary = fetch_attention_summary(inbox=inbox)
+    summary = fetch_attention_summary(agent=app_id, inbox=inbox)
     return {
         "facade": "willow_attention",
         "summary": attention_as_dict(summary),
