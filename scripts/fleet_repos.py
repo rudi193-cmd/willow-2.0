@@ -6,7 +6,6 @@ and fleet_session_sweep. Single source of truth — do not duplicate paths elsew
 """
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path

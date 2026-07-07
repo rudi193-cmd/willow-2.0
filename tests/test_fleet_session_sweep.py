@@ -7,7 +7,6 @@ import sys
 from datetime import date
 from pathlib import Path
 
-import pytest
 
 _REPO = Path(__file__).resolve().parent.parent
 _SCRIPTS = _REPO / "scripts"
