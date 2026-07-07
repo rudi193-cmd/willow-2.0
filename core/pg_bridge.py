@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     submitted_by     TEXT,
     submitter_run_id TEXT,
     agent            TEXT DEFAULT 'kart',
+    lane             TEXT NOT NULL DEFAULT 'fast',
     status           TEXT DEFAULT 'pending',
     result           JSONB,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -612,6 +613,15 @@ _MIGRATIONS = [
     "ALTER TABLE routing_decisions ADD COLUMN IF NOT EXISTS shadow_engine TEXT",
     "ALTER TABLE routing_decisions ADD COLUMN IF NOT EXISTS sensitivity TEXT",
     "CREATE INDEX IF NOT EXISTS idx_routing_decisions_kind ON routing_decisions (kind, created_at DESC)",
+    # Kart execution lanes — fast (interactive) vs batch (long jobs).
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS lane TEXT NOT NULL DEFAULT 'fast'",
+    """DO $$ BEGIN
+        ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_lane_check;
+        ALTER TABLE tasks ADD CONSTRAINT tasks_lane_check CHECK (
+            lane IN ('fast', 'batch')
+        );
+    EXCEPTION WHEN others THEN NULL; END $$""",
+    "CREATE INDEX IF NOT EXISTS idx_tasks_agent_lane_status ON tasks (agent, lane, status)",
 ]
 
 _INDEXES = """
@@ -2202,8 +2212,12 @@ class PgBridge:
 
     def submit_task(self, task: str, submitted_by: str = "ganesha",
                     agent: str = "kart",
-                    submitter_run_id: Optional[str] = None) -> Optional[str]:
+                    submitter_run_id: Optional[str] = None,
+                    lane: str = "fast") -> Optional[str]:
         self._ensure_conn()
+        from core.kart_lanes import normalize_lane
+
+        lane = normalize_lane(lane)
         # Capture the submitting session's run_id here — in the submitter's
         # process, where the session-local tmp pointer is correct. The kart-worker
         # daemon runs separately and cannot resolve it at execute time, so without
@@ -2215,9 +2229,9 @@ class PgBridge:
             task_id = self.gen_id(8)
             with self.conn.cursor() as cur:
                 cur.execute(
-                    "INSERT INTO tasks (id, task, submitted_by, submitter_run_id, agent)"
-                    " VALUES (%s, %s, %s, %s, %s)",
-                    (task_id, task, submitted_by, submitter_run_id, agent),
+                    "INSERT INTO tasks (id, task, submitted_by, submitter_run_id, agent, lane)"
+                    " VALUES (%s, %s, %s, %s, %s, %s)",
+                    (task_id, task, submitted_by, submitter_run_id, agent, lane),
                 )
             self.conn.commit()
             return task_id
@@ -2476,18 +2490,32 @@ class PgBridge:
             row = cur.fetchone()
             return dict(row) if row else None
 
-    def claim_kart_tasks(self, limit: int = 10, agent: str = "kart") -> list:
+    def claim_kart_tasks(
+        self, limit: int = 10, agent: str = "kart", lane: str | None = None
+    ) -> list:
         """Atomically claim pending tasks by marking them 'running'. Two concurrent
-        callers cannot claim the same row — FOR UPDATE SKIP LOCKED ensures this."""
+        callers cannot claim the same row — FOR UPDATE SKIP LOCKED ensures this.
+
+        When ``lane`` is set, only tasks in that lane are claimed. ``None`` claims
+        across all lanes (enterprise drain / backward compat).
+        """
         self._ensure_conn()
+        lane_clause = ""
+        params: list = [agent]
+        if lane is not None:
+            from core.kart_lanes import normalize_lane
+
+            lane_clause = " AND lane = %s"
+            params.append(normalize_lane(lane))
+        params.append(limit)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("""
+            cur.execute(f"""
                 WITH claimed AS (
                     UPDATE tasks
                     SET status = 'running', updated_at = now()
                     WHERE id IN (
                         SELECT id FROM tasks
-                        WHERE agent = %s AND status = 'pending'
+                        WHERE agent = %s AND status = 'pending'{lane_clause}
                         ORDER BY created_at ASC
                         LIMIT %s
                         FOR UPDATE SKIP LOCKED
@@ -2495,22 +2523,32 @@ class PgBridge:
                     RETURNING *
                 )
                 SELECT * FROM claimed ORDER BY created_at ASC
-            """, (agent, limit))
+            """, tuple(params))
             rows = [dict(r) for r in cur.fetchall()]
         self.conn.commit()
         return rows
 
-    def pending_tasks(self, agent: str = "kart", limit: int = 10) -> list:
+    def pending_tasks(
+        self, agent: str = "kart", limit: int = 10, lane: str | None = None
+    ) -> list:
         """Read-only list of pending tasks (oldest first). Does not claim."""
         self._ensure_conn()
+        lane_clause = ""
+        params: list = [agent]
+        if lane is not None:
+            from core.kart_lanes import normalize_lane
+
+            lane_clause = " AND lane = %s"
+            params.append(normalize_lane(lane))
+        params.append(limit)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("""
-                SELECT id, task, status, result, submitted_by, created_at, updated_at
+            cur.execute(f"""
+                SELECT id, task, status, result, submitted_by, lane, created_at, updated_at
                 FROM tasks
-                WHERE agent = %s AND status = 'pending'
+                WHERE agent = %s AND status = 'pending'{lane_clause}
                 ORDER BY created_at ASC
                 LIMIT %s
-            """, (agent, limit))
+            """, tuple(params))
             return [dict(r) for r in cur.fetchall()]
 
     def reap_stale_tasks(
@@ -2564,7 +2602,11 @@ class PgBridge:
                           AND updated_at < now() - make_interval(secs => %s)
                     ) AS stale_running,
                     COUNT(*) FILTER (WHERE status IN ('completed', 'complete')) AS completed,
-                    COUNT(*) FILTER (WHERE status = 'failed') AS failed
+                    COUNT(*) FILTER (WHERE status = 'failed') AS failed,
+                    COUNT(*) FILTER (WHERE status = 'pending' AND lane = 'fast') AS pending_fast,
+                    COUNT(*) FILTER (WHERE status = 'pending' AND lane = 'batch') AS pending_batch,
+                    COUNT(*) FILTER (WHERE status = 'running' AND lane = 'fast') AS running_fast,
+                    COUNT(*) FILTER (WHERE status = 'running' AND lane = 'batch') AS running_batch
                 FROM tasks
                 WHERE agent = %s
                 """,
@@ -2586,18 +2628,32 @@ class PgBridge:
         except Exception:
             return False
 
-    def tasks_by_status(self, agent: str = "kart", statuses: list | None = None, limit: int = 20) -> list:
+    def tasks_by_status(
+        self,
+        agent: str = "kart",
+        statuses: list | None = None,
+        limit: int = 20,
+        lane: str | None = None,
+    ) -> list:
         """Read-only task query — does NOT claim tasks."""
         self._ensure_conn()
         if statuses is None:
             statuses = ["pending", "running", "completed", "failed", "complete"]
+        lane_clause = ""
+        params: list = [agent, statuses]
+        if lane is not None:
+            from core.kart_lanes import normalize_lane
+
+            lane_clause = " AND lane = %s"
+            params.append(normalize_lane(lane))
+        params.append(limit)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("""
-                SELECT id, task, status, result, submitted_by, created_at, updated_at
+            cur.execute(f"""
+                SELECT id, task, status, result, submitted_by, lane, created_at, updated_at
                 FROM tasks
-                WHERE agent = %s AND status = ANY(%s)
+                WHERE agent = %s AND status = ANY(%s){lane_clause}
                 ORDER BY created_at DESC LIMIT %s
-            """, (agent, statuses, limit))
+            """, tuple(params))
             return [dict(r) for r in cur.fetchall()]
 
     # ── Opus ─────────────────────────────────────────────────────────────────

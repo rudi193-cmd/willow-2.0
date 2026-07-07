@@ -31,14 +31,15 @@ from pathlib import Path
 
 
 def detached_root() -> Path:
-    """Registry dir for detached jobs: ``<willow_home>/kart-detached``.
+    """Registry dir for detached jobs: ``<fleet_home>/kart-detached``.
 
-    Uses the canonical willow_home() resolver (honors WILLOW_HOME / public
-    fallback) rather than a hardcoded home path.
+    Uses ``metabolic_fleet_home()`` so detached state lands in the operator's
+    private fleet home even when ``WILLOW_HOME`` points at the repo-generated
+    public pack (``.willow/generated``).
     """
-    from willow.fylgja.willow_home import willow_home
+    from willow.fylgja.willow_home import metabolic_fleet_home
 
-    d = Path(willow_home()) / "kart-detached"
+    d = Path(metabolic_fleet_home()) / "kart-detached"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

@@ -17,10 +17,10 @@ class _FakePg:
     def reap_stale_tasks(self, **kwargs):
         return 0
 
-    def tasks_by_status(self, agent="kart", statuses=None, limit=20):
+    def tasks_by_status(self, agent="kart", statuses=None, limit=20, lane=None):
         if statuses == ["pending", "running"]:
             # Snapshot at call start: task is still pending.
-            return [{"id": "T1", "status": "pending", "task": "echo hi"}]
+            return [{"id": "T1", "status": "pending", "task": "echo hi", "lane": "fast"}]
         if statuses == ["pending"] or statuses == ["running"]:
             return []
         # Loop poll (default statuses=None): the background worker has
@@ -29,10 +29,11 @@ class _FakePg:
             "id": "T1",
             "status": "completed",
             "task": "echo hi",
+            "lane": "fast",
             "result": {"stdout": "hi", "returncode": 0},
         }]
 
-    def claim_kart_tasks(self, limit=5, agent="kart"):
+    def claim_kart_tasks(self, limit=5, agent="kart", lane=None):
         return []
 
 

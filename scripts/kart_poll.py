@@ -31,7 +31,7 @@ def main() -> int:
         return 0
 
     try:
-        tasks = pg.claim_kart_tasks(limit=LIMIT)
+        tasks = pg.claim_kart_tasks(limit=LIMIT, lane="fast")
     except Exception as e:
         print(f"kart_poll: claim failed ({e}) — skipping", file=sys.stderr)
         return 0
