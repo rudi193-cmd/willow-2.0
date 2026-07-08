@@ -103,7 +103,13 @@ def render_mcp_config(agent: str, package_root: Path | None = None) -> dict:
 
     # Preserve operator secrets and extra env from existing MCP configs
     dest = agent_config_dir(root, agent) / "mcp.json"
-    preserve_keys = ("GROQ_API_KEY", "WILLOW_INFERENCE_PROVIDER", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY")
+    preserve_keys = (
+        "GROQ_API_KEY",
+        "WILLOW_INFERENCE_PROVIDER",
+        "OPENROUTER_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "WILLOW_TRUE_HOTRELOAD",
+    )
     home_mcp = fleet_home(root) / "mcp" / "willow-2.0.mcp.json"
     merged_env: dict[str, str] = {}
     for path in (dest, root / ".mcp.json", home_mcp, willow_home_alias() / "mcp.json"):

@@ -145,8 +145,22 @@ Call **`fleet_tool_guide`** when unsure which tool to use (grouped catalog).
 | `WILLOW_AGENTS_ROOT` | `~/github/SAFE/Agents` | Agent manifests — required for agent authorization |
 | `WILLOW_STORE_ROOT` | `$WILLOW_HOME/store` | SOIL store path |
 | `WILLOW_MCP_PROFILE` | `standard` | Tool picker filter: `minimal` \| `core` \| `standard` \| `full` |
+| `WILLOW_TRUE_HOTRELOAD` | *(unset)* | Operator opt-in: set to `1` for generation-swap reload (`fleet_reload` `target="code"` or chained from `target="all"`). Local `.cursor/mcp.json` only unless fleet opts in publicly (ADR-20260704). |
 
 Path resolver: `willow/fylgja/willow_home.py` (`fleet_home`, `resolve_store_root`, …).
+
+---
+
+## After code merge (MCP hot reload)
+
+1. `fleet_reload(target="all")` — whitelist modules + Kart bounce.
+2. If `code_version.stale` is still true and you have `WILLOW_TRUE_HOTRELOAD=1` locally,
+   step 1 auto-chains generation-swap; or call `fleet_reload(target="code")` explicitly.
+3. If still stale or reload errors: `fleet_restart` then reconnect MCP:
+   - **Claude Code:** `/mcp`
+   - **Cursor:** Settings → MCP → toggle willow off/on
+
+See `/restart-server` and [`runbooks/mcp.md`](runbooks/mcp.md).
 
 ---
 
@@ -205,6 +219,6 @@ Same truth MCP uses — useful when debugging "tools don't see KB."
 | Wrong handoff | `WILLOW_AGENT_NAME` matches handoff author |
 | Grove tools error | `WILLOW_GROVE_ROOT` points to grove repo; grove package importable |
 | mai_ tools error | File path correct; `@markdownai` header present |
-| Stale server | Restart after `sap/unified_mcp.py` edits |
+| Stale server | `fleet_reload(target="all")`; with local `WILLOW_TRUE_HOTRELOAD=1`, chains generation-swap; else `fleet_restart` + MCP reconnect |
 
 *ΔΣ=42*

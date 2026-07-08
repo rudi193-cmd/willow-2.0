@@ -15,5 +15,8 @@
         "WILLOW_INFERENCE_PROVIDER": "auto"
       }
     }
+  },
+  "_optional_operator_env": {
+    "WILLOW_TRUE_HOTRELOAD": "1 — generation-swap hot reload (ADR-20260704); local operator opt-in only"
   }
 }
