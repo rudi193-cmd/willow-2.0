@@ -4,13 +4,20 @@ b17: KRTDSH  ΔΣ=42
 
 Polls public.tasks, claims agent=kart rows, executes via core/kart_execute.py.
 Sandbox policy: core/kart_sandbox.py + willow/fylgja/config/kart-sandbox.json
+
+Lane workers (set via KART_WORKER_LANE):
+  fast  — kart-worker.service; N concurrent slots (KART_FAST_WORKERS, default 3)
+  batch — kart-worker-batch.service; one long job at a time
+  all   — legacy single-threaded fast-then-batch (deprecated)
 """
 from __future__ import annotations
 
 import importlib
 import logging
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 logger = logging.getLogger("kart_worker")
@@ -38,10 +45,6 @@ def _kart_run_open(task_id: str, task_text: str, submitted_by: str,
     try:
         from core.run_ledger import current_run_id, open_run
 
-        # Prefer the run_id captured at submit time (the submitting session's
-        # real run). current_run_id() here would read THIS daemon process's tmp
-        # pointer, which is absent/stale — the bug that made every Kart run a
-        # NULL-parent top-level session (flag-dream-kart-runs-pollution).
         parent = submitter_run_id or current_run_id()
         run_id = open_run(
             purpose=f"kart:{task_id[:8]} {task_text[:60]}",
@@ -73,91 +76,107 @@ def _kart_run_close(task_id: str, status: str) -> None:
         logger.debug("run_ledger close skipped: %s", e)
 
 
-def kart_loop(interval: int = 5) -> None:
-    """Daemon loop — claim and execute one kart task at a time."""
-    from core.grove_gate import assert_grove
+def _reap_stale(pg) -> None:
+    import os as _os
+
+    stale_s = int(_os.environ.get("KART_STALE_SECONDS", "3600"))
+    exempt = [
+        x.strip()
+        for x in _os.environ.get("KART_REAP_EXEMPT_IDS", "").split(",")
+        if x.strip()
+    ]
+    reaped = pg.reap_stale_tasks(max_age_seconds=stale_s, exempt_ids=exempt)
+    if reaped:
+        logger.warning("kart reaped stale running tasks: %s", reaped)
+
+
+def _process_task_row(row: dict, *, context: str = "daemon") -> None:
+    """Execute one claimed row; uses a dedicated PgBridge (thread-safe per connection)."""
     from core.kart_execute import execute_task_row, kart_timeout
     from core.pg_bridge import PgBridge
 
-    assert_grove("kart_worker")
+    pg = PgBridge()
+    task_id = row["id"]
+    task_text = row.get("task") or ""
+    submitted_by = row.get("submitted_by") or "?"
+    try:
+        logger.info(
+            "kart claimed %s (by %s): %s",
+            task_id,
+            submitted_by,
+            task_text[:60],
+        )
+        _kart_run_open(
+            task_id, task_text, submitted_by,
+            submitter_run_id=row.get("submitter_run_id"),
+        )
+        status, result = execute_task_row(
+            row, pg, timeout=kart_timeout(context), context=context
+        )
+        pg.task_complete(task_id, result, status)
+        if status == "completed":
+            _kart_run_close(task_id, "completed")
+            logger.info("kart complete %s", task_id)
+        else:
+            _kart_run_close(task_id, "crashed")
+            logger.warning(
+                "kart failed %s: %s",
+                task_id,
+                result.get("error", result),
+            )
+    except Exception as e:
+        logger.error("kart task %s error: %s", task_id, e)
+        try:
+            pg.task_complete(
+                task_id,
+                {"error": str(e), "context": f"{context}_exception"},
+                "failed",
+            )
+        except Exception:
+            pass
+        _kart_run_close(task_id, "crashed")
+    finally:
+        try:
+            pg.close()
+        except Exception:
+            pass
 
+
+def _maybe_reload_self() -> None:
     _self_path = Path(__file__)
-    _self_mtime = _self_path.stat().st_mtime
+    if not hasattr(_maybe_reload_self, "_mtime"):
+        _maybe_reload_self._mtime = _self_path.stat().st_mtime  # type: ignore[attr-defined]
+    _cur_mtime = _self_path.stat().st_mtime
+    if _cur_mtime != _maybe_reload_self._mtime:  # type: ignore[attr-defined]
+        _maybe_reload_self._mtime = _cur_mtime  # type: ignore[attr-defined]
+        _mod = sys.modules.get(__name__)
+        if _mod is not None:
+            try:
+                importlib.reload(_mod)
+                logger.info("kart_worker reloaded from disk")
+            except Exception as re:
+                logger.warning("kart_worker reload failed: %s", re)
 
-    logger.info("kart daemon started (poll=%ds)", interval)
-    pg = None
+
+def _kart_loop_batch(interval: int, pg) -> None:
+    """One batch task at a time — does not block fast workers in other processes."""
+    from core.kart_lanes import KART_LANE_BATCH
+
     active_task_id: str | None = None
     while True:
         try:
-            _cur_mtime = _self_path.stat().st_mtime
-            if _cur_mtime != _self_mtime:
-                _self_mtime = _cur_mtime
-                _mod = sys.modules.get(__name__)
-                if _mod is not None:
-                    try:
-                        importlib.reload(_mod)
-                        logger.info("kart_worker reloaded from disk")
-                    except Exception as re:
-                        logger.warning("kart_worker reload failed: %s", re)
-
-            if pg is None:
-                pg = PgBridge()
-
-            import os as _os
-
-            stale_s = int(_os.environ.get("KART_STALE_SECONDS", "3600"))
-            exempt = [
-                x.strip()
-                for x in _os.environ.get("KART_REAP_EXEMPT_IDS", "").split(",")
-                if x.strip()
-            ]
-            reaped = pg.reap_stale_tasks(
-                max_age_seconds=stale_s, exempt_ids=exempt
-            )
-            if reaped:
-                logger.warning("kart reaped stale running tasks: %s", reaped)
-
-            batch = pg.claim_kart_tasks(limit=1, lane="fast")
-            if not batch:
-                batch = pg.claim_kart_tasks(limit=1, lane="batch")
-            if not batch:
+            _maybe_reload_self()
+            _reap_stale(pg)
+            claimed = pg.claim_kart_tasks(limit=1, lane=KART_LANE_BATCH)
+            if not claimed:
                 time.sleep(interval)
                 continue
-
-            row = batch[0]
-            task_id = row["id"]
-            active_task_id = task_id
-            task_text = row.get("task") or ""
-            submitted_by = row.get("submitted_by") or "?"
-            logger.info(
-                "kart claimed %s (by %s): %s",
-                task_id,
-                submitted_by,
-                task_text[:60],
-            )
-            _kart_run_open(
-                task_id, task_text, submitted_by,
-                submitter_run_id=row.get("submitter_run_id"),
-            )
-
-            status, result = execute_task_row(
-                row, pg, timeout=kart_timeout("daemon"), context="daemon"
-            )
-            pg.task_complete(task_id, result, status)
-
-            if status == "completed":
-                _kart_run_close(task_id, "completed")
-                logger.info("kart complete %s", task_id)
-            else:
-                _kart_run_close(task_id, "crashed")
-                logger.warning(
-                    "kart failed %s: %s",
-                    task_id,
-                    result.get("error", result),
-                )
+            row = claimed[0]
+            active_task_id = row["id"]
+            _process_task_row(row, context="daemon")
             active_task_id = None
         except Exception as e:
-            logger.error("kart loop error: %s", e)
+            logger.error("kart batch loop error: %s", e)
             if pg is not None and active_task_id:
                 try:
                     pg.task_complete(
@@ -169,9 +188,127 @@ def kart_loop(interval: int = 5) -> None:
                     pass
                 active_task_id = None
             try:
-                if pg is not None:
-                    pg.close()
+                pg.close()
             except Exception:
                 pass
             pg = None
+            from core.pg_bridge import PgBridge
+
+            pg = PgBridge()
             time.sleep(interval)
+
+
+def _kart_loop_fast(interval: int, pg) -> None:
+    """Concurrent fast-lane executor — gh/git/shell never wait on batch."""
+    from core.kart_lanes import KART_LANE_FAST, fast_worker_slots
+
+    max_workers = fast_worker_slots()
+    in_flight: set[str] = set()
+    lock = threading.Lock()
+    pool = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="kart-fast")
+
+    def _run(row: dict) -> None:
+        try:
+            _process_task_row(row, context="daemon")
+        finally:
+            with lock:
+                in_flight.discard(row["id"])
+
+    while True:
+        try:
+            _maybe_reload_self()
+            _reap_stale(pg)
+            with lock:
+                slots = max_workers - len(in_flight)
+            if slots > 0:
+                claimed = pg.claim_kart_tasks(limit=slots, lane=KART_LANE_FAST)
+                for row in claimed:
+                    with lock:
+                        in_flight.add(row["id"])
+                    pool.submit(_run, row)
+            sleep_s = 0.5 if in_flight else interval
+            time.sleep(sleep_s)
+        except Exception as e:
+            logger.error("kart fast loop error: %s", e)
+            try:
+                pg.close()
+            except Exception:
+                pass
+            from core.pg_bridge import PgBridge
+
+            pg = PgBridge()
+            time.sleep(interval)
+
+
+def _kart_loop_legacy(interval: int, pg) -> None:
+    """Deprecated: single-threaded fast-then-batch (KART_WORKER_LANE=all)."""
+    from core.kart_lanes import KART_LANE_BATCH, KART_LANE_FAST
+
+    active_task_id: str | None = None
+    while True:
+        try:
+            _maybe_reload_self()
+            _reap_stale(pg)
+            claimed = pg.claim_kart_tasks(limit=1, lane=KART_LANE_FAST)
+            if not claimed:
+                claimed = pg.claim_kart_tasks(limit=1, lane=KART_LANE_BATCH)
+            if not claimed:
+                time.sleep(interval)
+                continue
+            row = claimed[0]
+            active_task_id = row["id"]
+            _process_task_row(row, context="daemon")
+            active_task_id = None
+        except Exception as e:
+            logger.error("kart legacy loop error: %s", e)
+            if pg is not None and active_task_id:
+                try:
+                    pg.task_complete(
+                        active_task_id,
+                        {"error": str(e), "context": "daemon_exception"},
+                        "failed",
+                    )
+                except Exception:
+                    pass
+                active_task_id = None
+            try:
+                pg.close()
+            except Exception:
+                pass
+            from core.pg_bridge import PgBridge
+
+            pg = PgBridge()
+            time.sleep(interval)
+
+
+def kart_loop(interval: int = 5) -> None:
+    """Daemon loop — lane mode from KART_WORKER_LANE (default fast)."""
+    from core.grove_gate import assert_grove
+    from core.kart_lanes import (
+        KART_WORKER_MODE_ALL,
+        KART_WORKER_MODE_BATCH,
+        KART_WORKER_MODE_FAST,
+        fast_worker_slots,
+        worker_mode,
+    )
+    from core.pg_bridge import PgBridge
+
+    assert_grove("kart_worker")
+
+    mode = worker_mode()
+    logger.info(
+        "kart daemon started (poll=%ds, lane=%s, fast_workers=%s)",
+        interval,
+        mode,
+        fast_worker_slots() if mode == KART_WORKER_MODE_FAST else "n/a",
+    )
+    pg = PgBridge()
+    if mode == KART_WORKER_MODE_FAST:
+        _kart_loop_fast(interval, pg)
+    elif mode == KART_WORKER_MODE_BATCH:
+        _kart_loop_batch(interval, pg)
+    elif mode == KART_WORKER_MODE_ALL:
+        logger.warning("KART_WORKER_LANE=all is deprecated; use split fast/batch units")
+        _kart_loop_legacy(interval, pg)
+    else:
+        raise RuntimeError(f"unsupported kart worker mode: {mode}")

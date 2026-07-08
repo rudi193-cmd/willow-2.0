@@ -416,24 +416,29 @@ def _kart_tasks_running() -> int:
 
 
 def _restart_kart_worker(only_if_idle: bool = True) -> dict:
-    """Restart the kart-worker systemd user service so merged Kart code goes live.
+    """Restart kart-worker (+ batch) systemd units so merged Kart code goes live.
 
-    The Kart daemon (core/kart_worker.py → core/kart_execute.py / kart_sandbox.py)
-    runs as a separate `kart-worker.service`; neither fleet_reload's in-process
-    hot-swap nor fleet_restart's process exit reaches it, so merged Kart code runs
-    stale until the unit is bounced. The MCP server runs host-side (not in bwrap),
-    so it can drive `systemctl --user` directly.
+    The Kart daemons (core/kart_worker.py → core/kart_execute.py / kart_sandbox.py)
+    run as ``kart-worker.service`` (fast lane) and ``kart-worker-batch.service``
+    (batch lane); neither fleet_reload's in-process hot-swap nor fleet_restart's
+    process exit reaches them, so merged Kart code runs stale until the units bounce.
+    The MCP server runs host-side (not in bwrap), so it can drive
+    ``systemctl --user`` directly.
 
     only_if_idle: when a kart task is in-flight, skip the bounce — restarting would
     SIGKILL the running task (the reaper later requeues it). Caller-chosen default.
     """
+    _KART_UNITS = ("kart-worker", "kart-worker-batch")
     running = _kart_tasks_running()
     if only_if_idle and running:
         return {
             "status": "skipped",
             "reason": f"{running} kart task(s) in-flight — not interrupting",
             "running": running,
-            "hint": "re-run with force, or `systemctl --user restart kart-worker` on the host when idle",
+            "hint": (
+                "re-run with force, or `systemctl --user restart kart-worker "
+                "kart-worker-batch` on the host when idle"
+            ),
         }
     import shutil
     import subprocess
@@ -441,22 +446,38 @@ def _restart_kart_worker(only_if_idle: bool = True) -> dict:
         return {
             "status": "unavailable",
             "reason": "systemctl not found",
-            "hint": "restart the Kart consumer manually on this node",
+            "hint": "restart the Kart consumers manually on this node",
         }
-    try:
-        r = subprocess.run(
-            ["systemctl", "--user", "restart", "kart-worker"],
-            capture_output=True, text=True, timeout=30,
-        )
-        if r.returncode == 0:
-            return {"status": "restarted", "unit": "kart-worker"}
+    restarted: list[str] = []
+    errors: list[dict] = []
+    for unit in _KART_UNITS:
+        try:
+            r = subprocess.run(
+                ["systemctl", "--user", "restart", unit],
+                capture_output=True, text=True, timeout=30,
+            )
+            if r.returncode == 0:
+                restarted.append(unit)
+            else:
+                errors.append({
+                    "unit": unit,
+                    "returncode": r.returncode,
+                    "stderr": (r.stderr or "").strip()[:300],
+                })
+        except Exception as e:
+            errors.append({"unit": unit, "error": str(e)})
+    if errors and not restarted:
+        first = errors[0]
         return {
             "status": "error",
-            "returncode": r.returncode,
-            "stderr": (r.stderr or "").strip()[:300],
+            "units": list(_KART_UNITS),
+            **first,
         }
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
+    out: dict = {"status": "restarted", "units": restarted}
+    if errors:
+        out["partial_errors"] = errors
+    out["unit"] = restarted[0] if restarted else _KART_UNITS[0]
+    return out
 
 
 def _hot_reload(target: str = "all") -> dict:
@@ -1840,7 +1861,8 @@ async def agent_task_submit(
 
     Set allow_net=True for git push, gh, curl, etc.
     Set allow_localhost=True for loopback-only work (Ollama embeds) without credentials.
-    lane: fast (default, interactive) | batch (long GPU/CPU; does not block kart_task_run).
+    lane: fast (default, interactive) | batch (long GPU/CPU; separate kart-worker-batch
+    unit runs concurrently — does not block fast lane).
     For 13h+ jobs prefer detached=True on willow_run instead of batch lane.
     After submit, call kart_task_run(app_id) or wait for kart-worker / Stop kart_poll."""
     logger.info(
@@ -6568,8 +6590,8 @@ async def willow_run(
     embedder at localhost:11434) WITHOUT credential env vars — narrower
     than allow_net; prefer it for embedding/semantic work in the sandbox.
 
-    lane: fast (default) | batch — batch jobs run when the daemon has no fast
-    work pending and do not block kart_task_run polling.
+    lane: fast (default) | batch — batch uses kart-worker-batch.service and runs
+    concurrently with fast workers; fast lane never queues behind batch.
 
     detached=True launches the job in a new session with NO timeout, bypassing the
     kart daemon's 30-min kill (KART_DAEMON_TIMEOUT). Use for genuinely long jobs —

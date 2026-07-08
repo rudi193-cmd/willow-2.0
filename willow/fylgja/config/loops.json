@@ -173,13 +173,39 @@
       },
       "verify": {
         "class": "recount",
-        "predicate": "pending tasks drain and completed tasks carry returncode in Postgres"
+        "predicate": "fast-lane pending tasks drain without blocking on batch lane"
       },
-      "attention": "Postgres tasks table + bwrap sandbox executor",
+      "attention": "Fast-lane Kart (gh/git/shell) \u2014 KART_WORKER_LANE=fast, KART_FAST_WORKERS concurrent slots",
       "exit": "runs until service stop",
       "on_failure": "open_flag",
       "heartbeat": {
         "watchmen_key": "kart_worker",
+        "interval_sec": 900
+      },
+      "harness": null
+    },
+    {
+      "id": "kart-worker-batch",
+      "status": "active",
+      "trigger": {
+        "kind": "daemon",
+        "spec": "Restart=on-failure",
+        "unit": "kart-worker-batch.service"
+      },
+      "task": {
+        "kind": "shell",
+        "ref": "willow.sh kart-worker",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "batch-lane tasks drain without blocking fast kart-worker"
+      },
+      "attention": "Long Kart jobs (embeds, ingest, GPU) \u2014 KART_WORKER_LANE=batch",
+      "exit": "runs until service stop",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "kart_worker_batch",
         "interval_sec": 900
       },
       "harness": null

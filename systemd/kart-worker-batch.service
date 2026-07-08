@@ -1,13 +1,12 @@
 [Unit]
-Description=Kart — Willow task queue daemon (bwrap sandbox executor)
+Description=Kart batch — Willow long-running task executor (embeds, ingest, GPU)
 After=network.target postgresql.service
 Wants=postgresql.service
 
 [Service]
 Type=simple
 Environment=WILLOW_AGENT_NAME=kart
-Environment=KART_WORKER_LANE=fast
-Environment=KART_FAST_WORKERS=3
+Environment=KART_WORKER_LANE=batch
 EnvironmentFile=-%h/github/.willow/env
 ExecStart=%h/github/willow-2.0/willow.sh kart-worker
 WorkingDirectory=%h/github/willow-2.0
@@ -15,7 +14,7 @@ Restart=on-failure
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=kart-worker
+SyslogIdentifier=kart-worker-batch
 
 [Install]
 WantedBy=default.target

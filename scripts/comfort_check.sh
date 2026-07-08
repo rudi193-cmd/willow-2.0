@@ -175,7 +175,7 @@ _local_symlinks() {
 }
 
 _local_systemd() {
-  local units=(drop-server nest-watcher kart-worker grove-mcp willow-grove-listen)
+  local units=(drop-server nest-watcher kart-worker kart-worker-batch grove-mcp willow-grove-listen)
   local bad=0
   for u in "${units[@]}"; do
     if systemctl --user is-active --quiet "${u}.service" 2>/dev/null; then
