@@ -135,7 +135,7 @@ except Exception as _gc_import_err:
 
 # ── Config ────────────────────────────────────────────────────────────────────
 _MCP_AGENT = require_agent_name()
-STORE_ROOT = os.environ.get("WILLOW_STORE_ROOT", str(_SAP_ROOT / "store"))
+STORE_ROOT = str(_store_root())
 HANDOFF_DB = os.environ.get(
     "WILLOW_HANDOFF_DB",
     str(handoff_db_path(_MCP_AGENT)),
