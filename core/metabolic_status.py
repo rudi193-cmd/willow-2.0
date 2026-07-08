@@ -67,6 +67,61 @@ def _systemd_user_state(unit: str) -> str:
     return "missing"
 
 
+def restart_user_systemd_units(
+    units: tuple[str, ...],
+    *,
+    action: str = "restart",
+) -> dict:
+    """Restart user systemd units from the MCP host process (not Kart bwrap)."""
+    import shutil
+
+    if not shutil.which("systemctl"):
+        return {"status": "unavailable", "reason": "systemctl not found"}
+    env = _systemd_user_env()
+    restarted: list[str] = []
+    skipped: list[dict] = []
+    errors: list[dict] = []
+    for unit in units:
+        try:
+            proc = subprocess.run(
+                ["systemctl", "--user", action, unit],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                env=env,
+            )
+            if proc.returncode == 0:
+                restarted.append(unit)
+                continue
+            err = (proc.stderr or proc.stdout or "").strip()[:300]
+            low = err.lower()
+            if any(
+                token in low
+                for token in ("not found", "not loaded", "does not exist", "no such file")
+            ):
+                skipped.append({"unit": unit, "reason": err})
+            else:
+                errors.append(
+                    {"unit": unit, "returncode": proc.returncode, "stderr": err}
+                )
+        except Exception as exc:
+            errors.append({"unit": unit, "error": str(exc)})
+    if errors and not restarted:
+        status = "error"
+    elif errors or skipped:
+        status = "partial"
+    elif restarted:
+        status = "restarted"
+    else:
+        status = "skipped"
+    return {
+        "status": status,
+        "units": restarted,
+        "skipped": skipped or None,
+        "errors": errors or None,
+    }
+
+
 def check_metabolic_status() -> dict:
     """Probe metabolic socket, nightly timer, and last briefing record."""
     result: dict = {
