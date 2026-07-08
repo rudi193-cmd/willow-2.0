@@ -39,12 +39,13 @@ def willow_home_alias() -> Path:
 
 
 def resolve_store_root(package_root: Path | None = None) -> Path:
-    if os.environ.get("WILLOW_STORE_ROOT"):
-        return Path(os.environ["WILLOW_STORE_ROOT"]).expanduser().resolve()
-    # Public-fallback MCP launches may inject WILLOW_HOME=.willow/generated while
-    # durable SOIL (dream state, flags, gaps) still lives in private willow-config.
+    # Private fleet store is canonical for durable SOIL (dream state, flags, gaps).
+    # Stale IDE settings may set WILLOW_STORE_ROOT to a repo-local path; prefer
+    # private_home/store when private willow-config exists (same rule as #466).
     if private_config_available():
         return private_home() / "store"
+    if os.environ.get("WILLOW_STORE_ROOT"):
+        return Path(os.environ["WILLOW_STORE_ROOT"]).expanduser().resolve()
     return willow_home(package_root) / "store"
 
 
