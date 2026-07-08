@@ -2606,7 +2606,23 @@ class PgBridge:
                     COUNT(*) FILTER (WHERE status = 'pending' AND lane = 'fast') AS pending_fast,
                     COUNT(*) FILTER (WHERE status = 'pending' AND lane = 'batch') AS pending_batch,
                     COUNT(*) FILTER (WHERE status = 'running' AND lane = 'fast') AS running_fast,
-                    COUNT(*) FILTER (WHERE status = 'running' AND lane = 'batch') AS running_batch
+                    COUNT(*) FILTER (WHERE status = 'running' AND lane = 'batch') AS running_batch,
+                    COALESCE(
+                        EXTRACT(EPOCH FROM (
+                            now() - MIN(created_at) FILTER (
+                                WHERE status = 'pending' AND lane = 'fast'
+                            )
+                        )),
+                        0
+                    )::int AS oldest_pending_fast_s,
+                    COALESCE(
+                        EXTRACT(EPOCH FROM (
+                            now() - MIN(created_at) FILTER (
+                                WHERE status = 'pending' AND lane = 'batch'
+                            )
+                        )),
+                        0
+                    )::int AS oldest_pending_batch_s
                 FROM tasks
                 WHERE agent = %s
                 """,

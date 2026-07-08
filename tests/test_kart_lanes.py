@@ -16,6 +16,7 @@ from core.kart_lanes import (
     KART_WORKER_MODE_FAST,
     fast_worker_slots,
     normalize_lane,
+    reaper_alignment_warning,
     worker_mode,
 )
 from core.pg_bridge import PgBridge
@@ -53,6 +54,20 @@ def test_fast_worker_slots_default(monkeypatch):
 def test_fast_worker_slots_env(monkeypatch):
     monkeypatch.setenv("KART_FAST_WORKERS", "5")
     assert fast_worker_slots() == 5
+
+
+def test_reaper_alignment_warning_ok(monkeypatch):
+    monkeypatch.setenv("KART_DAEMON_TIMEOUT", "1800")
+    monkeypatch.setenv("KART_STALE_SECONDS", "3600")
+    assert reaper_alignment_warning() is None
+
+
+def test_reaper_alignment_warning_misconfigured(monkeypatch):
+    monkeypatch.setenv("KART_DAEMON_TIMEOUT", "1800")
+    monkeypatch.setenv("KART_STALE_SECONDS", "1900")
+    msg = reaper_alignment_warning()
+    assert msg is not None
+    assert "KART_STALE_SECONDS" in msg
 
 
 @pytest.fixture(scope="module")
@@ -97,3 +112,17 @@ def test_kart_task_run_lane_does_not_wait_on_batch(pg, monkeypatch):
     assert running_fast == []
 
     pg.task_complete(batch_id, {"cancelled": True}, "failed")
+
+
+def test_kart_queue_stats_lane_fields(pg):
+    agent = "lane_stats_test"
+    fast_id = pg.submit_task("echo stats-fast", submitted_by="test", agent=agent, lane="fast")
+    batch_id = pg.submit_task("echo stats-batch", submitted_by="test", agent=agent, lane="batch")
+    assert fast_id and batch_id
+    stats = pg.kart_queue_stats(agent=agent)
+    assert stats["pending_fast"] >= 1
+    assert stats["pending_batch"] >= 1
+    assert "oldest_pending_fast_s" in stats
+    assert "oldest_pending_batch_s" in stats
+    for tid in (fast_id, batch_id):
+        pg.task_complete(tid, {"stdout": "ok", "returncode": 0}, "completed")

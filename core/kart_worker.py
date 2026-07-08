@@ -295,6 +295,12 @@ def kart_loop(interval: int = 5) -> None:
 
     assert_grove("kart_worker")
 
+    from core.kart_lanes import reaper_alignment_warning
+
+    align_warn = reaper_alignment_warning()
+    if align_warn:
+        logger.warning("kart reaper alignment: %s", align_warn)
+
     mode = worker_mode()
     logger.info(
         "kart daemon started (poll=%ds, lane=%s, fast_workers=%s)",

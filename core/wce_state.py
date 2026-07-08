@@ -70,7 +70,7 @@ def queue_wce_task(
     if pair_limit:
         cmd_parts.append(f"--pair-limit={pair_limit}")
     cmd = " ".join(cmd_parts) + "\n# allow_localhost"
-    return pg.submit_task(cmd, submitted_by=submitted_by, agent="kart")
+    return pg.submit_task(cmd, submitted_by=submitted_by, agent="kart", lane="batch")
 
 
 def _resolve_cold_recall_mode(cold: dict[str, Any]) -> str:

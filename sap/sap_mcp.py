@@ -303,7 +303,12 @@ def _startup_backfill_check() -> None:
             existing = cur.fetchone()
         if not existing:
             script = _SAP_ROOT / "scripts" / "willow_embed_backfill.py"
-            pb.submit_task(f'"${{WILLOW_PYTHON:-python3}}" {script}', submitted_by="sap_startup", agent="kart")
+            pb.submit_task(
+                f'"${{WILLOW_PYTHON:-python3}}" {script}',
+                submitted_by="sap_startup",
+                agent="kart",
+                lane="batch",
+            )
             logger.info("[w2] %d rows with NULL embedding — backfill queued", total_null)
         else:
             logger.info("[w2] %d rows with NULL embedding — backfill already queued", total_null)
@@ -1897,10 +1902,13 @@ async def agent_task_submit(
         task_text = cmd
 
     from core.kart_task_scan import check_kart_task
+    from core.kart_lane_guard import lane_mismatch_warning
 
     blocked = check_kart_task(task_text, script_body=script_body)
     if blocked:
         return blocked
+
+    lane_warning = lane_mismatch_warning(task_text, lane)
 
     def _submit():
         task_id = pg.submit_task(
@@ -1921,6 +1929,8 @@ async def agent_task_submit(
         }
         if script_path:
             out["script_path"] = script_path
+        if lane_warning:
+            out["lane_warning"] = lane_warning
         return out
 
     return await loop.run_in_executor(_executor, _submit)
@@ -2099,10 +2109,10 @@ async def intake_schedule(
         if limit:
             cmd_parts.append(f"--limit={limit}")
         cmd = " ".join(cmd_parts)
-        task_id = pg.submit_task(cmd, submitted_by=app_id, agent="kart")
+        task_id = pg.submit_task(cmd, submitted_by=app_id, agent="kart", lane="batch")
         if not task_id:
             return {"error": "failed to submit task"}
-        return {"task_id": task_id, "status": "queued", "cmd": cmd}
+        return {"task_id": task_id, "status": "queued", "cmd": cmd, "lane": "batch"}
 
     return await loop.run_in_executor(_executor, _schedule)
 
@@ -2133,10 +2143,10 @@ async def intake_schedule_fleet(
         if limit:
             cmd_parts.append(f"--limit={limit}")
         cmd = " ".join(cmd_parts)
-        task_id = pg.submit_task(cmd, submitted_by=app_id, agent="kart")
+        task_id = pg.submit_task(cmd, submitted_by=app_id, agent="kart", lane="batch")
         if not task_id:
             return {"error": "failed to submit task"}
-        return {"task_id": task_id, "status": "queued", "cmd": cmd}
+        return {"task_id": task_id, "status": "queued", "cmd": cmd, "lane": "batch"}
 
     return await loop.run_in_executor(_executor, _schedule)
 

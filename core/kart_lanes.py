@@ -42,3 +42,28 @@ def worker_mode() -> str:
 
 def fast_worker_slots() -> int:
     return max(1, int(os.environ.get("KART_FAST_WORKERS", "3")))
+
+
+def reaper_stale_seconds() -> int:
+    return int(os.environ.get("KART_STALE_SECONDS", "3600"))
+
+
+def daemon_timeout_seconds() -> int:
+    return int(os.environ.get("KART_DAEMON_TIMEOUT", "1800"))
+
+
+_REAPER_BUFFER_SECONDS = 300
+
+
+def reaper_alignment_warning() -> str | None:
+    """Stale reaper should not fire before the daemon timeout + buffer."""
+    stale = reaper_stale_seconds()
+    daemon = daemon_timeout_seconds()
+    need = daemon + _REAPER_BUFFER_SECONDS
+    if stale < need:
+        return (
+            f"KART_STALE_SECONDS ({stale}) < KART_DAEMON_TIMEOUT ({daemon})"
+            f" + {_REAPER_BUFFER_SECONDS}s buffer — reaper may mark tasks stale"
+            " before the daemon kills them"
+        )
+    return None
