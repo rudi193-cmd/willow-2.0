@@ -654,9 +654,10 @@ async def fleet_status(app_id: str) -> dict:
 
     watchmen: dict = {}
     try:
-        from core import soil as _soil
         from core.watchmen import check_watchmen as _check_watchmen
-        watchmen = await loop.run_in_executor(_executor, _check_watchmen, _soil.get)
+        _soil_get = store.get if store is not None else None
+        if _soil_get is not None:
+            watchmen = await loop.run_in_executor(_executor, _check_watchmen, _soil_get)
     except Exception as e:
         watchmen = {"error": str(e)}
 
