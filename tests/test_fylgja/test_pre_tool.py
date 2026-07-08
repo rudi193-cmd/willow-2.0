@@ -539,9 +539,8 @@ def test_find_blocks_on_first_attempt(tmp_path, monkeypatch):
     assert "willow_run" in reason or "agent_task_submit" in reason
 
 
-def test_warn_escalates_to_block_on_second_strike(tmp_path, monkeypatch):
-    # du is still a warn-tier habit (Glob/Kart alternative); use it to exercise the
-    # warn→block escalation now that git/gh/grep/find hard-block on first attempt.
+def test_warn_blocks_on_first_attempt(tmp_path, monkeypatch):
+    """Warn-tier redirects must block attempt 1 — IDE hooks still run Bash on warn."""
     monkeypatch.setattr(_pt, "_session_rule_strikes_path", lambda sid: tmp_path / f"strikes-{sid}.json")
     monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
     cmd = "du -sh /tmp"
@@ -551,15 +550,24 @@ def test_warn_escalates_to_block_on_second_strike(tmp_path, monkeypatch):
         "session_id": "esc-du",
     })
     assert out1.strip()
-    assert json.loads(out1)["decision"] == "warn"
-    out2 = _run_pre_tool({
+    data1 = json.loads(out1)
+    assert data1["decision"] == "block"
+    assert "ESCALATED" in data1["reason"]
+
+
+def test_bash_script_warn_blocks_on_first_attempt(tmp_path, monkeypatch):
+    """bash <script> is warn in BASH_BLOCKS — must not reach shell on attempt 1."""
+    monkeypatch.setattr(_pt, "_session_rule_strikes_path", lambda sid: tmp_path / f"strikes-{sid}.json")
+    monkeypatch.setattr(_pt, "_bash_counter_path", lambda sid: tmp_path / f"bash-{sid}.txt")
+    out = _run_pre_tool({
         "tool_name": "Bash",
-        "tool_input": {"command": cmd},
-        "session_id": "esc-du",
+        "tool_input": {"command": "bash scripts/lint_first_party.sh"},
+        "session_id": "bash-script-s1",
     })
-    data2 = json.loads(out2)
-    assert data2["decision"] == "block"
-    assert "ESCALATED" in data2["reason"]
+    assert out.strip()
+    data = json.loads(out)
+    assert data["decision"] == "block"
+    assert "agent_task_submit" in data["reason"] or "kart" in data["reason"].lower()
 
 
 def test_session_ban_after_third_strike_on_block_pattern(tmp_path, monkeypatch):
