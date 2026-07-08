@@ -2585,6 +2585,36 @@ class PgBridge:
         self.conn.commit()
         return reaped
 
+    def prune_completed_tasks(
+        self,
+        *,
+        days: int = 7,
+        agent: str = "kart",
+        limit: int = 500,
+    ) -> int:
+        """Delete old terminal task rows to keep the queue table bounded."""
+        self._ensure_conn()
+        days = max(1, int(days))
+        limit = max(1, int(limit))
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM tasks
+                WHERE id IN (
+                    SELECT id FROM tasks
+                    WHERE agent = %s
+                      AND status IN ('completed', 'complete', 'failed')
+                      AND updated_at < now() - make_interval(days => %s)
+                    ORDER BY updated_at ASC
+                    LIMIT %s
+                )
+                """,
+                (agent, days, limit),
+            )
+            deleted = cur.rowcount
+        self.conn.commit()
+        return deleted
+
     def kart_queue_stats(
         self, agent: str = "kart", stale_seconds: int = 3600
     ) -> dict:
