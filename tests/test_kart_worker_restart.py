@@ -69,16 +69,20 @@ def test_systemctl_unavailable(mod, monkeypatch):
 def test_success_when_idle(mod, monkeypatch):
     monkeypatch.setattr(mod, "_kart_tasks_running", lambda: 0)
     monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/systemctl")
-    calls = {}
+    calls = []
 
     def _fake_run(cmd, **kwargs):
-        calls["cmd"] = cmd
+        calls.append(cmd)
         return _FakeProc(returncode=0)
 
     monkeypatch.setattr("subprocess.run", _fake_run)
     out = mod._restart_kart_worker(only_if_idle=True)
     assert out["status"] == "restarted"
-    assert calls["cmd"] == ["systemctl", "--user", "restart", "kart-worker"]
+    assert out["unit"] == "kart-worker"
+    assert "kart-worker" in out["units"]
+    assert "kart-worker-batch" in out["units"]
+    assert calls[0] == ["systemctl", "--user", "restart", "kart-worker"]
+    assert calls[1] == ["systemctl", "--user", "restart", "kart-worker-batch"]
 
 
 def test_error_surfaces_returncode(mod, monkeypatch):

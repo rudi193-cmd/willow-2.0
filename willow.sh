@@ -95,6 +95,7 @@ WILLOW_SYSTEMD_SERVICES=(
     corpus-watcher
     willow-discord-responder
     kart-worker
+    kart-worker-batch
     orin-worker
     willow-mcp
     nest-watcher
@@ -113,6 +114,7 @@ WILLOW_STOP_SERVICES=(
     grove-serve
     willow-metabolic
     kart-worker
+    kart-worker-batch
     orin-worker
     willow-mcp
     nest-watcher

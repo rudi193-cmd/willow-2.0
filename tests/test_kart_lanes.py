@@ -8,7 +8,16 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 os.environ.setdefault("WILLOW_PG_DB", "willow_20_test")
 
-from core.kart_lanes import KART_LANE_BATCH, KART_LANE_FAST, normalize_lane
+from core.kart_lanes import (
+    KART_LANE_BATCH,
+    KART_LANE_FAST,
+    KART_WORKER_MODE_ALL,
+    KART_WORKER_MODE_BATCH,
+    KART_WORKER_MODE_FAST,
+    fast_worker_slots,
+    normalize_lane,
+    worker_mode,
+)
 from core.pg_bridge import PgBridge
 
 
@@ -19,6 +28,31 @@ def test_normalize_lane_defaults_and_rejects():
     assert normalize_lane("batch") == KART_LANE_BATCH
     with pytest.raises(ValueError, match="unknown kart lane"):
         normalize_lane("gpu")
+
+
+def test_worker_mode_defaults_fast(monkeypatch):
+    monkeypatch.delenv("KART_WORKER_LANE", raising=False)
+    assert worker_mode() == KART_WORKER_MODE_FAST
+
+
+def test_worker_mode_batch(monkeypatch):
+    monkeypatch.setenv("KART_WORKER_LANE", "batch")
+    assert worker_mode() == KART_WORKER_MODE_BATCH
+
+
+def test_worker_mode_all_legacy(monkeypatch):
+    monkeypatch.setenv("KART_WORKER_LANE", "all")
+    assert worker_mode() == KART_WORKER_MODE_ALL
+
+
+def test_fast_worker_slots_default(monkeypatch):
+    monkeypatch.delenv("KART_FAST_WORKERS", raising=False)
+    assert fast_worker_slots() == 3
+
+
+def test_fast_worker_slots_env(monkeypatch):
+    monkeypatch.setenv("KART_FAST_WORKERS", "5")
+    assert fast_worker_slots() == 5
 
 
 @pytest.fixture(scope="module")
