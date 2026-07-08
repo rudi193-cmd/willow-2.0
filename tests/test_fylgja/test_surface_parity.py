@@ -68,7 +68,20 @@ def test_check_ide_parity_json_report():
     assert {"surfaces", "hooks", "commands"}.issubset(phase_names)
 
 
-def test_cursor_before_mcp_wires_pre_tool():
+def test_sync_check_works_without_pythonpath():
+    import os
+    import subprocess
+
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "sync_remote_cursor_surface.py"), "--check"],
+        cwd="/tmp",
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
     from willow.fylgja.surface_parity import load_manifest
 
     hooks = json.loads(
