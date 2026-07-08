@@ -307,6 +307,9 @@ def test_operator_promoted_rw_project_roots(repo_root):
         home / "github" / "safe-app-store-public",
         home / "github" / "willow",
         home / "github" / "willow-mcp",
+        home / "github" / "codebase-memory-mcp",
+        home / "github" / "courtlistener-mcp",
+        home / "github" / "mcp-memory-service",
     )
     mounts = {str(h): ro for h, _c, ro in collect_bind_mounts(repo_root)}
     for path in promoted:
