@@ -782,6 +782,34 @@ async def fleet_agents(app_id: str) -> dict:
     return {"agents": agents, "count": len(agents), "source": source}
 
 
+async def _generation_reload_result(loop: asyncio.AbstractEventLoop) -> dict:
+    """Generation-swap reload (ADR-20260704). Caller must gate on WILLOW_TRUE_HOTRELOAD."""
+    from sap.reload import generation_reload
+
+    result = await loop.run_in_executor(_executor, generation_reload, mcp)
+    if result.get("status") == "reloaded":
+        # Best-effort: tell the client the tool list may have changed so
+        # schema edits propagate without /mcp. Body changes work regardless.
+        try:
+            ctx = mcp.get_context()
+            await ctx.session.send_tool_list_changed()
+            result["list_changed"] = "sent"
+        except Exception as e:
+            result["list_changed"] = f"not_sent: {e}"
+        # Read staleness through the NEW generation's module — this closure
+        # belongs to the old one, whose _code_staleness would report the
+        # pre-reload boot SHA and falsely claim the server is still stale.
+        try:
+            result["code_version"] = sys.modules["core.code_version"].staleness()
+        except Exception:
+            result["code_version"] = _code_staleness()
+    return result
+
+
+def _true_hotreload_enabled() -> bool:
+    return os.environ.get("WILLOW_TRUE_HOTRELOAD") == "1"
+
+
 @mcp.tool(annotations={"destructiveHint": True})
 @sap_gate()
 async def fleet_reload(app_id: str, target: str = "all") -> dict:
@@ -791,39 +819,23 @@ async def fleet_reload(app_id: str, target: str = "all") -> dict:
     tool bodies, facades, and core.* via shadow import — no process exit, no /mcp
     reconnect (ADR-20260704-mcp-true-hot-reload).
     target 'all' (and 'kart') also bounces the kart-worker systemd unit so merged
-    Kart code goes live — skipped automatically while a Kart task is in-flight."""
+    Kart code goes live — skipped automatically while a Kart task is in-flight.
+    When WILLOW_TRUE_HOTRELOAD=1, target 'all' chains generation-swap reload if
+    code_version is still stale after the whitelist pass."""
     logger.info("[w2] fleet_reload app_id=%s target=%s", app_id, target)
     loop = asyncio.get_running_loop()
 
     if target == "code":
-        if os.environ.get("WILLOW_TRUE_HOTRELOAD") != "1":
+        if not _true_hotreload_enabled():
             return {
                 "error": "disabled",
                 "hint": "generation-swap reload is gated behind WILLOW_TRUE_HOTRELOAD=1 "
                         "(ADR-20260704). Use whitelist targets or fleet_restart.",
             }
-        from sap.reload import generation_reload
-        result = await loop.run_in_executor(_executor, generation_reload, mcp)
-        if result.get("status") == "reloaded":
-            # Best-effort: tell the client the tool list may have changed so
-            # schema edits propagate without /mcp. Body changes work regardless.
-            try:
-                ctx = mcp.get_context()
-                await ctx.session.send_tool_list_changed()
-                result["list_changed"] = "sent"
-            except Exception as e:
-                result["list_changed"] = f"not_sent: {e}"
-            # Read staleness through the NEW generation's module — this closure
-            # belongs to the old one, whose _code_staleness would report the
-            # pre-reload boot SHA and falsely claim the server is still stale.
-            try:
-                result["code_version"] = sys.modules["core.code_version"].staleness()
-            except Exception:
-                result["code_version"] = _code_staleness()
-        return result
+        return await _generation_reload_result(loop)
     timeout_s = float(os.environ.get("WILLOW_FLEET_RELOAD_TIMEOUT", "30"))
     try:
-        return await asyncio.wait_for(
+        result = await asyncio.wait_for(
             loop.run_in_executor(_executor, _hot_reload, target),
             timeout=timeout_s,
         )
@@ -838,6 +850,29 @@ async def fleet_reload(app_id: str, target: str = "all") -> dict:
                 "Try target='gate' for permission groups only, or fleet_restart + /mcp."
             ),
         }
+    if (
+        target == "all"
+        and _true_hotreload_enabled()
+        and isinstance(result, dict)
+        and result.get("code_version", {}).get("stale")
+    ):
+        gen = await _generation_reload_result(loop)
+        result["generation_reload"] = gen
+        if gen.get("status") == "reloaded":
+            result["code_version"] = gen.get("code_version", result.get("code_version"))
+            result.pop("warning", None)
+            if not gen.get("code_version", {}).get("stale"):
+                result["not_hot_swappable"] = (
+                    "Whitelist + generation-swap reload applied (WILLOW_TRUE_HOTRELOAD=1)."
+                )
+        elif gen.get("error") == "disabled":
+            pass  # flag flipped mid-call — keep whitelist warning
+        else:
+            result["warning"] = (
+                "whitelist reload complete but generation-swap failed or incomplete — "
+                "run fleet_reload(target='code') or fleet_restart + IDE MCP reconnect"
+            )
+    return result
 
 
 @mcp.tool(annotations={"destructiveHint": True})

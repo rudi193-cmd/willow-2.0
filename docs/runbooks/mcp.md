@@ -28,6 +28,22 @@ Confirm `WILLOW_PG_DB=willow_20` in MCP env — not `willow_19`.
 
 Index logic: `sap/handoff_index.py`
 
+### After code merge (hot reload)
+
+| Change | Tool | Reconnect? |
+|--------|------|------------|
+| Kart worker only | `fleet_reload(target="kart")` | No |
+| Whitelist modules (gate, postgres, store, …) | `fleet_reload(target="all")` | No |
+| Tool bodies / `core.*` | `fleet_reload(target="code")` with `WILLOW_TRUE_HOTRELOAD=1` | No |
+| Same, flag on | `fleet_reload(target="all")` chains `code` when still stale | No |
+| Fallback | `fleet_restart` | Yes — `/mcp` (Claude) or Cursor Settings → MCP toggle |
+
+Operator opt-in: add `"WILLOW_TRUE_HOTRELOAD": "1"` to **local** `.cursor/mcp.json`
+env — do not enable in the committed public-fallback template unless fleet-wide
+rollout is intentional (ADR-20260704).
+
+Skill: `/restart-server` · ADR: `docs/adrs/ADR-20260704-mcp-true-hot-reload.md`
+
 ---
 
 ## Grove MCP (sibling repo)
