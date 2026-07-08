@@ -1,4 +1,5 @@
 """Tests for core/kart_sandbox.py — mount policy and worktree discovery."""
+import json
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,7 @@ from core.kart_sandbox import (
     build_bwrap_argv,
     bwrap_available,
     collect_bind_mounts,
+    collect_mcp_trust_ro_overlays,
     kart_env,
     load_sandbox_config,
     parse_task_network,
@@ -153,6 +155,63 @@ def test_run_shell_echo_under_bwrap(repo_root):
     assert out["returncode"] == 0, out
     assert "kart-bwrap-ok" in out["stdout"]
     assert out["sandbox"] == "bwrap"
+
+
+def test_mcp_trust_root_ro_overlay_in_bwrap_argv(repo_root):
+    """#777: mcp_apps must appear as --ro-bind after fleet-home rw mount."""
+    if not bwrap_available():
+        pytest.skip("bwrap not installed")
+    overlays = collect_mcp_trust_ro_overlays(repo_root)
+    if not overlays:
+        pytest.skip("mcp_apps trust root not present on this host")
+    argv = build_bwrap_argv(allow_net=False, root=repo_root)
+    for trust_root in overlays:
+        trust_str = str(trust_root)
+        ro_pairs = [
+            (argv[i + 1], argv[i + 2])
+            for i, flag in enumerate(argv)
+            if flag == "--ro-bind" and i + 2 < len(argv)
+        ]
+        assert (trust_str, trust_str) in ro_pairs, f"missing ro-bind for {trust_str}"
+
+
+def test_mcp_trust_root_not_writable_under_bwrap(repo_root):
+    """Acceptance probe from #777 — W_OK must be False inside bwrap."""
+    if not bwrap_available():
+        pytest.skip("bwrap not installed")
+    overlays = collect_mcp_trust_ro_overlays(repo_root)
+    if not overlays:
+        pytest.skip("mcp_apps trust root not present on this host")
+    trust = overlays[0]
+    manifest = trust / "willow" / "manifest.json"
+    bindings = trust / "_identity_bindings"
+    probe = f"""python3 -c "
+import json, os, sys
+paths = [{str(trust)!r}, {str(manifest)!r}, {str(bindings)!r}]
+if os.path.isdir(paths[2]):
+    for name in os.listdir(paths[2]):
+        if name.endswith('.json'):
+            paths.append(os.path.join(paths[2], name))
+            break
+w = {{p: os.access(p, os.W_OK) for p in paths if os.path.exists(p)}}
+print(json.dumps(w))
+sys.exit(1 if any(w.values()) else 0)
+"
+"""
+    out = run_shell(probe, timeout=15)
+    assert out.get("sandbox_setup") != "failed", out
+    assert out["returncode"] == 0, out
+    reported = json.loads(out["stdout"].strip())
+    assert not any(reported.values()), reported
+
+
+def test_mcp_trust_root_listed_ro_in_manifest(repo_root):
+    overlays = collect_mcp_trust_ro_overlays(repo_root)
+    if not overlays:
+        pytest.skip("mcp_apps trust root not present on this host")
+    m = sandbox_manifest(allow_net=False, root=repo_root)
+    for trust_root in overlays:
+        assert str(trust_root) in m["bound_ro"]
 
 
 def test_kart_env_repo_root_wins_over_stale_env(repo_root, monkeypatch):

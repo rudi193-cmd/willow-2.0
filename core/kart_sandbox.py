@@ -222,6 +222,35 @@ def collect_bind_mounts(root: Path | None = None) -> list[tuple[Path, Path, bool
     return sorted(mounts.values(), key=lambda t: str(t[0]))
 
 
+def collect_mcp_trust_ro_overlays(root: Path | None = None) -> list[Path]:
+    """Return willow-mcp on-disk trust roots that must be read-only inside bwrap.
+
+    $WILLOW_HOME/mcp_apps holds per-app manifest.json ACLs and _identity_bindings/
+    confirmed OAuth records — the gate for host stdio/serve. The fleet home is
+    bind-mounted read-write for store/kart logs; this overlay blocks sandbox tasks
+    from rewriting the ACLs that gate them (FRANK baf2f63a / #777).
+    """
+    from willow.fylgja.willow_home import willow_home, willow_home_alias
+
+    repo = root or willow_repo_root()
+    seen: set[str] = set()
+    overlays: list[Path] = []
+    for base in (willow_home(repo), willow_home_alias()):
+        trust = base / "mcp_apps"
+        try:
+            if not trust.is_dir():
+                continue
+            resolved = trust.resolve()
+        except OSError:
+            continue
+        key = str(resolved)
+        if key in seen:
+            continue
+        seen.add(key)
+        overlays.append(resolved)
+    return overlays
+
+
 def collect_config_symlinks(root: Path | None = None) -> list[tuple[str, str]]:
     """S8/KP6b: (resolved_target, configured_path) for every configured bind
     path that is a symlink on the host.
@@ -300,6 +329,15 @@ def build_bwrap_argv(
         flag = "--ro-bind" if read_only else "--bind"
         args += [flag, str(host), str(container)]
         _claimed.add(str(container))
+
+    # Trust-root overlay: fleet home is rw, but mcp_apps must not be writable
+    # from inside the sandbox (see collect_mcp_trust_ro_overlays).
+    for trust_root in collect_mcp_trust_ro_overlays(root):
+        trust_str = str(trust_root)
+        if trust_str in _claimed:
+            continue
+        args += ["--ro-bind", trust_str, trust_str]
+        _claimed.add(trust_str)
 
     # On merged-usr systems /bin, /lib, /lib64, /sbin are symlinks → /usr/*.
     # Recreate them in the sandbox so ELF interpreters (e.g. /lib64/ld-linux*.so.2)
@@ -572,6 +610,8 @@ def sandbox_manifest(
     try:
         for host, _container, read_only in collect_bind_mounts(root):
             (bound_ro if read_only else bound_rw).append(str(host))
+        for trust_root in collect_mcp_trust_ro_overlays(root):
+            bound_ro.append(str(trust_root))
     except Exception:
         pass
     path_dirs = kart_env(
