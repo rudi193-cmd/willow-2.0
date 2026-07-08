@@ -90,6 +90,32 @@ def _reap_stale(pg) -> None:
         logger.warning("kart reaped stale running tasks: %s", reaped)
 
 
+_LAST_PRUNE_MONO: float = 0.0
+
+
+def _maybe_prune_completed(pg) -> None:
+    """Periodically delete old terminal task rows (batch lane bloat)."""
+    import os as _os
+    import time as _time
+
+    global _LAST_PRUNE_MONO
+    interval = int(_os.environ.get("KART_TASK_PRUNE_INTERVAL", "3600"))
+    if interval <= 0:
+        return
+    now = _time.monotonic()
+    if _LAST_PRUNE_MONO and (now - _LAST_PRUNE_MONO) < interval:
+        return
+    _LAST_PRUNE_MONO = now
+    days = int(_os.environ.get("KART_TASK_RETENTION_DAYS", "7"))
+    limit = int(_os.environ.get("KART_TASK_PRUNE_LIMIT", "500"))
+    try:
+        deleted = pg.prune_completed_tasks(days=days, limit=limit)
+        if deleted:
+            logger.info("kart pruned %d completed task row(s) older than %dd", deleted, days)
+    except Exception as e:
+        logger.warning("kart task prune failed: %s", e)
+
+
 def _process_task_row(row: dict, *, context: str = "daemon") -> None:
     """Execute one claimed row; uses a dedicated PgBridge (thread-safe per connection)."""
     from core.kart_execute import execute_task_row, kart_timeout
@@ -167,6 +193,7 @@ def _kart_loop_batch(interval: int, pg) -> None:
         try:
             _maybe_reload_self()
             _reap_stale(pg)
+            _maybe_prune_completed(pg)
             claimed = pg.claim_kart_tasks(limit=1, lane=KART_LANE_BATCH)
             if not claimed:
                 time.sleep(interval)
@@ -218,6 +245,7 @@ def _kart_loop_fast(interval: int, pg) -> None:
         try:
             _maybe_reload_self()
             _reap_stale(pg)
+            _maybe_prune_completed(pg)
             with lock:
                 slots = max_workers - len(in_flight)
             if slots > 0:
@@ -249,6 +277,7 @@ def _kart_loop_legacy(interval: int, pg) -> None:
         try:
             _maybe_reload_self()
             _reap_stale(pg)
+            _maybe_prune_completed(pg)
             claimed = pg.claim_kart_tasks(limit=1, lane=KART_LANE_FAST)
             if not claimed:
                 claimed = pg.claim_kart_tasks(limit=1, lane=KART_LANE_BATCH)
