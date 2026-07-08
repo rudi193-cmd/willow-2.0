@@ -84,6 +84,25 @@ def test_workflow_run_create(pg):
     assert run["input"]["text"] == "Hello world"
 
 
+def test_queue_phases_uses_batch_lane(pg):
+    from core import kart_execute
+
+    wf = pg.workflow_get("test_simple")
+    run_id = pg.workflow_run_create(wf["id"], {"text": "lane test"}, created_by="test")
+    kart_execute._queue_phases(
+        pg,
+        run_id,
+        wf["definition"]["phases"],
+        {"text": "lane test"},
+        {},
+    )
+    batch_pending = pg.pending_tasks("kart", limit=20, lane="batch")
+    queued = [r for r in batch_pending if "workflow_phase" in (r.get("task") or "")]
+    assert queued
+    for row in queued:
+        pg.task_complete(row["id"], {"cancelled": True}, "failed")
+
+
 def test_workflow_phase_create(pg):
     wf    = pg.workflow_get("test_simple")
     run_id = pg.workflow_run_create(wf["id"], {"text": "test"}, created_by="test")
