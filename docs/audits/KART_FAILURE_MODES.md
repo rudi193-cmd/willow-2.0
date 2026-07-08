@@ -53,7 +53,7 @@
 | 28 | Reaper marks `failed`, no retry/DLQ | **open** | — |
 | 29 | Workflow phases as separate kart rows | **partial** | PR [#772](https://github.com/rudi193-cmd/willow-2.0/pull/772) → batch lane |
 | 30 | Grove gate hard-stops Kart | **by-design** | `core/grove_gate.py` |
-| 31 | Watchmen heartbeat vs lane env | **partial** | comfort_check #769 |
+| 31 | Watchmen heartbeat vs lane env | **partial** | `kart_worker` SOIL heartbeat wired (#782) |
 | 32 | Multi-node = multi-queue (no affinity) | **open** | fleet expansion |
 | 33 | Hot reload doesn't reach daemons | **partial** | [#562](https://github.com/rudi193-cmd/willow-2.0/pull/562), [#252](https://github.com/rudi193-cmd/willow-2.0/pull/252) |
 | 34 | RAM / OOM on single host | **open** | ops — 16G T500 |

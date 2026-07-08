@@ -23,6 +23,55 @@ from pathlib import Path
 logger = logging.getLogger("kart_worker")
 
 _KART_RUN_IDS: dict[str, str] = {}
+_HEARTBEAT_LAST_MONO: float = 0.0
+
+
+def _watchmen_key_for_mode(mode: str) -> str:
+    from core.kart_lanes import KART_WORKER_MODE_BATCH
+
+    return "kart_worker_batch" if mode == KART_WORKER_MODE_BATCH else "kart_worker"
+
+
+def _maybe_write_heartbeat(tick_ok: bool = True, **extra) -> None:
+    """Throttled SOIL heartbeat for fleet_status watchmen (loops.json interval_sec)."""
+    global _HEARTBEAT_LAST_MONO
+    from core.kart_lanes import worker_mode
+
+    key = _watchmen_key_for_mode(worker_mode())
+    interval = 900
+    try:
+        from willow.fylgja.loops.registry import load_registry
+
+        for loop in load_registry():
+            hb = loop.get("heartbeat") or {}
+            if str(hb.get("watchmen_key") or "").strip() == key:
+                interval = int(hb.get("interval_sec") or 900)
+                break
+    except Exception:
+        pass
+    now = time.monotonic()
+    if _HEARTBEAT_LAST_MONO and (now - _HEARTBEAT_LAST_MONO) < interval:
+        return
+    _HEARTBEAT_LAST_MONO = now
+    try:
+        from datetime import datetime, timezone
+        from core import soil
+        from willow.fylgja.loops.registry import watchmen_targets
+
+        collection, record_id = watchmen_targets()[key]
+        soil.put(
+            collection,
+            record_id,
+            {
+                "last_tick_at": datetime.now(timezone.utc).isoformat(),
+                "interval_sec": interval,
+                "tick_ok": tick_ok,
+                "pid": __import__("os").getpid(),
+                **extra,
+            },
+        )
+    except Exception as e:
+        logger.debug("kart heartbeat write skipped: %s", e)
 
 
 def _ensure_willow_on_path() -> Path | None:
@@ -191,6 +240,7 @@ def _kart_loop_batch(interval: int, pg) -> None:
     active_task_id: str | None = None
     while True:
         try:
+            _maybe_write_heartbeat()
             _maybe_reload_self()
             _reap_stale(pg)
             _maybe_prune_completed(pg)
@@ -243,6 +293,7 @@ def _kart_loop_fast(interval: int, pg) -> None:
 
     while True:
         try:
+            _maybe_write_heartbeat()
             _maybe_reload_self()
             _reap_stale(pg)
             _maybe_prune_completed(pg)
@@ -275,6 +326,7 @@ def _kart_loop_legacy(interval: int, pg) -> None:
     active_task_id: str | None = None
     while True:
         try:
+            _maybe_write_heartbeat()
             _maybe_reload_self()
             _reap_stale(pg)
             _maybe_prune_completed(pg)
@@ -337,6 +389,9 @@ def kart_loop(interval: int = 5) -> None:
         mode,
         fast_worker_slots() if mode == KART_WORKER_MODE_FAST else "n/a",
     )
+    global _HEARTBEAT_LAST_MONO
+    _HEARTBEAT_LAST_MONO = 0.0
+    _maybe_write_heartbeat(tick_ok=True)
     pg = PgBridge()
     if mode == KART_WORKER_MODE_FAST:
         _kart_loop_fast(interval, pg)
