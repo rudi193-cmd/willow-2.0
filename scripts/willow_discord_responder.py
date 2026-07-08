@@ -499,6 +499,12 @@ def cmd_run(interval: int) -> int:
     while True:
         time.sleep(interval)
         run_once()
+        try:
+            from core.loop_heartbeat import write_throttled
+
+            write_throttled("willow_discord_responder")
+        except Exception:
+            pass
     return 0
 
 

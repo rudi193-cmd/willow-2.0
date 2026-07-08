@@ -18,9 +18,10 @@ def store_root(tmp_path, monkeypatch):
 
 def test_maybe_write_heartbeat_roundtrips(store_root, monkeypatch):
     import core.kart_worker as kw
+    from core.loop_heartbeat import reset_throttle
 
     monkeypatch.setattr("core.kart_lanes.worker_mode", lambda: "fast")
-    kw._HEARTBEAT_LAST_MONO = 0.0
+    reset_throttle("kart_worker")
     kw._maybe_write_heartbeat(tick_ok=True, lane="fast")
 
     from core.watchmen import check_watchmen

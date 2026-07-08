@@ -53,7 +53,7 @@
 | 28 | Reaper marks `failed`, no retry/DLQ | **open** | — |
 | 29 | Workflow phases as separate kart rows | **partial** | PR [#772](https://github.com/rudi193-cmd/willow-2.0/pull/772) → batch lane |
 | 30 | Grove gate hard-stops Kart | **by-design** | `core/grove_gate.py` |
-| 31 | Watchmen heartbeat vs lane env | **fixed** (Kart) | PR [#782](https://github.com/rudi193-cmd/willow-2.0/pull/782); other daemons still absent |
+| 31 | Watchmen heartbeat vs lane env | **partial** | PR [#782](https://github.com/rudi193-cmd/willow-2.0/pull/782) Kart; bite 6 wires repo daemons via `core/loop_heartbeat.py` |
 | 32 | Multi-node = multi-queue (no affinity) | **open** | fleet expansion |
 | 33 | Hot reload doesn't reach daemons | **partial** | [#562](https://github.com/rudi193-cmd/willow-2.0/pull/562), [#252](https://github.com/rudi193-cmd/willow-2.0/pull/252) |
 | 34 | RAM / OOM on single host | **open** | ops — 16G T500 |
@@ -219,7 +219,7 @@ Workflow gate: `.github/workflows/tests.yml` — "Kart sandbox audit — gated f
 **Status: by-design** — `assert_grove("kart_worker")`; Grove down = execution plane down.
 
 ### 31 — Watchmen vs lane env
-**Status: fixed for Kart (#782)** — `kart_worker` / `kart_worker_batch` write SOIL heartbeats; `fleet_status` reads via lifespan `store.get`. Other fleet daemons still `absent` until ADR bite 6 wiring.
+**Status: partial (#782 + bite 6)** — Kart workers + repo daemons (`grove_listen`, `grove_serve`, `nest_watcher`, `journal_watcher`, `drop_server`, `willow_discord_responder`, `stuck_loop_watch`) write via `core/loop_heartbeat`. `upstream_watcher` / `sentinel_watchdog` use legacy SOIL paths. `grove_mcp`, `orin_worker`, `willow_mcp` still absent until those units wire writers.
 
 ### 32 — Multi-node queue confusion
 **Status: open** — task on laptop doesn't run on T500 without local daemon.

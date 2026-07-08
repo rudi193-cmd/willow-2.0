@@ -30,10 +30,7 @@ sys.path.insert(0, str(WILLOW_ROOT))
 from willow.fylgja.claude_projects import claude_jsonl_paths  # noqa: E402
 from willow.fylgja.stuck_loop import detect_stuck_loops_in_jsonl  # noqa: E402
 
-HEARTBEAT_COLLECTION = "willow/loops/heartbeat"
-HEARTBEAT_KEY = "stuck_loop_watch"
 FLAG_COLLECTION = "willow/flags"
-TIMER_INTERVAL_S = 900  # stuck-loop-watch.timer OnUnitActiveSec
 
 
 def recent_transcripts(active_minutes: int) -> list[Path]:
@@ -89,23 +86,15 @@ def open_flag(findings: list[dict]) -> None:
 
 
 def write_heartbeat(tick_ok: bool, counts: dict, error: str = "") -> None:
-    """Prove this watchdog is alive — core/watchmen.py reads this via the loop
-    registry (heartbeat.watchmen_key=stuck_loop_watch in loops.json)."""
+    """Prove this watchdog is alive — core/watchmen.py reads this via the loop registry."""
     try:
-        from core import soil
+        from core.loop_heartbeat import write
 
-        soil.put(
-            HEARTBEAT_COLLECTION,
-            HEARTBEAT_KEY,
-            {
-                "last_tick_at": datetime.now(timezone.utc).isoformat(),
-                "interval_sec": TIMER_INTERVAL_S,
-                "tick_ok": tick_ok,
-                "error": error,
-                "counts": counts,
-                "pid": os.getpid(),
-            },
-        )
+        payload: dict = {"counts": counts}
+        if error:
+            payload["error"] = error
+        if not write("stuck_loop_watch", tick_ok=tick_ok, **payload):
+            raise RuntimeError("write returned false")
     except Exception as exc:
         print(f"stuck_loop_watch: heartbeat write failed — {exc}", file=sys.stderr, flush=True)
 
