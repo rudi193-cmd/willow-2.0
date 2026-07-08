@@ -25,7 +25,7 @@
 |---|-------|--------|--------------|
 | 1 | Fast blocked by batch | **fixed** | PR [#765](https://github.com/rudi193-cmd/willow-2.0/pull/765) |
 | 2 | `kart_task_run` watches fast lane only | **partial** | PR [#773](https://github.com/rudi193-cmd/willow-2.0/pull/773) |
-| 3 | `kart_poll` (Stop hook) drains fast only | **fixed** (local) | batch drain after fast within `KART_POLL_LIMIT` |
+| 3 | `kart_poll` (Stop hook) drains fast only | **fixed** | PR [#781](https://github.com/rudi193-cmd/willow-2.0/pull/781) |
 | 4 | `fleet_reload` / `fleet_restart` skip while Kart busy | **partial** | PR [#562](https://github.com/rudi193-cmd/willow-2.0/pull/562) (`only_if_idle`) |
 | 5 | Kart can't manage systemd from sandbox | **open** | — |
 | 6 | Stale reaper vs daemon timeout mismatch | **partial** | `core/kart_lanes.py` `reaper_alignment_warning()` |
@@ -39,7 +39,7 @@
 | 14 | Static `KART_FAST_WORKERS` | **open** | — |
 | 15 | No cross-lane backpressure | **open** | — |
 | 16 | Batch starvation via legacy `all` mode | **partial** | #765 + lane guard |
-| 17 | bwrap mount drift | **partial** | PR [#771](https://github.com/rudi193-cmd/willow-2.0/pull/771), [#767](https://github.com/rudi193-cmd/willow-2.0/pull/767); flag `flag-kart-bwrap-willow-mcp-rw-dropped` |
+| 17 | bwrap mount drift | **fixed** | PR [#771](https://github.com/rudi193-cmd/willow-2.0/pull/771), [#767](https://github.com/rudi193-cmd/willow-2.0/pull/767), [#778](https://github.com/rudi193-cmd/willow-2.0/pull/778) |
 | 18 | D-Bus / `systemctl` unreachable in sandbox | **open** | same class as #5 |
 | 19 | Network tier confusion (`allow_net` vs `allow_localhost`) | **partial** | PR [#634](https://github.com/rudi193-cmd/willow-2.0/pull/634) |
 | 20 | Credential env stripping (GAP-B) | **by-design** | Phase 0 [#325](https://github.com/rudi193-cmd/willow-2.0/pull/325) |
@@ -53,7 +53,7 @@
 | 28 | Reaper marks `failed`, no retry/DLQ | **open** | — |
 | 29 | Workflow phases as separate kart rows | **partial** | PR [#772](https://github.com/rudi193-cmd/willow-2.0/pull/772) → batch lane |
 | 30 | Grove gate hard-stops Kart | **by-design** | `core/grove_gate.py` |
-| 31 | Watchmen heartbeat vs lane env | **partial** | `kart_worker` SOIL heartbeat wired (#782) |
+| 31 | Watchmen heartbeat vs lane env | **fixed** (Kart) | PR [#782](https://github.com/rudi193-cmd/willow-2.0/pull/782); other daemons still absent |
 | 32 | Multi-node = multi-queue (no affinity) | **open** | fleet expansion |
 | 33 | Hot reload doesn't reach daemons | **partial** | [#562](https://github.com/rudi193-cmd/willow-2.0/pull/562), [#252](https://github.com/rudi193-cmd/willow-2.0/pull/252) |
 | 34 | RAM / OOM on single host | **open** | ops — 16G T500 |
@@ -61,9 +61,9 @@
 | 36 | `executed:0` while work happened | **fixed** | PR [#748](https://github.com/rudi193-cmd/willow-2.0/pull/748) |
 | 37 | No unified desk lane view | **fixed** | PR [#769](https://github.com/rudi193-cmd/willow-2.0/pull/769), [#773](https://github.com/rudi193-cmd/willow-2.0/pull/773) |
 | **38** | **mcp_apps trust root R+W in bwrap** | **fixed** | **gap** — issue [#777](https://github.com/rudi193-cmd/willow-2.0/issues/777), PR [#778](https://github.com/rudi193-cmd/willow-2.0/pull/778), FRANK `baf2f63a` / `293b2130` |
-| **39** | **`fleet_reload` Kart bounce: MCP missing D-Bus** | **fixed** (local) | `_restart_kart_worker` uses `metabolic_status._systemd_user_env()` |
+| **39** | **`fleet_reload` Kart bounce: MCP missing D-Bus** | **fixed** | PR [#780](https://github.com/rudi193-cmd/willow-2.0/pull/780) |
 
-**Scorecard (2026-07-08):** fixed 9 · partial 14 · open 11 · by-design 3 · gaps 38–39 (#3/#39 pending PR)
+**Scorecard (2026-07-08, post-revenge-tour):** fixed **13** · partial **12** · open **10** · by-design **3** · session PRs #778–#782
 
 ---
 
@@ -113,13 +113,13 @@ Workflow gate: `.github/workflows/tests.yml` — "Kart sandbox audit — gated f
 **Status: partial (#773)** — batch depth surfaced without blocking session poll. Fallback drain still fast-only by design.
 
 ### 3 — `kart_poll` fast-only at session stop
-**Status: fixed** — `scripts/kart_poll.py` drains fast lane first, then batch with remaining `KART_POLL_LIMIT` budget. Tests: `tests/test_kart_poll.py`.
+**Status: fixed (#781)** — `scripts/kart_poll.py` drains fast lane first, then batch with remaining `KART_POLL_LIMIT` budget. Tests: `tests/test_kart_poll.py`.
 
 ### 4 — Reload blocked while Kart running
 **Status: partial (#562)** — `fleet_reload` / `fleet_restart` skip kart bounce when tasks in-flight. Long batch jobs delay sandbox fixes reaching daemons. **Host D-Bus (#39):** MCP contexts without login session now pass `_systemd_user_env()` into `systemctl --user restart`.
 
 ### 39 — `fleet_reload(target=kart)` D-Bus from MCP (gap)
-**Status: fixed (local)** — `sap/sap_mcp._restart_kart_worker` reuses `core.metabolic_status._systemd_user_env()` (same helper as metabolic consecration probe). Tests: `tests/test_kart_worker_restart.py::test_success_when_idle` asserts `env` passed to `subprocess.run`.
+**Status: fixed (#780)** — `sap/sap_mcp._restart_kart_worker` reuses `core.metabolic_status._systemd_user_env()`. Verified: `fleet_reload(target=kart)` bounces both units from Cursor MCP.
 
 ### 5 — systemctl from sandbox
 **Status: open** — user D-Bus unreachable; `~/.config/systemd` ro. Install/enable/restart is host-only.
@@ -166,7 +166,7 @@ Workflow gate: `.github/workflows/tests.yml` — "Kart sandbox audit — gated f
 ## Tier 2 — Sandbox & security
 
 ### 17 — bwrap mount drift
-**Status: partial** — `kart-sandbox.json` + `bind_try`; promoted repos in [#771](https://github.com/rudi193-cmd/willow-2.0/pull/771). **Open:** `flag-kart-bwrap-willow-mcp-rw-dropped` (RW vanished mid-session).
+**Status: fixed (#778)** — `mcp_apps` trust root forced read-only after fleet-home rw bind; acceptance probes in `tests/test_kart_sandbox.py`. Prior RW-drop flag superseded by ro-overlay policy.
 
 ### 18 — D-Bus / systemctl
 **Status: open** — see #5.
@@ -219,7 +219,7 @@ Workflow gate: `.github/workflows/tests.yml` — "Kart sandbox audit — gated f
 **Status: by-design** — `assert_grove("kart_worker")`; Grove down = execution plane down.
 
 ### 31 — Watchmen vs lane env
-**Status: partial** — heartbeat may show alive while wrong `KART_WORKER_LANE`.
+**Status: fixed for Kart (#782)** — `kart_worker` / `kart_worker_batch` write SOIL heartbeats; `fleet_status` reads via lifespan `store.get`. Other fleet daemons still `absent` until ADR bite 6 wiring.
 
 ### 32 — Multi-node queue confusion
 **Status: open** — task on laptop doesn't run on T500 without local daemon.
@@ -267,6 +267,7 @@ Workflow gate: `.github/workflows/tests.yml` — "Kart sandbox audit — gated f
 | `flag-pg-bridge-migrations-rerun-every-process` | #637 schema fingerprint short-circuit |
 | `flag-dream-kart-runs-pollution` | #543 `submitter_run_id` nesting |
 | `flag-security-scan-no-coverage-on-kart-path` | closed — see scanner gap audit; Kart still scanner-free by policy |
+| `flag-kart-bwrap-willow-mcp-rw-dropped` | #778 `mcp_apps` ro-overlay — closed 2026-07-08 |
 
 ---
 
@@ -274,7 +275,6 @@ Workflow gate: `.github/workflows/tests.yml` — "Kart sandbox audit — gated f
 
 | Flag | Severity |
 |------|----------|
-| `flag-kart-bwrap-willow-mcp-rw-dropped` | operational — RW bind lost mid-session |
 | `flag-bash-attempt1-routing` | agent UX — Bash before Kart |
 
 ---
