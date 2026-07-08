@@ -1957,14 +1957,44 @@ async def agent_task_status(app_id: str, task_id: str) -> dict:
 
 @mcp.tool(annotations={"readOnlyHint": True})
 @sap_gate()
-async def agent_task_list(app_id: str, agent: str = "kart", limit: int = 10) -> dict:
-    """List pending tasks in the Postgres task queue (read-only; does not claim)."""
-    logger.info("[w2] agent_task_list app_id=%s agent=%s", app_id, agent)
+async def agent_task_list(
+    app_id: str,
+    agent: str = "kart",
+    limit: int = 10,
+    lane: str = "",
+) -> dict:
+    """List pending tasks in the Postgres task queue (read-only; does not claim).
+
+    lane: optional fast|batch filter. Response always includes queue depth for both lanes.
+    """
+    logger.info("[w2] agent_task_list app_id=%s agent=%s lane=%s", app_id, agent, lane)
     if not pg:
         return _no_pg()
     loop = asyncio.get_running_loop()
-    tasks = await loop.run_in_executor(_executor, pg.pending_tasks, agent, limit)
-    return {"pending": tasks, "count": len(tasks)}
+
+    def _list():
+        from core.kart_lanes import normalize_lane
+
+        lane_filter = normalize_lane(lane) if lane else None
+        pending = pg.pending_tasks(agent, limit, lane=lane_filter)
+        stats = pg.kart_queue_stats(agent) if hasattr(pg, "kart_queue_stats") else {}
+        return {
+            "pending": pending,
+            "count": len(pending),
+            "lane_filter": lane_filter or "all",
+            "queue": {
+                "fast": {
+                    "pending": int(stats.get("pending_fast") or 0),
+                    "running": int(stats.get("running_fast") or 0),
+                },
+                "batch": {
+                    "pending": int(stats.get("pending_batch") or 0),
+                    "running": int(stats.get("running_batch") or 0),
+                },
+            },
+        }
+
+    return await loop.run_in_executor(_executor, _list)
 
 
 @mcp.tool()
@@ -2073,6 +2103,15 @@ async def kart_task_run(
         out = {"executed": len(results), "results": results}
         if reaped:
             out["reaped_stale"] = reaped
+        try:
+            stats = pg.kart_queue_stats(agent, stale_s)
+            out["batch_queue"] = {
+                "pending": int(stats.get("pending_batch") or 0),
+                "running": int(stats.get("running_batch") or 0),
+                "non_blocking": True,
+            }
+        except Exception:
+            pass
         return out
 
     return await loop.run_in_executor(_executor, _run)
