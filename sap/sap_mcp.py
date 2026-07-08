@@ -489,12 +489,30 @@ def _restart_kart_worker(only_if_idle: bool = True) -> dict:
     return out
 
 
+_WATCHMEN_SYSTEMD_UNITS = (
+    "willow-grove-listen",
+    "grove-serve",
+    "nest-watcher",
+    "journal-watcher",
+    "drop-server",
+    "willow-discord-responder",
+    "stuck-loop-watch",
+)
+
+
+def _restart_watchmen_units() -> dict:
+    from core.metabolic_status import restart_user_systemd_units
+
+    return restart_user_systemd_units(_WATCHMEN_SYSTEMD_UNITS)
+
+
 def _hot_reload(target: str = "all") -> dict:
     global pg, store, _inf, _blast
     import importlib
     reloaded: list[str] = []
     errors:   list[str] = []
     kart_result: dict | None = None
+    watchmen_result: dict | None = None
 
     if target in ("all", "blast"):
         try:
@@ -560,6 +578,10 @@ def _hot_reload(target: str = "all") -> dict:
         kart_result = _restart_kart_worker(only_if_idle=True)
         reloaded.append(f"kart-worker: {kart_result.get('status')}")
 
+    if target in ("all", "watchmen"):
+        watchmen_result = _restart_watchmen_units()
+        reloaded.append(f"watchmen: {watchmen_result.get('status')}")
+
     # Honesty: hot reload only re-imports the whitelist above. Core modules
     # (dream_state, run_ledger, …) and the facade tool bodies in this file are
     # NOT swapped — only a full process restart loads them. Surface that plus the
@@ -571,11 +593,13 @@ def _hot_reload(target: str = "all") -> dict:
         "reloaded": reloaded,
         "errors":   errors if errors else None,
         "kart": kart_result,
+        "watchmen": watchmen_result,
         "code_version": stale,
         "not_hot_swappable": (
             "core.* modules (dream_state, run_ledger, …) and the sap_mcp facade "
             "tool bodies are NOT reloaded here — only fleet_restart (full process "
-            "exit) loads them. The Kart worker IS handled, via systemctl restart."
+            "exit) loads them. Kart worker and watchmen units are bounced via "
+            "systemctl --user restart from the MCP host process."
         ),
     }
     if stale.get("stale"):
@@ -814,14 +838,16 @@ def _true_hotreload_enabled() -> bool:
 @sap_gate()
 async def fleet_reload(app_id: str, target: str = "all") -> dict:
     """Hot-reload Willow modules without restarting the MCP server.
-    target: code | all | blast | inference | postgres | store | gate | kart
+    target: code | all | blast | inference | postgres | store | gate | kart | watchmen
     target 'code' (needs WILLOW_TRUE_HOTRELOAD=1): generation-swap reload of ALL
     tool bodies, facades, and core.* via shadow import — no process exit, no /mcp
     reconnect (ADR-20260704-mcp-true-hot-reload).
     target 'all' (and 'kart') also bounces the kart-worker systemd unit so merged
     Kart code goes live — skipped automatically while a Kart task is in-flight.
     When WILLOW_TRUE_HOTRELOAD=1, target 'all' chains generation-swap reload if
-    code_version is still stale after the whitelist pass."""
+    code_version is still stale after the whitelist pass.
+    target 'watchmen' bounces loop-registry daemons (grove_listen, nest_watcher, …)
+    via systemctl --user from the MCP host process — Kart bwrap cannot reach user D-Bus."""
     logger.info("[w2] fleet_reload app_id=%s target=%s", app_id, target)
     loop = asyncio.get_running_loop()
 
