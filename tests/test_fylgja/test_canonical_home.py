@@ -125,6 +125,28 @@ def test_metabolic_fleet_home_follows_fleet_home_without_private_config(
     assert metabolic_fleet_home() == generated.resolve()
 
 
+def test_resolve_store_root_prefers_private_when_config_on_disk(
+    tmp_path, monkeypatch
+):
+    generated = tmp_path / "generated"
+    generated.mkdir()
+    private = tmp_path / "private"
+    private.mkdir()
+    (private / "willow.md").write_text("private\n", encoding="utf-8")
+
+    monkeypatch.setenv("WILLOW_HOME", str(generated))
+    monkeypatch.setenv("WILLOW_CONFIG_MODE", "public-fallback")
+    monkeypatch.delenv("WILLOW_STORE_ROOT", raising=False)
+    monkeypatch.setattr(
+        "willow.fylgja.willow_home.private_home", lambda: private
+    )
+    monkeypatch.setattr(
+        "willow.fylgja.willow_home.private_config_available", lambda: True
+    )
+
+    assert resolve_store_root() == private / "store"
+
+
 def test_render_mcp_includes_grove_fields(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()

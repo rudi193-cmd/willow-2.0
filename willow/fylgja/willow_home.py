@@ -41,6 +41,10 @@ def willow_home_alias() -> Path:
 def resolve_store_root(package_root: Path | None = None) -> Path:
     if os.environ.get("WILLOW_STORE_ROOT"):
         return Path(os.environ["WILLOW_STORE_ROOT"]).expanduser().resolve()
+    # Public-fallback MCP launches may inject WILLOW_HOME=.willow/generated while
+    # durable SOIL (dream state, flags, gaps) still lives in private willow-config.
+    if private_config_available():
+        return private_home() / "store"
     return willow_home(package_root) / "store"
 
 
