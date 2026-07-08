@@ -30,30 +30,22 @@ def main() -> int:
         print(f"kart_poll: no Postgres ({e}) — skipping", file=sys.stderr)
         return 0
 
-    try:
-        tasks = pg.claim_kart_tasks(limit=LIMIT, lane="fast")
-    except Exception as e:
-        print(f"kart_poll: claim failed ({e}) — skipping", file=sys.stderr)
-        return 0
+    def _drain_lane(lane: str, limit: int) -> int:
+        if limit <= 0:
+            return 0
+        try:
+            tasks = pg.claim_kart_tasks(limit=limit, lane=lane)
+        except Exception as e:
+            print(f"kart_poll: claim failed ({lane}, {e}) — skipping", file=sys.stderr)
+            return 0
+        if not tasks:
+            return 0
+        print(f"kart_poll: {len(tasks)} {lane} pending task(s)", file=sys.stderr)
+        drain_claimed_tasks(pg, tasks, context="poll", log_prefix="kart_poll")
+        return len(tasks)
 
-    try:
-        stats = pg.kart_queue_stats("kart")
-        pb = int(stats.get("pending_batch") or 0)
-        rb = int(stats.get("running_batch") or 0)
-        if pb or rb:
-            print(
-                f"kart_poll: batch lane {rb} running, {pb} pending "
-                "(kart-worker-batch — not drained at session stop)",
-                file=sys.stderr,
-            )
-    except Exception:
-        pass
-
-    if not tasks:
-        return 0
-
-    print(f"kart_poll: {len(tasks)} pending task(s)", file=sys.stderr)
-    drain_claimed_tasks(pg, tasks, context="poll", log_prefix="kart_poll")
+    drained = _drain_lane("fast", LIMIT)
+    _drain_lane("batch", LIMIT - drained)
     pg.close()
     return 0
 
