@@ -133,10 +133,12 @@ def test_resolve_store_root_prefers_private_when_config_on_disk(
     private = tmp_path / "private"
     private.mkdir()
     (private / "willow.md").write_text("private\n", encoding="utf-8")
+    stale_store = tmp_path / "stale" / "store"
+    stale_store.mkdir(parents=True)
 
     monkeypatch.setenv("WILLOW_HOME", str(generated))
     monkeypatch.setenv("WILLOW_CONFIG_MODE", "public-fallback")
-    monkeypatch.delenv("WILLOW_STORE_ROOT", raising=False)
+    monkeypatch.setenv("WILLOW_STORE_ROOT", str(stale_store))
     monkeypatch.setattr(
         "willow.fylgja.willow_home.private_home", lambda: private
     )
