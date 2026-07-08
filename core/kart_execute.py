@@ -339,7 +339,7 @@ def _queue_phases(
             }
         )
         new_task_id = pg.submit_task(
-            payload, submitted_by="kart_workflow", agent="kart"
+            payload, submitted_by="kart_workflow", agent="kart", lane="batch"
         )
         pg.workflow_phase_create(run_id, phase_name, phase_input, new_task_id)
 
