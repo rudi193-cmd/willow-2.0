@@ -280,6 +280,11 @@
 
   "external_mcp_servers": {
     "_note": "Raw stdio MCP servers wired directly in .mcp.json (gitignored, host-local) — not proxied through a sap_mcp.py facade. Documented here so their presence and provenance are discoverable from a tracked file.",
+    "willow-mcp": {
+      "purpose": "Standalone agent-neutral MCP server (v2.0.0) — SQLite SOIL store + Postgres knowledge base + Kart task queue, exposed as a self-contained pip/PyPI package. The clean v2 rebuild of Willow's store/knowledge/task surface; distinct from the in-tree willow server (sap/sap_mcp.py). stdio is the default transport (`python3 -m willow_mcp`); `--serve` runs an HTTP mode with OAuth 2.0 PKCE. Every tool takes app_id; authorization via SAP/1.0.",
+      "install": "Cloned at ~/github/willow-mcp (remote github.com/rudi193-cmd/willow-mcp, branch claude/mcp-v2-rebuild). Editable-installed into a dedicated venv at ~/.willow/venvs/willow-mcp; launched via that venv's `python -m willow_mcp` (stdio). Indexed into codebase-memory (project home-sean-campbell-github-willow-mcp) and code_graph 2026-07-08.",
+      "facade": "None — wired as a raw stdio server under a distinct .mcp.json key (willow-mcp) so it does not collide with the primary willow facade server."
+    },
     "codebase-memory-mcp": {
       "purpose": "Graph-augmented code search and architecture queries across indexed repos.",
       "install": "Compiled binary at ~/.local/bin/codebase-memory-mcp.",
