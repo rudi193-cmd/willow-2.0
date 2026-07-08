@@ -47,7 +47,9 @@ _BOOT_MD_PATH = str(Path(__file__).parent.parent / "skills" / "boot.md")
 _KART_PENDING_TTL = 1800  # seconds — backstop if kart_task_run is never called
 _BLOCK_FLAG_THRESHOLD = int(os.environ.get("WILLOW_BLOCK_FLAG_THRESHOLD", "10"))
 _BASH_SESSION_THRESHOLD = int(os.environ.get("WILLOW_BASH_SESSION_THRESHOLD", "5"))
-_WARN_ESCALATE_STRIKES = int(os.environ.get("WILLOW_WARN_ESCALATE_STRIKES", "2"))
+# Default 1: Cursor/Claude still execute Bash on hook "warn" — first redirect must
+# hard-block so shell never runs (flag-bash-attempt1-routing).
+_WARN_ESCALATE_STRIKES = int(os.environ.get("WILLOW_WARN_ESCALATE_STRIKES", "1"))
 _SESSION_BAN_STRIKES = int(os.environ.get("WILLOW_SESSION_BAN_STRIKES", "3"))
 
 # Native IDE web tools — warn until willow_web_fetch ships, then hard-block.
