@@ -1,7 +1,7 @@
 {
   "b17": "KRTSND",
   "version": 1,
-  "description": "Kart bwrap mount policy — extend bind_try / env_prefixes for new fleet paths without code changes.",
+  "description": "Kart bwrap mount policy \u2014 extend bind_try / env_prefixes for new fleet paths without code changes.",
   "env_prefixes": [
     "WILLOW_",
     "GROVE_",
@@ -78,6 +78,7 @@
     "{{HOME}}/github/justice-almanac",
     "{{HOME}}/github/willow",
     "{{HOME}}/github/willow-bot",
+    "{{HOME}}/github/willow-mcp",
     "{{HOME}}/github/quiet-corner",
     "{{HOME}}/github/community",
     "{{HOME}}/github/jeles-remote",
@@ -122,13 +123,13 @@
     "_note": "Off by default. rtk-plus (dioptx fork, security-reviewed 2026-07-05, patched to redact secret-shaped command args before its own local tracking DB, built from source with telemetry compiled out) rewrites a shell command to its own compressing wrapper (e.g. `git status` -> `rtk-plus git status`) before Kart executes it. Flip enabled to true once observed working on real tasks."
   },
   "_security_notes": {
-    "github_ro": "~/github is read-only by default (S4/GAP-A). WILLOW_ROOT + worktrees + WILLOW_GROVE_ROOT nest as read-write on top. Operator-promoted RW: DispatchesFromReality, safe-app-store-public, almanac-template, almanac-data, almanac-data-dotgithub, climate-almanac, health/economy/environment/civic-almanac, education/science/energy/agriculture/transportation/justice-almanac, willow (constitution repo), willow-bot, quiet-corner, community, jeles-remote, awesome-sovereign-software. Private safe-app-store stays read-only.",
+    "github_ro": "~/github is read-only by default (S4/GAP-A). WILLOW_ROOT + worktrees + WILLOW_GROVE_ROOT nest as read-write on top. Operator-promoted RW: DispatchesFromReality, safe-app-store-public, almanac-template, almanac-data, almanac-data-dotgithub, climate-almanac, health/economy/environment/civic-almanac, education/science/energy/agriculture/transportation/justice-almanac, willow (constitution repo), willow-bot, willow-mcp (operator decision 2026-07-07), quiet-corner, community, jeles-remote, awesome-sovereign-software. Private safe-app-store stays read-only.",
     "safe_ro": "SAFE store + agents + data-vault are read-only via bind_try_read_only (GAP-A: the sovereign data must not be mutable by an arbitrary task).",
     "ssh_dropped": "~/.ssh is no longer bound (S1). SSH git uses SSH_AUTH_SOCK (reachable via /run/user) + ~/.ssh/known_hosts ro, both only on allow_net. Private keys never enter the sandbox.",
     "creds_gated": "~/.config/gh + ~/.netrc and credential_env_prefixes are present only on allow_net (S1/GAP-B). A no-network task gets zero credentials.",
     "localhost_tier": "# allow_localhost shares the host network namespace (loopback Ollama works) but still strips credentials and does not bind gh/netrc/ssh. Weaker than --unshare-net isolation; prefer over allow_net for embed-only work.",
     "tmp_tmpfs": "/tmp + /dev/shm are private tmpfs, not host binds (S11/S16).",
-    "claude_science_rw": "~/.claude-science bound RW (operator request 2026-07-04) so Kart can manage the claude-science daemon config (config.toml sandbox grants, connector registration, logs). Its session state travels with it — do not surface data-dir contents in public artifacts.",
-    "transcripts_ro": "S5/KP4 (operator decision 2026-06-12: bind): ~/.claude/projects + ~/.cursor are ro via bind_try_read_only. ~/.claude root stays unbound — it can hold .credentials.json, which must never enter the sandbox."
+    "claude_science_rw": "~/.claude-science bound RW (operator request 2026-07-04) so Kart can manage the claude-science daemon config (config.toml sandbox grants, connector registration, logs). Its session state travels with it \u2014 do not surface data-dir contents in public artifacts.",
+    "transcripts_ro": "S5/KP4 (operator decision 2026-06-12: bind): ~/.claude/projects + ~/.cursor are ro via bind_try_read_only. ~/.claude root stays unbound \u2014 it can hold .credentials.json, which must never enter the sandbox."
   }
 }
