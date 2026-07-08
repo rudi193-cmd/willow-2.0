@@ -17,7 +17,7 @@ root `../willow.md` as an agent.
 | What lives at repo root | [`ROOT_LAYOUT.md`](ROOT_LAYOUT.md) |
 | Private config vs public code | [`WILLOW_CONFIG.md`](WILLOW_CONFIG.md) · [`PUBLIC_REMOTE_BOOT.md`](PUBLIC_REMOTE_BOOT.md) · [`PUBLIC_READY_V1.md`](PUBLIC_READY_V1.md) |
 | Fleet contract (public snapshot) | [`CONTRACT.md`](CONTRACT.md) — sync via `scripts/sync_contract_snapshot.py` |
-| Audits (fleet/system reports) | [`audits/`](audits/) — latest: [`audits/SYSTEM_AUDIT_2026-06-10.md`](audits/SYSTEM_AUDIT_2026-06-10.md) |
+| Audits (fleet/system reports) | [`audits/`](audits/) — Kart living checklist: [`audits/KART_FAILURE_MODES.md`](audits/KART_FAILURE_MODES.md) |
 | Open work (curated backlog) | [`OPEN_WORK.md`](OPEN_WORK.md) |
 | Upstream contribution strategy | [`UPSTREAM_CONTRIBUTION_STRATEGY.md`](UPSTREAM_CONTRIBUTION_STRATEGY.md) |
 | Agent identity (not all hanuman) | [`AGENT_IDENTITY.md`](AGENT_IDENTITY.md) |
