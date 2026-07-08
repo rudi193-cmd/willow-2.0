@@ -36,6 +36,19 @@ def main() -> int:
         print(f"kart_poll: claim failed ({e}) — skipping", file=sys.stderr)
         return 0
 
+    try:
+        stats = pg.kart_queue_stats("kart")
+        pb = int(stats.get("pending_batch") or 0)
+        rb = int(stats.get("running_batch") or 0)
+        if pb or rb:
+            print(
+                f"kart_poll: batch lane {rb} running, {pb} pending "
+                "(kart-worker-batch — not drained at session stop)",
+                file=sys.stderr,
+            )
+    except Exception:
+        pass
+
     if not tasks:
         return 0
 
