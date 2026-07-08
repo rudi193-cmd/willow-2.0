@@ -25,7 +25,7 @@
 |---|-------|--------|--------------|
 | 1 | Fast blocked by batch | **fixed** | PR [#765](https://github.com/rudi193-cmd/willow-2.0/pull/765) |
 | 2 | `kart_task_run` watches fast lane only | **partial** | PR [#773](https://github.com/rudi193-cmd/willow-2.0/pull/773) |
-| 3 | `kart_poll` (Stop hook) drains fast only | **open** | — |
+| 3 | `kart_poll` (Stop hook) drains fast only | **fixed** (local) | batch drain after fast within `KART_POLL_LIMIT` |
 | 4 | `fleet_reload` / `fleet_restart` skip while Kart busy | **partial** | PR [#562](https://github.com/rudi193-cmd/willow-2.0/pull/562) (`only_if_idle`) |
 | 5 | Kart can't manage systemd from sandbox | **open** | — |
 | 6 | Stale reaper vs daemon timeout mismatch | **partial** | `core/kart_lanes.py` `reaper_alignment_warning()` |
@@ -61,8 +61,9 @@
 | 36 | `executed:0` while work happened | **fixed** | PR [#748](https://github.com/rudi193-cmd/willow-2.0/pull/748) |
 | 37 | No unified desk lane view | **fixed** | PR [#769](https://github.com/rudi193-cmd/willow-2.0/pull/769), [#773](https://github.com/rudi193-cmd/willow-2.0/pull/773) |
 | **38** | **mcp_apps trust root R+W in bwrap** | **fixed** | **gap** — issue [#777](https://github.com/rudi193-cmd/willow-2.0/issues/777), PR [#778](https://github.com/rudi193-cmd/willow-2.0/pull/778), FRANK `baf2f63a` / `293b2130` |
+| **39** | **`fleet_reload` Kart bounce: MCP missing D-Bus** | **fixed** (local) | `_restart_kart_worker` uses `metabolic_status._systemd_user_env()` |
 
-**Scorecard (2026-07-08):** fixed 7 · partial 14 · open 12 · by-design 3 · gap item 38 now fixed on master
+**Scorecard (2026-07-08):** fixed 9 · partial 14 · open 11 · by-design 3 · gaps 38–39 (#3/#39 pending PR)
 
 ---
 
@@ -112,10 +113,13 @@ Workflow gate: `.github/workflows/tests.yml` — "Kart sandbox audit — gated f
 **Status: partial (#773)** — batch depth surfaced without blocking session poll. Fallback drain still fast-only by design.
 
 ### 3 — `kart_poll` fast-only at session stop
-**Status: open** — `scripts/kart_poll.py` does not drain batch lane on Stop hook.
+**Status: fixed** — `scripts/kart_poll.py` drains fast lane first, then batch with remaining `KART_POLL_LIMIT` budget. Tests: `tests/test_kart_poll.py`.
 
 ### 4 — Reload blocked while Kart running
-**Status: partial (#562)** — `fleet_reload` / `fleet_restart` skip kart bounce when tasks in-flight. Long batch jobs delay sandbox fixes reaching daemons.
+**Status: partial (#562)** — `fleet_reload` / `fleet_restart` skip kart bounce when tasks in-flight. Long batch jobs delay sandbox fixes reaching daemons. **Host D-Bus (#39):** MCP contexts without login session now pass `_systemd_user_env()` into `systemctl --user restart`.
+
+### 39 — `fleet_reload(target=kart)` D-Bus from MCP (gap)
+**Status: fixed (local)** — `sap/sap_mcp._restart_kart_worker` reuses `core.metabolic_status._systemd_user_env()` (same helper as metabolic consecration probe). Tests: `tests/test_kart_worker_restart.py::test_success_when_idle` asserts `env` passed to `subprocess.run`.
 
 ### 5 — systemctl from sandbox
 **Status: open** — user D-Bus unreachable; `~/.config/systemd` ro. Install/enable/restart is host-only.
