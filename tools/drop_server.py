@@ -90,7 +90,20 @@ app = Starlette(routes=[
 
 
 if __name__ == "__main__":
+    import threading
     import uvicorn
+
+    def _heartbeat_loop() -> None:
+        import time
+
+        from core.loop_heartbeat import interval_sec_for, write_throttled
+
+        key = "drop_server"
+        while True:
+            write_throttled(key)
+            time.sleep(interval_sec_for(key))
+
+    threading.Thread(target=_heartbeat_loop, daemon=True, name="drop-server-heartbeat").start()
     port = int(os.environ.get("DROP_PORT", 8742))
     log.info("listening on port %d — dest=%s", port, DROP_DEST)
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")

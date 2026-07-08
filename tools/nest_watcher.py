@@ -49,6 +49,12 @@ def run():
                 print(f"[nest-watcher] notified Grove — {len(newly_staged)} item(s)", flush=True)
         except Exception as e:
             print(f"[nest-watcher] error: {e}", flush=True)
+        try:
+            from core.loop_heartbeat import write_throttled
+
+            write_throttled("nest_watcher")
+        except Exception:
+            pass
         time.sleep(POLL_INTERVAL)
 
 

@@ -244,6 +244,9 @@ def _run():
 
     while True:
         try:
+            from core.loop_heartbeat import write_throttled
+
+            write_throttled("grove_listen")
             if select.select([conn], [], [], 30.0)[0]:
                 conn.poll()
                 notified = set()

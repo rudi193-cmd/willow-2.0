@@ -735,12 +735,24 @@ def _u2u_listen_thread() -> None:
         print(f"[u2u] listener error: {e}", flush=True)
 
 
+def _heartbeat_loop() -> None:
+    from core.loop_heartbeat import interval_sec_for, write_throttled
+
+    key = "grove_serve"
+    while True:
+        write_throttled(key)
+        time.sleep(interval_sec_for(key))
+
+
 def serve(host: str = "127.0.0.1", port: int = DEFAULT_PORT) -> None:
     global _TOKEN
     _TOKEN = load_or_create_token()
 
     watcher = threading.Thread(target=_willow_watch_loop, daemon=True, name="willow-watch")
     watcher.start()
+
+    heartbeat = threading.Thread(target=_heartbeat_loop, daemon=True, name="grove-serve-heartbeat")
+    heartbeat.start()
 
     dispatch = threading.Thread(target=_dispatch_watch_loop, daemon=True, name="dispatch-watch")
     dispatch.start()

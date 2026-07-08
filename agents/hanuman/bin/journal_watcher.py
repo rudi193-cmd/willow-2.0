@@ -80,6 +80,13 @@ def watch() -> None:
                     pass
                 pg = PgBridge()
 
+            try:
+                from core.loop_heartbeat import write_throttled
+
+                write_throttled("journal_watcher")
+            except Exception:
+                pass
+
             time.sleep(POLL_INTERVAL)
     except KeyboardInterrupt:
         print("journal_watcher: stopped", flush=True)
