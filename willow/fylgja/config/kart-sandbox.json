@@ -133,6 +133,7 @@
     "localhost_tier": "# allow_localhost shares the host network namespace (loopback Ollama works) but still strips credentials and does not bind gh/netrc/ssh. Weaker than --unshare-net isolation; prefer over allow_net for embed-only work.",
     "tmp_tmpfs": "/tmp + /dev/shm are private tmpfs, not host binds (S11/S16).",
     "claude_science_rw": "~/.claude-science bound RW (operator request 2026-07-04) so Kart can manage the claude-science daemon config (config.toml sandbox grants, connector registration, logs). Its session state travels with it \u2014 do not surface data-dir contents in public artifacts.",
-    "transcripts_ro": "S5/KP4 (operator decision 2026-06-12: bind): ~/.claude/projects + ~/.cursor are ro via bind_try_read_only. ~/.claude root stays unbound \u2014 it can hold .credentials.json, which must never enter the sandbox."
+    "transcripts_ro": "S5/KP4 (operator decision 2026-06-12: bind): ~/.claude/projects + ~/.cursor are ro via bind_try_read_only. ~/.claude root stays unbound \u2014 it can hold .credentials.json, which must never enter the sandbox.",
+    "mcp_trust_root_ro": "$WILLOW_HOME/mcp_apps (willow-mcp gate ACLs + _identity_bindings) is ro-bound over the fleet-home rw mount inside bwrap so Kart tasks cannot rewrite manifests or mint confirmed OAuth bindings (FRANK baf2f63a / #777). Host stdio/serve still writes via process outside the sandbox."
   }
 }
