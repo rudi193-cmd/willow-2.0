@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "surfaces": {
+    "cursor": {"tier": 1, "skills": true, "commands": true, "hooks": true, "mcp": "repo"},
+    "claude": {"tier": 1, "skills": true, "commands": true, "hooks": true, "mcp": "install_global_and_project"},
+    "codex": {"tier": 2, "skills": true, "commands": true, "hooks": false, "mcp": "repo_and_install_merge"},
+    "agents": {"tier": 2, "skills": true, "commands": true, "hooks": false, "mcp": false},
+    "gemini": {"tier": 0, "status": "planned", "skills": false, "commands": false, "hooks": false, "mcp": false},
+    "openclaw": {"tier": 0, "status": "external", "skills_path": "~/.openclaw/skills", "skills": false, "commands": false, "hooks": false, "mcp": false}
+  },
+  "remote_surfaces": [".cursor", ".claude", ".agents", ".codex"],
+  "core_skills": ["boot", "startup", "shutdown", "power", "willow-remote"],
+  "hooks": {
+    "required_modules": ["session_start", "prompt_submit", "pre_tool", "stop"],
+    "claude_extra_modules": ["post_tool"],
+    "cursor_required_events": {"beforeMCPExecution": "pre_tool"}
+  }
+}
