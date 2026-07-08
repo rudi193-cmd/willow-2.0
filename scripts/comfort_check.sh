@@ -185,7 +185,23 @@ _local_systemd() {
       bad=$((bad + 1))
     fi
   done
+  _kart_worker_lane_env "kart-worker" "fast" || bad=$((bad + 1))
+  _kart_worker_lane_env "kart-worker-batch" "batch" || bad=$((bad + 1))
   [[ "${bad}" -eq 0 ]]
+}
+
+_kart_worker_lane_env() {
+  local unit="$1"
+  local want="$2"
+  local env_line lane
+  env_line="$(systemctl --user show -p Environment "${unit}.service" 2>/dev/null | sed -n 's/^Environment=//p')"
+  lane="$(printf '%s' "${env_line}" | tr ' ' '\n' | sed -n 's/^KART_WORKER_LANE=//p' | head -1)"
+  if [[ "${lane}" == "${want}" ]]; then
+    echo "  OK: ${unit}.service KART_WORKER_LANE=${lane}"
+    return 0
+  fi
+  echo "  WARN: ${unit}.service KART_WORKER_LANE=${lane:-<unset>} (expected ${want})"
+  return 1
 }
 
 _local_verify() {

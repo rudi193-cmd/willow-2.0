@@ -17,6 +17,13 @@ class AttentionSummary:
     nest_pending: int = 0
     running_tasks: int = 0
     pending_tasks: int = 0
+    pending_fast: int = 0
+    pending_batch: int = 0
+    running_fast: int = 0
+    running_batch: int = 0
+    oldest_pending_fast_s: int = 0
+    oldest_pending_batch_s: int = 0
+    detached_running: int = 0
     done_today: int = 0
     dream_due: bool = False
     human_required_open: int = 0
@@ -69,30 +76,84 @@ def _open_flags(agent: str = "") -> int:
         return 0
 
 
-def _kart_counts() -> tuple[int, int, int]:
+def _kart_counts() -> tuple[int, int, int, dict]:
+    """Return running, pending, done_today, and lane/detached detail."""
+    extra: dict = {}
     try:
+        from core.kart_lanes import reaper_stale_seconds
         from core.pg_bridge import get_connection, release_connection
+
         conn = get_connection()
         try:
+            stale_s = reaper_stale_seconds()
             cur = conn.cursor()
             cur.execute(
-                "SELECT status, COUNT(*) FROM public.tasks "
-                "WHERE agent = 'kart' GROUP BY status"
+                """
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'running') AS running,
+                    COUNT(*) FILTER (WHERE status = 'pending') AS pending,
+                    COUNT(*) FILTER (WHERE status = 'pending' AND lane = 'fast') AS pending_fast,
+                    COUNT(*) FILTER (WHERE status = 'pending' AND lane = 'batch') AS pending_batch,
+                    COUNT(*) FILTER (WHERE status = 'running' AND lane = 'fast') AS running_fast,
+                    COUNT(*) FILTER (WHERE status = 'running' AND lane = 'batch') AS running_batch,
+                    COALESCE(
+                        EXTRACT(EPOCH FROM (
+                            now() - MIN(created_at) FILTER (
+                                WHERE status = 'pending' AND lane = 'fast'
+                            )
+                        )),
+                        0
+                    )::int AS oldest_pending_fast_s,
+                    COALESCE(
+                        EXTRACT(EPOCH FROM (
+                            now() - MIN(created_at) FILTER (
+                                WHERE status = 'pending' AND lane = 'batch'
+                            )
+                        )),
+                        0
+                    )::int AS oldest_pending_batch_s,
+                    COUNT(*) FILTER (
+                        WHERE status = 'running'
+                          AND result IS NULL
+                          AND updated_at < now() - make_interval(secs => %s)
+                    ) AS stale_running
+                FROM public.tasks
+                WHERE agent = 'kart'
+                """,
+                (stale_s,),
             )
-            rows = {r[0]: r[1] for r in cur.fetchall()}
-            running = int(rows.get("running", 0))
-            pending = int(rows.get("pending", 0))
+            row = cur.fetchone()
+            running = int(row[0] or 0)
+            pending = int(row[1] or 0)
+            extra = {
+                "pending_fast": int(row[2] or 0),
+                "pending_batch": int(row[3] or 0),
+                "running_fast": int(row[4] or 0),
+                "running_batch": int(row[5] or 0),
+                "oldest_pending_fast_s": int(row[6] or 0),
+                "oldest_pending_batch_s": int(row[7] or 0),
+                "stale_running": int(row[8] or 0),
+            }
             cur.execute(
                 "SELECT COUNT(*) FROM public.tasks "
                 "WHERE agent = 'kart' AND status IN ('done', 'completed') "
                 "AND updated_at >= CURRENT_DATE"
             )
             done_today = int(cur.fetchone()[0])
-            return running, pending, done_today
+            return running, pending, done_today, extra
         finally:
             release_connection(conn)
     except Exception:
-        return 0, 0, 0
+        return 0, 0, 0, extra
+
+
+def _detached_running() -> int:
+    try:
+        from core.kart_detached import list_detached
+
+        return sum(1 for j in list_detached(limit=100) if j.get("state") == "running")
+    except Exception:
+        return 0
 
 
 def _human_required(limit: int = 5) -> tuple[int, list[dict], dict]:
@@ -148,7 +209,14 @@ def fetch_attention_summary(
     summary = AttentionSummary()
     summary.nest_pending = _nest_pending()
     summary.open_flags = _open_flags(agent)
-    summary.running_tasks, summary.pending_tasks, summary.done_today = _kart_counts()
+    summary.running_tasks, summary.pending_tasks, summary.done_today, kart_extra = _kart_counts()
+    summary.pending_fast = int(kart_extra.get("pending_fast", 0))
+    summary.pending_batch = int(kart_extra.get("pending_batch", 0))
+    summary.running_fast = int(kart_extra.get("running_fast", 0))
+    summary.running_batch = int(kart_extra.get("running_batch", 0))
+    summary.oldest_pending_fast_s = int(kart_extra.get("oldest_pending_fast_s", 0))
+    summary.oldest_pending_batch_s = int(kart_extra.get("oldest_pending_batch_s", 0))
+    summary.detached_running = _detached_running()
     summary.dream_due = _dream_due(agent)
     (
         summary.human_required_open,
@@ -169,10 +237,27 @@ def fetch_attention_summary(
         lines.append(f"{summary.open_flags} open flags")
     if summary.nest_pending:
         lines.append(f"{summary.nest_pending} nest pending")
-    if summary.pending_tasks or summary.running_tasks:
-        lines.append(
-            f"kart {summary.running_tasks} running, {summary.pending_tasks} pending"
-        )
+    if summary.pending_tasks or summary.running_tasks or summary.detached_running:
+        parts = []
+        if summary.pending_fast or summary.running_fast:
+            wait = ""
+            if summary.pending_fast and summary.oldest_pending_fast_s:
+                wait = f", oldest wait {summary.oldest_pending_fast_s}s"
+            parts.append(
+                f"fast {summary.running_fast}↑/{summary.pending_fast}⏳{wait}"
+            )
+        if summary.pending_batch or summary.running_batch:
+            wait = ""
+            if summary.pending_batch and summary.oldest_pending_batch_s:
+                wait = f", oldest wait {summary.oldest_pending_batch_s}s"
+            parts.append(
+                f"batch {summary.running_batch}↑/{summary.pending_batch}⏳{wait}"
+            )
+        if summary.detached_running:
+            parts.append(f"detached {summary.detached_running}↑")
+        if int(kart_extra.get("stale_running", 0)):
+            parts.append(f"{kart_extra['stale_running']} stale")
+        lines.append("kart " + " · ".join(parts))
     if summary.dream_due:
         lines.append("dream overdue")
     if summary.human_required_open:
