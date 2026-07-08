@@ -8,7 +8,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 os.environ.setdefault("WILLOW_PG_DB", "willow_20_test")
 
-from core.kart_lanes import KART_LANE_BATCH, KART_LANE_FAST
+from core.kart_lanes import KART_LANE_FAST
 from core.pg_bridge import PgBridge
 
 
