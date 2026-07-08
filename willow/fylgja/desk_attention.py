@@ -43,6 +43,14 @@ def _nest_pending() -> int:
         return 0
 
 
+def _attention_store():
+    """SOIL store for desk flags/dream — always via resolve_store_root (not raw env)."""
+    from core.store_port import get_store_port
+    from willow.fylgja.willow_home import resolve_store_root
+
+    return get_store_port(root=str(resolve_store_root(Path(__file__).resolve().parents[2])))
+
+
 def _open_flags(agent: str = "") -> int:
     """Live count of open {agent}/gaps + {agent}/flags (mirrors session_start._open_attention_items).
 
@@ -52,14 +60,7 @@ def _open_flags(agent: str = "") -> int:
     """
     who = (agent or os.environ.get("WILLOW_AGENT") or "willow").strip()
     try:
-        from core.store_port import get_store_port
-        from willow.fylgja.willow_home import resolve_store_root
-
-        root = os.environ.get(
-            "WILLOW_STORE_ROOT",
-            str(resolve_store_root(Path(__file__).resolve().parents[2])),
-        )
-        store = get_store_port(root=root)
+        store = _attention_store()
         count = 0
         for gap in store.all(f"{who}/gaps") or []:
             if gap.get("status") == "open":
@@ -175,16 +176,9 @@ def _human_required(limit: int = 5) -> tuple[int, list[dict], dict]:
 
 def _dream_due(agent: str = "") -> bool:
     try:
-        from core.store_port import get_store_port
-        from willow.fylgja.willow_home import resolve_store_root
-
-        root = os.environ.get(
-            "WILLOW_STORE_ROOT",
-            str(resolve_store_root(Path(__file__).resolve().parents[2])),
-        )
         from core.lock_ttl import lock_is_live
 
-        store = get_store_port(root=root)
+        store = _attention_store()
         who = (agent or os.environ.get("WILLOW_AGENT") or "willow").strip()
         dream_state = store.get(f"{who}/dream", "state") or {}
         if lock_is_live(dream_state):
