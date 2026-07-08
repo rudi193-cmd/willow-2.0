@@ -11,10 +11,12 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 FYLGJA = ROOT / "willow" / "fylgja"
 SKILLS = FYLGJA / "skills"
 REMOTE_SURFACES = (".cursor", ".claude", ".agents", ".codex")
@@ -218,95 +220,9 @@ def _surface_matches_canonical(link: Path, canonical: Path) -> bool:
 
 
 def check_surfaces() -> list[str]:
-    errors: list[str] = []
-    required = [
-        ".cursor/hooks.json",
-        ".cursor/cli.json",
-        ".cursor/mcp.json",
-        ".cursor/permissions.json",
-        ".cursor/commands",
-        ".cursor/skills",
-        ".claude/settings.json",
-        ".claude/commands",
-        ".claude/skills",
-        ".agents/commands",
-        ".agents/skills",
-        ".codex/config.toml",
-        ".codex/commands",
-        ".codex/skills",
-    ]
-    for rel in required:
-        path = ROOT / rel
-        if not path.exists():
-            errors.append(f"missing: {rel}")
-        elif path.is_symlink():
-            errors.append(f"symlink not allowed: {rel}")
+    from willow.fylgja.surface_parity import check_surfaces as _check
 
-    hooks = ROOT / ".cursor" / "hooks.json"
-    if hooks.is_file() and not _surface_matches_canonical(
-        hooks, FYLGJA / "config" / "cursor-hooks.json"
-    ):
-        errors.append("stale: .cursor/hooks.json")
-
-    cli = ROOT / ".cursor" / "cli.json"
-    if cli.is_file() and not _surface_matches_canonical(
-        cli, FYLGJA / "config" / "cursor-cli.json"
-    ):
-        errors.append("stale: .cursor/cli.json")
-
-    settings = ROOT / ".claude" / "settings.json"
-    if settings.is_file() and not _surface_matches_canonical(
-        settings, FYLGJA / "config" / "claude-settings.json"
-    ):
-        errors.append("stale: .claude/settings.json")
-
-    codex_cfg = ROOT / ".codex" / "config.toml"
-    if codex_cfg.is_file():
-        text = codex_cfg.read_text(encoding="utf-8")
-        if "{{" in text or "}}" in text:
-            errors.append("unrendered template placeholders in .codex/config.toml")
-        expected = render_codex_config()
-        if text != expected:
-            errors.append("stale: .codex/config.toml")
-
-    mcp = ROOT / ".cursor" / "mcp.json"
-    if mcp.is_file():
-        try:
-            live = json.loads(mcp.read_text(encoding="utf-8"))
-            if live != cloud_mcp_json():
-                errors.append("stale: .cursor/mcp.json")
-        except Exception:
-            errors.append("invalid: .cursor/mcp.json")
-
-    for surface in REMOTE_SURFACES:
-        skills = ROOT / surface / "skills"
-        if skills.is_dir():
-            count = len(list(skills.glob("*/SKILL.md")))
-            if count < 30:
-                errors.append(f"too few skills under {surface}/skills ({count})")
-
-    for name in ("boot", "startup", "shutdown", "power", "willow-remote"):
-        for surface in REMOTE_SURFACES:
-            skill = ROOT / surface / "skills" / name / "SKILL.md"
-            if not skill.is_file():
-                errors.append(f"missing skill: {surface}/skills/{name}/SKILL.md")
-
-    # Content drift: every canonical skill body must match skill_text() output on
-    # every surface. This catches the failure mode where the file exists and the
-    # count is fine, but the committed body lags a canonical edit that was never
-    # re-synced (observed: boot/shutdown surfaces stale by an entire section).
-    for src in sorted(SKILLS.glob("*.md")):
-        name = src.stem
-        expected = skill_text(src, name)
-        for surface in REMOTE_SURFACES:
-            dst = ROOT / surface / "skills" / name / "SKILL.md"
-            if dst.is_file() and dst.read_text(encoding="utf-8") != expected:
-                errors.append(
-                    f"stale content: {surface}/skills/{name}/SKILL.md "
-                    f"— run: python3 scripts/sync_remote_cursor_surface.py"
-                )
-
-    return errors
+    return _check(ROOT)
 
 
 def main() -> int:

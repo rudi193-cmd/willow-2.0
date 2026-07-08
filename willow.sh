@@ -8,7 +8,7 @@
 #   ./willow.sh fleet_status — check full boot health without MCP
 #   ./willow.sh handoff_latest [agent] — show latest handoff summary
 #   ./willow.sh handoff_backfill [--agent willow] [--apply] — backfill project: tags
-#   ./willow.sh agents [list|active|install|check] — agent IDE wiring + MCP rails
+#   ./willow.sh check ide-parity  — cross-IDE surface/hook/command parity (CI)
 #   ./willow.sh metabolic    — run Norn pass now
 #   ./willow.sh update       — check for updates and apply if available
 #   ./willow.sh export       — dump user data to $WILLOW_HOME/export.json
@@ -515,6 +515,19 @@ print('  The Einherjar grow stronger.')
         [[ $fail -eq 0 ]]
         ;;
 
+    check)
+        sub="${2:-ide-parity}"
+        case "${sub}" in
+            ide-parity)
+                exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/scripts/check_ide_parity.py" "${@:3}"
+                ;;
+            *)
+                echo "Unknown check: ${sub} (try: ide-parity)"
+                exit 1
+                ;;
+        esac
+        ;;
+
     start-all)
         echo "Willow 2.0 — starting all services"
         for svc in "${WILLOW_SYSTEMD_SERVICES[@]}"; do
@@ -977,7 +990,7 @@ else:
         ;;
 
     *)
-        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent] [--project ID] [--workspace PATH]]|agents [list|active <id>|install <id>|check]|mcp [list|init|sync|check|audit]|project [list|sync|check]|venv [check|sync]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|w8-census|wce|bridge-cross-runtime|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
+        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent] [--project ID] [--workspace PATH]]|check ide-parity|agents [list|active <id>|install <id>|check]|mcp [list|init|sync|check|audit]|project [list|sync|check]|venv [check|sync]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|w8-census|wce|bridge-cross-runtime|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
         exit 1
         ;;
 esac

@@ -46,6 +46,7 @@ REQUIRED_CHECKS: frozenset[str] = frozenset({
     "security",
     "store-import-guard",
     "surface-drift",
+    "ide-parity",
     "audit-verify",
     "pytest-matrix (3.11, true)",
     "pytest-matrix (3.12, false)",
