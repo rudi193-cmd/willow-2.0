@@ -1,8 +1,6 @@
 """Tests for core/loop_heartbeat.py."""
 from __future__ import annotations
 
-import time
-
 import pytest
 
 from core.loop_heartbeat import interval_sec_for, reset_throttle, write, write_throttled

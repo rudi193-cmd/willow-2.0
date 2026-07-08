@@ -18,7 +18,6 @@ import os
 import sys
 import logging
 from pathlib import Path
-from datetime import datetime, timezone
 
 from starlette.applications import Starlette
 from starlette.requests import Request

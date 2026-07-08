@@ -30,10 +30,7 @@ sys.path.insert(0, str(WILLOW_ROOT))
 from willow.fylgja.claude_projects import claude_jsonl_paths  # noqa: E402
 from willow.fylgja.stuck_loop import detect_stuck_loops_in_jsonl  # noqa: E402
 
-HEARTBEAT_COLLECTION = "willow/loops/heartbeat"
-HEARTBEAT_KEY = "stuck_loop_watch"
 FLAG_COLLECTION = "willow/flags"
-TIMER_INTERVAL_S = 900  # stuck-loop-watch.timer OnUnitActiveSec
 
 
 def recent_transcripts(active_minutes: int) -> list[Path]:
