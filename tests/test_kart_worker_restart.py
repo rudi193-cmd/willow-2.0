@@ -72,7 +72,7 @@ def test_success_when_idle(mod, monkeypatch):
     calls = []
 
     def _fake_run(cmd, **kwargs):
-        calls.append(cmd)
+        calls.append((cmd, kwargs.get("env")))
         return _FakeProc(returncode=0)
 
     monkeypatch.setattr("subprocess.run", _fake_run)
@@ -81,8 +81,10 @@ def test_success_when_idle(mod, monkeypatch):
     assert out["unit"] == "kart-worker"
     assert "kart-worker" in out["units"]
     assert "kart-worker-batch" in out["units"]
-    assert calls[0] == ["systemctl", "--user", "restart", "kart-worker"]
-    assert calls[1] == ["systemctl", "--user", "restart", "kart-worker-batch"]
+    assert calls[0][0] == ["systemctl", "--user", "restart", "kart-worker"]
+    assert calls[1][0] == ["systemctl", "--user", "restart", "kart-worker-batch"]
+    assert calls[0][1] is not None
+    assert "DBUS_SESSION_BUS_ADDRESS" in calls[0][1] or "XDG_RUNTIME_DIR" in calls[0][1]
 
 
 def test_error_surfaces_returncode(mod, monkeypatch):

@@ -447,12 +447,15 @@ def _restart_kart_worker(only_if_idle: bool = True) -> dict:
         }
     import shutil
     import subprocess
+    from core.metabolic_status import _systemd_user_env
+
     if not shutil.which("systemctl"):
         return {
             "status": "unavailable",
             "reason": "systemctl not found",
             "hint": "restart the Kart consumers manually on this node",
         }
+    env = _systemd_user_env()
     restarted: list[str] = []
     errors: list[dict] = []
     for unit in _KART_UNITS:
@@ -460,6 +463,7 @@ def _restart_kart_worker(only_if_idle: bool = True) -> dict:
             r = subprocess.run(
                 ["systemctl", "--user", "restart", unit],
                 capture_output=True, text=True, timeout=30,
+                env=env,
             )
             if r.returncode == 0:
                 restarted.append(unit)
