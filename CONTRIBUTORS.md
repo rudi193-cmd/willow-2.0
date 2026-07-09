@@ -197,7 +197,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) | punkpeye | feat: add willow-mcp to Knowledge & Memory 🤖🤖🤖 | [PR #5247](https://github.com/punkpeye/awesome-mcp-servers/pull/5247) closed |
 | [openclaw/openclaw](https://github.com/openclaw/openclaw) | openclaw | feat(skill): add sap-enforcer — SAP/1.0 MCP tool authorization | [PR #69792](https://github.com/openclaw/openclaw/pull/69792) closed |
 | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat: Willow Kart task queue tool | [PR #11979](https://github.com/NousResearch/hermes-agent/pull/11979) closed |
-| [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) | punkpeye | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #4991](https://github.com/punkpeye/awesome-mcp-servers/pull/4991) closed |
 
 
 ## Contributors to Willow
