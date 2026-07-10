@@ -186,17 +186,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [aviv4339/claude-guard](https://github.com/aviv4339/claude-guard) | aviv4339 | feat: richer hook template with agent identity, depth guard, reflection detection | [PR #1](https://github.com/aviv4339/claude-guard/pull/1) closed |
 | [cneiman/moonshine](https://github.com/cneiman/moonshine) | cneiman | feat(adapters): Postgres backend for warm/cold memory tiers | [PR #2](https://github.com/cneiman/moonshine/pull/2) closed |
 | [m4cd4r4/claude-echoes](https://github.com/m4cd4r4/claude-echoes) | m4cd4r4 | feat(server): wire GIN index for hybrid BM25+pgvector RRF search | [PR #1](https://github.com/m4cd4r4/claude-echoes/pull/1) closed |
-| [brainqub3/RLM](https://github.com/brainqub3/RLM) | brainqub3 | docs: KB-first MCP integration pattern as RLM variant | [PR #3](https://github.com/brainqub3/RLM/pull/3) closed |
-| [Textualize/rich](https://github.com/Textualize/rich) | Textualize | feat(examples): safe_markup — escaping external content before Rich rendering | [PR #4092](https://github.com/Textualize/rich/pull/4092) closed |
-| [BerriAI/litellm](https://github.com/BerriAI/litellm) | BerriAI | cookbook: routing to a custom fine-tuned GGUF model via Ollama | [PR #26307](https://github.com/BerriAI/litellm/pull/26307) closed |
-| [Kludex/starlette](https://github.com/Kludex/starlette) | Kludex | docs: add FilesystemAuthBackend example to authentication guide | [PR #3249](https://github.com/Kludex/starlette/pull/3249) closed |
-| [Textualize/textual](https://github.com/Textualize/textual) | Textualize | feat(examples): async message_feed with background worker and pause/resume | [PR #6510](https://github.com/Textualize/textual/pull/6510) closed |
-| [ollama/ollama](https://github.com/ollama/ollama) | ollama | docs: add HuggingFace Hub direct GGUF pull pattern to import guide | [PR #15765](https://github.com/ollama/ollama/pull/15765) closed |
-| [modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk) | modelcontextprotocol | feat(examples): postgres-backed MCP server with filesystem authorization | [PR #2494](https://github.com/modelcontextprotocol/python-sdk/pull/2494) closed |
-| [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | feat: add willow-mcp to Knowledge Management & Memory | [PR #432](https://github.com/TensorBlock/awesome-mcp-servers/pull/432) closed |
-| [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) | punkpeye | feat: add willow-mcp to Knowledge & Memory 🤖🤖🤖 | [PR #5247](https://github.com/punkpeye/awesome-mcp-servers/pull/5247) closed |
-| [openclaw/openclaw](https://github.com/openclaw/openclaw) | openclaw | feat(skill): add sap-enforcer — SAP/1.0 MCP tool authorization | [PR #69792](https://github.com/openclaw/openclaw/pull/69792) closed |
-| [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat: Willow Kart task queue tool | [PR #11979](https://github.com/NousResearch/hermes-agent/pull/11979) closed |
 
 
 ## Contributors to Willow
