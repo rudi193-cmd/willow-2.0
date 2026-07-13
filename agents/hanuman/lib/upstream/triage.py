@@ -9,7 +9,7 @@ Rules run first (cheap). LLM classifier reserved for ambiguous human comments.
 from __future__ import annotations
 
 import re
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 WATCH_REPOS: list[str] = []  # populated from config at runtime
 
@@ -23,6 +23,7 @@ class Notification(TypedDict):
     repo: str
     updated_at: str
     unread: bool
+    latest_comment_url: NotRequired[str]  # subject.latest_comment_url when present
 
 
 Lane = str  # "noise" | "auto" | "watch" | "draft" | "urgent"
@@ -95,6 +96,16 @@ def classify(n: Notification, watch_repos: list[str] | None = None) -> Lane:
         # heuristic: if it's a comment not in a bot-title thread, likely needs reply
         if not _is_bot_title(title):
             return "draft"
+
+    # 5b. Author-thread activity — GitHub uses reason=author when someone comments
+    # on your issue/PR (not reason=comment). latest_comment_url is the signal.
+    if (
+        reason == "author"
+        and s_type in ("PullRequest", "Issue")
+        and n.get("latest_comment_url")
+        and not _is_bot_title(title)
+    ):
+        return "draft"
 
     # 6. CI noise on any repo — already caught above if non-watched; catch watched too
     if _is_ci_noise(n):

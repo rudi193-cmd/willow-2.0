@@ -124,10 +124,29 @@ def _gh(*args: str) -> dict | list:
 _gh_status: dict[str, Any] = {"ok": True, "error": ""}
 
 
+def _notifications_since(last_poll: str | None) -> str | None:
+    """GitHub `since` is exclusive when ISO timestamps carry subseconds.
+
+    Rewind one second and emit second-granularity UTC (``…Z``) so a notification
+    updated in the same second as ``last_poll`` is not skipped between polls.
+    """
+    if not last_poll:
+        return None
+    try:
+        dt = datetime.fromisoformat(last_poll.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.astimezone(timezone.utc) - timedelta(seconds=1)
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return last_poll
+
+
 def _fetch_notifications(since: str | None) -> list[dict]:
     url = "/notifications?all=true&per_page=50"
-    if since:
-        url += f"&since={since}"
+    since_param = _notifications_since(since)
+    if since_param:
+        url += f"&since={since_param}"
     try:
         data = _gh(url)
         _gh_status.update(ok=True, error="")
@@ -150,6 +169,7 @@ def _to_notification(raw: dict) -> Notification:
         repo=repo,
         updated_at=raw.get("updated_at", ""),
         unread=bool(raw.get("unread", False)),
+        latest_comment_url=subject.get("latest_comment_url", "") or "",
     )
 
 
@@ -222,11 +242,17 @@ def _write_digest(pending_count: int, urgent_count: int) -> None:
     line = f"{pending_count} upstream draft{'s' if pending_count != 1 else ''}"
     if urgent_count:
         line += f" · {urgent_count} urgent"
+    desk = soil.get("upstream_steward/desk_intel", "state") or {}
+    cold = desk.get("cold_count")
+    if isinstance(cold, int) and cold > 0:
+        line += f" · {cold} cold lane{'s' if cold != 1 else ''}"
     soil.put(_SOIL_DIGEST, "latest", {
         "line": line,
         "summary": f"{pending_count} items awaiting human review.",
         "pending_count": pending_count,
         "urgent_count": urgent_count,
+        "desk_intel_cold_count": cold,
+        "desk_intel_last_run_at": desk.get("last_run_at"),
         "as_of": datetime.now(timezone.utc).isoformat(),
     })
 
