@@ -1,0 +1,10 @@
+[Unit]
+Description=Git-universe sync (fetch + ff-only pull all clones; skips operator data vault)
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/.local/share/gitsync/gitsync-loop.py --once
+TimeoutStartSec=600

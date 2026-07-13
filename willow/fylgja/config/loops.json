@@ -472,6 +472,32 @@
       "harness": null
     },
     {
+      "id": "gitsync",
+      "status": "active",
+      "trigger": {
+        "kind": "timer",
+        "spec": "OnBootSec=2min OnUnitActiveSec=25min",
+        "unit": "gitsync.timer"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "scripts/gitsync/gitsync-loop.py",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "gitsync-status.txt mtime advances; diverged/dirty_behind counts recorded"
+      },
+      "attention": "all git clones under ~/github (skips operator data vault)",
+      "exit": "one sync pass",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "gitsync",
+        "interval_sec": 1500
+      },
+      "harness": null
+    },
+    {
       "id": "willow-w8-census",
       "status": "active",
       "trigger": {

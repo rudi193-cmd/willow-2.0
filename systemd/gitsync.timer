@@ -1,0 +1,11 @@
+[Unit]
+Description=Run git-universe sync every 25 min (durable; survives sleep/reboot)
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=25min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
