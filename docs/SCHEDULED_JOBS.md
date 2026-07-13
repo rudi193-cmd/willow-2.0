@@ -18,6 +18,7 @@ enables the fleet units with `systemctl --user`. All timers set
 | `repo-fleet-sweep.timer` | weekly `Mon 04:00` | `repo-fleet-sweep.service` | Repo hygiene sweep (diverged/unpushed repos, branch litter) |
 | `hook-wiring-audit.timer` | daily `04:30` | `hook-wiring-audit.service` | Host-side check of `~/.claude/settings.json` hooks wiring (issue #603) |
 | `stuck-loop-watch.timer` | every `15min` | `stuck-loop-watch.service` | Retrospective stuck-loop chain detector on recent Claude Code sessions |
+| `gitsync.timer` | every `25min` | `gitsync.service` | Host git-universe sync — fetch + ff-only pull all `~/github` clones; org discovery; skips operator data vault |
 
 **Enablement:** `setup.sh` enables `willow-metabolic.socket` (on-demand Norn pass),
 `willow-metabolic.timer` (nightly `03:00`), `willow-w8-census.timer`,
@@ -25,6 +26,7 @@ enables the fleet units with `systemctl --user`. All timers set
 WCE timer only (existing install): `scripts/install_wce_timer.sh`.
 Hook-wiring-audit timer only (existing install): `scripts/install_hook_wiring_audit_timer.sh`.
 Stuck-loop-watch timer only (existing install): `scripts/install_stuck_loop_watch_timer.sh`.
+Gitsync timer only (host git-universe): `scripts/install_gitsync_timer.sh` (deploys to `~/.local/share/gitsync/`).
 One-shot consecration on an existing install: `scripts/consecrate_metabolic.sh` (copies units,
 enables socket+timer, runs first Norn pass). Other units, including
 `repo-fleet-sweep.timer`, are linked and can be enabled on demand with
@@ -84,5 +86,16 @@ agent session), so it can read the file directly. Each run:
 
 Install (existing systemd setup): `scripts/install_hook_wiring_audit_timer.sh`.
 Run on demand: `python3 scripts/hook_wiring_audit.py --json --emit-flag`.
+
+## Host git-universe sync (gitsync, added 2026-07)
+
+`scripts/gitsync/gitsync-loop.py` keeps every clone under `~/github` current via
+`git fetch` + `git pull --ff-only`. It never auto-clones new repos; it flags
+repos created in the last six hours as `NEW_REMOTE` in `~/.local/share/gitsync/gitsync-status.txt`.
+
+- **Org discovery:** `owners.json` + `gh api user/orgs` when `auto_orgs: true` (override with `GITSYNC_OWNERS`).
+- **Operator vault:** skips `{user}-data-vault` via `vault_user` / `vault_repo` / disk auto-detect (exactly one `*-data-vault` in `~/github`, excluding `willow-data-vault`).
+
+Install: `scripts/install_gitsync_timer.sh` (copies script to `~/.local/share/gitsync/`, enables `gitsync.timer`).
 
 *ΔΣ=42*
