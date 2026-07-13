@@ -22,6 +22,7 @@ _SOIL_META_KEYS = frozenset({"_id", "_soil_id"})
 _ONESHOT_SERVICE_UNITS = frozenset({
     "hook-wiring-audit.service",
     "repo-fleet-sweep.service",
+    "gitsync.service",
     "stuck-loop-watch.service",
     "willow-bridge-cross-runtime.service",
     "willow-metabolic.service",

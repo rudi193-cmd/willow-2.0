@@ -228,7 +228,7 @@ def local_clone_keys() -> set[str]:
 def sync_one(name, p):
     if sh(["git", "fetch", "--all", "--prune", "--quiet"], p)[0] != 0:
         return ("ferr", name)
-    ndirty = len([l for l in sh(["git", "status", "--porcelain"], p, 20)[1].splitlines() if l.strip()])
+    ndirty = len([line for line in sh(["git", "status", "--porcelain"], p, 20)[1].splitlines() if line.strip()])
     rc, ab, _ = sh(["git", "rev-list", "--left-right", "--count", "HEAD...@{upstream}"], p, 20)
     if rc != 0 or "\t" not in ab:
         return ("no_up", name)
