@@ -126,8 +126,19 @@ def run_shell_task(
     *,
     timeout: int | None = None,
     context: str = "poll",
+    net_authorized: bool = False,
+    net_denied_reason: str = "",
 ) -> tuple[str, dict]:
-    """Execute a shell-class task string. Returns (status, result)."""
+    """Execute a shell-class task string. Returns (status, result).
+
+    B-37: the `# allow_net` directive in the task text is a *claim* of egress; it
+    is honored only when `net_authorized` is also True — the *fact* resolved from
+    the submitter's identity by the caller (`_dispatch_task_row`). Fail-closed:
+    the default `net_authorized=False` means a caller that does not resolve
+    authority gets no egress, whatever the string says. When the directive asked
+    for the network but authority denied, `net_denied_reason` is stamped on the
+    result as `net_denied` — the denial is documented, never silent.
+    """
     from core.kart_task_scan import check_kart_task
 
     blocked = check_kart_task(task_text)
@@ -136,6 +147,17 @@ def run_shell_task(
 
     timeout = timeout if timeout is not None else kart_timeout(context)
     cmd_body, allow_net, allow_localhost = _parse_task_network_directives(task_text)
+    net_requested = allow_net
+    allow_net = allow_net and net_authorized
+    net_denied = net_requested and not net_authorized
+    if net_denied:
+        # Fail-closed and loud: the row asked to reach the network and was not
+        # authorized to. The task still runs (network-isolated); the reason rides
+        # on the result so a reader sees why egress was withheld.
+        import logging as _logging
+        _logging.getLogger("kart.egress_authority").warning(
+            "egress withheld: %s", net_denied_reason or "unauthorized"
+        )
     blocks = _iter_fenced_blocks(cmd_body)
 
     if blocks:
@@ -172,6 +194,8 @@ def run_shell_task(
             }
         )
         merged["steps"] = steps
+        if net_denied:
+            merged["net_denied"] = net_denied_reason
         if errors:
             merged["error"] = "; ".join(errors)
             return "failed", merged
@@ -187,6 +211,8 @@ def run_shell_task(
         allow_localhost=allow_localhost,
     )
     result["steps"] = 1
+    if net_denied:
+        result["net_denied"] = net_denied_reason
     return status, result
 
 
@@ -476,8 +502,25 @@ def _dispatch_task_row(
     if goal:
         return run_goal_task(pg, task_id, cmd, goal)
 
+    # B-37: resolve egress authority from the ROW's submitted_by (a fact on disk),
+    # not from the task text (a claim). A resolver failure denies egress but does
+    # NOT break the task — a non-net task must still run; only the `# allow_net`
+    # claim is withheld. This is the one place all executor entry points converge
+    # (daemon, kart_poll, sap run_now), so gating here covers every path.
     try:
-        return run_shell_task(cmd, timeout=timeout, context=context)
+        from core.egress_authority import net_authorized as _net_authorized
+        net_ok, net_reason = _net_authorized(row.get("submitted_by") or "")
+    except Exception as e:  # fail-closed on the net key, open on the task
+        net_ok, net_reason = False, f"egress authority unavailable: {e}"
+
+    try:
+        return run_shell_task(
+            cmd,
+            timeout=timeout,
+            context=context,
+            net_authorized=net_ok,
+            net_denied_reason=net_reason,
+        )
     except Exception as e:
         return "failed", {"error": str(e)}
 
