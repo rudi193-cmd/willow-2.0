@@ -498,6 +498,32 @@
       "harness": null
     },
     {
+      "id": "willow-upstream-desk",
+      "status": "active",
+      "trigger": {
+        "kind": "timer",
+        "spec": "OnCalendar=Mon *-*-* 06:00:00",
+        "unit": "willow-upstream-desk.timer"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "scripts/upstream_desk_witness.py",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "upstream desk registers refresh; maintainer heatmap + promise ledger advance"
+      },
+      "attention": "GitHub upstream PR/commenter registers for hanuman steward desk",
+      "exit": "one witness pass",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "upstream_desk",
+        "interval_sec": 604800
+      },
+      "harness": null
+    },
+    {
       "id": "willow-w8-census",
       "status": "active",
       "trigger": {
