@@ -16,10 +16,15 @@ from __future__ import annotations
 import json
 import sys
 
-from constitution.cases import const_0_3_egress, const_0_4_humankey, const_0_5_ledger
+from constitution.cases import (
+    const_0_3_capability,
+    const_0_3_egress,
+    const_0_4_humankey,
+    const_0_5_ledger,
+)
 
 # Registry of probes. Each new eternity-clause adversary is one line here.
-PROBES = [const_0_3_egress, const_0_4_humankey, const_0_5_ledger]
+PROBES = [const_0_3_egress, const_0_3_capability, const_0_4_humankey, const_0_5_ledger]
 
 
 def run_suite() -> dict:
