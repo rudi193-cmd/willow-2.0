@@ -29,7 +29,16 @@ def test_gate_is_a_discriminator_not_broken_shut():
     assert ok is True, reason
 
 
+def test_const_0_5_ledger_holds():
+    from constitution.cases import const_0_5_ledger
+
+    v = const_0_5_ledger.run()
+    assert v.held, f"CONST-0-5 breached on: {v.breaches}"
+    assert len(v.attempts) >= 4
+
+
 def test_suite_reports_held():
     result = run_suite()
     assert result["held"] is True, result["breached_clauses"]
     assert any(v["trace_id"] == "CONST-0-3" for v in result["verdicts"])
+    assert any(v["trace_id"] == "CONST-0-5" for v in result["verdicts"])
