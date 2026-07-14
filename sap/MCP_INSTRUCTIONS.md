@@ -18,7 +18,7 @@ Then: grove_get_history · kb_search on your task.
 | Code discovery | `cbm_status` → `cbm_search` / `cbm_trace` / `cbm_verify_callers` (not new Kart inventory scripts) |
 
 Full contract: willow.md (public root; private ~/.willow/willow.md may overlay it; see docs/WILLOW_CONFIG.md).
-Public snapshot: docs/CONTRACT.md · Boot steps: willow/fylgja/skills/boot.md · Doc map: docs/INDEX.md.
+Public snapshot: docs/CONTRACT.md · Boot: willow/fylgja/skills/boot.md · **MCP-first:** willow/fylgja/skills/mcp-first.md · Doc map: docs/INDEX.md.
 Tool registry: sap/mcp_registry.json · Human onboarding: sap/ONBOARDING.md
 
 Rules: kb_search before build · mem_check before kb_ingest · agent_task_submit for shell (Kart) · pull Grove before post · write in your namespace only · archive stale atoms, do not delete

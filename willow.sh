@@ -289,6 +289,12 @@ print(json.dumps(result, indent=2))
         WILLOW_PG_DB="${WILLOW_PG_DB}" exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/scripts/wce_witness.py" --check-first "$@"
         ;;
 
+    upstream-desk)
+        echo "Willow 2.0 — upstream desk intel (heatmap + promise ledger via Kart)"
+        shift
+        WILLOW_PG_DB="${WILLOW_PG_DB}" exec "${WILLOW_PYTHON}" "${WILLOW_ROOT}/scripts/upstream_desk_witness.py" --check-first "$@"
+        ;;
+
     bridge-cross-runtime)
         echo "Willow 2.0 — rebuild cross-runtime handoff bridge"
         shift
@@ -992,7 +998,7 @@ else:
         ;;
 
     *)
-        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent] [--project ID] [--workspace PATH]]|check ide-parity|agents [list|active <id>|install <id>|check]|mcp [list|init|sync|check|audit]|project [list|sync|check]|venv [check|sync]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|w8-census|wce|bridge-cross-runtime|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
+        echo "Usage: willow.sh [start|status|fleet_status|handoff_latest [agent] [--project ID] [--workspace PATH]]|check ide-parity|agents [list|active <id>|install <id>|check]|mcp [list|init|sync|check|audit]|project [list|sync|check]|venv [check|sync]|metabolic|update|export|purge <project>|backup|restore <path>|nuke|ledger [project]|valhalla|verify|w8-census|wce|upstream-desk|bridge-cross-runtime|start-all|stop-all|status-all|restart|check-updates|grove add <addr> <pubkey>|litellm-start|litellm-stop|providers [list|enable <name> [key]|disable <name>]|upstream [status|pending|show|approve|run-now|digest]|openclaw-discord [init-config|run|test-discord|test-grove]|skills steward [run-once|status|list|show|dismiss|adopt]]"
         exit 1
         ;;
 esac

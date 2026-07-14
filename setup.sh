@@ -172,7 +172,7 @@ if command -v systemctl >/dev/null 2>&1; then
     systemctl --user daemon-reload
     systemctl --user enable --now willow-metabolic.socket willow-metabolic.timer grove-mcp.service \
         willow-grove-listen.service drop-server.service nest-watcher.service \
-        journal-watcher.service willow-w8-census.timer willow-wce.timer \
+        journal-watcher.service willow-w8-census.timer willow-wce.timer willow-upstream-desk.timer \
         hook-wiring-audit.timer stuck-loop-watch.timer 2>/dev/null \
         && ok "Fleet units enabled" || warn "Some systemd units failed to enable"
 else

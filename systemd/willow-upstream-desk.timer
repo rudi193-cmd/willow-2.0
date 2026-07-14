@@ -1,0 +1,11 @@
+[Unit]
+Description=Willow upstream desk intel — weekly maintainer heatmap + promise ledger
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+
+[Timer]
+OnCalendar=Mon *-*-* 06:00:00
+Persistent=true
+Unit=willow-upstream-desk.service
+
+[Install]
+WantedBy=timers.target

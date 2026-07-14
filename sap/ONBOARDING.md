@@ -11,6 +11,7 @@ b20: SAPMCP2 · ΔΣ=42
 
 Full fleet contract: [`willow.md`](../willow.md) (public root; private `~/.willow/willow.md` may overlay it; snapshot: [`../docs/CONTRACT.md`](../docs/CONTRACT.md)).
 Boot sequence: [`willow/fylgja/skills/boot.md`](../willow/fylgja/skills/boot.md).
+**MCP-first doctrine:** [`willow/fylgja/skills/mcp-first.md`](../willow/fylgja/skills/mcp-first.md) — login, manifest, operator voice (sessions not GitHub).
 
 ## Orient (parallel)
 

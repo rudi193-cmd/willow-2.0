@@ -1,22 +1,35 @@
 # Open work (fleet backlog)
 
-*Last updated: 2026-06-30 — upstream desk touch (stash #14 + Tauon #2208 merged).*
+*Last updated: 2026-07-11 — desk touch: cold-lane heatmap fold-in + audit reconciliation (DontFeedTheAI #8, mex #84 merged).*
 
 **Strategy:** [`UPSTREAM_CONTRIBUTION_STRATEGY.md`](UPSTREAM_CONTRIBUTION_STRATEGY.md) · type ledger: [`upstream/type_ledger.json`](upstream/type_ledger.json)
 
+**Auto intel (weekly Kart):** [`upstream/MAINTAINER_HEATMAP.md`](upstream/MAINTAINER_HEATMAP.md) · [`upstream/PROMISE_LEDGER.md`](upstream/PROMISE_LEDGER.md) — refreshed by `willow-upstream-desk.timer` / `scripts/upstream_desk_intel.py`.
+
+> **2026-07-11 state change:** Maintainer heatmap pass (205 threads, 66 repos) — **9 cold lanes** folded in below. [zeroc00I/DontFeedTheAI #8](https://github.com/zeroc00I/DontFeedTheAI/pull/8) **merged** 2026-07-08. [mex-memory/mex #84](https://github.com/mex-memory/mex/pull/84) **merged** 2026-07-06. [Taiko2k/Tauon #2209](https://github.com/Taiko2k/Tauon/pull/2209) **merged** 2026-07-02 (companion to #2208). New open threads not on prior desk: [basicmachines-co/basic-memory #1010](https://github.com/basicmachines-co/basic-memory/pull/1010), [castroquiles/HeatWatch #20](https://github.com/castroquiles/HeatWatch/pull/20). Audit: [`audits/OPEN_WORK_DESK_VERIFY_2026-07-11.md`](audits/OPEN_WORK_DESK_VERIFY_2026-07-11.md).
+>
 > **2026-06-30 state change:** [Taiko2k/Tauon #2208](https://github.com/Taiko2k/Tauon/pull/2208) **merged** (Tidal return-type annotations toward #1338). [alash3al/stash #14](https://github.com/alash3al/stash/pull/14) **opened** (docs_setup — SSE curl troubleshooting, closes #11); issue follow-up posted 2026-06-30 — **wait on maintainer**.
 >
 > **2026-06-29 state change:** claudeclaw **#239 and #240 merged** (TerrysPOV approved + merged
-> 2026-06-28). claudeclaw **#234** — the `listThreadSessions` filter TerrysPOV requested is
-> already at HEAD (`a9eb7cb`, shipped under `54854a9`); his 2026-06-28 `CHANGES_REQUESTED` was
-> filed against the parent commit `5a6e6336` and is now **stale** — needs maintainer
-> re-review/dismissal, nothing on us. codejail **#309** CLA **executed 2026-06-24**; review
-> nudge posted 2026-06-28 — maintainer's court. **Every open PR is maintainer-blocked —
-> nothing is blocked on us.** Green lane is clear; new green-lane work is unblocked.
->
-> **2026-06-23 state change:** ctxvault #31 **merged**. Six long-stale maintainer-pending PRs
-> batch-closed without merge on 2026-06-15 (~02:09 UTC): awesome-claude-skills #885,
-> mengram #40, python-sdk #2640, ngrok-python #159 / #160 / #161.
+> 2026-06-28). claudeclaw **#234** — `listThreadSessions` filter at HEAD (`a9eb7cb`/`54854a9`); TerrysPOV's 2026-06-28 `CHANGES_REQUESTED` may be stale vs parent `5a6e6336` but **still live on GitHub** as of 2026-07-11 — needs maintainer re-review/dismissal. codejail **#309** CLA **executed 2026-06-24**; review nudge posted 2026-06-28 — maintainer's court.
+
+## Cold lanes (maintainer heatmap)
+
+Open repos with **no maintainer reply** (or stale `CHANGES_REQUESTED`). Source: [`MAINTAINER_HEATMAP.md`](upstream/MAINTAINER_HEATMAP.md) — regenerate with `python3 scripts/upstream_desk_intel.py` or wait for weekly Kart run.
+
+| Repo | Open threads | Known PR(s) | Desk action |
+|------|--------------|-------------|-------------|
+| [ngrok/ngrok-python](https://github.com/ngrok/ngrok-python) | 2 | (see issue #6) | **Cold** — no maintainer signal; deprioritize or gentle nudge |
+| [coleam00/mcp-mem0](https://github.com/coleam00/mcp-mem0) | 2 | [#18](https://github.com/coleam00/mcp-mem0/pull/18) | **Cold** — mergeable, no review; wait or withdraw |
+| [kelos-dev/kanon](https://github.com/kelos-dev/kanon) | 2 | [#34](https://github.com/kelos-dev/kanon/pull/34) | **Cold** — label gate only; deprioritize |
+| [openedx/codejail](https://github.com/openedx/codejail/pull/309) | 1 | [#309](https://github.com/openedx/codejail/pull/309) | **Cold** — CLA done; wait on `mphilbrick211` |
+| [PDFMathTranslate/PDFMathTranslate](https://github.com/PDFMathTranslate/PDFMathTranslate) | 1 | [#1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) | **Cold** — mergeable, no review |
+| [alibaizhanov/mengram](https://github.com/alibaizhanov/mengram) | 1 | (see issue #6) | **Cold** — prior #40 closed without merge |
+| [castroquiles/HeatWatch](https://github.com/castroquiles/HeatWatch) | 1 | [#20](https://github.com/castroquiles/HeatWatch/pull/20) | **Cold** — geo_utils off-by-one; no maintainer reply |
+| [Corykidios/logeionicon_mcp](https://github.com/Corykidios/logeionicon_mcp) | 1 | (see issue #6) | **Cold** — commenter thread only |
+| [METR/eval-analysis-public](https://github.com/METR/eval-analysis-public) | 1 | (see issue #6) | **Cold** — commenter thread only |
+
+**Desk rule for cold:** Do not invest further unless maintainer engages or you explicitly withdraw. Prefer **warm** lanes (DeusData/codebase-memory-mcp, claudeclaw/TerrysPOV, ctxvault, stash/alash3al) for new nudges.
 
 ## Upstream desk preflight
 
@@ -25,38 +38,40 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 | PR | Type | Score | Lane | Next action |
 |----|------|-------|------|-------------|
 | [claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | narrow_bugfix | 8 | green | **MERGED 2026-06-28** ✓ |
-| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | narrow_bugfix | 8 | green | `listThreadSessions` filter at HEAD (`a9eb7cb`/`54854a9`); 3/3 checks green; TerrysPOV's 06-28 CHANGES_REQUESTED is **stale** (filed vs parent `5a6e6336`) — **wait on maintainer** re-review/dismiss |
+| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | narrow_bugfix | 8 | green | Filter at HEAD; live `CHANGES_REQUESTED` on GitHub — **wait on maintainer** re-review/dismiss |
 | [claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | narrow_bugfix | 8 | green | **MERGED 2026-06-28** ✓ |
 | [claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | docs_setup | 8 | green | **MERGED 2026-06-28** ✓ |
-| [mcp-mem0 #18](https://github.com/coleam00/mcp-mem0/pull/18) | narrow_bugfix | 8 | green | Issue-linked (Fixes #3), mergeable, no review — wait |
-| [DontFeedTheAI #8](https://github.com/zeroc00I/DontFeedTheAI/pull/8) | ci_verify | 7 | yellow | CI publish workflow, mergeable, no review — wait (warm maintainer, 2 prior merges) |
-| [PDFMathTranslate #1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) | small_feature | 6 | yellow | Mergeable, no review — wait |
-| [mex #84](https://github.com/mex-memory/mex/pull/84) | mcp_adapter | 6 | yellow | REVIEW_REQUIRED, mergeable — wait |
-| [codejail #309](https://github.com/openedx/codejail/pull/309) | small_feature | 6 | yellow | CLA **executed 2026-06-24**; `openedx/cla` check now SUCCESS; review nudge posted 2026-06-28 — **wait on maintainer** (`mphilbrick211` / `@moisesgsalas`) |
-| [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | mcp_adapter | 4 | red | Rebased 2026-06-15; `check-pr-labels` FAILURE is a **maintainer-only label gate** (needs `kind/*` + `release-note`) — code clean, deprioritize |
-| [stash #14](https://github.com/alash3al/stash/pull/14) | docs_setup | 9 | green | OPEN 2026-06-30; +17 lines `GETTING_STARTED.md` Troubleshooting; closes #11; warm maintainer (3 prior merges); no CI gate — **wait on maintainer** |
+| [mcp-mem0 #18](https://github.com/coleam00/mcp-mem0/pull/18) | narrow_bugfix | 8 | green | Issue-linked (Fixes #3), mergeable, no review — **cold maintainer** |
+| [DontFeedTheAI #8](https://github.com/zeroc00I/DontFeedTheAI/pull/8) | ci_verify | 7 | — | **MERGED 2026-07-08** ✓ |
+| [PDFMathTranslate #1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) | small_feature | 6 | yellow | Mergeable, no review — **cold** |
+| [mex #84](https://github.com/mex-memory/mex/pull/84) | mcp_adapter | 6 | — | **MERGED 2026-07-06** ✓ |
+| [codejail #309](https://github.com/openedx/codejail/pull/309) | small_feature | 6 | yellow | CLA **executed 2026-06-24**; review nudge 2026-06-28 — **cold**, wait on maintainer |
+| [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | mcp_adapter | 4 | red | Label gate (`kind/*` + `release-note`) — deprioritize |
+| [stash #14](https://github.com/alash3al/stash/pull/14) | docs_setup | 9 | green | OPEN; warm maintainer — **wait on maintainer** |
+| [basic-memory #1010](https://github.com/basicmachines-co/basic-memory/pull/1010) | narrow_bugfix | 7 | yellow | OPEN — uncredentialed project list; warm repo |
+| [HeatWatch #20](https://github.com/castroquiles/HeatWatch/pull/20) | narrow_bugfix | 6 | yellow | OPEN — geo_utils off-by-one; **cold** |
 | [hermes-agent #40737](https://github.com/NousResearch/hermes-agent/pull/40737) | unsolicited_large_feature | 2 | red | No maintainer signal since 2026-06-08 — do not invest; consider withdrawing |
 
-**Desk rule:** No new upstream PRs while green lanes have maintainer-pending merges, unless a new candidate scores green *and* has no overlapping open PR in the same repo. *(2026-06-23: green lane is clear of merge-pending blockers — new green-lane candidates are unblocked.)*
+**Desk rule:** No new upstream PRs while green lanes have maintainer-pending merges, unless a new candidate scores green *and* has no overlapping open PR in the same repo.
 
 ## Upstream PRs — actionable (our move)
 
-*None.* Every open PR is maintainer-blocked as of 2026-06-29. Green lane is clear — to make progress, open a **new** green-lane contribution (see strategy doc + type ledger).
+*None.* Every open PR is maintainer-blocked as of 2026-07-11.
 
 ## Upstream PRs — waiting on maintainers (no move)
 
 | PR | Status | Next step |
 |----|--------|-----------|
-| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | `listThreadSessions` filter at HEAD (`a9eb7cb`/`54854a9`); 3/3 checks green; TerrysPOV's 06-28 CHANGES_REQUESTED filed vs parent `5a6e6336` is stale; comment posted 2026-06-28 | Maintainer to re-review/dismiss stale CHANGES_REQUESTED or merge |
-| [codejail #309](https://github.com/openedx/codejail/pull/309) | CLA executed 2026-06-24; `openedx/cla` check SUCCESS; review nudge posted 2026-06-28; `mphilbrick211` engaged | Maintainer review (`mphilbrick211` / `@moisesgsalas`) |
-| [stash #14](https://github.com/alash3al/stash/pull/14) | Docs-only SSE curl note; closes #11; issue thread linked 2026-06-30 | Maintainer review (`alash3al`) |
-| [glapagos #20](https://github.com/castroquiles/glapagos/pull/20) | Lint was red (latent black/flake8/mypy conflicts); fix `628a9dd` 2026-06-28 — now 9/9 checks green, mergeable | Maintainer review |
-| [mcp-mem0 #18](https://github.com/coleam00/mcp-mem0/pull/18) | Mergeable; issue-linked; no review | Maintainer review |
-| [PDFMathTranslate #1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) | Mergeable; no review | Maintainer review |
-| [mex #84](https://github.com/mex-memory/mex/pull/84) | Mergeable; REVIEW_REQUIRED | Maintainer review |
-| [DontFeedTheAI #8](https://github.com/zeroc00I/DontFeedTheAI/pull/8) | Mergeable; no review | Maintainer review |
-| [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | Code clean; blocked on maintainer label assignment | Maintainer adds labels (or deprioritize) |
-| [hermes-agent #40737](https://github.com/NousResearch/hermes-agent/pull/40737) | Open, no maintainer signal | Maintainer review (red lane — low priority) |
+| [claudeclaw #234](https://github.com/moazbuilds/claudeclaw/pull/234) | `listThreadSessions` filter at HEAD; live `CHANGES_REQUESTED` | Maintainer to re-review/dismiss or merge |
+| [codejail #309](https://github.com/openedx/codejail/pull/309) | CLA executed; `openedx/cla` SUCCESS; review nudge 2026-06-28 | Maintainer review (`mphilbrick211` / `@moisesgsalas`) |
+| [stash #14](https://github.com/alash3al/stash/pull/14) | Docs-only SSE curl note; closes #11 | Maintainer review (`alash3al`) |
+| [glapagos #20](https://github.com/castroquiles/glapagos/pull/20) | 9/9 checks green, mergeable | Maintainer review |
+| [mcp-mem0 #18](https://github.com/coleam00/mcp-mem0/pull/18) | Mergeable; issue-linked; no review | Maintainer review (**cold**) |
+| [PDFMathTranslate #1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) | Mergeable; no review | Maintainer review (**cold**) |
+| [kanon #34](https://github.com/kelos-dev/kanon/pull/34) | Code clean; blocked on maintainer labels | Maintainer adds labels or deprioritize |
+| [basic-memory #1010](https://github.com/basicmachines-co/basic-memory/pull/1010) | OPEN; warm repo (groksrc) | Maintainer review |
+| [HeatWatch #20](https://github.com/castroquiles/HeatWatch/pull/20) | OPEN; no maintainer reply | Maintainer review (**cold**) |
+| [hermes-agent #40737](https://github.com/NousResearch/hermes-agent/pull/40737) | Open, no maintainer signal | Low priority — consider withdraw |
 
 ## Upstream outcomes — recently merged by maintainers
 
@@ -64,11 +79,14 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 
 | PR | Note |
 |----|------|
-| [Taiko2k/Tauon #2208](https://github.com/Taiko2k/Tauon/pull/2208) | Tidal return-type annotations (`list[TrackClass]` → `list[int]`); merged 2026-06-30 by C0rn3j |
+| [zeroc00I/DontFeedTheAI #8](https://github.com/zeroc00I/DontFeedTheAI/pull/8) | CI publish workflow — merged 2026-07-08 |
+| [mex-memory/mex #84](https://github.com/mex-memory/mex/pull/84) | MCP adapter — merged 2026-07-06 by theDakshJaitly |
+| [Taiko2k/Tauon #2209](https://github.com/Taiko2k/Tauon/pull/2209) | Follow-on Tidal typing — merged 2026-07-02 |
+| [Taiko2k/Tauon #2208](https://github.com/Taiko2k/Tauon/pull/2208) | Tidal return-type annotations — merged 2026-06-30 by C0rn3j |
 | [moazbuilds/claudeclaw #239](https://github.com/moazbuilds/claudeclaw/pull/239) | TerrysPOV approved + merged 2026-06-28 |
 | [moazbuilds/claudeclaw #240](https://github.com/moazbuilds/claudeclaw/pull/240) | docs_setup — TerrysPOV approved + merged 2026-06-28 |
 | [moazbuilds/claudeclaw #233](https://github.com/moazbuilds/claudeclaw/pull/233) | narrow_bugfix — merged 2026-06-28 |
-| [Filippo-Venturini/ctxvault #31](https://github.com/Filippo-Venturini/ctxvault/pull/31) | Remove stale `vault_config` reindex kwarg — merged 2026-06-17 by Filippo-Venturini |
+| [Filippo-Venturini/ctxvault #31](https://github.com/Filippo-Venturini/ctxvault/pull/31) | Remove stale `vault_config` reindex kwarg — merged 2026-06-17 |
 | [max-rh/sshelf #3](https://github.com/max-rh/sshelf/pull/3) | Print generated SSH command from CLI |
 | [liatrio-labs/claude-deep-review #5](https://github.com/liatrio-labs/claude-deep-review/pull/5) | Extract `dedup_by_id` into standalone module |
 | [basicmachines-co/basic-memory #985](https://github.com/basicmachines-co/basic-memory/pull/985) | Promote first project when config default missing from DB |
@@ -82,15 +100,16 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 
 | PR | Note |
 |----|------|
-| [ComposioHQ/awesome-claude-skills #885](https://github.com/ComposioHQ/awesome-claude-skills/pull/885) | 10 dev-methodology skills listing — batch-closed 2026-06-15 (was `ready-to-merge`, no maintainer action) |
+| [ComposioHQ/awesome-claude-skills #885](https://github.com/ComposioHQ/awesome-claude-skills/pull/885) | 10 dev-methodology skills listing — batch-closed 2026-06-15 |
 | [alibaizhanov/mengram #40](https://github.com/alibaizhanov/mengram/pull/40) | CONTRIBUTING.md docs — batch-closed 2026-06-15 |
-| [modelcontextprotocol/python-sdk #2640](https://github.com/modelcontextprotocol/python-sdk/pull/2640) | Propagate transport exceptions in default message handler — closed 2026-06-15 (megarepo, 20 failing checks) |
-| [ngrok/ngrok-python #159](https://github.com/ngrok/ngrok-python/pull/159) | `--log-level` parameter for `__main__` — batch-closed 2026-06-15 |
-| [ngrok/ngrok-python #160](https://github.com/ngrok/ngrok-python/pull/160) | Type hints reflect awaitable return — batch-closed 2026-06-15 |
+| [modelcontextprotocol/python-sdk #2640](https://github.com/modelcontextprotocol/python-sdk/pull/2640) | Propagate transport exceptions — closed 2026-06-15 |
+| [ngrok/ngrok-python #159](https://github.com/ngrok/ngrok-python/pull/159) | `--log-level` parameter — batch-closed 2026-06-15 |
+| [ngrok/ngrok-python #160](https://github.com/ngrok/ngrok-python/pull/160) | Type hints awaitable return — batch-closed 2026-06-15 |
 | [ngrok/ngrok-python #161](https://github.com/ngrok/ngrok-python/pull/161) | ngrok + Google Colab example — batch-closed 2026-06-15 |
 
-*See `CONTRIBUTORS.md` for the full closed-without-merge set (45 total).*
+*See `CONTRIBUTORS.md` for the full closed-without-merge set.*
 
 ## Internal
 
 - Provenance inventory: `chore/provenance-inventory-2026-06-03` branch / gh PR
+- Kart/watchmen queue: [`audits/KART_FAILURE_MODES.md`](audits/KART_FAILURE_MODES.md)
