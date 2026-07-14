@@ -1,6 +1,6 @@
 # Upstream PR comment register
 
-*Generated: 2026-07-12 01:46 UTC · operator: `rudi193-cmd` · filter: `all`*
+*Generated: 2026-07-14 16:59 UTC · operator: `rudi193-cmd` · filter: `all`*
 
 Every captured comment from GitHub (description, discussion, reviews, inline).
 Human voices grouped first; bots and automation in a separate section.
@@ -10,7 +10,58 @@ Human voices grouped first; bots and automation in a separate section.
 - **Contributor** — other human participants
 - **Bots** — github-actions, dependabot, code assistants, etc.
 
-**PRs processed:** 151 · **comments captured:** 397
+**PRs processed:** 152 · **comments captured:** 401
+
+---
+
+## NousResearch/hermes-agent #64281
+
+**feat(plugins): dreaming memory consolidation (config.yaml re-scope)**
+
+- URL: https://github.com/NousResearch/hermes-agent/pull/64281
+- State: `OPEN`
+
+### You
+
+#### `rudi193-cmd` · (PR opened) · description
+
+## Summary
+
+Re-opens the #25309 dreaming plugin proposal after #40737 was closed under the `env-var-for-config` policy.
+
+- Behavioral settings live in **plugin-owned** `$HERMES_HOME/dreaming/config.yaml` (seeded from `plugins/dreaming/config.yaml` on first register), with optional `dreaming:` overrides in `~/.hermes/config.yaml`.
+- Removes user-facing `HERMES_DREAMING` / `HERMES_DREAM_*` env flags — opt-in is `hermes plugins enable dreaming` + `enabled: true` in config.
+- Three-phase pipeline unchanged: Light Sleep (staging/dedupe/score) → REM (Ollama narrative) → Deep Sleep (MEMORY.md promotion, meta-entries → SKILL.md).
+- Reference port from [Willow 2.0](https://github.com/rudi193-cmd/willow-2.0) `dream_check` / `dream_run` / `tension_scan` — no runtime dependency.
+
+## Test plan
+
+- [x] `uv run pytest tests/plugins/test_dreaming_plugin.py -q` (4 tests: config seeding, main-config override, REM model override, promote threshold)
+- [ ] `hermes plugins enable dreaming` then set `enabled: true` in `$HERMES_HOME/dreaming/config.yaml`
+- [ ] `/dream status` and `/dream run` on a profile with staged candidates
+
+Closes the configuration-policy gap called out in the #40737 sweeper comment.
+
+
+Made with [Cursor](https://cursor.com)
+
+### Maintainers
+
+#### `tonydwb` · 2026-07-14 09:29:28 · review (COMMENTED) · id=4692782674
+
+## Code Review Summary
+
+**Verdict: Comment** (moderate-high surface area)
+
+This PR consolidates dreaming memory configuration into config.yaml. 10 files, 976 additions.
+
+### Observations
+
+- Config.yaml re-scope is a good direction.
+- Verify backward compatibility with existing configs.
+
+---
+*Reviewed by Hermes Agent*
 
 ---
 
@@ -583,6 +634,10 @@ Great, thanks! You should receive an executed copy from our legal counsel in the
 
 Hi @rudi193-cmd have you received your executed copy of the form?
 
+#### `e0d` · 2026-07-13 17:33:43 · discussion · id=4960796992
+
+@rudi193-cmd Your branch was behind the base.  I've pulled in changes from master as a merge commit which will update your branch and cause the tests to be re-run.  You should pull the changes into your local branch.
+
 ---
 
 ## coleam00/mcp-mem0 #18
@@ -623,66 +678,6 @@ DISABLE_TELEMETRY=true
 
 
 Made with [Cursor](https://cursor.com)
-
----
-
-## NousResearch/hermes-agent #40737
-
-**feat(plugins): dreaming — automatic background memory consolidation**
-
-- URL: https://github.com/NousResearch/hermes-agent/pull/40737
-- State: `OPEN`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-Implements the 3-phase dreaming system proposed in #25309.
-
-## What this adds
-
-`plugins/dreaming/` — a self-contained opt-in plugin with no external dependencies (Ollama optional for REM narrative).
-
-### Pipeline
-
-| Phase | What happens |
-|---|---|
-| **Light Sleep** | `on_session_end` hook enqueues candidates to `staging.jsonl`. Background thread deduplicates by content hash and scores using the weighted criteria from #25309 |
-| **REM** | Local LLM (Ollama, default `mistral:7b`) extracts themes and writes a narrative entry to `DREAMS.md`. Falls back to structured bullet summary if Ollama is unavailable |
-| **Deep Sleep** | Candidates scoring >= 0.55 are promoted to `MEMORY.md`. Meta-entries (about memory management itself) are routed to `SKILL.md` instead — addresses the noise pattern described by @vingeraycn |
-
-### Scoring weights (from issue spec)
-
-relevance 30% · frequency 24% · query diversity 15% · recency 15% · consolidation 10% · conceptual richness 6%
-
-### Opt-in
-
-Disabled by default. Set HERMES_DREAMING=1 to enable. The /dream command is still registered so users can discover it.
-
-### Slash commands
-
-- /dream — status + last diary entry
-- /dream run — force a cycle now
-- /dream status — hours since last / sessions queued / ready state
-- /dream diary — last DREAMS.md entry
-
-## File layout
-
-```
-plugins/dreaming/
-  __init__.py     register(ctx) — hooks, command, daemon thread
-  _schedule.py    enqueue_session / dream_check / dream_run
-  _score.py       weighted scoring + meta-entry filter
-  _diary.py       DREAMS.md writer
-  plugin.yaml     metadata
-  README.md       full docs
-```
-
-## Reference
-
-Ported from production implementation in [Willow 2.0](https://github.com/rudi193-cmd/willow-2.0) where this runs as `dream_run` (SAP MCP) + `dream_check` + nightly `sleep_consolidation.py`. The Hermes plugin is standalone — no Willow dependency.
-
-Closes #25309
 
 ---
 
@@ -6387,6 +6382,84 @@ If Codex has suggestions, it will comment; otherwise it will react with 👍.
 When you [sign up for Codex through ChatGPT](https://openai.com/codex), Codex can also answer questions or update the PR, like "@codex address that feedback".
             
 </details>
+
+---
+
+## NousResearch/hermes-agent #40737
+
+**feat(plugins): dreaming — automatic background memory consolidation**
+
+- URL: https://github.com/NousResearch/hermes-agent/pull/40737
+- State: `CLOSED`
+
+### You
+
+#### `rudi193-cmd` · (PR opened) · description
+
+Implements the 3-phase dreaming system proposed in #25309.
+
+## What this adds
+
+`plugins/dreaming/` — a self-contained opt-in plugin with no external dependencies (Ollama optional for REM narrative).
+
+### Pipeline
+
+| Phase | What happens |
+|---|---|
+| **Light Sleep** | `on_session_end` hook enqueues candidates to `staging.jsonl`. Background thread deduplicates by content hash and scores using the weighted criteria from #25309 |
+| **REM** | Local LLM (Ollama, default `mistral:7b`) extracts themes and writes a narrative entry to `DREAMS.md`. Falls back to structured bullet summary if Ollama is unavailable |
+| **Deep Sleep** | Candidates scoring >= 0.55 are promoted to `MEMORY.md`. Meta-entries (about memory management itself) are routed to `SKILL.md` instead — addresses the noise pattern described by @vingeraycn |
+
+### Scoring weights (from issue spec)
+
+relevance 30% · frequency 24% · query diversity 15% · recency 15% · consolidation 10% · conceptual richness 6%
+
+### Opt-in
+
+Disabled by default. Set HERMES_DREAMING=1 to enable. The /dream command is still registered so users can discover it.
+
+### Slash commands
+
+- /dream — status + last diary entry
+- /dream run — force a cycle now
+- /dream status — hours since last / sessions queued / ready state
+- /dream diary — last DREAMS.md entry
+
+## File layout
+
+```
+plugins/dreaming/
+  __init__.py     register(ctx) — hooks, command, daemon thread
+  _schedule.py    enqueue_session / dream_check / dream_run
+  _score.py       weighted scoring + meta-entry filter
+  _diary.py       DREAMS.md writer
+  plugin.yaml     metadata
+  README.md       full docs
+```
+
+## Reference
+
+Ported from production implementation in [Willow 2.0](https://github.com/rudi193-cmd/willow-2.0) where this runs as `dream_run` (SAP MCP) + `dream_check` + nightly `sleep_consolidation.py`. The Hermes plugin is standalone — no Willow dependency.
+
+Closes #25309
+
+### Other contributors
+
+#### `teknium1` · 2026-07-14 04:13:14 · discussion · id=4965322930
+
+<!-- hermes-sweeper:item=40737 -->
+<!-- hermes-sweeper:verdict=close reason=not_planned confidence=high -->
+Thanks for turning the #25309 discussion into a self-contained plugin proposal.
+
+This automated hermes-sweeper review is closing it under the standing configuration policy:
+
+- `plugins/dreaming/README.md:16-26` makes new non-secret `HERMES_DREAMING` and `HERMES_DREAM_*` variables the user-facing feature flag, model, thresholds, and polling configuration.
+- `AGENTS.md:102-107` requires behavioral settings, thresholds, and feature flags to live in `config.yaml`; `.env`/`HERMES_*` is reserved for secrets (with only internal compatibility bridges permitted).
+
+A future focused re-scope should expose the opt-in and scheduling/model thresholds through a plugin-owned `config.yaml` mechanism and the existing setup/config UX rather than new environment variables.
+
+---
+*Closed as not-planned per standing maintainer policy (`env-var-for-config`). This is a design-direction decision, not a code-quality judgment — see the Contribution Rubric in `AGENTS.md` for what the project is looking for. If you believe this policy was misapplied to your change, comment here and a maintainer will take a look.*
 
 ---
 
