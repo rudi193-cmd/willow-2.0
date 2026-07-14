@@ -63,7 +63,11 @@ _APP_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 def _willow_home() -> Path:
     env = os.environ.get("WILLOW_HOME")
-    return Path(env) if env else Path.home() / ".willow"
+    if env:
+        return Path(env)
+    from willow.fylgja.willow_home import willow_home
+
+    return willow_home()
 
 
 def _mcp_apps_root() -> Path:

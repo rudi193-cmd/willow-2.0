@@ -13,8 +13,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
-import subprocess
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -30,7 +28,6 @@ from update_tracker import AUTHOR, run_gh_graphql  # noqa: E402
 from upstream_pr_register_export import (  # noqa: E402
     Comment,
     _fetch_pr_register,
-    _gh_json,
     _gh_paginate_list,
     _iso,
     _render_comment_block,

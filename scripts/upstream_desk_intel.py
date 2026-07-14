@@ -38,7 +38,6 @@ from upstream_register_lib import (  # noqa: E402
     first_maintainer_reply_hours,
     maintainer_reviewers,
 )
-from upstream_pr_register_export import _fetch_pr_meta  # noqa: E402
 
 
 @dataclass

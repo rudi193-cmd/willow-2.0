@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / ".github" / "scripts"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from update_tracker import AUTHOR, run_gh_search  # noqa: E402
+from update_tracker import run_gh_search  # noqa: E402
 from upstream_commenter_register_export import (  # noqa: E402
     _search_commenter_threads,
 )
@@ -19,7 +19,6 @@ from upstream_pr_register_export import (  # noqa: E402
     Comment,
     _fetch_pr_meta,
     _fetch_pr_register,
-    _gh_json,
     _gh_paginate_list,
     _is_bot,
     _repo_owner,
