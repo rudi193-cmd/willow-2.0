@@ -58,7 +58,7 @@ Score each open PR before opening new upstream work. Rubric: 5×0–2 → **gree
 
 ## Upstream PRs — actionable (our move)
 
-*None.* Every open PR is maintainer-blocked as of 2026-07-11.
+*None.* Every open PR is maintainer-blocked as of 2026-07-14.
 
 ## Upstream PRs — waiting on maintainers (no move)
 
