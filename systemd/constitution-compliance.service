@@ -1,0 +1,17 @@
+[Unit]
+Description=Constitutional compliance witness — empty-room test (eternity-clause adversarial probes -> FRANK ledger + human_required on breach)
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/github/.willow/env
+Environment=WILLOW_ROOT=%h/github/willow-2.0
+Environment=PYTHONPATH=%h/github/willow-2.0
+ExecStart=%h/github/willow-2.0/willow.sh exec-python %h/github/willow-2.0/scripts/constitution_compliance_witness.py --once
+WorkingDirectory=%h/github/willow-2.0
+TimeoutStartSec=300
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=constitution-compliance

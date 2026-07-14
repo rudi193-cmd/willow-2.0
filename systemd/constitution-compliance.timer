@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the constitutional compliance witness periodically (empty-room test; survives sleep/reboot)
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=6h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
