@@ -57,8 +57,18 @@ def test_const_0_3_capability_holds():
     assert ok is True, reason
 
 
+def test_const_0_2_ratify_holds():
+    from constitution.cases import const_0_2_ratify
+
+    v = const_0_2_ratify.run()
+    assert v.held, f"CONST-0-2 breached on: {v.breaches}"
+    assert len(v.attempts) >= 3
+    ok, reason = const_0_2_ratify.grant_is_honored()
+    assert ok is True, reason
+
+
 def test_suite_reports_held():
     result = run_suite()
     assert result["held"] is True, result["breached_clauses"]
-    for tid in ("CONST-0-3", "CONST-0-3-II", "CONST-0-4", "CONST-0-5"):
+    for tid in ("CONST-0-2", "CONST-0-3", "CONST-0-3-II", "CONST-0-4", "CONST-0-5"):
         assert any(v["trace_id"] == tid for v in result["verdicts"]), tid
