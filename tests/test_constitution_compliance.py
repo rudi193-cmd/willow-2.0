@@ -37,8 +37,18 @@ def test_const_0_5_ledger_holds():
     assert len(v.attempts) >= 4
 
 
+def test_const_0_4_humankey_holds():
+    from constitution.cases import const_0_4_humankey
+
+    v = const_0_4_humankey.run()
+    assert v.held, f"CONST-0-4 breached on: {v.breaches}"
+    assert len(v.attempts) >= 4
+    ok, reason = const_0_4_humankey.grant_is_honored()
+    assert ok is True, reason
+
+
 def test_suite_reports_held():
     result = run_suite()
     assert result["held"] is True, result["breached_clauses"]
-    assert any(v["trace_id"] == "CONST-0-3" for v in result["verdicts"])
-    assert any(v["trace_id"] == "CONST-0-5" for v in result["verdicts"])
+    for tid in ("CONST-0-3", "CONST-0-4", "CONST-0-5"):
+        assert any(v["trace_id"] == tid for v in result["verdicts"]), tid
