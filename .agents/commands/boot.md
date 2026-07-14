@@ -117,6 +117,7 @@ SOIL `{agent}/stack/current` — fleet id, not persona.
 
 | File | What it contains |
 |---|---|
+| `willow/fylgja/skills/mcp-first.md` | **MCP before grep/Bash** — login, manifest, operator voice sources |
 | `sap/mcp_registry.json` | MCP tools by domain |
 | `willow/fylgja/powers/registry.json` | Named powers |
 | `docs/INDEX.md` | Doc router |
