@@ -173,26 +173,75 @@ def build_resume_context(
     *,
     agent: str = _AGENT,
     limit: int = _RESUME_ENTRY_LIMIT,
+    current_session_id: str = "",
 ) -> str:
     """
     Build an additionalContext string from recent ledger entries.
 
     This is injected by SessionStart when source == 'compact' or 'resume'.
     Keeps it brief: last N entries, truncated content, no binary noise.
+
+    Provenance stamp (memory-provenance step 1, ADR-20260715): load_recent()
+    merges every entry the agent wrote across the last two days — including
+    entries from OTHER concurrent sessions sharing this agent+day ledger file.
+    Each entry already carries its origin session_id/agent on disk (see
+    append()); this renderer used to discard both, so a resumed session could
+    not tell a foreign session's line apart from something it said itself
+    (the cross-session bleed defect — flag-cross-session-ledger-bleed-on-resume,
+    caught live 2026-07-15). We now stamp every line that is NOT this session's
+    own with ⟨sid·agent⟩ and an ambient disclaimer, mirroring the discipline the
+    [CROSS-RUNTIME] block already carries in fylgja/cross_runtime.py.
+
+    current_session_id (optional): when the SessionStart hook passes the live
+    session id, entries from THIS session render clean (they are genuinely this
+    conversation's own survived-compaction history) and only foreign entries are
+    flagged. When it is absent every entry is stamped, so no line is ever
+    surfaced without an origin — the guard degrades safe.
     """
     entries = load_recent(agent=agent, limit=limit)
     if not entries:
         return ""
 
-    lines = ["[LEDGER] Session history (most recent last):"]
+    cur = (current_session_id or "")[:16]
+    body: list[str] = []
+    saw_foreign = False
     for e in entries:
         ts_raw = e.get("ts", "")
         ts = ts_raw[11:16] if len(ts_raw) >= 16 else ts_raw  # HH:MM
         etype = e.get("type", "?")[:12]
         content = (e.get("content") or "")[:_CONTENT_TRUNCATE]
-        if content:
-            lines.append(f"  {ts} [{etype}] {content}")
+        if not content:
+            continue
+        e_sid = e.get("session_id") or ""
+        e_agent = e.get("agent") or ""
+        if cur and e_sid == cur:
+            tag = ""  # this session's own survived-compaction history
+        else:
+            # Foreign session, or caller did not stamp the current id: never
+            # surface a ledger line without an origin marker.
+            who = f"{e_sid[:8] or '????'}·{e_agent}" if (e_sid or e_agent) else "no-origin"
+            tag = f" ⟨{who}⟩"
+            saw_foreign = True
+        body.append(f"  {ts} [{etype}]{tag} {content}")
 
+    if not body:
+        return ""
+
+    lines = ["[LEDGER] Session history (most recent last):"]
+    if saw_foreign:
+        if cur:
+            lines.append(
+                "  (⟨sid·agent⟩ marks a DIFFERENT session's entry, injected by "
+                "the SessionStart hook; unstamped lines are this session's own. "
+                "Never report a ⟨…⟩ line as something you did or said.)"
+            )
+        else:
+            lines.append(
+                "  (entries may span multiple sessions; ⟨sid·agent⟩ marks each "
+                "line's origin. A line whose sid is not this session's is ambient "
+                "context, not your own memory.)"
+            )
+    lines.extend(body)
     lines.append(f"[LEDGER] {len(entries)} entries loaded.")
     return "\n".join(lines)
 
