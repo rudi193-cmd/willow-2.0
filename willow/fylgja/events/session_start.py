@@ -842,6 +842,12 @@ def main():
         "Shell work → agent_task_submit + kart_task_run. Registry: sap/mcp_registry.json."
     )
     lines.append(
+        "[WILLOW-MCP] Second server wired: willow-mcp (sovereign platform). "
+        "Call session_enter(app_id, session_id) at session open. app_id=willow is the "
+        "human-orchestrator seat -- agents use their own id, never willow. Kart egress there "
+        "is lease-gated: task_net cap + consent.internet + an operator lease (willow-mcp grant-net)."
+    )
+    lines.append(
         f"[IDENTITY] You are {AGENT}. The IDE/CLI model is transport only — not your name. "
         "Do not route all fleet work to hanuman; use agent_route then agent_dispatch(to=…). "
         f"Postgres dispatch_tasks.from_agent must be {AGENT}."
@@ -994,7 +1000,7 @@ def main():
     # Ledger resume context — inject on compact/resume so decisions survive compaction
     if _CONTEXT_AVAILABLE and session_source in ("compact", "resume", "clear"):
         try:
-            ledger_ctx = _ledger_resume_context()
+            ledger_ctx = _ledger_resume_context(current_session_id=session_id)
             if ledger_ctx:
                 lines.append("")
                 lines.append(ledger_ctx)
