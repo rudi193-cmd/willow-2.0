@@ -1,11 +1,11 @@
 # Upstream promise ledger
 
-*Generated: 2026-07-12 04:22 UTC · operator: `rudi193-cmd`*
+*Generated: 2026-07-14 17:14 UTC · operator: `rudi193-cmd`*
 
 Claims extracted from **your** comments (authored + commenter registers).
 Auto-checks: file paths on disk · re-review pings vs live PR state.
 
-**Total claims:** 257 · VERIFIED: 29 · STALE: 71 · OPEN: 2 · EXTERNAL: 143 · ADVISORY: 12
+**Total claims:** 258 · VERIFIED: 29 · STALE: 71 · OPEN: 2 · EXTERNAL: 144 · ADVISORY: 12
 
 ---
 
@@ -701,7 +701,15 @@ Auto-checks: file paths on disk · re-review pings vs live PR state.
 
 ---
 
-## EXTERNAL (143)
+## EXTERNAL (144)
+
+### NousResearch/hermes-agent #64281
+
+- URL: https://github.com/NousResearch/hermes-agent/pull/64281
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `plugins/dreaming/config.yaml`
+- Evidence: target-repo path (not checked in willow-2.0): `plugins/dreaming/config.yaml`
 
 ### castroquiles/glapagos #20
 
@@ -782,38 +790,6 @@ Auto-checks: file paths on disk · re-review pings vs live PR state.
 - Kind: `file_reference`
 - Claim: Referenced `src/bootstrap.py`
 - Evidence: target-repo path (not checked in willow-2.0): `src/bootstrap.py`
-
-### NousResearch/hermes-agent #40737
-
-- URL: https://github.com/NousResearch/hermes-agent/pull/40737
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `DREAMS.md`
-- Evidence: target-repo path (not checked in willow-2.0): `DREAMS.md`
-
-### NousResearch/hermes-agent #40737
-
-- URL: https://github.com/NousResearch/hermes-agent/pull/40737
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `MEMORY.md`
-- Evidence: target-repo path (not checked in willow-2.0): `MEMORY.md`
-
-### NousResearch/hermes-agent #40737
-
-- URL: https://github.com/NousResearch/hermes-agent/pull/40737
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `SKILL.md`
-- Evidence: target-repo path (not checked in willow-2.0): `SKILL.md`
-
-### NousResearch/hermes-agent #40737
-
-- URL: https://github.com/NousResearch/hermes-agent/pull/40737
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `sleep_consolidation.py`
-- Evidence: target-repo path (not checked in willow-2.0): `sleep_consolidation.py`
 
 ### almanac-data/almanac-template #20
 
@@ -1438,6 +1414,38 @@ Auto-checks: file paths on disk · re-review pings vs live PR state.
 - Kind: `file_reference`
 - Claim: Referenced `src/extractors/python_ast.py`
 - Evidence: target-repo path (not checked in willow-2.0): `src/extractors/python_ast.py`
+
+### NousResearch/hermes-agent #40737
+
+- URL: https://github.com/NousResearch/hermes-agent/pull/40737
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `DREAMS.md`
+- Evidence: target-repo path (not checked in willow-2.0): `DREAMS.md`
+
+### NousResearch/hermes-agent #40737
+
+- URL: https://github.com/NousResearch/hermes-agent/pull/40737
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `MEMORY.md`
+- Evidence: target-repo path (not checked in willow-2.0): `MEMORY.md`
+
+### NousResearch/hermes-agent #40737
+
+- URL: https://github.com/NousResearch/hermes-agent/pull/40737
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `SKILL.md`
+- Evidence: target-repo path (not checked in willow-2.0): `SKILL.md`
+
+### NousResearch/hermes-agent #40737
+
+- URL: https://github.com/NousResearch/hermes-agent/pull/40737
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `sleep_consolidation.py`
+- Evidence: target-repo path (not checked in willow-2.0): `sleep_consolidation.py`
 
 ### alibaizhanov/mengram #40
 

@@ -1,6 +1,6 @@
 # Upstream maintainer heatmap
 
-*Generated: 2026-07-12 04:22 UTC · operator: `rudi193-cmd`*
+*Generated: 2026-07-14 17:22 UTC · operator: `rudi193-cmd`*
 
 Repos where you have upstream threads (authored PRs + commenter threads).
 **Lane:** `warm` = human review or merge signal · `yellow` = open, waiting · `cold` = open, no maintainer reply or stale CHANGES_REQUESTED
@@ -10,8 +10,8 @@ Repos where you have upstream threads (authored PRs + commenter threads).
 | almanac-data/climate-almanac | 14 | 13 | 1 | 0 | 13 | 0 | 0 | — | 12 | 0 | **warm** | — |
 | almanac-data/almanac-template | 12 | 12 | 0 | 0 | 12 | 0 | 0 | — | 12 | 0 | **warm** | — |
 | DeusData/codebase-memory-mcp | 11 | 1 | 10 | 9 | 0 | 3 | 11 | 78.4h | 0 | 0 | **warm** | DeusData |
+| NousResearch/hermes-agent | 10 | 5 | 5 | 4 | 0 | 4 | 1 | 511.7h | 0 | 0 | **warm** | tonydwb |
 | basicmachines-co/basic-memory | 10 | 7 | 3 | 1 | 4 | 0 | 2 | — | 2 | 0 | **warm** | groksrc |
-| NousResearch/hermes-agent | 9 | 4 | 5 | 4 | 0 | 4 | 0 | 511.7h | 0 | 0 | **warm** | — |
 | moazbuilds/claudeclaw | 7 | 4 | 3 | 3 | 3 | 0 | 4 | — | 0 | 1 | **warm** | TerrysPOV |
 | zeroc00I/DontFeedTheAI | 7 | 4 | 3 | 0 | 3 | 2 | 4 | 68.0h | 2 | 0 | **warm** | zeroc00I |
 | almanac-data/environment-almanac | 6 | 5 | 1 | 0 | 5 | 0 | 0 | — | 4 | 0 | **warm** | — |
@@ -76,6 +76,6 @@ Repos where you have upstream threads (authored PRs + commenter threads).
 
 ## Lane notes
 
-- **Warm (34):** almanac-data/climate-almanac, almanac-data/almanac-template, DeusData/codebase-memory-mcp, basicmachines-co/basic-memory, NousResearch/hermes-agent, moazbuilds/claudeclaw, zeroc00I/DontFeedTheAI, almanac-data/environment-almanac, Emerging-Rule/community, Filippo-Venturini/ctxvault, alash3al/stash, manojmallick/sigmap…
+- **Warm (34):** almanac-data/climate-almanac, almanac-data/almanac-template, DeusData/codebase-memory-mcp, NousResearch/hermes-agent, basicmachines-co/basic-memory, moazbuilds/claudeclaw, zeroc00I/DontFeedTheAI, almanac-data/environment-almanac, Emerging-Rule/community, Filippo-Venturini/ctxvault, alash3al/stash, manojmallick/sigmap…
 - **Cold (9):** ngrok/ngrok-python, alibaizhanov/mengram, coleam00/mcp-mem0, kelos-dev/kanon, Corykidios/logeionicon_mcp, METR/eval-analysis-public, PDFMathTranslate/PDFMathTranslate, castroquiles/HeatWatch, openedx/codejail
 
