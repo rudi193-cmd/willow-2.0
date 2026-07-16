@@ -1,6 +1,6 @@
 # Upstream PR comment register
 
-*Generated: 2026-07-14 16:59 UTC · operator: `rudi193-cmd` · filter: `all`*
+*Generated: 2026-07-16 04:52 UTC · operator: `rudi193-cmd` · filter: `all`*
 
 Every captured comment from GitHub (description, discussion, reviews, inline).
 Human voices grouped first; bots and automation in a separate section.
@@ -10,7 +10,7 @@ Human voices grouped first; bots and automation in a separate section.
 - **Contributor** — other human participants
 - **Bots** — github-actions, dependabot, code assistants, etc.
 
-**PRs processed:** 152 · **comments captured:** 401
+**PRs processed:** 141 · **comments captured:** 376
 
 ---
 
@@ -62,6 +62,41 @@ This PR consolidates dreaming memory configuration into config.yaml. 10 files, 9
 
 ---
 *Reviewed by Hermes Agent*
+
+#### `teknium1` · 2026-07-16 02:07:13 · inline (plugins/dreaming/__init__.py:47) · id=3592122356
+
+`dream_check` does not accept `cfg` (`_schedule.py:107-124`). This raises `TypeError` on every polling attempt and is swallowed by the enclosing `except`, so the automatic scheduler never runs.
+
+#### `teknium1` · 2026-07-16 02:07:13 · inline (plugins/dreaming/__init__.py:60) · id=3592122358
+
+Plugin hooks are invoked as `cb(**kwargs)` and the current `on_session_end` emitter supplies metadata only, not a context object or transcript (`hermes_cli/plugins.py:1912-1917`, `agent/turn_finalizer.py:528-542`). This callback cannot be called successfully as written.
+
+#### `teknium1` · 2026-07-16 02:07:13 · review (COMMENTED) · id=4709846000
+
+<!-- hermes-sweeper:review=64281 -->
+<!-- hermes-sweeper:review-verdict=keep_open salvageability=medium -->
+Thanks for re-scoping the settings away from `HERMES_DREAM_*`; the plugin/config direction addresses the prior policy close.
+
+### Problems
+- `plugins/dreaming/__init__.py:60` registers `_on_session_end(ctx)`, but plugin hooks call callbacks as `cb(**kwargs)` (`hermes_cli/plugins.py:1912-1917`) and the current emitter provides metadata only (`agent/turn_finalizer.py:528-542`). No transcript reaches the plugin.
+- `plugins/dreaming/__init__.py:44-47` passes `cfg` to `dream_check`, although `plugins/dreaming/_schedule.py:107-124` has no such parameter. The thread suppresses the resulting exception at `__init__.py:50-51`, so automatic cycles cannot run.
+- `plugins/dreaming/__init__.py:80` requires `(argv, ctx)`, while CLI dispatch passes one raw string (`cli.py:8958-8962`); gateway and TUI follow the same contract.
+- `plugins/dreaming/_schedule.py:191-201` writes `$HERMES_HOME/MEMORY.md`, but active built-in memory is `$HERMES_HOME/memories/MEMORY.md` (`tools/memory_tool.py:55-57`, `:280-285`). Promotions are not loaded into Hermes memory.
+
+### Suggested changes
+- Rework the hook around a real transcript-bearing lifecycle path and add an E2E test through plugin registration.
+- Match the raw-string slash-command API, remove unsupported `cfg` parameters, and route writes through the bounded, guarded `MemoryStore` format.
+- Omit the already-landed model-validation hunk; current main has it via `0d3ad193d6cc235213489f509e26760ccb3722a1`.
+
+Automated hermes-sweeper review.
+
+#### `teknium1` · 2026-07-16 02:07:14 · inline (plugins/dreaming/__init__.py:80) · id=3592122359
+
+Registered plugin slash handlers receive one raw argument string (`cli.py:8958-8962`; gateway and TUI use the same shape). This required second `ctx` parameter makes every `/dream` invocation fail before subcommand parsing.
+
+#### `teknium1` · 2026-07-16 02:07:14 · inline (plugins/dreaming/_schedule.py:195) · id=3592122363
+
+This is not Hermes's active memory path: `MemoryStore` uses `get_hermes_home() / "memories" / "MEMORY.md"` (`tools/memory_tool.py:55-57,280-285`). Promotions written here will not be loaded into the next session's persistent-memory snapshot.
 
 ---
 
@@ -172,98 +207,6 @@ NaN compares `False` against every legend breakpoint, so no-data pixels fell thr
 ## Verification
 
 Full suite green locally: `54 passed`. No new dependencies; touches only `analysis`/`utils` + tests.
-
----
-
-## basicmachines-co/basic-memory #1010
-
-**fix(cli): show configured project in list when uncredentialed (#1003)**
-
-- URL: https://github.com/basicmachines-co/basic-memory/pull/1010
-- State: `OPEN`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-## Summary
-
-`bm project list` renders an **empty table** even when a project exists in `config.json` and the local DB, while `bm project add` reports the same project *already exists* — the two commands disagree about whether the project exists (#1003).
-
-## Root cause
-
-In `src/basic_memory/cli/commands/project.py`, `list_projects()` seeds its table rows (`row_names_by_key`) **exclusively from live query results**:
-
-- the **cloud** branch, which is guarded by `_has_cloud_credentials(config)` and skipped when no credentials are present, and
-- the **local** query, which does not surface a `mode: cloud` project.
-
-`config.projects` is consulted only to *enrich* rows that already exist (`configured_names_by_permalink`), never to *create* one. So a cloud-mode project with no cloud credentials on the machine is surfaced by neither query → empty table. Meanwhile `bm project add` reads the DB, finds the project, and reports "already exists".
-
-## Fix
-
-Seed a local-keyed row from `config.projects` for any configured project not already surfaced by a query. The existing row-building logic already derives the correct display (cloud CLI route, https MCP) from the config entry.
-
-The fallback is **scoped to the local-inclusive view** — it is skipped for a pure `--cloud` listing (no `local_result`) and for a `--workspace`-filtered view, since those are deliberately narrowed and configured local projects must not leak into them.
-
-## Test
-
-Adds `test_project_list_shows_configured_project_without_cloud_credentials` to `tests/cli/test_project_list_and_ls.py`: a cloud-mode project in config with `_has_cloud_credentials` false and an empty local list now renders the project instead of an empty table. Verified the test fails on `main` (empty table → `StopIteration`) and passes with the fix.
-
-## Verification
-
-- `tests/cli/test_project_list_and_ls.py` — 14 passed
-- `tests/cli` (full) — 414 passed
-- `ruff check` + `ruff format --check` — clean
-- `ty check` on the changed file — clean
-
-Fixes #1003
-
-### Other contributors
-
-#### `phernandez` · 2026-07-07 02:53:13 · discussion · id=4899655455
-
-@codex review
-
-### Bots & automation
-
-#### `chatgpt-codex-connector[bot]` · 2026-06-23 13:33:15 · discussion · id=4779757502
-
-Codex usage limits have been reached for code reviews. Please check with the admins of this repo to increase the limits by adding credits.
-Repo admins can enable using credits for code reviews in their [settings](https://chatgpt.com/codex/cloud/settings/code-review).
-
-#### `chatgpt-codex-connector[bot]` · 2026-07-07 02:55:32 · inline (src/basic_memory/cli/commands/project.py:509) · id=3533281597
-
-**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Keep config fallback out of --local listings**
-
-When the user runs `bm project list --local` after a project has been switched to cloud mode, the forced local query can legitimately return no row because `set-cloud` removes the local DB entry. This branch still seeds the cloud-mode config entry because `local_result` is non-`None`, so the `--local` listing shows a project that the local API did not return and later labels its CLI route as `local (flag)`, making the flag no longer mean “show the local project list.” Gate this fallback to the default no-flag path (the uncredentialed mixed view) rather than all local-inclusive calls.
-
-Useful? React with 👍 / 👎.
-
-#### `chatgpt-codex-connector[bot]` · 2026-07-07 02:55:32 · review (COMMENTED) · id=4641257471
-
-### 💡 Codex Review
-
-Here are some automated review suggestions for this pull request.
-
-**Reviewed commit:** `59844d1224`
-    
-
-<details> <summary>ℹ️ About Codex in GitHub</summary>
-<br/>
-
-[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you
-- Open a pull request for review
-- Mark a draft as ready
-- Comment "@codex review".
-
-If Codex has suggestions, it will comment; otherwise it will react with 👍.
-
-
-
-
-Codex can also answer questions or update the PR. Try commenting "@codex address that feedback".
-            
-</details>
 
 ---
 
@@ -2373,6 +2316,125 @@ Added to `tests/test_core.py` and `tests/test_cli.py`:
 Updated `conftest.py`'s `embed_list` stub to the new signature, and documented the flag in the README.
 
 **Verification:** full suite `pytest` — 91 passed (the new tests fail on `main`). No `uv.lock` or unrelated changes.
+
+---
+
+## basicmachines-co/basic-memory #1010
+
+**fix(cli): show configured project in list when uncredentialed (#1003)**
+
+- URL: https://github.com/basicmachines-co/basic-memory/pull/1010
+- State: `MERGED`
+
+### You
+
+#### `rudi193-cmd` · (PR opened) · description
+
+## Why
+
+`bm project list` could render an empty table for a cloud-mode project that is present in `config.json` when the machine has no cloud credentials. At the same time, `bm project add` reports that project already exists (#1003).
+
+The cloud query is credential-gated, and the forced-local query does not surface a cloud-mode project, so neither live result seeded a display row.
+
+## What changed
+
+- Seed missing configured projects into the default combined `bm project list` view.
+- Keep explicit `--local`, `--cloud`, and `--workspace` listings strictly scoped to their requested live results.
+- Rebase the contributor branch onto current `main`.
+
+## Tests
+
+- Added a regression proving an uncredentialed configured cloud project remains visible in the default list.
+- Added the complementary regression proving `project list --local --json` excludes that config fallback when the local API returns no projects.
+- `uv run pytest -q tests/cli/test_project_list_and_ls.py` — 15 passed
+- `uv run ruff format --check src/basic_memory/cli/commands/project.py tests/cli/test_project_list_and_ls.py`
+- `uv run ruff check src/basic_memory/cli/commands/project.py tests/cli/test_project_list_and_ls.py`
+- `uv run ty check src/basic_memory/cli/commands/project.py tests/cli/test_project_list_and_ls.py`
+- `just fast-check`
+
+Fixes #1003
+
+### Maintainers
+
+#### `phernandez` · 2026-07-07 02:53:13 · discussion · id=4899655455
+
+@codex review
+
+#### `phernandez` · 2026-07-15 02:38:36 · inline (src/basic_memory/cli/commands/project.py:509 reply_to=3533281597) · id=3584096430
+
+Fixed on latest head `7ddcaf47`. The config fallback is now gated out when `--local` is explicit, and `test_project_list_local_excludes_cloud_mode_config_fallback` proves an empty local API result remains empty under `project list --local --json`. The default no-flag regression remains covered separately. Focused tests: 15 passed; `just fast-check` also passes.
+
+#### `phernandez` · 2026-07-15 02:38:49 · discussion · id=4976317373
+
+@codex review
+
+#### `phernandez` · 2026-07-15 02:38:50 · discussion · id=4976317458
+
+recheck
+
+### Bots & automation
+
+#### `chatgpt-codex-connector[bot]` · 2026-06-23 13:33:15 · discussion · id=4779757502
+
+Codex usage limits have been reached for code reviews. Please check with the admins of this repo to increase the limits by adding credits.
+Repo admins can enable using credits for code reviews in their [settings](https://chatgpt.com/codex/cloud/settings/code-review).
+
+#### `chatgpt-codex-connector[bot]` · 2026-07-07 02:55:32 · inline (src/basic_memory/cli/commands/project.py:509) · id=3533281597
+
+**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Keep config fallback out of --local listings**
+
+When the user runs `bm project list --local` after a project has been switched to cloud mode, the forced local query can legitimately return no row because `set-cloud` removes the local DB entry. This branch still seeds the cloud-mode config entry because `local_result` is non-`None`, so the `--local` listing shows a project that the local API did not return and later labels its CLI route as `local (flag)`, making the flag no longer mean “show the local project list.” Gate this fallback to the default no-flag path (the uncredentialed mixed view) rather than all local-inclusive calls.
+
+Useful? React with 👍 / 👎.
+
+#### `chatgpt-codex-connector[bot]` · 2026-07-07 02:55:32 · review (COMMENTED) · id=4641257471
+
+### 💡 Codex Review
+
+Here are some automated review suggestions for this pull request.
+
+**Reviewed commit:** `59844d1224`
+    
+
+<details> <summary>ℹ️ About Codex in GitHub</summary>
+<br/>
+
+[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you
+- Open a pull request for review
+- Mark a draft as ready
+- Comment "@codex review".
+
+If Codex has suggestions, it will comment; otherwise it will react with 👍.
+
+
+
+
+Codex can also answer questions or update the PR. Try commenting "@codex address that feedback".
+            
+</details>
+
+#### `chatgpt-codex-connector[bot]` · 2026-07-15 02:41:51 · discussion · id=4976331459
+
+Codex Review: Didn't find any major issues. :tada:
+
+**Reviewed commit:** `7ddcaf476b`
+
+<details> <summary>ℹ️ About Codex in GitHub</summary>
+<br/>
+
+[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you
+- Open a pull request for review
+- Mark a draft as ready
+- Comment "@codex review".
+
+If Codex has suggestions, it will comment; otherwise it will react with 👍.
+
+
+
+
+Codex can also answer questions or update the PR. Try commenting "@codex address that feedback".
+            
+</details>
 
 ---
 
@@ -7684,1270 +7746,5 @@ Thanks for the PR! The `buildSensitivePaths()` list is curated for tools with es
 Willow is too new to qualify right now (we'd typically wait for ~100+ stars or a few unprompted requests from Node9 users running it). Happy to revisit once that demand exists.
 
 Going to close this for now — please don't take it as a rejection of the technical content (it's solid), just gatekeeping the path list.
-
----
-
-## CinnamonInt/Cinnamonint #2
-
-**feat: token_edges relationship discovery**
-
-- URL: https://github.com/CinnamonInt/Cinnamonint/pull/2
-- State: `CLOSED`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-## Summary
-
-Adds token relationship edge tracking to Cinnamonint. After each prompt, the system records which tokens fired in sequence, building a relationship graph over time.
-
-**What this enables:**
-- Discovery: "Which tokens usually follow 'add'?"
-- Composition suggestions: "You just used 'multiply' and 'divide' — you might want 'round'"
-- Pattern analysis: "What are the most common token sequences?"
-
-## Implementation
-
-### New Files
-- `migrations/003_token_edges.sql` — Schema for token_edges table with indexes for fast lookup
-- `src/cinnamonint_logging/token_edges.py` — Edge builder + query functions (record, get_edges, get_incoming_edges, get_top_edges)
-- `src/commands/list_edges.py` — REPL command to display edges in formatted tables
-- `tests/test_token_edges.py` — 13 comprehensive tests covering recording, queries, and REPL command
-
-### Modified Files
-- `src/main.py` — Record token sequence after each prompt completes
-- `src/cinnamonint_logging/iterations.py` — New `record_prompt_token_sequence()` function to capture token pairs
-- `src/commands/dispatch.py` — Wire `list_edges` into REPL command dispatch
-
-## Usage
-
-\`\`\`
-> list-edges add
-Tokens that follow 'add':
-  multiply (weight: 15)
-  divide (weight: 8)
-  subtract (weight: 3)
-
-> list-edges incoming multiply
-Tokens that precede 'multiply':
-  add (weight: 15)
-
-> list-edges top
-Most common token sequences:
-  add ──follows──> multiply (weight: 15)
-  multiply ──follows──> divide (weight: 12)
-\`\`\`
-
-## Architecture
-
-**Recording**: Each prompt execution builds a token sequence from the iteration chain. After logging iterations, `record_prompt_token_sequence()` is called to record consecutive token pairs as edges with weights incremented on each occurrence.
-
-**Querying**: Three lookup functions provide fast access to the relationship graph with proper indexing:
-- `get_edges_for_token(token)` — outgoing edges (what follows)
-- `get_incoming_edges_for_token(token)` — incoming edges (what precedes)
-- `get_top_edges(limit)` — most common sequences by weight
-
-**REPL Command**: `list-edges` displays edges in formatted Rich tables.
-
-## Testing
-
-All 13 tests pass:
-- Edge recording and weight increment
-- Query functions (outgoing, incoming, top N)
-- REPL command variants
-- Integration workflow (record → query)
-
-## Contribution Context
-
-This feature is part of Willow 1.9's hook system upgrade. Willow adapted Cinnamonint's core patterns (subprocess isolation, stall detection, approval gates, iteration tracking) to its own hook registry. In return, token_edges brings Cinnamonint the one missing piece: discoverable token relationships.
-
-As token libraries grow, users need visibility into which tokens compose well. Edge weights accumulating over time make composition patterns visible. This is also the foundation for composition suggestions ("You just used these two tokens — you might want this third one") and pattern discovery.
-
-### Maintainers
-
-#### `CinnamonInt` · 2026-05-10 06:19:25 · discussion · id=4414609098
-
-# PR #2 Review — Token Edges Relationship Discovery
-
-Hi Sean, thanks for taking the time to contribute to Cinnamonint. The code is well-structured, tests pass cleanly, and the concept of token relationship tracking is genuinely interesting.
-
-However, Cinnamonint is still in its early stages with roughly 10 tokens. At this scale, edge tracking doesn't provide meaningful value — there simply aren't enough tokens for relationship patterns to emerge. I'm going to close this PR for now.
-
-That said, if you believe this feature would be a meaningful addition as the project grows, I'd welcome a revised PR that addresses the following.
-
----
-
-## Required Changes
-
-### 1. Make the feature opt-in
-
-This feature introduces additional DB writes on every prompt, extra query overhead, and disk growth over time. At scale, this adds latency to every single user interaction — even for users who never use `list-edges`. The feature should be **off by default** and toggled on explicitly, either via a flag in `setup.sh` or a setting in `src/config/settings.py` (e.g. `ENABLE_TOKEN_EDGES = False`). The recording logic in `_process_input()` should check this flag before calling `record_prompt_token_sequence()`.
-
-### 2. Remove the `migrations/` directory
-
-Cinnamonint doesn't have a migration system. Existing schemas live in `src/registry/schema.sql` and `src/cinnamonint_logging/schema.sql`. The `migrations/003_token_edges.sql` file is never executed by anything — it just sits there. Place the schema alongside the existing ones, following the project's conventions.
-
-### 3. Store edges in `logs.db`, not `registry.db` — and keep schema with its module
-
-Token edges are usage analytics — they track runtime behavior over time. This data belongs in `logs.db` alongside the existing `prompts` and `iterations` tables. The registry database (`registry.db`) is strictly for token definitions, aliases, and approvals. Writing analytics data there is an architectural mismatch.
-
-Also, the project convention is to keep schemas and their associated code together in the same folder under `src/`. For example, `src/registry/schema.sql` lives alongside `src/registry/store.py` and `src/registry/loader.py`. The edge schema should live in `src/cinnamonint_logging/` next to the code that uses it — not in a separate top-level `migrations/` directory.
-
-### 4. Move test file into a subfolder
-
-The test file is placed at `tests/test_token_edges.py` (top-level). All existing tests are organised by category: `tests/math/`, `tests/system/`, `tests/engine/`, etc. Move it into an appropriate subfolder, e.g. `tests/engine/test_token_edges.py` or `tests/logging/test_token_edges.py`.
-
-### 5. Remove `sys.path` manipulation from tests
-
-The test file inserts the project root into `sys.path` manually. Existing tests don't do this — they rely on the project-level `conftest.py`. Follow the same pattern.
-
-### 6. No module-level mutable state
-
-`src/commands/list_edges.py` creates a `Console()` instance at module level. Project rules require no global mutable state — pass dependencies explicitly or instantiate inside functions.
-
-### 7. Use context managers for DB connections
-
-All database functions open connections with `sqlite3.connect()` and close them with `conn.close()`, but if an exception occurs between the two, the connection leaks. Use `with sqlite3.connect(...) as conn:` to guarantee cleanup.
-
-### 8. Don't silently swallow exceptions
-
-Every function in `token_edges.py` has bare `except Exception: pass` blocks. If something goes wrong during recording or querying, there is zero indication — no log entry, no warning, nothing. At minimum, log a warning so issues are debuggable.
-
-### 9. Clean up the commit message
-
-The commit message should describe what the feature does for Cinnamonint. Co-author credits for AI agents are fine, but the narrative about Willow having "adapted Cinnamonint's patterns" and contributing back in return doesn't hold up — there's no evidence of that relationship in either codebase. Keep the commit message factual and focused on what the feature does, not on framing it as a cross-project exchange.
-
----
-
-## What's Missing from the Repo (My Fault)
-
-I haven't yet published contribution guidelines, which is on me. A `CONTRIBUTING.md` is coming, but in the meantime: the project's coding standards, hard constraints, and conventions are documented in `AGENTS.md` at the project root. Please review that before resubmitting.
-
-Thanks again for the contribution. Looking forward to a revised version if you decide to pursue it.
-
----
-
-## monologg/JointBERT #36
-
-**feat: rule-based fallback predictor (no torch/transformers required)**
-
-- URL: https://github.com/monologg/JointBERT/pull/36
-- State: `CLOSED`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-## Summary
-
-- Adds `predict_rule_based.py`: a lightweight inference path producing the same output format as `predict.py` without requiring torch, transformers, or a trained model checkpoint
-- Covers all 21 ATIS intent classes and all 7 Snips intent classes via weighted keyword matching
-- Adds BIO slot tagging for common ATIS slot types (city names, airport codes, airlines, dates/times, fare classes) via regex
-- 37 tests, stdlib only, Python 3.6+ compatible
-
-## Why this is useful
-
-`predict.py` requires `torch==1.6.0 + transformers==3.0.2 + a downloaded checkpoint` — a barrier for CI smoke tests, prototyping, and environments without GPU. The rule-based predictor is a documented fallback: not a replacement for BERT accuracy, but a runnable interface without the model stack.
-
-## Test plan
-
-- [ ] `python3 -m pytest test_predict_rule_based.py -v` — 37 tests, 0 deps beyond stdlib
-- [ ] `python3 predict_rule_based.py --input_file sample_pred_in.txt --output_file - --task atis`
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
----
-
-## S1LV4/th0th #38
-
-**feat(packages/willow): Willow SOIL adapter for memory edge persistence**
-
-- URL: https://github.com/S1LV4/th0th/pull/38
-- State: `CLOSED`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-## Summary
-
-- Adds `packages/willow/index.ts` — `WillowGraphStore`, a SOIL-backed memory edge store that replicates th0th memories to the [Willow agent fleet](https://github.com/sean-campbell/willow-1.9)
-- Implements the same `createEdge / getEdge / queryEdges / deleteEdge` interface as `GraphStore` and `GraphStorePg` — drop-in replacement in `MemoryGraphService`
-- Edge index maintained per `sourceId` to avoid full collection scans on common queries
-
-## Why SOIL?
-
-SOIL is Willow's structured local record store, accessible to all agents in the fleet via MCP tools. Writing th0th memories to SOIL means:
-
-1. th0th memories are visible in the Willow dashboard without extra tooling
-2. Other agents can query th0th edges via `store_get` / `store_list` MCP tools
-3. Memories survive th0th container restarts
-4. No new Postgres schema needed — SOIL is always available in Willow installs
-
-Graceful degradation: if `WILLOW_SOIL_URL` is unset or unreachable, all operations return safe defaults — th0th continues to function normally.
-
-## Test plan
-
-- [ ] Set `WILLOW_SOIL_URL=http://localhost:8080` (Willow MCP server)
-- [ ] Replace `GraphStore.getInstance()` with `WillowGraphStore.getInstance()` in memory service
-- [ ] `createEdge({ sourceId, targetId, relationType: "related_to", weight: 1.0 })`
-- [ ] Verify edge appears in Willow dashboard under `th0th/edges` collection
-- [ ] `queryEdges({ sourceId })` returns the created edge
-- [ ] Set `WILLOW_SOIL_URL=http://down:9999` — confirm th0th still starts normally
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-#### `rudi193-cmd` · 2026-05-09 15:55:23 · discussion · id=4412926565
-
-## Response to Review Feedback
-
-### 1. Trust & Persistence Boundaries ✅
-
-I've added **explicit opt-in** via  flag. Default behavior:
-- **Disabled by default** — th0th memories stay local, no external replication
-- Requires explicit user choice: `export WILLOW_SOIL_ENABLED=true`
-- Constructor now logs clearly when disabled: *"Willow SOIL replication disabled. Set WILLOW_SOIL_ENABLED=true to opt-in."*
-
-**Access control documentation added:**
-- All writes are subject to Willow's SAFE authentication
-- Collection-level ACLs apply under `th0th/*` scope
-- Added privacy warning in code comments
-
-This moves from "silent replication" → "explicit consent" model.
-
-### 2. Integration Approach (HTTP vs MCP client)
-
-The current HTTP approach works well for this bridge because:
-- Graceful degradation is handled (timeouts, retry logic)
-- SOIL endpoint is predictable (`WILLOW_SOIL_URL`, default localhost:8080)
-- Avoids new dependency on Willow's MCP client in th0th
-
-**Future:** If th0th adopts a plugin architecture or tighter Willow integration, switching to the official MCP client would be cleaner. This can be done incrementally.
-
-### 3. Code Organization
-
-Current location in `packages/willow/` is acceptable because:
-- It's a **drop-in replacement** for `GraphStore` — same interface, same module location
-- Keeps the integration contained and easy to stub/test
-
-**Alternative:** If you'd prefer this under `apps/willow/` or `integrations/`, I can reorganize in a follow-up PR. This is a design preference.
-
----
-
-All three concerns are now addressed. Push protection labels can be removed. 🚀
-
-#### `rudi193-cmd` · 2026-05-09 15:55:40 · discussion · id=4412927075
-
-Thanks for the detailed review, @S1LV4. The specific feedback on trust boundaries, integration approach, and code organization made this much stronger. Appreciate you pushing back on the default behavior — explicit opt-in is the right call.
-
-### Maintainers
-
-#### `S1LV4` · 2026-05-09 08:25:18 · inline (packages/willow/index.ts:1) · id=3212837702
-
-## A few questions before merging
-
-Thanks for the PR — the idea of plugging th0th into the Willow ecosystem is interesting and there's clearly some work behind it. Before moving forward with the merge, I wanted to raise a few points I'm unsure about, more to understand the intent than to block it.
-
-### 1. Trust boundary around memory data
-
-From what I saw, `WillowGraphStore` starts writing the memory graph edges (`sourceId`, `targetId`, `relationType`, `weight`, `evidence`, `autoExtracted`, `createdAt`) to `th0th/edges`, with support for `get`, `list`, `query`, and `delete` — including full collection listing when no `sourceId` is provided. I also noticed there's a fallback to `http://localhost:8080` when `WILLOW_SOIL_URL` isn't set.
-
-Does it make sense to view this as a change to th0th's persistence boundary? If so, it might be worth making the feature opt-in, removing the implicit fallback, and documenting what gets replicated and who can read/list it.
-
-### 2. Integration path with Willow
-
-Looking at the current Willow repo, SOIL seems to be exposed via MCP/stdio tools (`store_put`, `store_get`, `store_list`) under the SAP model, and there's already a `sap/clients/soil_client.py` that injects `app_id`. This PR takes a different route, talking directly to HTTP endpoints under `/store/*`.
-
-Was this a deliberate choice, or would it make more sense to reuse the official MCP/SOIL client? If the HTTP bridge really is the desired path, I think it would help to have explicit auth (with `app_id` and permissions) and some documentation of the contract.
-
-### 3. Where the code should live
-
-Today, `packages/` in th0th holds internal libs (`core`, `shared`), while `apps/` holds integrations and plugins (`mcp-client`, `opencode-plugin`, `tools-api`, `claude-plugin`). Since this is a bridge to an external ecosystem, I'm wondering if it wouldn't fit better under something like `apps/willow-plugin` or `apps/willow-bridge`.
-
-### Smaller points I noticed
-
-- Behavior on partial failure between the edge write and the index write — there don't seem to be tests covering these scenarios.
-- Delete semantics: incoming edges appear to be left orphaned.
-
-I'm not suggesting there's any malicious intent here, I just think it's worth aligning on these decisions before accepting the PR so there are no surprises later. Does that make sense?
-
-### Other contributors
-
-#### `Copilot` · 2026-05-09 08:26:36 · inline (packages/willow/index.ts:193) · id=3212839164
-
-The class-level doc claims this is a drop-in replacement for both GraphStore and GraphStorePg, but the method shapes differ from GraphStore (sync vs async, createEdge signature/return type, getEdge expects (sourceId,targetId,relationType), etc.). This is misleading for consumers—either adjust the API to match the existing store abstraction used in core, or update the documentation to reflect the actual supported interface and integration points.
-
-#### `Copilot` · 2026-05-09 08:26:37 · inline (packages/willow/index.ts:29) · id=3212839178
-
-The usage example imports from "@th0th-ai/willow", but this workspace currently has no package.json/exports, so this import path won’t resolve when someone tries to follow the instructions. Add the package manifest (name, version, main/types/exports) and build config, or change the docs to show a valid import path for this repo layout.
-
-#### `Copilot` · 2026-05-09 08:26:37 · inline (packages/willow/index.ts:72) · id=3212839184
-
-SOIL_URL defaults to http://localhost:8080 even when WILLOW_SOIL_URL is unset, which means a misconfigured deployment will still attempt network calls and incur up to the full 5s timeout per operation. If the intent is “graceful degradation”, consider short-circuiting all SOIL operations when WILLOW_SOIL_URL is unset (and/or adding a simple circuit-breaker/backoff when the server is unreachable) so core memory operations aren’t slowed by repeated timeouts.
-
-#### `Copilot` · 2026-05-09 08:26:37 · inline (packages/willow/index.ts:247) · id=3212839195
-
-createEdge() stores evidence as null in the record and then returns it via a cast to MemoryEdge; however MemoryEdge.evidence is optional (string | undefined), not nullable. This can leak null to callers at runtime. Prefer storing null in SOIL if needed, but return evidence as undefined when absent (and avoid `as MemoryEdge` casts that mask these issues).
-
-#### `Copilot` · 2026-05-09 08:26:37 · inline (packages/willow/index.ts:236) · id=3212839198
-
-createEdge() does not prevent self-referencing edges (sourceId === targetId). GraphStore explicitly rejects these and returns null, so if this store is used as a replacement it can introduce cycles/unexpected traversal behavior. Add the same guard (and decide on an equivalent “no-op” return behavior for the async API).
-
-#### `Copilot` · 2026-05-09 08:26:37 · inline (packages/willow/index.ts:245) · id=3212839210
-
-createEdge() updates the per-source index unconditionally, even if the SOIL put fails/timeouts. This can accumulate dead edge IDs, causing unnecessary fetches on every query. Only add to the index when the edge write succeeds, and consider pruning missing IDs when queryEdges() encounters null edge records.
-
-#### `Copilot` · 2026-05-09 08:26:38 · inline (packages/willow/index.ts:281) · id=3212839215
-
-When querying by sourceId, this fetches *all* indexed edge IDs before applying filter.limit, which can lead to many sequential SOIL requests for common “top N edges” queries. Apply limit (and ideally any other cheap filters) to edgeIds before the Promise.all to reduce network calls.
-
-#### `Copilot` · 2026-05-09 08:26:38 · inline (packages/willow/index.ts:308) · id=3212839220
-
-deleteEdge() removes the edge record but leaves the per-source index untouched, so subsequent sourceId queries will keep trying to load the deleted ID (and the index will grow stale over time). Consider fetching the edge first to identify its sourceId and remove it from the index (or maintain a reverse index / encode sourceId in the index key in a removable way).
-
-#### `Copilot` · 2026-05-09 08:26:38 · inline (packages/willow/index.ts:324) · id=3212839225
-
-deleteEdgesForMemory() currently deletes only outgoing edges (sourceId = memoryId) and then deletes the outgoing index. GraphStore / GraphStorePg delete both incoming and outgoing edges for a memory; leaving incoming edges behind will create dangling references and inconsistent traversal/query results after a memory is deleted. Update this to also delete edges where targetId === memoryId (and clean up any related index entries).
-
-#### `Copilot` · 2026-05-09 08:26:38 · inline (packages/willow/index.ts:224) · id=3212839228
-
-There are extensive automated tests for GraphStore behavior in core (create/update semantics, deletions, filtering), but this new adapter has no equivalent tests. Adding bun:test coverage for createEdge/queryEdges/deleteEdgesForMemory (including index maintenance and graceful-degradation behavior) would help prevent regressions and ensure it stays compatible with the expected graph-store semantics.
-
-### Bots & automation
-
-#### `copilot-pull-request-reviewer[bot]` · 2026-05-09 08:26:38 · review (COMMENTED) · id=4257424360
-
-## Pull request overview
-
-Adds a new `packages/willow` adapter that persists th0th memory edges to Willow’s SOIL record store via HTTP, including a per-`sourceId` index to reduce full scans for common queries. This is intended to enable edge visibility and durability across the Willow agent fleet.
-
-**Changes:**
-- Introduces `WillowGraphStore`, a SOIL-backed edge store with `createEdge/getEdge/queryEdges/deleteEdge`-style methods.
-- Adds SOIL HTTP helper functions (`put/get/delete/list`) with timeouts and “safe default” behavior on failure.
-- Maintains an edge-ID index per `sourceId` to optimize source-scoped queries.
-
-
-
-
-
----
-
-💡 <a href="/S1LV4/th0th/new/main?filename=.github/instructions/*.instructions.md" class="Link--inTextBlock" target="_blank" rel="noopener noreferrer">Add Copilot custom instructions</a> for smarter, more guided reviews. <a href="https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot" class="Link--inTextBlock" target="_blank" rel="noopener noreferrer">Learn how to get started</a>.
-
----
-
-## irodion/adjoint #4
-
-**feat(store): Postgres-backed session store with LISTEN/NOTIFY**
-
-- URL: https://github.com/irodion/adjoint/pull/4
-- State: `CLOSED`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-## Summary
-
-- Adds `src/adjoint/store/postgres.py` — a drop-in alternative to `sqlite.py` for team or multi-agent deployments
-- SQLite is correct for single-machine use; this adds Postgres for cases where multiple Claude Code instances share one audit DB
-- Core addition: LISTEN/NOTIFY via a database trigger — any subscriber can react to new events within milliseconds (dashboards, monitors, cost alerts)
-
-## Why this matters
-
-| Need | SQLite | Postgres (this PR) |
-|------|--------|--------------------|
-| Single machine | ✓ | ✓ |
-| Multiple concurrent writers | WAL serialises | Native |
-| Real-time event notifications | No | LISTEN/NOTIFY trigger |
-| Retention / partitioning | File size limit | TimescaleDB / pg_partman |
-| Replication / backup | Manual | Standard Postgres tooling |
-
-## API (drop-in for sqlite.py)
-
-```python
-# Before
-from adjoint.store.sqlite import connect
-# After  
-from adjoint.store.postgres import connect  # same interface
-```
-
-Set `ADJOINT_PG_DSN=postgresql://user@localhost/adjoint` or add to `~/.adjoint/config.toml`:
-```toml
-[store]
-backend = "postgres"
-dsn = "postgresql://user@localhost/adjoint"
-```
-
-## LISTEN/NOTIFY usage
-
-```python
-import psycopg2, select
-conn = psycopg2.connect(dsn)
-conn.autocommit = True
-with conn.cursor() as cur:
-    cur.execute("LISTEN adjoint_events")
-while True:
-    select.select([conn], [], [], 5)
-    conn.poll()
-    for n in conn.notifies:
-        print("event:", n.payload)
-```
-
-## Test plan
-
-- [ ] `python3 -m pytest tests/test_postgres_store.py -v` — 14 tests, all passing (mocked psycopg2, no real DB needed)
-- [ ] `createdb adjoint && python -m adjoint.store.postgres migrate` — bootstraps schema
-- [ ] Insert a row, subscribe to `adjoint_events`, verify notification fires
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-### Bots & automation
-
-#### `coderabbitai[bot]` · 2026-05-09 06:11:05 · discussion · id=4411681671
-
-<!-- This is an auto-generated comment: summarize by coderabbit.ai -->
-<!-- This is an auto-generated comment: rate limited by coderabbit.ai -->
-
-> [!WARNING]
-> ## Rate limit exceeded
-> 
-> `@rudi193-cmd` has exceeded the limit for the number of commits that can be reviewed per hour. Please wait **43 minutes and 14 seconds** before requesting another review.
-> 
-> You’ve run out of usage credits. Purchase more in the [billing tab](https://app.coderabbit.ai/settings/subscription?tab=usage&tenantId=6980f782-253d-4287-8b7e-02b8ff7c3a6e).
-> 
-> <details>
-> <summary>⌛ How to resolve this issue?</summary>
-> 
-> After the wait time has elapsed, a review can be triggered using the `@coderabbitai review` command as a PR comment. Alternatively, push new commits to this PR.
-> 
-> We recommend that you space out your commits to avoid hitting the rate limit.
-> 
-> </details>
-> 
-> 
-> <details>
-> <summary>🚦 How do rate limits work?</summary>
-> 
-> CodeRabbit enforces hourly rate limits for each developer per organization.
-> 
-> Our paid plans have higher rate limits than the trial, open-source and free plans. In all cases, we re-allow further reviews after a brief timeout.
-> 
-> Please see our [FAQ](https://docs.coderabbit.ai/faq) for further information.
-> 
-> </details>
-> 
-> <details>
-> <summary>ℹ️ Review info</summary>
-> 
-> <details>
-> <summary>⚙️ Run configuration</summary>
-> 
-> **Configuration used**: defaults
-> 
-> **Review profile**: CHILL
-> 
-> **Plan**: Pro
-> 
-> **Run ID**: `ed517c40-49b4-4ed6-accc-25b1310c5658`
-> 
-> </details>
-> 
-> <details>
-> <summary>📥 Commits</summary>
-> 
-> Reviewing files that changed from the base of the PR and between 99ad31e37b4df9638708111aad2cca10cb26db4d and d7f0049e1cb93e19547404f0854bde10fd35f141.
-> 
-> </details>
-> 
-> <details>
-> <summary>📒 Files selected for processing (4)</summary>
-> 
-> * `src/adjoint/memory/norn.py`
-> * `src/adjoint/store/postgres.py`
-> * `tests/test_memory_norn.py`
-> * `tests/test_postgres_store.py`
-> 
-> </details>
-> 
-> </details>
-
-<!-- end of auto-generated comment: rate limited by coderabbit.ai -->
-
-
-<!-- finishing_touch_checkbox_start -->
-
-<details>
-<summary>✨ Finishing Touches</summary>
-
-<details>
-<summary>🧪 Generate unit tests (beta)</summary>
-
-- [ ] <!-- {"checkboxId": "f47ac10b-58cc-4372-a567-0e02b2c3d479", "radioGroupId": "utg-output-choice-group-unknown_comment_id"} -->   Create PR with unit tests
-
-</details>
-
-</details>
-
-<!-- finishing_touch_checkbox_end -->
-
-<!-- tips_start -->
-
----
-
-Thanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=irodion/adjoint&utm_content=4)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.
-
-<details>
-<summary>❤️ Share</summary>
-
-- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)
-- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)
-- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)
-- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)
-
-</details>
-
-
-<sub>Comment `@coderabbitai help` to get the list of available commands and usage tips.</sub>
-
-<!-- tips_end -->
-
----
-
-## samballington/CodeWise #15
-
-**feat(backends): PostgreSQL + pgvector backend**
-
-- URL: https://github.com/samballington/CodeWise/pull/15
-- State: `CLOSED`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-## Summary
-
-- Adds `backends/postgres.py` — a production-grade `PgVectorStore` class that uses PostgreSQL + pgvector as an alternative to the existing SQLite-VSS (FAISS) backend
-- Implements the same `VectorStore.query()` interface so it works drop-in with `SmartSearchEngine` and `HybridSearchEngine`
-- Adds `hybrid_query()` with BM25 + RRF fusion over the pgvector candidate pool
-
-## Why pgvector?
-
-SQLite-VSS is experimental and not available in all environments. PostgreSQL + pgvector is production-grade, supports concurrent access, and allows multi-user CodeWise deployments to share a single index. The HNSW index uses cosine ops which match BGE-large training objective.
-
-## Test plan
-
-- [ ] `pip install psycopg2-binary pgvector rank-bm25`
-- [ ] Set `CODEWISE_PG_DSN=postgresql://user:pass@localhost/codewise`
-- [ ] `store = PgVectorStore(); store.build("/workspace")`
-- [ ] Verify results match FAISS backend on same queries
-- [ ] `store.hybrid_query("auth middleware")` — check BM25+RRF results
-- [ ] Re-run `store.build()` — confirm idempotent (upsert, no duplicates)
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
----
-
-## rish-e/tokenpilot #1
-
-**feat: mtime-aware dedup tracker (session_dedup.py)**
-
-- URL: https://github.com/rish-e/tokenpilot/pull/1
-- State: `CLOSED`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-## Summary
-
-- Adds `session_dedup.py` — a drop-in replacement for `tracker.py` that fixes a false-positive warning
-- **The bug**: when Claude edits a file then re-reads it to verify the change, `tracker.py` warns "already in context" — but the content changed, so the re-read is legitimate
-- **The fix**: capture `os.stat().st_mtime` at read time; on subsequent checks, if mtime differs, the old record is invalidated and the re-read is allowed
-- Fully backward-compatible: same `SessionTracker` class, same `get_session()`/`reset_session()` functions, same return shape from `check_file()`
-
-## Changes
-
-- `session_dedup.py` — mtime-aware tracker (new file, drop-in for `tracker.py`)
-- `tests/test_session_dedup.py` — 13 tests covering backward compat + mtime invalidation
-
-## Test plan
-
-- [ ] `python3 -m pytest tests/test_session_dedup.py -v` — 13 tests, all passing
-- [ ] Swap import in `check_read.sh` or `server.py`: `from session_dedup import get_session, SessionTracker`
-- [ ] Verify: edit a file → re-read → no false-positive warning
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
----
-
-## irodion/adjoint #3
-
-**feat(memory): Norn PII scrubber — structural pass extending Redactor**
-
-- URL: https://github.com/irodion/adjoint/pull/3
-- State: `CLOSED`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-## Summary
-
-- Adds `src/adjoint/memory/norn.py` — a structural PII scrubber that sits alongside the existing `Redactor` as a complementary second pass
-- Adds `tests/test_memory_norn.py` — 22 tests covering all patterns, allowlist, multi-hit, and format compatibility
-
-## What the existing Redactor does
-
-Catches known API key formats (Anthropic, Slack, GitHub, OpenAI) by regex. Excellent for secrets with predictable format prefixes.
-
-## What Norn adds
-
-| Pattern class | Examples |
-|---|---|
-| Email | `user@domain.com` |
-| US phone | `415-555-1234`, `(415) 555-9876` |
-| SSN | `123-45-6789` |
-| Credit card | `4111 1111 1111 1111` |
-| Public IPv4 | `203.0.113.42` (RFC1918 + loopback **not** redacted) |
-| Additional secrets | AWS access keys, Bearer tokens |
-| PERSON NER | spaCy `en_core_web_sm` (opt-in, no hard dep) |
-
-## Design
-
-- Same `[REDACTED:<label>]` token format as `Redactor` — `lint.py` and log parsers handle both transparently
-- Two-pass is idempotent: scrubbing already-redacted text never re-matches `[REDACTED:...]` tokens
-- Allowlist for false-positive-prone values (loopback IPs, RFC1918 ranges)
-- `norn_from_config(cfg)` for zero-config integration (reads optional `memory.norn_*` fields; graceful on older configs that don't have them)
-- Fail-open: any exception during spaCy NER falls back to regex-only
-
-## Integration point (flush.py)
-
-```python
-# existing
-redactor = redactor_from_config(cfg.memory.redact_patterns)
-transcript_text = render_turns(selected)
-transcript_text = redactor.sanitize(transcript_text)
-
-# add after
-from .norn import norn_from_config
-norn = norn_from_config(cfg)
-result = norn.scrub(transcript_text, surface="flush", session_id=session_id or "")
-transcript_text = result.redacted
-if result.findings:
-    log_event(logger, "flush.pii_found",
-              count=len(result.findings),
-              labels=sorted({f.label for f in result.findings}))
-```
-
-## Test plan
-
-- [x] 22 tests pass (`pytest tests/test_memory_norn.py -v`)
-- [ ] Wire into `flush.py` and run `adjoint memory flush --transcript <path>` on a transcript containing an email address — confirm `[REDACTED:email]` appears in daily log
-- [ ] Confirm existing tests still pass (`pytest`)
-- [ ] Confirm `lint.py` parses `[REDACTED:norn_label]` tokens without error (same format as existing redactor tokens)
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-<!-- This is an auto-generated comment: release notes by coderabbit.ai -->
-
-## Summary by CodeRabbit
-
-* **New Features**
-  * Introduced a PII scrubber that automatically detects and redacts sensitive information including API keys, emails, phone numbers, SSNs, credit cards, and IP addresses from text.
-  * Optional support for detecting person names.
-  * Configurable allowlist to exempt specific patterns from redaction.
-  * Detailed reporting showing what was redacted and redaction locations.
-
-* **Tests**
-  * Added comprehensive test suite validating PII detection and redaction behavior.
-
-<!-- end of auto-generated comment: release notes by coderabbit.ai -->
-
-#### `rudi193-cmd` · 2026-05-20 18:29:29 · discussion · id=4501434203
-
-Quick note: the repo root already has a `LICENSE` file (GPL-3.0). README doesn't mention MIT on current main — this issue may be stale or referred to a different snapshot. Happy to help if the intent is clarifying license text in README instead.
-
-### Bots & automation
-
-#### `coderabbitai[bot]` · 2026-05-09 05:54:23 · discussion · id=4411642444
-
-<!-- This is an auto-generated comment: summarize by coderabbit.ai -->
-[![Review Change Stack](https://storage.googleapis.com/coderabbit_public_assets/review-stack-in-coderabbit-ui.svg)](https://app.coderabbit.ai/change-stack/irodion/adjoint/pull/3)
-<!-- walkthrough_start -->
-
-<details>
-<summary>📝 Walkthrough</summary>
-
-## Walkthrough
-
-This PR introduces `Norn`, a structural PII scrubber complementing adjoint's regex-based `Redactor`. It detects API-key-like secrets, email, phone, SSN, credit card, and IPv4 addresses; skips allowlisted patterns; optionally applies spaCy NER for person names; merges overlapping spans; and returns redacted text with structured findings using `[REDACTED:<label>]` tokens.
-
-## Changes
-
-**Norn PII Scrubber Module**
-
-| Layer / File(s) | Summary |
-|---|---|
-| **Data Types and Result Contracts** <br> `src/adjoint/memory/norn.py` | `PiiFinding` and `ScrubResult` dataclasses define detection records (label, offsets, excerpt) and scrubbing output (original/redacted text, findings list, `clean` property, `summary()` method). |
-| **Detection Patterns and Allowlist** <br> `src/adjoint/memory/norn.py` | `_TOKEN_PATTERNS` for Anthropic/GitHub/Slack/AWS keys and bearer tokens; `_PII_PATTERNS` for email/phone/SSN/credit card/IPv4; `_IP_ALLOWLIST` for local/loopback/RFC1918 ranges. |
-| **Core Scrubber Implementation** <br> `src/adjoint/memory/norn.py` | `Norn.__init__` compiles patterns and conditionally loads spaCy; `_allowlisted()` exempts matches via regex; `scrub()` collects regex matches, applies allowlist, optionally adds spaCy PERSON spans, merges overlapping spans, generates `[REDACTED:<label>]` tokens, logs findings. |
-| **Configuration Integration** <br> `src/adjoint/memory/norn.py` | `norn_from_config()` factory reads `config.memory` fields to construct `Norn` or returns no-op instance when disabled. |
-| **Module Documentation and Tests** <br> `src/adjoint/memory/norn.py`, `tests/test_memory_norn.py` | Module docstring with purpose and usage examples; pytest suite with token/PII/allowlist/clean-text/compatibility/ScrubResult tests. |
-
-## Estimated code review effort
-
-🎯 3 (Moderate) | ⏱️ ~25 minutes
-
-## Poem
-
-> In the rabbit's warren of secrets and keys,
-> Norn spins her threads through text with ease,
-> `[REDACTED]` marks where passwords hide,
-> While pristine names keep spaces inside—
-> *~/bouncy scrubber~* 🐰✨
-
-</details>
-
-<!-- walkthrough_end -->
-
-<!-- pre_merge_checks_walkthrough_start -->
-
-<details>
-<summary>🚥 Pre-merge checks | ✅ 4 | ❌ 1</summary>
-
-### ❌ Failed checks (1 warning)
-
-|     Check name     | Status     | Explanation                                                                           | Resolution                                                                         |
-| :----------------: | :--------- | :------------------------------------------------------------------------------------ | :--------------------------------------------------------------------------------- |
-| Docstring Coverage | ⚠️ Warning | Docstring coverage is 13.79% which is insufficient. The required threshold is 80.00%. | Write docstrings for the functions missing them to satisfy the coverage threshold. |
-
-<details>
-<summary>✅ Passed checks (4 passed)</summary>
-
-|         Check name         | Status   | Explanation                                                                                                                                                            |
-| :------------------------: | :------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-|      Description Check     | ✅ Passed | Check skipped - CodeRabbit’s high-level summary is enabled.                                                                                                            |
-|         Title check        | ✅ Passed | The title accurately summarizes the main change: introducing Norn, a structural PII scrubber that extends the existing Redactor, which is the primary focus of the PR. |
-|     Linked Issues check    | ✅ Passed | Check skipped because no linked issues were found for this pull request.                                                                                               |
-| Out of Scope Changes check | ✅ Passed | Check skipped because no linked issues were found for this pull request.                                                                                               |
-
-</details>
-
-<sub>✏️ Tip: You can configure your own custom pre-merge checks in the settings.</sub>
-
-</details>
-
-<!-- pre_merge_checks_walkthrough_end -->
-
-<!-- finishing_touch_checkbox_start -->
-
-<details>
-<summary>✨ Finishing Touches</summary>
-
-<details>
-<summary>🧪 Generate unit tests (beta)</summary>
-
-- [ ] <!-- {"checkboxId": "f47ac10b-58cc-4372-a567-0e02b2c3d479", "radioGroupId": "utg-output-choice-group-unknown_comment_id"} -->   Create PR with unit tests
-
-</details>
-
-</details>
-
-<!-- finishing_touch_checkbox_end -->
-
-<!-- announcements_start -->
-
-> [!TIP]
-> <details>
-> <summary>💬 Introducing Slack Agent: The best way for teams to turn conversations into code.</summary>
-> 
-> [Slack Agent](https://www.coderabbit.ai/agent) is built on CodeRabbit's deep understanding of your code, so your team can collaborate across the entire SDLC without losing context.
-> 
-> - Generate code and open pull requests
-> - Plan features and break down work
-> - Investigate incidents and troubleshoot customer tickets together
-> - Automate recurring tasks and respond to alerts with triggers
-> - Summarize progress and report instantly
-> 
-> Built for teams:
-> 
-> - **Shared memory** across your entire org—no repeating context
-> - **Per-thread sandboxes** to safely plan and execute work
-> - **Governance built-in**—scoped access, auditability, and budget controls
-> 
-> One agent for your entire SDLC. Right inside Slack.
-> 
-> 👉 [Get started](https://agent.coderabbit.ai/)
-> 
-> </details>
-
-<!-- announcements_end -->
-
-<!-- tips_start -->
-
----
-
-Thanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=irodion/adjoint&utm_content=3)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.
-
-<details>
-<summary>❤️ Share</summary>
-
-- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)
-- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)
-- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)
-- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)
-
-</details>
-
-
-<sub>Comment `@coderabbitai help` to get the list of available commands and usage tips.</sub>
-
-<!-- tips_end -->
-
-<!-- internal state start -->
-
-
-<!-- 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 -->
-
-<!-- internal state end -->
-
-#### `coderabbitai[bot]` · 2026-05-09 05:58:04 · inline (src/adjoint/memory/norn.py:105) · id=3212583532
-
-_⚠️ Potential issue_ | _🟠 Major_ | _⚡ Quick win_
-
-**Don't return raw secret prefixes in `PiiFinding`.**
-
-`excerpt` currently stores the first 40 characters of each match, so any caller that logs or serializes `findings` can leak the exact PII/API key this scrubber was meant to remove. Prefer a non-sensitive surrogate here (for example: label + length, last4 for selected types, or a one-way hash) instead of plaintext match data.
- 
-
-
-Also applies to: 197-203, 213-218
-
-<details>
-<summary>🤖 Prompt for AI Agents</summary>
-
-```
-Verify each finding against current code. Fix only still-valid issues, skip the
-rest with a brief reason, keep changes minimal, and validate.
-
-In `@src/adjoint/memory/norn.py` around lines 98 - 105, PiiFinding currently
-stores plaintext excerpts which can leak secrets; replace the sensitive excerpt
-field with a non-reversible surrogate (e.g., store label and match length, or
-last4 for certain labels, or a one-way hash) and update all constructors/usages
-to populate and consume the new surrogate instead of raw match text; update the
-dataclass PiiFinding (and similar types/constructors around the other
-occurrences referenced) and any code that builds findings in functions that
-create PiiFinding instances so they compute and store the safe surrogate (not
-the first 40 chars) and ensure audit/logging uses only the surrogate fields.
-```
-
-</details>
-
-<!-- fingerprinting:phantom:medusa:grasshopper -->
-
-<!-- 4e71b3a2 -->
-
-<!-- This is an auto-generated comment by CodeRabbit -->
-
-#### `coderabbitai[bot]` · 2026-05-09 05:58:04 · inline (src/adjoint/memory/norn.py:150) · id=3212583533
-
-_⚠️ Potential issue_ | _🟠 Major_ | _⚡ Quick win_
-
-**`norn_enabled=False` does not actually disable scrubbing.**
-
-`norn_from_config()` returns `Norn(extra_patterns={}, ...)`, but `Norn.__init__` always unions `_TOKEN_PATTERNS` and `_PII_PATTERNS`. The advertised identity/passthrough mode therefore still redacts data, which breaks the documented config contract.
- 
-
-
-Also applies to: 272-274
-
-<details>
-<summary>🤖 Prompt for AI Agents</summary>
-
-```
-Verify each finding against current code. Fix only still-valid issues, skip the
-rest with a brief reason, keep changes minimal, and validate.
-
-In `@src/adjoint/memory/norn.py` around lines 149 - 150, Norn currently always
-unions _TOKEN_PATTERNS and _PII_PATTERNS in Norn.__init__, so calling
-norn_from_config(norn_enabled=False) (which constructs
-Norn(extra_patterns={...})) still applies scrubbing; change the behavior so that
-when norn_enabled is False the scrubber is a passthrough: either (preferred) add
-an explicit parameter to Norn.__init__(..., enabled=True) and if enabled is
-False set self._patterns = {} / no-op scrub methods, or (alternatively) treat
-extra_patterns=None as “use defaults” and only union defaults when
-extra_patterns is None; update norn_from_config to pass enabled=False (or
-extra_patterns=None semantics) when norn_enabled is False, and ensure the scrub
-functions check self._patterns so disabled mode does not redact data (also apply
-the same fix to the other Norn constructor call referenced around the 272-274
-area).
-```
-
-</details>
-
-<!-- fingerprinting:phantom:medusa:grasshopper -->
-
-<!-- 4e71b3a2 -->
-
-<!-- This is an auto-generated comment by CodeRabbit -->
-
-#### `coderabbitai[bot]` · 2026-05-09 05:58:04 · inline (tests/test_memory_norn.py:180) · id=3212583537
-
-_🛠️ Refactor suggestion_ | _🟠 Major_ | _⚡ Quick win_
-
-**Strengthen the disabled-path test to assert true passthrough behavior.**
-
-This currently only checks that `scrub()` doesn't raise, so it won't catch a regression where disabled Norn still redacts. The contract here should be `redacted == original` and `clean is True`.
-
-<details>
-<summary>Suggested assertion change</summary>
-
-```diff
-     def test_disabled_is_identity(self):
-         class FakeMemConfig:
-             norn_enabled = False
-@@
-         class FakeConfig:
-             memory = FakeMemConfig()
- 
-         n = norn_from_config(FakeConfig())
--        # With no patterns, should pass through anything
--        r = n.scrub("sk-ant-api03-keykeykey1234567890abcdef")
--        # Token patterns are baked in by default, but when disabled extra_patterns={}
--        # overwrites them — however base token/pii patterns are always compiled.
--        # The key assertion: norn_from_config with norn_enabled=False returns a Norn
--        # with empty extra_patterns; the base patterns are still present because
--        # Norn.__init__ always loads _TOKEN_PATTERNS and _PII_PATTERNS.
--        # So this just checks no exception occurs.
--        assert isinstance(r, ScrubResult)
-+        text = "sk-ant-api03-keykeykey1234567890abcdef"
-+        r = n.scrub(text)
-+        assert r.redacted == text
-+        assert r.clean
-```
-</details>
-
-<details>
-<summary>🤖 Prompt for AI Agents</summary>
-
-```
-Verify each finding against current code. Fix only still-valid issues, skip the
-rest with a brief reason, keep changes minimal, and validate.
-
-In `@tests/test_memory_norn.py` around lines 164 - 180, Update the
-test_disabled_is_identity to assert true passthrough: after creating n =
-norn_from_config(FakeConfig()) call r =
-n.scrub("sk-ant-api03-keykeykey1234567890abcdef") and replace the existing weak
-assertion with checks that r.redacted == the original input string and r.clean
-is True (and still assert isinstance(r, ScrubResult)); reference
-norn_from_config, Norn.__init__, scrub(), ScrubResult and extra_patterns to
-ensure the disabled path returns an identity scrub result rather than merely not
-raising.
-```
-
-</details>
-
-<!-- fingerprinting:phantom:medusa:grasshopper -->
-
-<!-- 4e71b3a2 -->
-
-<!-- This is an auto-generated comment by CodeRabbit -->
-
-#### `coderabbitai[bot]` · 2026-05-09 05:58:05 · review (COMMENTED) · id=4256977435
-
-**Actionable comments posted: 3**
-
-<details>
-<summary>🤖 Prompt for all review comments with AI agents</summary>
-
-```
-Verify each finding against current code. Fix only still-valid issues, skip the
-rest with a brief reason, keep changes minimal, and validate.
-
-Inline comments:
-In `@src/adjoint/memory/norn.py`:
-- Around line 98-105: PiiFinding currently stores plaintext excerpts which can
-leak secrets; replace the sensitive excerpt field with a non-reversible
-surrogate (e.g., store label and match length, or last4 for certain labels, or a
-one-way hash) and update all constructors/usages to populate and consume the new
-surrogate instead of raw match text; update the dataclass PiiFinding (and
-similar types/constructors around the other occurrences referenced) and any code
-that builds findings in functions that create PiiFinding instances so they
-compute and store the safe surrogate (not the first 40 chars) and ensure
-audit/logging uses only the surrogate fields.
-- Around line 149-150: Norn currently always unions _TOKEN_PATTERNS and
-_PII_PATTERNS in Norn.__init__, so calling norn_from_config(norn_enabled=False)
-(which constructs Norn(extra_patterns={...})) still applies scrubbing; change
-the behavior so that when norn_enabled is False the scrubber is a passthrough:
-either (preferred) add an explicit parameter to Norn.__init__(..., enabled=True)
-and if enabled is False set self._patterns = {} / no-op scrub methods, or
-(alternatively) treat extra_patterns=None as “use defaults” and only union
-defaults when extra_patterns is None; update norn_from_config to pass
-enabled=False (or extra_patterns=None semantics) when norn_enabled is False, and
-ensure the scrub functions check self._patterns so disabled mode does not redact
-data (also apply the same fix to the other Norn constructor call referenced
-around the 272-274 area).
-
-In `@tests/test_memory_norn.py`:
-- Around line 164-180: Update the test_disabled_is_identity to assert true
-passthrough: after creating n = norn_from_config(FakeConfig()) call r =
-n.scrub("sk-ant-api03-keykeykey1234567890abcdef") and replace the existing weak
-assertion with checks that r.redacted == the original input string and r.clean
-is True (and still assert isinstance(r, ScrubResult)); reference
-norn_from_config, Norn.__init__, scrub(), ScrubResult and extra_patterns to
-ensure the disabled path returns an identity scrub result rather than merely not
-raising.
-```
-
-</details>
-
-<details>
-<summary>🪄 Autofix (Beta)</summary>
-
-Fix all unresolved CodeRabbit comments on this PR:
-
-- [ ] <!-- {"checkboxId": "4b0d0e0a-96d7-4f10-b296-3a18ea78f0b9"} --> Push a commit to this branch (recommended)
-- [ ] <!-- {"checkboxId": "ff5b1114-7d8c-49e6-8ac1-43f82af23a33"} --> Create a new PR with the fixes
-
-</details>
-
----
-
-<details>
-<summary>ℹ️ Review info</summary>
-
-<details>
-<summary>⚙️ Run configuration</summary>
-
-**Configuration used**: defaults
-
-**Review profile**: CHILL
-
-**Plan**: Pro
-
-**Run ID**: `30d9da62-8a8e-4ed8-81be-493877756816`
-
-</details>
-
-<details>
-<summary>📥 Commits</summary>
-
-Reviewing files that changed from the base of the PR and between 99ad31e37b4df9638708111aad2cca10cb26db4d and c01abd58a22a446d179f5d1804610f960e8766f9.
-
-</details>
-
-<details>
-<summary>📒 Files selected for processing (2)</summary>
-
-* `src/adjoint/memory/norn.py`
-* `tests/test_memory_norn.py`
-
-</details>
-
-</details>
-
-<!-- This is an auto-generated comment by CodeRabbit for review status -->
-
----
-
-## zeroc00I/DontFeedTheAI #2
-
-**feat: add Willow regex patterns for SSN, PAN/Luhn, phone, AI API keys**
-
-- URL: https://github.com/zeroc00I/DontFeedTheAI/pull/2
-- State: `CLOSED`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-## Summary
-
-- Adds `src/willow_regex_patterns.py` — an extension module for the regex safety-net layer covering PII categories not in the current `regex_detector.py`.
-- **US SSNs**: regex with built-in invalid area code guard (000, 666, 9xx filtered out of the pattern itself, not post-hoc).
-- **Payment card numbers (PAN)**: Luhn checksum validation via `luhn_valid()` to eliminate false positives from port numbers, timestamps, and other digit sequences — without Luhn, any 13-19 digit sequence would match.
-- **US phone numbers**: NANP format covering `+1 (555) 867-5309`, `555-867-5309`, `(555) 867 5309`, and bare `5558675309`.
-- **AI/LLM provider API keys**: Anthropic (`sk-ant-`), Groq (`gsk_`), Cerebras (`csk-`), Gemini (`AIzaSy`), SambaNova (`sk_sn-`) — the most commonly leaked secrets in AI-assisted development sessions. These leak into pentest reports when the AI assistant reads `.env` files.
-
-## Integration
-
-```python
-# In src/regex_detector.py — extend _PATTERNS:
-from .willow_regex_patterns import WILLOW_PATTERNS, luhn_valid
-_PATTERNS = WILLOW_PATTERNS + _PATTERNS
-
-# Or call standalone:
-from .willow_regex_patterns import detect
-extra_matches = detect(text)
-```
-
-Note: PAN matches in `WILLOW_PATTERNS` must be post-filtered with `luhn_valid()` when used via the patterns list directly. The `detect()` function does this automatically.
-
-## Why AI API keys matter here
-
-When Claude Code reads a `.env` file during a pentest engagement, the Anthropic or Groq key in that file is **Willow's own credential**, not the target's. Without explicit detection, it would be silently forwarded to the Claude API in plaintext. This has happened in production; these patterns were written to stop it.
-
-## Test plan
-
-- [ ] `detect("my ssn is 123-45-6789")` returns 1 CREDENTIAL match
-- [ ] `detect("card: 4532015112830366")` returns 1 CREDENTIAL match (valid Luhn)
-- [ ] `detect("card: 4532015112830360")` returns 0 matches (invalid Luhn)
-- [ ] `detect("sk-ant-api03-abc123...")` returns 1 ANTHROPIC_API_KEY match
-- [ ] `detect("call 555-867-5309")` returns 1 IDENTIFIER match
-- [ ] `luhn_valid("4532015112830366")` returns True
-- [ ] `luhn_valid("4532015112830360")` returns False
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-### Maintainers
-
-#### `zeroc00I` · 2026-05-16 21:15:47 · discussion · id=4468149828
-
-Thanks @rudi193-cmd!
-
-Integrated the patterns directly into `src/regex_detector.py` (commit abde6c3) rather than as a parallel module, so we keep a single source of truth for `_PATTERNS` and `RegexMatch`. Credit is in the commit message and a code comment in `regex_detector.py` links back to the Willow project (https://github.com/rudi193-cmd/willow-1.9).
-
-What landed:
-- 4 of the 5 AI key prefixes (`sk-ant-`, `gsk_`, `csk-`, `sk_sn-`). The 5th (Gemini `AIzaSy`) was already covered by the existing Google `AIza` regex — no need to duplicate.
-- US SSN with the invalid-area/group/serial filter you wrote.
-- PAN with Luhn — moved the validation into `detect()` so the raw regex can't produce FPs from mid-length digit runs (timestamps, log IDs, port ranges). 16-digit-pure PANs still get matched by the pre-existing NTLM-challenge HASH pattern, which is fine for our use case (extra anonymization is safe — documented in the fixture).
-
-Skipped: the US phone regex — too broad for typical pentest tool output where digit-dense lines are common. Easy to revisit if a fixture comes up that needs it.
-
-New fixture `ai_keys_and_pii_leak` exercises every new pattern plus negative cases (invalid Luhn, invalid SSN areas). Catch rate stays at 100% (699/699), 0 false positives.
-
-Closing in favor of abde6c3.
-
----
-
-## aviv4339/claude-guard #1
-
-**feat: richer hook template with agent identity, depth guard, reflection detection**
-
-- URL: https://github.com/aviv4339/claude-guard/pull/1
-- State: `CLOSED`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-## Summary
-
-- Adds `willow_hook_template.py` — a standalone hook template that extends the claude-guard single-script model with patterns from a production multi-agent Claude Code architecture.
-- **Agent identity scoping**: `WILLOW_AGENT_NAME` env var lets different agent roles get different block exemptions (e.g. an audit agent can run read-only SQL; a builder agent cannot).
-- **Depth guard for Agent calls**: tracks subagent chain depth in a tmp file and blocks runaway recursion (configurable via `CLAUDE_GUARD_MAX_AGENT_DEPTH`).
-- **Reflection attack detection** on PostToolUse: flags when tool output verbatim re-echoes suspicious content from the tool input — a pattern distinct from external injection.
-- **Structured JSON block output**: `{"decision": "block", "reason": "..."}` instead of bare `exit(2)`, giving Claude a readable explanation.
-- **Rate-limited advisory logging**: avoids log flooding when the same pattern fires repeatedly within a session window.
-
-## What this is not
-
-This is not a replacement for `claude_guard.py` — it's a template for teams that want a starting point with more production-grade patterns. The full pattern library still lives in `claude_guard.py`.
-
-## Test plan
-
-- [ ] Verify `python3 willow_hook_template.py` runs clean on the example payloads in the README
-- [ ] Test depth guard: send 4 nested Agent tool calls and verify the 4th is blocked
-- [ ] Test reflection detection with a tool result that echoes the input command
-- [ ] Verify audit agent exemptions work with `WILLOW_AGENT_NAME=auditor`
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
----
-
-## cneiman/moonshine #2
-
-**feat(adapters): Postgres backend for warm/cold memory tiers**
-
-- URL: https://github.com/cneiman/moonshine/pull/2
-- State: `CLOSED`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-## Summary
-
-- Adds `adapters/postgres/` — a drop-in Postgres backend for moonshine when `MOONSHINE_PG_DSN` is set
-- `schema.sql`: mirrors the SQLite schema for Postgres (tsvector FTS, optional pgvector `<=>` similarity, BIGSERIAL PKs, JSONB metadata, observer tables)
-- `mem_pg.py`: CLI matching `core/mem.py` surface (`add`, `search`, `list`, `show`, `stats`, `entities`, `reindex`) with pgvector + bytea fallback
-- `migrate.py`: one-shot schema migration with `--dry-run` and `--reset`
-
-## Motivation
-
-SQLite works great for single-user local use. This adapter enables:
-
-- **Multi-machine / multi-agent deployments** — shared memory across containers or hosts
-- **Concurrent writers** — Postgres MVCC handles it; SQLite WAL has limits
-- **Row-level security** — memory access per agent/user without app-layer filtering  
-- **Logical replication** — hot standby, multi-region
-- **pgvector native similarity** — `<=>` cosine operator, IVFFlat index, no Python loop required
-
-The adapter is **purely additive** — no changes to `core/`. Users on SQLite keep the same experience. Postgres users set `MOONSHINE_PG_DSN` and run `migrate.py`.
-
-## Test plan
-
-- [ ] Run `python adapters/postgres/migrate.py --dry-run` and verify SQL output matches schema intent
-- [ ] Run `python adapters/postgres/migrate.py` against a test Postgres instance
-- [ ] `mem_pg add "Test" --type lesson --content "hello"` → inserts row
-- [ ] `mem_pg search "hello"` → FTS match
-- [ ] `mem_pg search "hello" --semantic` → embedding match (requires Ollama)
-- [ ] `mem_pg stats` → correct counts
-- [ ] Run with pgvector installed and without → both paths work
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
----
-
-## m4cd4r4/claude-echoes #1
-
-**feat(server): wire GIN index for hybrid BM25+pgvector RRF search**
-
-- URL: https://github.com/m4cd4r4/claude-echoes/pull/1
-- State: `CLOSED`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-## Summary
-
-The `idx_messages_fts` GIN tsvector index exists in `sql/001_init.sql` but `/search` never uses it — the server is pure pgvector cosine only. The benchmark pipeline (`benchmarks/run_longmemeval.py`) already proves that wiring BM25 alongside pgvector with RRF fusion gives +7–15 points on LongMemEval temporal-reasoning and rare-term queries. This PR brings that gain into the live server with no new dependencies and full backward compatibility.
-
-### Changes
-
-- **`GET /search/hybrid`** — new explicit endpoint. Takes the same filters as `/search`. Returns `vec_hits` and `fts_hits` diagnostic counts alongside results. Uses `_WIDE_K=30` candidates per leg before RRF fusion.
-- **`GET /search?hybrid=true`** — opt-in hybrid on the existing endpoint. Default is `false` so nothing breaks.
-- **`_rrf_merge()`** — RRF fusion helper (k=60, Cormack et al. 2009). Inline, no deps.
-- **`_search_vec()`** / **`_search_fts()`** — split the pgvector and GIN legs into testable helpers.
-- **`_tokenize()`** — same tokenizer as `benchmarks/run_longmemeval.py`, now reused in the server.
-
-### Why this matters
-
-From the benchmarks README:
-
-> BM25 delivered the biggest single improvement — +15.8 points on Sonnet for temporal-reasoning (55.6% → 71.4%). Temporal questions contain specific entities ("the Nordstrom sale", "my new keyboard") that cosine glosses over with semantic neighbors, but BM25 nails exactly.
-
-The live server's `/recall` skill is exactly the use case where this matters: "when did we fix the partition key bug" vs "which session mentioned the Nordstrom sale". `/search?hybrid=true` is one flag away; this PR exposes it.
-
-### What doesn't change
-
-- Existing `/search` behavior is identical when `hybrid=false` (the default).
-- No new Python dependencies. `plainto_tsquery` and `ts_rank_cd` are Postgres built-ins.
-- The GIN index is already created in `001_init.sql` — no migration needed.
-- The `/message` write path and `/session/{id}` endpoint are untouched.
-
-## Test plan
-
-- [ ] `GET /search?q=test` returns same results as before (hybrid=false default)
-- [ ] `GET /search?q=test&hybrid=true` returns `vec_hits`, `fts_hits`, and `hybrid: true` in response
-- [ ] `GET /search/hybrid?q=test` returns same structure as `?hybrid=true`
-- [ ] Rare-term query (e.g. a specific project name) — verify FTS leg adds results that pure cosine misses
-- [ ] Empty query tokens (e.g. `q=123`) — FTS returns empty, degrades to pure vector
-- [ ] `GET /health` still passes
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 ---

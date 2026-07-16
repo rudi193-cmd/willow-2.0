@@ -1,15 +1,15 @@
 # Upstream promise ledger
 
-*Generated: 2026-07-12 04:22 UTC · operator: `rudi193-cmd`*
+*Generated: 2026-07-16 05:05 UTC · operator: `rudi193-cmd`*
 
 Claims extracted from **your** comments (authored + commenter registers).
 Auto-checks: file paths on disk · re-review pings vs live PR state.
 
-**Total claims:** 257 · VERIFIED: 29 · STALE: 71 · OPEN: 2 · EXTERNAL: 143 · ADVISORY: 12
+**Total claims:** 229 · VERIFIED: 29 · STALE: 66 · OPEN: 2 · EXTERNAL: 120 · ADVISORY: 12
 
 ---
 
-## STALE (71)
+## STALE (66)
 
 ### alash3al/stash #14
 
@@ -66,14 +66,6 @@ Auto-checks: file paths on disk · re-review pings vs live PR state.
 - Kind: `file_reference`
 - Claim: Referenced `tests/test_geo_utils.py`
 - Evidence: missing at `tests/test_geo_utils.py` (willow-2.0 HEAD)
-
-### basicmachines-co/basic-memory #1010
-
-- URL: https://github.com/basicmachines-co/basic-memory/pull/1010
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/cli/test_project_list_and_ls.py`
-- Evidence: missing at `tests/cli/test_project_list_and_ls.py` (willow-2.0 HEAD)
 
 ### openedx/codejail #309
 
@@ -523,38 +515,6 @@ Auto-checks: file paths on disk · re-review pings vs live PR state.
 - Claim: Referenced `tests/issues/test_1401_client_session_error_handling.py`
 - Evidence: missing at `tests/issues/test_1401_client_session_error_handling.py` (willow-2.0 HEAD)
 
-### CinnamonInt/Cinnamonint #2
-
-- URL: https://github.com/CinnamonInt/Cinnamonint/pull/2
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_token_edges.py`
-- Evidence: missing at `tests/test_token_edges.py` (willow-2.0 HEAD)
-
-### rish-e/tokenpilot #1
-
-- URL: https://github.com/rish-e/tokenpilot/pull/1
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_session_dedup.py`
-- Evidence: missing at `tests/test_session_dedup.py` (willow-2.0 HEAD)
-
-### irodion/adjoint #3
-
-- URL: https://github.com/irodion/adjoint/pull/3
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_memory_norn.py`
-- Evidence: missing at `tests/test_memory_norn.py` (willow-2.0 HEAD)
-
-### cneiman/moonshine #2
-
-- URL: https://github.com/cneiman/moonshine/pull/2
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `core/mem.py`
-- Evidence: missing at `core/mem.py` (willow-2.0 HEAD)
-
 ### alash3al/stash #11
 
 - URL: https://github.com/alash3al/stash/issues/11
@@ -701,7 +661,15 @@ Auto-checks: file paths on disk · re-review pings vs live PR state.
 
 ---
 
-## EXTERNAL (143)
+## EXTERNAL (120)
+
+### NousResearch/hermes-agent #64281
+
+- URL: https://github.com/NousResearch/hermes-agent/pull/64281
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `plugins/dreaming/config.yaml`
+- Evidence: target-repo path (not checked in willow-2.0): `plugins/dreaming/config.yaml`
 
 ### castroquiles/glapagos #20
 
@@ -734,14 +702,6 @@ Auto-checks: file paths on disk · re-review pings vs live PR state.
 - Kind: `file_reference`
 - Claim: Referenced `src/utils/geo_utils.py`
 - Evidence: target-repo path (not checked in willow-2.0): `src/utils/geo_utils.py`
-
-### basicmachines-co/basic-memory #1010
-
-- URL: https://github.com/basicmachines-co/basic-memory/pull/1010
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `src/basic_memory/cli/commands/project.py`
-- Evidence: target-repo path (not checked in willow-2.0): `src/basic_memory/cli/commands/project.py`
 
 ### PDFMathTranslate/PDFMathTranslate #1148
 
@@ -782,38 +742,6 @@ Auto-checks: file paths on disk · re-review pings vs live PR state.
 - Kind: `file_reference`
 - Claim: Referenced `src/bootstrap.py`
 - Evidence: target-repo path (not checked in willow-2.0): `src/bootstrap.py`
-
-### NousResearch/hermes-agent #40737
-
-- URL: https://github.com/NousResearch/hermes-agent/pull/40737
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `DREAMS.md`
-- Evidence: target-repo path (not checked in willow-2.0): `DREAMS.md`
-
-### NousResearch/hermes-agent #40737
-
-- URL: https://github.com/NousResearch/hermes-agent/pull/40737
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `MEMORY.md`
-- Evidence: target-repo path (not checked in willow-2.0): `MEMORY.md`
-
-### NousResearch/hermes-agent #40737
-
-- URL: https://github.com/NousResearch/hermes-agent/pull/40737
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `SKILL.md`
-- Evidence: target-repo path (not checked in willow-2.0): `SKILL.md`
-
-### NousResearch/hermes-agent #40737
-
-- URL: https://github.com/NousResearch/hermes-agent/pull/40737
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `sleep_consolidation.py`
-- Evidence: target-repo path (not checked in willow-2.0): `sleep_consolidation.py`
 
 ### almanac-data/almanac-template #20
 
@@ -1439,6 +1367,38 @@ Auto-checks: file paths on disk · re-review pings vs live PR state.
 - Claim: Referenced `src/extractors/python_ast.py`
 - Evidence: target-repo path (not checked in willow-2.0): `src/extractors/python_ast.py`
 
+### NousResearch/hermes-agent #40737
+
+- URL: https://github.com/NousResearch/hermes-agent/pull/40737
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `DREAMS.md`
+- Evidence: target-repo path (not checked in willow-2.0): `DREAMS.md`
+
+### NousResearch/hermes-agent #40737
+
+- URL: https://github.com/NousResearch/hermes-agent/pull/40737
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `MEMORY.md`
+- Evidence: target-repo path (not checked in willow-2.0): `MEMORY.md`
+
+### NousResearch/hermes-agent #40737
+
+- URL: https://github.com/NousResearch/hermes-agent/pull/40737
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `SKILL.md`
+- Evidence: target-repo path (not checked in willow-2.0): `SKILL.md`
+
+### NousResearch/hermes-agent #40737
+
+- URL: https://github.com/NousResearch/hermes-agent/pull/40737
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `sleep_consolidation.py`
+- Evidence: target-repo path (not checked in willow-2.0): `sleep_consolidation.py`
+
 ### alibaizhanov/mengram #40
 
 - URL: https://github.com/alibaizhanov/mengram/pull/40
@@ -1542,190 +1502,6 @@ Auto-checks: file paths on disk · re-review pings vs live PR state.
 - Kind: `file_reference`
 - Claim: Referenced `litellm/llms/sagemaker/common_utils.py`
 - Evidence: target-repo path (not checked in willow-2.0): `litellm/llms/sagemaker/common_utils.py`
-
-### CinnamonInt/Cinnamonint #2
-
-- URL: https://github.com/CinnamonInt/Cinnamonint/pull/2
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `src/cinnamonint_logging/iterations.py`
-- Evidence: target-repo path (not checked in willow-2.0): `src/cinnamonint_logging/iterations.py`
-
-### CinnamonInt/Cinnamonint #2
-
-- URL: https://github.com/CinnamonInt/Cinnamonint/pull/2
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `src/cinnamonint_logging/token_edges.py`
-- Evidence: target-repo path (not checked in willow-2.0): `src/cinnamonint_logging/token_edges.py`
-
-### CinnamonInt/Cinnamonint #2
-
-- URL: https://github.com/CinnamonInt/Cinnamonint/pull/2
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `src/commands/dispatch.py`
-- Evidence: target-repo path (not checked in willow-2.0): `src/commands/dispatch.py`
-
-### CinnamonInt/Cinnamonint #2
-
-- URL: https://github.com/CinnamonInt/Cinnamonint/pull/2
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `src/commands/list_edges.py`
-- Evidence: target-repo path (not checked in willow-2.0): `src/commands/list_edges.py`
-
-### CinnamonInt/Cinnamonint #2
-
-- URL: https://github.com/CinnamonInt/Cinnamonint/pull/2
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `src/main.py`
-- Evidence: target-repo path (not checked in willow-2.0): `src/main.py`
-
-### monologg/JointBERT #36
-
-- URL: https://github.com/monologg/JointBERT/pull/36
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `predict.py`
-- Evidence: target-repo path (not checked in willow-2.0): `predict.py`
-
-### monologg/JointBERT #36
-
-- URL: https://github.com/monologg/JointBERT/pull/36
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `predict_rule_based.py`
-- Evidence: target-repo path (not checked in willow-2.0): `predict_rule_based.py`
-
-### irodion/adjoint #4
-
-- URL: https://github.com/irodion/adjoint/pull/4
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `sqlite.py`
-- Evidence: target-repo path (not checked in willow-2.0): `sqlite.py`
-
-### irodion/adjoint #4
-
-- URL: https://github.com/irodion/adjoint/pull/4
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `src/adjoint/store/postgres.py`
-- Evidence: target-repo path (not checked in willow-2.0): `src/adjoint/store/postgres.py`
-
-### samballington/CodeWise #15
-
-- URL: https://github.com/samballington/CodeWise/pull/15
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `backends/postgres.py`
-- Evidence: target-repo path (not checked in willow-2.0): `backends/postgres.py`
-
-### rish-e/tokenpilot #1
-
-- URL: https://github.com/rish-e/tokenpilot/pull/1
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `server.py`
-- Evidence: target-repo path (not checked in willow-2.0): `server.py`
-
-### rish-e/tokenpilot #1
-
-- URL: https://github.com/rish-e/tokenpilot/pull/1
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `session_dedup.py`
-- Evidence: target-repo path (not checked in willow-2.0): `session_dedup.py`
-
-### rish-e/tokenpilot #1
-
-- URL: https://github.com/rish-e/tokenpilot/pull/1
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tracker.py`
-- Evidence: target-repo path (not checked in willow-2.0): `tracker.py`
-
-### irodion/adjoint #3
-
-- URL: https://github.com/irodion/adjoint/pull/3
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `flush.py`
-- Evidence: target-repo path (not checked in willow-2.0): `flush.py`
-
-### irodion/adjoint #3
-
-- URL: https://github.com/irodion/adjoint/pull/3
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `lint.py`
-- Evidence: target-repo path (not checked in willow-2.0): `lint.py`
-
-### irodion/adjoint #3
-
-- URL: https://github.com/irodion/adjoint/pull/3
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `src/adjoint/memory/norn.py`
-- Evidence: target-repo path (not checked in willow-2.0): `src/adjoint/memory/norn.py`
-
-### zeroc00I/DontFeedTheAI #2
-
-- URL: https://github.com/zeroc00I/DontFeedTheAI/pull/2
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `regex_detector.py`
-- Evidence: target-repo path (not checked in willow-2.0): `regex_detector.py`
-
-### zeroc00I/DontFeedTheAI #2
-
-- URL: https://github.com/zeroc00I/DontFeedTheAI/pull/2
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `src/willow_regex_patterns.py`
-- Evidence: target-repo path (not checked in willow-2.0): `src/willow_regex_patterns.py`
-
-### aviv4339/claude-guard #1
-
-- URL: https://github.com/aviv4339/claude-guard/pull/1
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `claude_guard.py`
-- Evidence: target-repo path (not checked in willow-2.0): `claude_guard.py`
-
-### aviv4339/claude-guard #1
-
-- URL: https://github.com/aviv4339/claude-guard/pull/1
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `willow_hook_template.py`
-- Evidence: target-repo path (not checked in willow-2.0): `willow_hook_template.py`
-
-### cneiman/moonshine #2
-
-- URL: https://github.com/cneiman/moonshine/pull/2
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `mem_pg.py`
-- Evidence: target-repo path (not checked in willow-2.0): `mem_pg.py`
-
-### cneiman/moonshine #2
-
-- URL: https://github.com/cneiman/moonshine/pull/2
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `migrate.py`
-- Evidence: target-repo path (not checked in willow-2.0): `migrate.py`
-
-### m4cd4r4/claude-echoes #1
-
-- URL: https://github.com/m4cd4r4/claude-echoes/pull/1
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `benchmarks/run_longmemeval.py`
-- Evidence: target-repo path (not checked in willow-2.0): `benchmarks/run_longmemeval.py`
 
 ### DeusData/codebase-memory-mcp #763
 

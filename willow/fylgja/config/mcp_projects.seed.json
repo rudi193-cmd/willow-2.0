@@ -5,16 +5,29 @@
       "path": "{{HOME}}/github/willow-2.0",
       "agent": "willow",
       "profile": "standard",
-      "servers": ["willow", "codebase-memory-mcp"],
-      "ides": ["cursor", "claude", "codex"],
-      "note": "Primary fleet dev repo — install_project still wires hooks; mcp sync owns MCP JSON."
+      "servers": [
+        "willow",
+        "codebase-memory-mcp"
+      ],
+      "ides": [
+        "cursor",
+        "claude",
+        "codex"
+      ],
+      "note": "Primary fleet dev repo \u2014 install_project still wires hooks; mcp sync owns MCP JSON."
     },
     "DispatchesFromReality": {
       "path": "{{HOME}}/github/DispatchesFromReality",
       "agent": "willow",
       "profile": "core",
-      "servers": ["willow", "law-gazelle"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow",
+        "law-gazelle"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "wiring": {
         "hooks": true,
         "active_agent": true,
@@ -22,14 +35,21 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "Writing portfolio — full fleet wiring via willow project sync."
+      "note": "Writing portfolio \u2014 full fleet wiring via willow project sync."
     },
     "safe-app-store-public": {
       "path": "{{HOME}}/github/safe-app-store-public",
       "agent": "vishwakarma",
       "profile": "standard",
-      "servers": ["willow", "law-gazelle", "courtlistener"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow",
+        "law-gazelle",
+        "courtlistener"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "app_stubs": true,
       "env": {
         "WILLOW_DEV_SAFE_ROOT": "{{HOME}}/github",
@@ -51,14 +71,19 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "Canonical SAFE monorepo — Vishwakarma; Kart RW. ~/github/safe-app-store symlinks here. apps/*/.mcp.json synced from mcp_app.stub.json. See docs/fleet_paths.md."
+      "note": "Canonical SAFE monorepo \u2014 Vishwakarma; Kart RW. ~/github/safe-app-store symlinks here. apps/*/.mcp.json synced from mcp_app.stub.json. See docs/fleet_paths.md."
     },
     "safe-app-willow-grove": {
       "path": "{{HOME}}/github/safe-app-willow-grove",
       "agent": "heimdallr",
       "profile": "standard",
-      "servers": ["willow"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "env": {
         "WILLOW_DEV_SAFE_ROOT": "{{HOME}}/github"
       },
@@ -69,14 +94,20 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "Grove fleet bus — Heimdallr persona."
+      "note": "Grove fleet bus \u2014 Heimdallr persona."
     },
     "courtlistener-mcp": {
       "path": "{{HOME}}/github/courtlistener-mcp",
       "agent": "willow",
       "profile": "core",
-      "servers": ["willow", "courtlistener"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow",
+        "courtlistener"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "server_env": {
         "courtlistener": {
           "PYTHONPATH": "{{HOME}}/github/courtlistener-mcp/src"
@@ -95,8 +126,13 @@
       "path": "{{HOME}}/github/community",
       "agent": "willow",
       "profile": "core",
-      "servers": ["willow"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "wiring": {
         "hooks": true,
         "active_agent": true,
@@ -104,14 +140,20 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "UTETY/community lessons — lightweight Willow core."
+      "note": "UTETY/community lessons \u2014 lightweight Willow core."
     },
     "sean-data-vault": {
       "path": "{{HOME}}/github/sean-data-vault",
       "agent": "willow",
       "profile": "core",
-      "servers": ["willow", "law-gazelle"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow",
+        "law-gazelle"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "wiring": {
         "hooks": true,
         "active_agent": true,
@@ -119,14 +161,19 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "Personal data vault — law-gazelle for legal reads."
+      "note": "Personal data vault \u2014 law-gazelle for legal reads."
     },
     "almanac-data": {
       "path": "{{HOME}}/github/almanac-data",
       "agent": "willow",
       "profile": "core",
-      "servers": ["willow"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "wiring": {
         "hooks": true,
         "active_agent": true,
@@ -134,14 +181,19 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "Almanac org workspace — engine caretaker jump-in; symlinks to template + verticals."
+      "note": "Almanac org workspace \u2014 engine caretaker jump-in; symlinks to template + verticals."
     },
     "almanac-data-dotgithub": {
       "path": "{{HOME}}/github/almanac-data-dotgithub",
       "agent": "willow",
       "profile": "core",
-      "servers": ["willow"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "env": {
         "WILLOW_HANDOFF_PROJECT": "almanac-data"
       },
@@ -152,14 +204,19 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "GitHub org profile (almanac-data/.github) — landing page; handoffs tag almanac-data."
+      "note": "GitHub org profile (almanac-data/.github) \u2014 landing page; handoffs tag almanac-data."
     },
     "almanac-template": {
       "path": "{{HOME}}/github/almanac-template",
       "agent": "willow",
       "profile": "core",
-      "servers": ["willow"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "wiring": {
         "hooks": true,
         "active_agent": true,
@@ -167,14 +224,19 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "Almanac engine template — PR engine changes here first."
+      "note": "Almanac engine template \u2014 PR engine changes here first."
     },
     "climate-almanac": {
       "path": "{{HOME}}/github/climate-almanac",
       "agent": "willow",
       "profile": "core",
-      "servers": ["willow"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "wiring": {
         "hooks": true,
         "active_agent": true,
@@ -182,14 +244,19 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "Climate Almanac catalog — fleet overlay gitignored; project sync wires hooks + scoped MCP env."
+      "note": "Climate Almanac catalog \u2014 fleet overlay gitignored; project sync wires hooks + scoped MCP env."
     },
     "health-almanac": {
       "path": "{{HOME}}/github/health-almanac",
       "agent": "willow",
       "profile": "core",
-      "servers": ["willow"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "wiring": {
         "hooks": true,
         "active_agent": true,
@@ -197,14 +264,19 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "Health Almanac vertical — same MCP env pattern as climate-almanac."
+      "note": "Health Almanac vertical \u2014 same MCP env pattern as climate-almanac."
     },
     "economy-almanac": {
       "path": "{{HOME}}/github/economy-almanac",
       "agent": "willow",
       "profile": "core",
-      "servers": ["willow"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "wiring": {
         "hooks": true,
         "active_agent": true,
@@ -212,14 +284,19 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "Economy Almanac vertical — same MCP env pattern as climate-almanac."
+      "note": "Economy Almanac vertical \u2014 same MCP env pattern as climate-almanac."
     },
     "environment-almanac": {
       "path": "{{HOME}}/github/environment-almanac",
       "agent": "willow",
       "profile": "core",
-      "servers": ["willow"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "wiring": {
         "hooks": true,
         "active_agent": true,
@@ -227,14 +304,19 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "Environment Almanac vertical — same MCP env pattern as climate-almanac."
+      "note": "Environment Almanac vertical \u2014 same MCP env pattern as climate-almanac."
     },
     "civic-almanac": {
       "path": "{{HOME}}/github/civic-almanac",
       "agent": "willow",
       "profile": "core",
-      "servers": ["willow"],
-      "ides": ["cursor", "claude"],
+      "servers": [
+        "willow"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
       "wiring": {
         "hooks": true,
         "active_agent": true,
@@ -242,14 +324,18 @@
         "claude_settings": "project",
         "python": "fleet"
       },
-      "note": "Civic Almanac vertical — same MCP env pattern as climate-almanac."
+      "note": "Civic Almanac vertical \u2014 same MCP env pattern as climate-almanac."
     },
     "schmidt": {
       "path": "{{HOME}}/Desktop/Nest/schmidt",
       "agent": "schmidt",
       "profile": "core",
-      "servers": ["willow"],
-      "ides": ["cursor"],
+      "servers": [
+        "willow"
+      ],
+      "ides": [
+        "cursor"
+      ],
       "env": {
         "WILLOW_HANDOFF_PROJECT": "sean/schmidt"
       },
@@ -260,7 +346,34 @@
         "claude_settings": false,
         "python": "fleet"
       },
-      "note": "Schmidt Sciences Tier 1 grant workspace — SOIL lane sean/schmidt/*, agent schmidt."
+      "note": "Schmidt Sciences Tier 1 grant workspace \u2014 SOIL lane sean/schmidt/*, agent schmidt."
+    },
+    "willow": {
+      "path": "{{HOME}}/github/willow",
+      "agent": "willow",
+      "profile": "core",
+      "servers": [
+        "willow-mcp",
+        "codebase-memory-mcp"
+      ],
+      "ides": [
+        "cursor",
+        "claude",
+        "codex"
+      ],
+      "env": {
+        "WILLOW_STORE_ROOT": "{{HOME}}/github/willow/.willow/store",
+        "WILLOW_HANDOFF_PROJECT": "willow",
+        "WILLOW_PROJECT_ROOT": "{{HOME}}/github/willow"
+      },
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "project",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Constitution repo \u2014 operator Jarvis seat. willow-mcp first; tri-modal governance + PM + PA."
     }
   }
 }
