@@ -187,7 +187,7 @@ def main() -> None:
                 content=content,
                 domain=domain,
                 depth=1,
-                certainty=confidence,
+                confidence=confidence,
                 title=title,
             )
             if result.get("error"):
