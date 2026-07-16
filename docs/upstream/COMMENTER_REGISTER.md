@@ -1,6 +1,6 @@
 # Upstream commenter register (your voice on others' threads)
 
-*Generated: 2026-07-14 17:01 UTC · operator: `rudi193-cmd`*
+*Generated: 2026-07-16 04:53 UTC · operator: `rudi193-cmd`*
 
 Threads on **external** repos where you commented but are **not** the author.
 Companion to `PR_HUMAN_REGISTER.md` (your authored PRs).
@@ -354,7 +354,7 @@ A fix that disambiguates receiver type for framework/store calls would likely to
 **[bug] `query_graph` hangs on whole-graph `OPTIONAL MATCH` (no execution timeout / degradation) on large graphs**
 
 - URL: https://github.com/DeusData/codebase-memory-mcp/issues/601
-- Type: `Issue` · State: `OPEN`
+- Type: `Issue` · State: `CLOSED`
 - Author: `ecosuper2025`
 
 ### Your comments
