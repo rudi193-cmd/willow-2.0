@@ -1,0 +1,11 @@
+[Unit]
+Description=Willow Host-Divergence Watchdog — tests that change outcome with private willow-config present
+Documentation=https://github.com/rudi193-cmd/willow-2.0
+
+[Service]
+Type=oneshot
+Environment=WILLOW_ROOT=%h/github/willow-2.0
+ExecStart=/usr/bin/python3 %h/github/willow-2.0/willow/fylgja/host_divergence_watch.py
+
+[Install]
+WantedBy=default.target
