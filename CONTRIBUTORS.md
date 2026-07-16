@@ -176,17 +176,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [BerriAI/litellm](https://github.com/BerriAI/litellm) | BerriAI | fix(bedrock,sagemaker): silence ModuleNotFoundError when botocore is not installed | [PR #28193](https://github.com/BerriAI/litellm/pull/28193) closed |
 | [modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk) | modelcontextprotocol | fix(client): propagate transport exceptions in default message handler | [PR #2640](https://github.com/modelcontextprotocol/python-sdk/pull/2640) closed |
 | [node9-ai/node9-proxy](https://github.com/node9-ai/node9-proxy) | node9-ai | feat(blast): add Willow sovereign stack sensitive paths | [PR #172](https://github.com/node9-ai/node9-proxy/pull/172) closed |
-| [CinnamonInt/Cinnamonint](https://github.com/CinnamonInt/Cinnamonint) | CinnamonInt | feat: token_edges relationship discovery | [PR #2](https://github.com/CinnamonInt/Cinnamonint/pull/2) closed |
-| [monologg/JointBERT](https://github.com/monologg/JointBERT) | monologg | feat: rule-based fallback predictor (no torch/transformers required) | [PR #36](https://github.com/monologg/JointBERT/pull/36) closed |
-| [S1LV4/th0th](https://github.com/S1LV4/th0th) | S1LV4 | feat(packages/willow): Willow SOIL adapter for memory edge persistence | [PR #38](https://github.com/S1LV4/th0th/pull/38) closed |
-| [irodion/adjoint](https://github.com/irodion/adjoint) | irodion | feat(store): Postgres-backed session store with LISTEN/NOTIFY | [PR #4](https://github.com/irodion/adjoint/pull/4) closed |
-| [samballington/CodeWise](https://github.com/samballington/CodeWise) | samballington | feat(backends): PostgreSQL + pgvector backend | [PR #15](https://github.com/samballington/CodeWise/pull/15) closed |
-| [rish-e/tokenpilot](https://github.com/rish-e/tokenpilot) | rish-e | feat: mtime-aware dedup tracker (session_dedup.py) | [PR #1](https://github.com/rish-e/tokenpilot/pull/1) closed |
-| [irodion/adjoint](https://github.com/irodion/adjoint) | irodion | feat(memory): Norn PII scrubber — structural pass extending Redactor | [PR #3](https://github.com/irodion/adjoint/pull/3) closed |
-| [zeroc00I/DontFeedTheAI](https://github.com/zeroc00I/DontFeedTheAI) | zeroc00I | feat: add Willow regex patterns for SSN, PAN/Luhn, phone, AI API keys | [PR #2](https://github.com/zeroc00I/DontFeedTheAI/pull/2) closed |
-| [aviv4339/claude-guard](https://github.com/aviv4339/claude-guard) | aviv4339 | feat: richer hook template with agent identity, depth guard, reflection detection | [PR #1](https://github.com/aviv4339/claude-guard/pull/1) closed |
-| [cneiman/moonshine](https://github.com/cneiman/moonshine) | cneiman | feat(adapters): Postgres backend for warm/cold memory tiers | [PR #2](https://github.com/cneiman/moonshine/pull/2) closed |
-| [m4cd4r4/claude-echoes](https://github.com/m4cd4r4/claude-echoes) | m4cd4r4 | feat(server): wire GIN index for hybrid BM25+pgvector RRF search | [PR #1](https://github.com/m4cd4r4/claude-echoes/pull/1) closed |
 
 
 ## Contributors to Willow
