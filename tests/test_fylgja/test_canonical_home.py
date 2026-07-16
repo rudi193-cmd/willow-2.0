@@ -15,6 +15,20 @@ from willow.fylgja.willow_home import (
 PACKAGE_ROOT = Path(__file__).parent.parent.parent
 
 
+def _pin_public_fallback(monkeypatch):
+    """Pin store-root resolution to the env var rather than the host filesystem.
+
+    resolve_store_root() prefers private_home()/store whenever a private
+    willow-config is on disk (#466), ahead of both WILLOW_STORE_ROOT and
+    WILLOW_HOME. That path is real and intentional, so a test asserting the
+    env-var behaviour has to say which side of the branch it is on — otherwise
+    it passes in CI and fails on any box with ~/github/.willow/willow.md.
+    """
+    monkeypatch.setattr(
+        "willow.fylgja.willow_home.private_config_available", lambda: False
+    )
+
+
 def test_scripts_bridge_handoff_dir_respects_willow_home(tmp_path, monkeypatch):
     monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
     import importlib
@@ -43,6 +57,7 @@ def test_sap_nest_queue_respects_willow_home(tmp_path, monkeypatch):
 def test_seed_soil_path_respects_willow_home(tmp_path, monkeypatch):
     monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
     monkeypatch.delenv("WILLOW_STORE_ROOT", raising=False)
+    _pin_public_fallback(monkeypatch)
     import seed
 
     assert seed._soil_path("hanuman/cards") == (tmp_path / "store" / "hanuman/cards").resolve()
@@ -64,6 +79,7 @@ def test_willow_py_fleet_home_respects_env(tmp_path, monkeypatch):
 def test_core_soil_store_respects_willow_home(tmp_path, monkeypatch):
     monkeypatch.setenv("WILLOW_HOME", str(tmp_path))
     monkeypatch.delenv("WILLOW_STORE_ROOT", raising=False)
+    _pin_public_fallback(monkeypatch)
     from core.soil import _root
 
     assert _root() == (tmp_path / "store").resolve()
@@ -81,6 +97,7 @@ def test_willow_home_resolvers(tmp_path, monkeypatch):
     wh.mkdir()
     monkeypatch.setenv("WILLOW_HOME", str(wh))
     monkeypatch.delenv("WILLOW_STORE_ROOT", raising=False)
+    _pin_public_fallback(monkeypatch)
 
     assert willow_home() == wh.resolve()
     assert fleet_home() == wh.resolve()
