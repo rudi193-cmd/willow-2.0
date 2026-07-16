@@ -127,6 +127,31 @@ def list_projects(*, package_root: Path | None = None) -> list[dict[str, Any]]:
     return rows
 
 
+def _willow_mcp_server_block(
+    *,
+    agent: str,
+    extra_env: dict[str, Any] | None = None,
+    human_orchestrator: bool = False,
+) -> dict[str, Any]:
+    """Standalone willow-mcp product server (shipped surface)."""
+    env: dict[str, str] = {
+        "WILLOW_APP_ID": agent,
+        "WILLOW_PG_DB": "willow_20",
+        "WILLOW_HOME": expand_home("${HOME}/github/.willow"),
+    }
+    if human_orchestrator or agent.strip().lower() == "willow":
+        env["WILLOW_HUMAN_ORCHESTRATOR"] = "1"
+    for key, val in (extra_env or {}).items():
+        if isinstance(val, str):
+            env[key] = expand_home(val)
+    return {
+        "type": "stdio",
+        "command": expand_home("${HOME}/github/.willow/venvs/willow-mcp/bin/python"),
+        "args": ["-m", "willow_mcp"],
+        "env": env,
+    }
+
+
 def _willow_server_block(
     *,
     agent: str,
@@ -194,6 +219,12 @@ def render_project_mcp(
                 package_root=root,
                 extra_env=willow_env,
             )
+        elif name == "willow-mcp":
+            mcp_servers["willow-mcp"] = _willow_mcp_server_block(
+                agent=agent,
+                extra_env=willow_env,
+                human_orchestrator=agent.strip().lower() == "willow",
+            )
         elif name in _STATIC_SERVERS:
             overrides = server_env.get(name) if isinstance(server_env.get(name), dict) else {}
             mcp_servers[name] = _static_server_block(name, overrides)
@@ -201,6 +232,37 @@ def render_project_mcp(
             raise ValueError(f"project {project_id!r}: unknown server {name!r}")
 
     return {"mcpServers": mcp_servers}
+
+
+def render_charter_codex_config(
+    project_id: str,
+    entry: dict[str, Any],
+    *,
+    package_root: Path | None = None,
+) -> str:
+    """Codex MCP fragment for the constitution Jarvis seat (willow-mcp first)."""
+    if project_id != "willow":
+        raise ValueError(f"charter codex template only applies to project 'willow', not {project_id!r}")
+    root = package_root or _package_root()
+    template_path = root / "willow" / "fylgja" / "config" / "charter-codex-mcp.toml.template"
+    template = template_path.read_text(encoding="utf-8")
+    agent = str(entry.get("agent") or "willow").strip()
+    env_overrides = entry.get("env") if isinstance(entry.get("env"), dict) else {}
+    store_root = str(env_overrides.get("WILLOW_STORE_ROOT") or "{{HOME}}/github/willow/.willow/store")
+    project_root = str(env_overrides.get("WILLOW_PROJECT_ROOT") or "{{HOME}}/github/willow")
+    handoff = str(env_overrides.get("WILLOW_HANDOFF_PROJECT") or project_id)
+    values = {
+        "AGENT_NAME": agent,
+        "WILLOW_HOME": expand_home("${HOME}/github/.willow"),
+        "WILLOW_MCP_PYTHON": expand_home("${HOME}/github/.willow/venvs/willow-mcp/bin/python"),
+        "WILLOW_STORE_ROOT": expand_home(store_root),
+        "WILLOW_PROJECT_ROOT": expand_home(project_root),
+        "WILLOW_HANDOFF_PROJECT": handoff,
+    }
+    out = template
+    for key, val in values.items():
+        out = out.replace(f"{{{{{key}}}}}", val)
+    return out.rstrip() + "\n"
 
 
 def project_paths(project_id: str, entry: dict[str, Any]) -> dict[str, Path]:
@@ -215,6 +277,7 @@ def project_paths(project_id: str, entry: dict[str, Any]) -> dict[str, Path]:
         "cursor": root / ".cursor" / "mcp.json",
         "claude_mcp": root / ".mcp.json",
         "claude_settings": root / ".claude" / "settings.local.json",
+        "codex_config": root / ".codex" / "config.toml",
     }
 
 
@@ -370,6 +433,17 @@ def sync_project(
     if claude_settings and "claude" in ides and not normalize_wiring(entry).get("claude_settings"):
         settings = render_claude_permissions(list(entry.get("servers") or []))
         _write_json(paths["claude_settings"], settings, dry_run=dry_run)
+
+    if "codex" in ides and project_id == "willow":
+        codex_path = paths.get("codex_config")
+        if codex_path is not None:
+            text = render_charter_codex_config(project_id, entry, package_root=package_root)
+            if dry_run:
+                print(f"[mcp_projects] Would write {codex_path}")
+            else:
+                codex_path.parent.mkdir(parents=True, exist_ok=True)
+                codex_path.write_text(text, encoding="utf-8")
+                print(f"[mcp_projects] Wrote {codex_path}")
 
     __import__("willow.fylgja.project_wiring", fromlist=["sync_project_wiring"]).sync_project_wiring(
         project_id, entry, package_root=package_root, dry_run=dry_run

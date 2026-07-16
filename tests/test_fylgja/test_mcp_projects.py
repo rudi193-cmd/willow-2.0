@@ -52,6 +52,32 @@ def test_render_project_mcp_core_profile(tmp_path, monkeypatch):
     assert payload["mcpServers"]["willow"]["env"]["WILLOW_AGENT_NAME"] == "willow"
 
 
+def test_render_project_mcp_willow_mcp_charter(tmp_path, monkeypatch):
+    repo = tmp_path / "willow-2.0"
+    repo.mkdir()
+    _setup_repo_template(repo)
+    wh = tmp_path / ".willow"
+    monkeypatch.setenv("WILLOW_HOME", str(wh))
+
+    entry = {
+        "path": str(tmp_path / "willow-charter"),
+        "agent": "willow",
+        "profile": "core",
+        "servers": ["willow-mcp", "codebase-memory-mcp"],
+        "env": {
+            "WILLOW_STORE_ROOT": str(tmp_path / "willow-charter" / ".willow" / "store"),
+            "WILLOW_PROJECT_ROOT": str(tmp_path / "willow-charter"),
+        },
+    }
+    payload = render_project_mcp("willow", entry, package_root=repo)
+    names = list(payload["mcpServers"])
+    assert names[0] == "willow-mcp"
+    wm = payload["mcpServers"]["willow-mcp"]
+    assert wm["args"] == ["-m", "willow_mcp"]
+    assert wm["env"]["WILLOW_APP_ID"] == "willow"
+    assert wm["env"]["WILLOW_HUMAN_ORCHESTRATOR"] == "1"
+
+
 def test_render_claude_permissions_law_gazelle():
     perms = render_claude_permissions(["willow", "law-gazelle"])
     assert "mcp__law-gazelle__*" in perms["permissions"]["allow"]
