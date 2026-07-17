@@ -175,7 +175,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | fix(plugins): raise plugin discovery failures to WARNING level | [PR #28235](https://github.com/NousResearch/hermes-agent/pull/28235) closed |
 | [BerriAI/litellm](https://github.com/BerriAI/litellm) | BerriAI | fix(bedrock,sagemaker): silence ModuleNotFoundError when botocore is not installed | [PR #28193](https://github.com/BerriAI/litellm/pull/28193) closed |
 | [modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk) | modelcontextprotocol | fix(client): propagate transport exceptions in default message handler | [PR #2640](https://github.com/modelcontextprotocol/python-sdk/pull/2640) closed |
-| [node9-ai/node9-proxy](https://github.com/node9-ai/node9-proxy) | node9-ai | feat(blast): add Willow sovereign stack sensitive paths | [PR #172](https://github.com/node9-ai/node9-proxy/pull/172) closed |
 
 
 ## Contributors to Willow
