@@ -124,6 +124,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     lane             TEXT NOT NULL DEFAULT 'fast',
     status           TEXT DEFAULT 'pending',
     result           JSONB,
+    claim_owner      TEXT,
+    claimed_at       TIMESTAMPTZ,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -615,6 +617,8 @@ _MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS idx_routing_decisions_kind ON routing_decisions (kind, created_at DESC)",
     # Kart execution lanes — fast (interactive) vs batch (long jobs).
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS lane TEXT NOT NULL DEFAULT 'fast'",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS claim_owner TEXT",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ",
     """DO $$ BEGIN
         ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_lane_check;
         ALTER TABLE tasks ADD CONSTRAINT tasks_lane_check CHECK (
@@ -622,6 +626,7 @@ _MIGRATIONS = [
         );
     EXCEPTION WHEN others THEN NULL; END $$""",
     "CREATE INDEX IF NOT EXISTS idx_tasks_agent_lane_status ON tasks (agent, lane, status)",
+    "CREATE INDEX IF NOT EXISTS idx_tasks_claim_owner ON tasks (claim_owner) WHERE status = 'running'",
 ]
 
 _INDEXES = """
@@ -2491,28 +2496,35 @@ class PgBridge:
             return dict(row) if row else None
 
     def claim_kart_tasks(
-        self, limit: int = 10, agent: str = "kart", lane: str | None = None
+        self,
+        limit: int = 10,
+        agent: str = "kart",
+        lane: str | None = None,
+        claim_owner: str | None = None,
     ) -> list:
-        """Atomically claim pending tasks by marking them 'running'. Two concurrent
-        callers cannot claim the same row — FOR UPDATE SKIP LOCKED ensures this.
+        """Atomically claim pending tasks by marking them ``running``.
 
-        When ``lane`` is set, only tasks in that lane are claimed. ``None`` claims
-        across all lanes (enterprise drain / backward compat).
+        Daemon workers pass an opaque, process-bound ``claim_owner``.  It is
+        durable evidence for restart recovery; compatibility callers may omit it
+        and continue to rely on the age-based stale reaper.
         """
         self._ensure_conn()
         lane_clause = ""
-        params: list = [agent]
+        select_params: list = [agent]
         if lane is not None:
             from core.kart_lanes import normalize_lane
 
             lane_clause = " AND lane = %s"
-            params.append(normalize_lane(lane))
-        params.append(limit)
+            select_params.append(normalize_lane(lane))
+        select_params.append(limit)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(f"""
                 WITH claimed AS (
                     UPDATE tasks
-                    SET status = 'running', updated_at = now()
+                    SET status = 'running',
+                        claim_owner = %s,
+                        claimed_at = now(),
+                        updated_at = now()
                     WHERE id IN (
                         SELECT id FROM tasks
                         WHERE agent = %s AND status = 'pending'{lane_clause}
@@ -2523,10 +2535,79 @@ class PgBridge:
                     RETURNING *
                 )
                 SELECT * FROM claimed ORDER BY created_at ASC
-            """, tuple(params))
+            """, tuple([claim_owner, *select_params]))
             rows = [dict(r) for r in cur.fetchall()]
         self.conn.commit()
         return rows
+
+    def running_kart_claim_owners(
+        self, agent: str = "kart", lane: str | None = None
+    ) -> list[str]:
+        """Return explicit owners of active, result-less claims in one lane."""
+        self._ensure_conn()
+        lane_clause = ""
+        params: list = [agent]
+        if lane is not None:
+            from core.kart_lanes import normalize_lane
+
+            lane_clause = " AND lane = %s"
+            params.append(normalize_lane(lane))
+        with self.conn.cursor() as cur:
+            cur.execute(f"""
+                SELECT DISTINCT claim_owner
+                FROM tasks
+                WHERE agent = %s
+                  AND status = 'running'
+                  AND result IS NULL
+                  AND claim_owner IS NOT NULL{lane_clause}
+            """, tuple(params))
+            return [str(row[0]) for row in cur.fetchall()]
+
+    def fail_orphaned_kart_claims(
+        self,
+        *,
+        orphaned_owners: list[str],
+        replacement_owner: str,
+        lane: str,
+        agent: str = "kart",
+    ) -> list[str]:
+        """Fail claims owned by processes independently proven dead.
+
+        This is deliberately lane- and owner-specific.  Rows are terminally
+        failed, never returned to ``pending``.
+        """
+        if not orphaned_owners:
+            return []
+        from core.kart_lanes import normalize_lane
+
+        lane = normalize_lane(lane)
+        self._ensure_conn()
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                UPDATE tasks
+                SET status = 'failed',
+                    result = jsonb_build_object(
+                        'error', 'orphaned_worker_restart',
+                        'previous_status', 'running',
+                        'previous_claim_owner', claim_owner,
+                        'replacement_claim_owner', %s,
+                        'lane', lane,
+                        'recovered_at', now()::text
+                    ),
+                    updated_at = now()
+                WHERE agent = %s
+                  AND lane = %s
+                  AND status = 'running'
+                  AND result IS NULL
+                  AND claim_owner = ANY(%s::text[])
+                RETURNING id
+                """,
+                (replacement_owner, agent, lane, orphaned_owners),
+            )
+            failed = [str(row["id"]) for row in cur.fetchall()]
+        self.conn.commit()
+        return failed
 
     def pending_tasks(
         self, agent: str = "kart", limit: int = 10, lane: str | None = None
@@ -2543,7 +2624,7 @@ class PgBridge:
         params.append(limit)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(f"""
-                SELECT id, task, status, result, submitted_by, lane, created_at, updated_at
+                SELECT id, task, status, result, submitted_by, lane, claim_owner, claimed_at, created_at, updated_at
                 FROM tasks
                 WHERE agent = %s AND status = 'pending'{lane_clause}
                 ORDER BY created_at ASC
@@ -2556,13 +2637,22 @@ class PgBridge:
         max_age_seconds: int = 3600,
         agent: str = "kart",
         exempt_ids: list | None = None,
+        lane: str | None = None,
     ) -> list[str]:
-        """Mark orphaned running tasks failed (null result, older than max_age)."""
+        """Age-based fallback for legacy or otherwise unverifiable claims."""
         self._ensure_conn()
         exempt = list(exempt_ids or [])
+        lane_clause = ""
+        params: list = [max_age_seconds, agent, max_age_seconds]
+        if lane is not None:
+            from core.kart_lanes import normalize_lane
+
+            lane_clause = " AND lane = %s"
+            params.append(normalize_lane(lane))
+        params.extend([exempt, exempt])
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                """
+                f"""
                 UPDATE tasks
                 SET status = 'failed',
                     result = jsonb_build_object(
@@ -2575,11 +2665,11 @@ class PgBridge:
                 WHERE agent = %s
                   AND status = 'running'
                   AND result IS NULL
-                  AND updated_at < now() - make_interval(secs => %s)
+                  AND updated_at < now() - make_interval(secs => %s){lane_clause}
                   AND (CARDINALITY(%s::text[]) = 0 OR id::text <> ALL(%s::text[]))
                 RETURNING id
                 """,
-                (max_age_seconds, agent, max_age_seconds, exempt, exempt),
+                tuple(params),
             )
             reaped = [str(r["id"]) for r in cur.fetchall()]
         self.conn.commit()
@@ -2695,7 +2785,7 @@ class PgBridge:
         params.append(limit)
         with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(f"""
-                SELECT id, task, status, result, submitted_by, lane, created_at, updated_at
+                SELECT id, task, status, result, submitted_by, lane, claim_owner, claimed_at, created_at, updated_at
                 FROM tasks
                 WHERE agent = %s AND status = ANY(%s){lane_clause}
                 ORDER BY created_at DESC LIMIT %s
