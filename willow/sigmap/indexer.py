@@ -84,7 +84,7 @@ def _upsert_atom(pg, atom_id: str, path: Path, root: Path,
     with pg.conn.cursor() as cur:
         cur.execute("""
             INSERT INTO jeles_atoms
-                (id, jsonl_id, agent, content, domain, depth, certainty, title)
+                (id, jsonl_id, agent, content, domain, depth, confidence, title)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE SET
                 content    = EXCLUDED.content,

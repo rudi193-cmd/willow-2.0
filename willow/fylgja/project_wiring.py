@@ -148,7 +148,12 @@ def render_project_claude_settings(
     agent = str(entry.get("agent") or "willow").strip()
     servers = [s for s in (entry.get("servers") or []) if isinstance(s, str)]
     payload = render_claude_permissions(servers)
-    payload["env"] = runtime_env(agent, package_root)
+    env = runtime_env(agent, package_root)
+    overrides = entry.get("env") if isinstance(entry.get("env"), dict) else {}
+    for key, val in overrides.items():
+        if isinstance(val, str):
+            env[key] = expand_home(val)
+    payload["env"] = env
     return payload
 
 
@@ -224,6 +229,18 @@ def audit_project_wiring(
             issues.append(f"{project_id}: cursor settings.local.json should symlink → {canon}")
         elif link.resolve() != canon.resolve():
             issues.append(f"{project_id}: cursor settings symlink target drift → {link}")
+    elif wiring.get("cursor_settings") == "project" and "cursor" in ides:
+        expected = render_project_claude_settings(entry, package_root=package_root)
+        on_disk = _read_json(paths["cursor_settings"])
+        if on_disk is None:
+            issues.append(f"{project_id}: missing cursor settings → {paths['cursor_settings']}")
+        else:
+            for key in ("env", "permissions", "enableAllProjectMcpServers", "enabledMcpjsonServers"):
+                if on_disk.get(key) != expected.get(key):
+                    issues.append(
+                        f"{project_id}: cursor settings drift ({key}) → {paths['cursor_settings']}"
+                    )
+                    break
 
     if wiring.get("claude_settings") == "project" and "claude" in ides:
         expected = render_project_claude_settings(entry, package_root=package_root)
@@ -276,6 +293,9 @@ def sync_project_wiring(
     if wiring.get("cursor_settings") == "symlink" and "cursor" in ides:
         canon = canonical_local_settings(agent)
         _symlink_to(paths["cursor_settings"], canon, dry_run)
+    elif wiring.get("cursor_settings") == "project" and "cursor" in ides:
+        payload = render_project_claude_settings(entry, package_root=pkg)
+        _write_json(paths["cursor_settings"], payload, dry_run=dry_run)
 
     if wiring.get("claude_settings") == "project" and "claude" in ides:
         payload = render_project_claude_settings(entry, package_root=pkg)

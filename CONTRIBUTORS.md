@@ -98,6 +98,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Seed catalog wave 1: 13 major climate datasets | [PR #2](https://github.com/almanac-data/climate-almanac/pull/2) merged |
 | [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Add agent guide, pyproject, and fleet development docs | [PR #1](https://github.com/almanac-data/climate-almanac/pull/1) merged |
 | [Filippo-Venturini/ctxvault](https://github.com/Filippo-Venturini/ctxvault) | Filippo-Venturini | feat: configurable embedding model per vault (#18) | [PR #34](https://github.com/Filippo-Venturini/ctxvault/pull/34) merged |
+| [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(cli): show configured project in list when uncredentialed (#1003) | [PR #1010](https://github.com/basicmachines-co/basic-memory/pull/1010) merged |
 | [mex-memory/mex](https://github.com/mex-memory/mex) | mex-memory | feat: add packages/mex-mcp — MCP server for mex-agent | [PR #84](https://github.com/mex-memory/mex/pull/84) merged |
 | [zeroc00I/DontFeedTheAI](https://github.com/zeroc00I/DontFeedTheAI) | zeroc00I | ci: add GitHub Actions workflow to publish Docker image to ghcr.io | [PR #8](https://github.com/zeroc00I/DontFeedTheAI/pull/8) merged |
 | [wanxingai/LightAgent](https://github.com/wanxingai/LightAgent) | wanxingai | docs: add vector memory adapter example | [PR #60](https://github.com/wanxingai/LightAgent/pull/60) merged |
@@ -132,14 +133,13 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: Willow adapter for Postgres-backed knowledge store | [PR #145](https://github.com/manojmallick/sigmap/pull/145) merged |
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | feat: native Python AST extractor for accurate signature extraction | [PR #144](https://github.com/manojmallick/sigmap/pull/144) merged |
 | [TensorBlock/awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers) | TensorBlock | Add willow-1.7 — portless MCP server with PGP-signed authorization | [PR #401](https://github.com/TensorBlock/awesome-mcp-servers/pull/401) merged |
+| [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat(plugins): dreaming memory consolidation (config.yaml re-scope) | [PR #64281](https://github.com/NousResearch/hermes-agent/pull/64281) open |
 | [alash3al/stash](https://github.com/alash3al/stash) | alash3al | docs: clarify that curl /sse holding open is expected SSE behavior (#11) | [PR #14](https://github.com/alash3al/stash/pull/14) open |
 | [castroquiles/glapagos](https://github.com/castroquiles/glapagos) | castroquiles | feat(api): export committed OpenAPI spec and cover the API (#13) | [PR #20](https://github.com/castroquiles/glapagos/pull/20) open |
 | [castroquiles/HeatWatch](https://github.com/castroquiles/HeatWatch) | castroquiles | fix(geo_utils): correct clip_array_to_bounds off-by-one; add geo_utils tests + NDVI no-data guard | [PR #20](https://github.com/castroquiles/HeatWatch/pull/20) open |
-| [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(cli): show configured project in list when uncredentialed (#1003) | [PR #1010](https://github.com/basicmachines-co/basic-memory/pull/1010) open |
 | [PDFMathTranslate/PDFMathTranslate](https://github.com/PDFMathTranslate/PDFMathTranslate) | PDFMathTranslate | feat: mirror source directory tree in batch translation output | [PR #1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) open |
 | [openedx/codejail](https://github.com/openedx/codejail) | openedx | feat: introduce CodeJailConfig class; keep module-level backward compat | [PR #309](https://github.com/openedx/codejail/pull/309) open |
 | [coleam00/mcp-mem0](https://github.com/coleam00/mcp-mem0) | coleam00 | fix: disable Mem0 telemetry via env (Fixes #3) | [PR #18](https://github.com/coleam00/mcp-mem0/pull/18) open |
-| [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat(plugins): dreaming — automatic background memory consolidation | [PR #40737](https://github.com/NousResearch/hermes-agent/pull/40737) open |
 | [kelos-dev/kanon](https://github.com/kelos-dev/kanon) | kelos-dev | Add repo-local project overlays (#33) | [PR #34](https://github.com/kelos-dev/kanon/pull/34) open |
 | [moazbuilds/claudeclaw](https://github.com/moazbuilds/claudeclaw) | moazbuilds | fix(sessions): treat session.json without sessionId as absent (#228) | [PR #234](https://github.com/moazbuilds/claudeclaw/pull/234) open |
 | [almanac-data/civic-almanac](https://github.com/almanac-data/civic-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #8](https://github.com/almanac-data/civic-almanac/pull/8) closed |
@@ -157,6 +157,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | DeusData | fix: skip Antigravity IDE install roots during discovery | [PR #468](https://github.com/DeusData/codebase-memory-mcp/pull/468) closed |
 | [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(mcp): keep search index type in vector hydration | [PR #984](https://github.com/basicmachines-co/basic-memory/pull/984) closed |
 | [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(mcp): keep search index type in vector hydration | [PR #983](https://github.com/basicmachines-co/basic-memory/pull/983) closed |
+| [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat(plugins): dreaming — automatic background memory consolidation | [PR #40737](https://github.com/NousResearch/hermes-agent/pull/40737) closed |
 | [voidcraft-labs/commcare-nova](https://github.com/voidcraft-labs/commcare-nova) | voidcraft-labs | fix(mcp): sanitize Long-like values before Firestore writes | [PR #57](https://github.com/voidcraft-labs/commcare-nova/pull/57) closed |
 | [openclaw/openclaw](https://github.com/openclaw/openclaw) | openclaw | fix(memory): do not filter FTS keyword search by embedding model (#48300) | [PR #90165](https://github.com/openclaw/openclaw/pull/90165) closed |
 | [alibaizhanov/mengram](https://github.com/alibaizhanov/mengram) | alibaizhanov | docs: add CONTRIBUTING.md with local setup and PR guidelines | [PR #40](https://github.com/alibaizhanov/mengram/pull/40) closed |
@@ -175,17 +176,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [BerriAI/litellm](https://github.com/BerriAI/litellm) | BerriAI | fix(bedrock,sagemaker): silence ModuleNotFoundError when botocore is not installed | [PR #28193](https://github.com/BerriAI/litellm/pull/28193) closed |
 | [modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk) | modelcontextprotocol | fix(client): propagate transport exceptions in default message handler | [PR #2640](https://github.com/modelcontextprotocol/python-sdk/pull/2640) closed |
 | [node9-ai/node9-proxy](https://github.com/node9-ai/node9-proxy) | node9-ai | feat(blast): add Willow sovereign stack sensitive paths | [PR #172](https://github.com/node9-ai/node9-proxy/pull/172) closed |
-| [CinnamonInt/Cinnamonint](https://github.com/CinnamonInt/Cinnamonint) | CinnamonInt | feat: token_edges relationship discovery | [PR #2](https://github.com/CinnamonInt/Cinnamonint/pull/2) closed |
-| [monologg/JointBERT](https://github.com/monologg/JointBERT) | monologg | feat: rule-based fallback predictor (no torch/transformers required) | [PR #36](https://github.com/monologg/JointBERT/pull/36) closed |
-| [S1LV4/th0th](https://github.com/S1LV4/th0th) | S1LV4 | feat(packages/willow): Willow SOIL adapter for memory edge persistence | [PR #38](https://github.com/S1LV4/th0th/pull/38) closed |
-| [irodion/adjoint](https://github.com/irodion/adjoint) | irodion | feat(store): Postgres-backed session store with LISTEN/NOTIFY | [PR #4](https://github.com/irodion/adjoint/pull/4) closed |
-| [samballington/CodeWise](https://github.com/samballington/CodeWise) | samballington | feat(backends): PostgreSQL + pgvector backend | [PR #15](https://github.com/samballington/CodeWise/pull/15) closed |
-| [rish-e/tokenpilot](https://github.com/rish-e/tokenpilot) | rish-e | feat: mtime-aware dedup tracker (session_dedup.py) | [PR #1](https://github.com/rish-e/tokenpilot/pull/1) closed |
-| [irodion/adjoint](https://github.com/irodion/adjoint) | irodion | feat(memory): Norn PII scrubber — structural pass extending Redactor | [PR #3](https://github.com/irodion/adjoint/pull/3) closed |
-| [zeroc00I/DontFeedTheAI](https://github.com/zeroc00I/DontFeedTheAI) | zeroc00I | feat: add Willow regex patterns for SSN, PAN/Luhn, phone, AI API keys | [PR #2](https://github.com/zeroc00I/DontFeedTheAI/pull/2) closed |
-| [aviv4339/claude-guard](https://github.com/aviv4339/claude-guard) | aviv4339 | feat: richer hook template with agent identity, depth guard, reflection detection | [PR #1](https://github.com/aviv4339/claude-guard/pull/1) closed |
-| [cneiman/moonshine](https://github.com/cneiman/moonshine) | cneiman | feat(adapters): Postgres backend for warm/cold memory tiers | [PR #2](https://github.com/cneiman/moonshine/pull/2) closed |
-| [m4cd4r4/claude-echoes](https://github.com/m4cd4r4/claude-echoes) | m4cd4r4 | feat(server): wire GIN index for hybrid BM25+pgvector RRF search | [PR #1](https://github.com/m4cd4r4/claude-echoes/pull/1) closed |
 
 
 ## Contributors to Willow

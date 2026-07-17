@@ -3115,7 +3115,7 @@ class PgBridge:
 
     def jeles_extract_atom(self, agent: str, jsonl_id: str, content: str,
                            domain: str = "meta", depth: int = 1,
-                           certainty: float = 0.98,
+                           confidence: float = 0.98,
                            title: Optional[str] = None,
                            sensitivity: str = "") -> dict:
         self._ensure_conn()
@@ -3143,7 +3143,7 @@ class PgBridge:
                     INSERT INTO jeles_atoms
                         (id, jsonl_id, agent, content, domain, depth, confidence, title, embedding, sensitivity)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector, %s)
-                """, (aid, jsonl_id, agent, content, domain, depth, certainty, title, vec_str, sens))
+                """, (aid, jsonl_id, agent, content, domain, depth, confidence, title, vec_str, sens))
             self.conn.commit()
             out = {"id": aid, "status": "extracted"}
             if gate.get("gate_skipped"):

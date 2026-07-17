@@ -80,7 +80,7 @@ def promote_record(pg: PgBridge, rec: dict, tier: str, agent: str, dry_run: bool
             content=content,
             domain=rec.get("extra", {}).get("domain", "meta"),
             depth=1,
-            certainty=float(rec.get("confidence", 0.90)),
+            confidence=float(rec.get("confidence", 0.90)),
             title=title or None,
         )
         return "id" in result

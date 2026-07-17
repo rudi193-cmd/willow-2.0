@@ -1,6 +1,6 @@
 # Upstream commenter register (your voice on others' threads)
 
-*Generated: 2026-07-12 01:58 UTC · operator: `rudi193-cmd`*
+*Generated: 2026-07-16 04:53 UTC · operator: `rudi193-cmd`*
 
 Threads on **external** repos where you commented but are **not** the author.
 Companion to `PR_HUMAN_REGISTER.md` (your authored PRs).
@@ -8,7 +8,7 @@ Companion to `PR_HUMAN_REGISTER.md` (your authored PRs).
 Includes discussion comments, review bodies, and inline review comments you left.
 
 **Threads found:** 54 · **threads with your comments:** 54
- · **your comments captured:** 67
+ · **your comments captured:** 68
 
 ---
 
@@ -354,7 +354,7 @@ A fix that disambiguates receiver type for framework/store calls would likely to
 **[bug] `query_graph` hangs on whole-graph `OPTIONAL MATCH` (no execution timeout / degradation) on large graphs**
 
 - URL: https://github.com/DeusData/codebase-memory-mcp/issues/601
-- Type: `Issue` · State: `OPEN`
+- Type: `Issue` · State: `CLOSED`
 - Author: `ecosuper2025`
 
 ### Your comments
@@ -990,6 +990,14 @@ Happy to contribute a thin `hermes_plugins.willow_dreaming` reference plugin or 
 #### `rudi193-cmd` · 2026-06-06 19:57:03 · discussion · id=4640202989
 
 @vingeraycn Opened https://github.com/NousResearch/hermes-agent/pull/40737 .
+
+#### `rudi193-cmd` · 2026-07-14 08:30:02 · discussion · id=4966947692
+
+Following up on the #40737 closure under the `env-var-for-config` policy — we've re-scoped the dreaming plugin so behavioral settings (opt-in flag, schedule thresholds, REM model/URL, promotion score) live in plugin-owned `$HERMES_HOME/dreaming/config.yaml` (seeded on first enable), with optional `dreaming:` overrides in `~/.hermes/config.yaml`. No new `HERMES_DREAM_*` env vars.
+
+New PR: #64281
+
+Same three-phase pipeline (staging/dedupe/score → REM narrative → MEMORY.md promotion with meta-entries routed to SKILL.md). Reference port from Willow 2.0 — standalone, no runtime dependency.
 
 ---
 

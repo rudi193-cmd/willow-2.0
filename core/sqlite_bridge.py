@@ -799,7 +799,7 @@ class SqliteBridge:
 
     def jeles_extract_atom(self, agent: str, jsonl_id: str, content: str,
                            domain: str = "meta", depth: int = 1,
-                           certainty: float = 0.98,
+                           confidence: float = 0.98,
                            title: Optional[str] = None) -> dict:
         try:
             aid = self.gen_id(8)
@@ -807,7 +807,7 @@ class SqliteBridge:
                 "INSERT INTO jeles_atoms "
                 "(id, jsonl_id, agent, content, domain, depth, confidence, title) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (aid, jsonl_id, agent, content, domain, depth, certainty, title),
+                (aid, jsonl_id, agent, content, domain, depth, confidence, title),
             )
             return {"id": aid, "status": "extracted"}
         except Exception as e:

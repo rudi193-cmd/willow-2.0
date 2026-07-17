@@ -1,6 +1,6 @@
 # Upstream PR comment register
 
-*Generated: 2026-07-12 01:47 UTC · operator: `rudi193-cmd` · filter: `open`*
+*Generated: 2026-07-16 04:52 UTC · operator: `rudi193-cmd` · filter: `open`*
 
 Every captured comment from GitHub (description, discussion, reviews, inline).
 Human voices grouped first; bots and automation in a separate section.
@@ -10,7 +10,93 @@ Human voices grouped first; bots and automation in a separate section.
 - **Contributor** — other human participants
 - **Bots** — github-actions, dependabot, code assistants, etc.
 
-**PRs processed:** 10 · **comments captured:** 30
+**PRs processed:** 9 · **comments captured:** 32
+
+---
+
+## NousResearch/hermes-agent #64281
+
+**feat(plugins): dreaming memory consolidation (config.yaml re-scope)**
+
+- URL: https://github.com/NousResearch/hermes-agent/pull/64281
+- State: `OPEN`
+
+### You
+
+#### `rudi193-cmd` · (PR opened) · description
+
+## Summary
+
+Re-opens the #25309 dreaming plugin proposal after #40737 was closed under the `env-var-for-config` policy.
+
+- Behavioral settings live in **plugin-owned** `$HERMES_HOME/dreaming/config.yaml` (seeded from `plugins/dreaming/config.yaml` on first register), with optional `dreaming:` overrides in `~/.hermes/config.yaml`.
+- Removes user-facing `HERMES_DREAMING` / `HERMES_DREAM_*` env flags — opt-in is `hermes plugins enable dreaming` + `enabled: true` in config.
+- Three-phase pipeline unchanged: Light Sleep (staging/dedupe/score) → REM (Ollama narrative) → Deep Sleep (MEMORY.md promotion, meta-entries → SKILL.md).
+- Reference port from [Willow 2.0](https://github.com/rudi193-cmd/willow-2.0) `dream_check` / `dream_run` / `tension_scan` — no runtime dependency.
+
+## Test plan
+
+- [x] `uv run pytest tests/plugins/test_dreaming_plugin.py -q` (4 tests: config seeding, main-config override, REM model override, promote threshold)
+- [ ] `hermes plugins enable dreaming` then set `enabled: true` in `$HERMES_HOME/dreaming/config.yaml`
+- [ ] `/dream status` and `/dream run` on a profile with staged candidates
+
+Closes the configuration-policy gap called out in the #40737 sweeper comment.
+
+
+Made with [Cursor](https://cursor.com)
+
+### Maintainers
+
+#### `tonydwb` · 2026-07-14 09:29:28 · review (COMMENTED) · id=4692782674
+
+## Code Review Summary
+
+**Verdict: Comment** (moderate-high surface area)
+
+This PR consolidates dreaming memory configuration into config.yaml. 10 files, 976 additions.
+
+### Observations
+
+- Config.yaml re-scope is a good direction.
+- Verify backward compatibility with existing configs.
+
+---
+*Reviewed by Hermes Agent*
+
+#### `teknium1` · 2026-07-16 02:07:13 · inline (plugins/dreaming/__init__.py:47) · id=3592122356
+
+`dream_check` does not accept `cfg` (`_schedule.py:107-124`). This raises `TypeError` on every polling attempt and is swallowed by the enclosing `except`, so the automatic scheduler never runs.
+
+#### `teknium1` · 2026-07-16 02:07:13 · inline (plugins/dreaming/__init__.py:60) · id=3592122358
+
+Plugin hooks are invoked as `cb(**kwargs)` and the current `on_session_end` emitter supplies metadata only, not a context object or transcript (`hermes_cli/plugins.py:1912-1917`, `agent/turn_finalizer.py:528-542`). This callback cannot be called successfully as written.
+
+#### `teknium1` · 2026-07-16 02:07:13 · review (COMMENTED) · id=4709846000
+
+<!-- hermes-sweeper:review=64281 -->
+<!-- hermes-sweeper:review-verdict=keep_open salvageability=medium -->
+Thanks for re-scoping the settings away from `HERMES_DREAM_*`; the plugin/config direction addresses the prior policy close.
+
+### Problems
+- `plugins/dreaming/__init__.py:60` registers `_on_session_end(ctx)`, but plugin hooks call callbacks as `cb(**kwargs)` (`hermes_cli/plugins.py:1912-1917`) and the current emitter provides metadata only (`agent/turn_finalizer.py:528-542`). No transcript reaches the plugin.
+- `plugins/dreaming/__init__.py:44-47` passes `cfg` to `dream_check`, although `plugins/dreaming/_schedule.py:107-124` has no such parameter. The thread suppresses the resulting exception at `__init__.py:50-51`, so automatic cycles cannot run.
+- `plugins/dreaming/__init__.py:80` requires `(argv, ctx)`, while CLI dispatch passes one raw string (`cli.py:8958-8962`); gateway and TUI follow the same contract.
+- `plugins/dreaming/_schedule.py:191-201` writes `$HERMES_HOME/MEMORY.md`, but active built-in memory is `$HERMES_HOME/memories/MEMORY.md` (`tools/memory_tool.py:55-57`, `:280-285`). Promotions are not loaded into Hermes memory.
+
+### Suggested changes
+- Rework the hook around a real transcript-bearing lifecycle path and add an E2E test through plugin registration.
+- Match the raw-string slash-command API, remove unsupported `cfg` parameters, and route writes through the bounded, guarded `MemoryStore` format.
+- Omit the already-landed model-validation hunk; current main has it via `0d3ad193d6cc235213489f509e26760ccb3722a1`.
+
+Automated hermes-sweeper review.
+
+#### `teknium1` · 2026-07-16 02:07:14 · inline (plugins/dreaming/__init__.py:80) · id=3592122359
+
+Registered plugin slash handlers receive one raw argument string (`cli.py:8958-8962`; gateway and TUI use the same shape). This required second `ctx` parameter makes every `/dream` invocation fail before subcommand parsing.
+
+#### `teknium1` · 2026-07-16 02:07:14 · inline (plugins/dreaming/_schedule.py:195) · id=3592122363
+
+This is not Hermes's active memory path: `MemoryStore` uses `get_hermes_home() / "memories" / "MEMORY.md"` (`tools/memory_tool.py:55-57,280-285`). Promotions written here will not be loaded into the next session's persistent-memory snapshot.
 
 ---
 
@@ -121,98 +207,6 @@ NaN compares `False` against every legend breakpoint, so no-data pixels fell thr
 ## Verification
 
 Full suite green locally: `54 passed`. No new dependencies; touches only `analysis`/`utils` + tests.
-
----
-
-## basicmachines-co/basic-memory #1010
-
-**fix(cli): show configured project in list when uncredentialed (#1003)**
-
-- URL: https://github.com/basicmachines-co/basic-memory/pull/1010
-- State: `OPEN`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-## Summary
-
-`bm project list` renders an **empty table** even when a project exists in `config.json` and the local DB, while `bm project add` reports the same project *already exists* — the two commands disagree about whether the project exists (#1003).
-
-## Root cause
-
-In `src/basic_memory/cli/commands/project.py`, `list_projects()` seeds its table rows (`row_names_by_key`) **exclusively from live query results**:
-
-- the **cloud** branch, which is guarded by `_has_cloud_credentials(config)` and skipped when no credentials are present, and
-- the **local** query, which does not surface a `mode: cloud` project.
-
-`config.projects` is consulted only to *enrich* rows that already exist (`configured_names_by_permalink`), never to *create* one. So a cloud-mode project with no cloud credentials on the machine is surfaced by neither query → empty table. Meanwhile `bm project add` reads the DB, finds the project, and reports "already exists".
-
-## Fix
-
-Seed a local-keyed row from `config.projects` for any configured project not already surfaced by a query. The existing row-building logic already derives the correct display (cloud CLI route, https MCP) from the config entry.
-
-The fallback is **scoped to the local-inclusive view** — it is skipped for a pure `--cloud` listing (no `local_result`) and for a `--workspace`-filtered view, since those are deliberately narrowed and configured local projects must not leak into them.
-
-## Test
-
-Adds `test_project_list_shows_configured_project_without_cloud_credentials` to `tests/cli/test_project_list_and_ls.py`: a cloud-mode project in config with `_has_cloud_credentials` false and an empty local list now renders the project instead of an empty table. Verified the test fails on `main` (empty table → `StopIteration`) and passes with the fix.
-
-## Verification
-
-- `tests/cli/test_project_list_and_ls.py` — 14 passed
-- `tests/cli` (full) — 414 passed
-- `ruff check` + `ruff format --check` — clean
-- `ty check` on the changed file — clean
-
-Fixes #1003
-
-### Other contributors
-
-#### `phernandez` · 2026-07-07 02:53:13 · discussion · id=4899655455
-
-@codex review
-
-### Bots & automation
-
-#### `chatgpt-codex-connector[bot]` · 2026-06-23 13:33:15 · discussion · id=4779757502
-
-Codex usage limits have been reached for code reviews. Please check with the admins of this repo to increase the limits by adding credits.
-Repo admins can enable using credits for code reviews in their [settings](https://chatgpt.com/codex/cloud/settings/code-review).
-
-#### `chatgpt-codex-connector[bot]` · 2026-07-07 02:55:32 · inline (src/basic_memory/cli/commands/project.py:509) · id=3533281597
-
-**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Keep config fallback out of --local listings**
-
-When the user runs `bm project list --local` after a project has been switched to cloud mode, the forced local query can legitimately return no row because `set-cloud` removes the local DB entry. This branch still seeds the cloud-mode config entry because `local_result` is non-`None`, so the `--local` listing shows a project that the local API did not return and later labels its CLI route as `local (flag)`, making the flag no longer mean “show the local project list.” Gate this fallback to the default no-flag path (the uncredentialed mixed view) rather than all local-inclusive calls.
-
-Useful? React with 👍 / 👎.
-
-#### `chatgpt-codex-connector[bot]` · 2026-07-07 02:55:32 · review (COMMENTED) · id=4641257471
-
-### 💡 Codex Review
-
-Here are some automated review suggestions for this pull request.
-
-**Reviewed commit:** `59844d1224`
-    
-
-<details> <summary>ℹ️ About Codex in GitHub</summary>
-<br/>
-
-[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you
-- Open a pull request for review
-- Mark a draft as ready
-- Comment "@codex review".
-
-If Codex has suggestions, it will comment; otherwise it will react with 👍.
-
-
-
-
-Codex can also answer questions or update the PR. Try commenting "@codex address that feedback".
-            
-</details>
 
 ---
 
@@ -583,6 +577,10 @@ Great, thanks! You should receive an executed copy from our legal counsel in the
 
 Hi @rudi193-cmd have you received your executed copy of the form?
 
+#### `e0d` · 2026-07-13 17:33:43 · discussion · id=4960796992
+
+@rudi193-cmd Your branch was behind the base.  I've pulled in changes from master as a merge commit which will update your branch and cause the tests to be re-run.  You should pull the changes into your local branch.
+
 ---
 
 ## coleam00/mcp-mem0 #18
@@ -623,66 +621,6 @@ DISABLE_TELEMETRY=true
 
 
 Made with [Cursor](https://cursor.com)
-
----
-
-## NousResearch/hermes-agent #40737
-
-**feat(plugins): dreaming — automatic background memory consolidation**
-
-- URL: https://github.com/NousResearch/hermes-agent/pull/40737
-- State: `OPEN`
-
-### You
-
-#### `rudi193-cmd` · (PR opened) · description
-
-Implements the 3-phase dreaming system proposed in #25309.
-
-## What this adds
-
-`plugins/dreaming/` — a self-contained opt-in plugin with no external dependencies (Ollama optional for REM narrative).
-
-### Pipeline
-
-| Phase | What happens |
-|---|---|
-| **Light Sleep** | `on_session_end` hook enqueues candidates to `staging.jsonl`. Background thread deduplicates by content hash and scores using the weighted criteria from #25309 |
-| **REM** | Local LLM (Ollama, default `mistral:7b`) extracts themes and writes a narrative entry to `DREAMS.md`. Falls back to structured bullet summary if Ollama is unavailable |
-| **Deep Sleep** | Candidates scoring >= 0.55 are promoted to `MEMORY.md`. Meta-entries (about memory management itself) are routed to `SKILL.md` instead — addresses the noise pattern described by @vingeraycn |
-
-### Scoring weights (from issue spec)
-
-relevance 30% · frequency 24% · query diversity 15% · recency 15% · consolidation 10% · conceptual richness 6%
-
-### Opt-in
-
-Disabled by default. Set HERMES_DREAMING=1 to enable. The /dream command is still registered so users can discover it.
-
-### Slash commands
-
-- /dream — status + last diary entry
-- /dream run — force a cycle now
-- /dream status — hours since last / sessions queued / ready state
-- /dream diary — last DREAMS.md entry
-
-## File layout
-
-```
-plugins/dreaming/
-  __init__.py     register(ctx) — hooks, command, daemon thread
-  _schedule.py    enqueue_session / dream_check / dream_run
-  _score.py       weighted scoring + meta-entry filter
-  _diary.py       DREAMS.md writer
-  plugin.yaml     metadata
-  README.md       full docs
-```
-
-## Reference
-
-Ported from production implementation in [Willow 2.0](https://github.com/rudi193-cmd/willow-2.0) where this runs as `dream_run` (SAP MCP) + `dream_check` + nightly `sleep_consolidation.py`. The Hermes plugin is standalone — no Willow dependency.
-
-Closes #25309
 
 ---
 

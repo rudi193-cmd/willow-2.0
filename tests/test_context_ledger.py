@@ -214,6 +214,69 @@ class TestBuildResumeContext:
 
 
 # ---------------------------------------------------------------------------
+# build_resume_context — provenance stamp (memory-provenance step 1)
+# Guards flag-cross-session-ledger-bleed-on-resume: a resumed session must
+# never see another session's ledger line unattributed.
+# ---------------------------------------------------------------------------
+
+class TestBuildResumeContextProvenance:
+    def _write(self, home, *, content, session_id, agent="hanuman"):
+        ledger_mod.append(content, entry_type=ledger.OBSERVATION,
+                          session_id=session_id, agent=agent)
+
+    def test_no_current_id_stamps_every_line(self, tmp_path):
+        # Degraded-safe path: caller passes no current session id, so no entry
+        # is knowable as "mine" — every rendered line must carry its origin.
+        with patch.object(ledger_mod, "_WILLOW_HOME", tmp_path):
+            self._write(tmp_path, content="foreign turn A", session_id="AAAA1111bbbb2222")
+            self._write(tmp_path, content="foreign turn B", session_id="CCCC3333dddd4444")
+            ctx = ledger_mod.build_resume_context(agent="hanuman")
+        assert "⟨AAAA1111" in ctx  # ⟨ + short sid
+        assert "⟨CCCC3333" in ctx
+        assert "span multiple sessions" in ctx
+
+    def test_current_id_leaves_own_history_unstamped(self, tmp_path):
+        with patch.object(ledger_mod, "_WILLOW_HOME", tmp_path):
+            self._write(tmp_path, content="my own turn", session_id="MINE0000mine0000")
+            self._write(tmp_path, content="other session turn", session_id="OTHR9999othr9999")
+            ctx = ledger_mod.build_resume_context(
+                agent="hanuman", current_session_id="MINE0000mine0000extra"
+            )
+        # Own line: no stamp preceding its content.
+        assert "my own turn" in ctx
+        assert "⟨MINE0000" not in ctx
+        # Foreign line: stamped + disclaimer names it a DIFFERENT session.
+        assert "⟨OTHR9999" in ctx
+        assert "DIFFERENT session" in ctx
+
+    def test_missing_sid_still_marked(self, tmp_path):
+        with patch.object(ledger_mod, "_WILLOW_HOME", tmp_path):
+            self._write(tmp_path, content="legacy line", session_id="")
+            ctx = ledger_mod.build_resume_context(
+                agent="hanuman", current_session_id="MINE0000mine0000"
+            )
+        # No session_id but agent known → placeholder sid, never surfaced bare.
+        assert "⟨????·hanuman⟩" in ctx
+
+    def test_no_origin_at_all_marked(self, tmp_path):
+        # Both sid and agent blank on the entry → explicit no-origin marker.
+        entries = [{"ts": "2026-07-15T17:00:00", "type": "observation",
+                    "agent": "", "session_id": "", "content": "orphan line"}]
+        with patch.object(ledger_mod, "load_recent", lambda **k: entries):
+            ctx = ledger_mod.build_resume_context(
+                agent="hanuman", current_session_id="MINE0000mine0000"
+            )
+        assert "no-origin" in ctx
+
+    def test_backward_compatible_zero_arg_call(self, tmp_path):
+        with patch.object(ledger_mod, "_WILLOW_HOME", tmp_path):
+            self._write(tmp_path, content="still works", session_id="ZZZZ0000zzzz0000")
+            ctx = ledger_mod.build_resume_context(agent="hanuman")
+        assert "[LEDGER]" in ctx
+        assert "still works" in ctx
+
+
+# ---------------------------------------------------------------------------
 # snapshot_for_compact
 # ---------------------------------------------------------------------------
 
