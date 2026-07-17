@@ -2091,7 +2091,10 @@ async def kart_task_run(
 
         stale_s = int(os.environ.get("KART_STALE_SECONDS", "3600"))
         reaped = pg.reap_stale_tasks(
-            max_age_seconds=stale_s, agent=agent, exempt_ids=_reap_exempt_ids()
+            max_age_seconds=stale_s,
+            agent=agent,
+            exempt_ids=_reap_exempt_ids(),
+            lane=KART_LANE_FAST,
         )
 
         timeout = kart_timeout("poll")

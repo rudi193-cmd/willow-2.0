@@ -103,6 +103,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     lane             TEXT NOT NULL DEFAULT 'fast',
     status           TEXT DEFAULT 'pending',
     result           TEXT,
+    claim_owner      TEXT,
+    claimed_at       TEXT,
     created_at       TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -238,6 +240,8 @@ _MIGRATIONS = [
     # captured at submit time so Kart runs nest under their real parent.
     "ALTER TABLE tasks ADD COLUMN submitter_run_id TEXT",
     "ALTER TABLE tasks ADD COLUMN lane TEXT NOT NULL DEFAULT 'fast'",
+    "ALTER TABLE tasks ADD COLUMN claim_owner TEXT",
+    "ALTER TABLE tasks ADD COLUMN claimed_at TEXT",
 ]
 
 _FTS_TRIGGERS = """

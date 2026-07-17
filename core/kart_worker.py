@@ -13,16 +13,82 @@ Lane workers (set via KART_WORKER_LANE):
 from __future__ import annotations
 
 import importlib
+import json
 import logging
+import os
+import socket
 import sys
 import threading
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 logger = logging.getLogger("kart_worker")
 
 _KART_RUN_IDS: dict[str, str] = {}
+
+
+def _proc_start_ticks(pid: int) -> str:
+    """Linux process start token (field 22), robust to spaces in comm."""
+    stat = Path(f"/proc/{pid}/stat").read_text()
+    after_comm = stat[stat.rfind(")") + 2 :].split()
+    return after_comm[19]
+
+
+def _boot_id() -> str:
+    return Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+
+
+def _new_worker_owner() -> str:
+    """Opaque claim owner tied to this exact host process incarnation."""
+    return json.dumps(
+        {
+            "v": 1,
+            "host": socket.gethostname(),
+            "boot_id": _boot_id(),
+            "pid": os.getpid(),
+            "start_ticks": _proc_start_ticks(os.getpid()),
+            "nonce": uuid.uuid4().hex,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _worker_owner_alive(owner: str) -> bool | None:
+    """Return exact-process liveness; ``None`` means not safely knowable."""
+    try:
+        evidence = json.loads(owner)
+        if evidence.get("v") != 1 or evidence.get("host") != socket.gethostname():
+            return None
+        if evidence.get("boot_id") != _boot_id():
+            return False
+        pid = int(evidence["pid"])
+        return _proc_start_ticks(pid) == str(evidence["start_ticks"])
+    except FileNotFoundError:
+        return False
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError, OSError):
+        return None
+
+
+def _recover_prior_worker_claims(pg, owner_id: str, lane: str) -> list[str]:
+    """Fail only same-lane claims whose exact owning process is provably gone."""
+    prior = pg.running_kart_claim_owners(lane=lane)
+    dead = [
+        owner for owner in prior
+        if owner != owner_id and _worker_owner_alive(owner) is False
+    ]
+    if not dead:
+        return []
+    failed = pg.fail_orphaned_kart_claims(
+        orphaned_owners=dead,
+        replacement_owner=owner_id,
+        lane=lane,
+    )
+    if failed:
+        logger.warning("kart recovered prior-worker %s claims: %s", lane, failed)
+    return failed
 
 
 def _watchmen_key_for_mode(mode: str) -> str:
@@ -90,7 +156,7 @@ def _kart_run_close(task_id: str, status: str) -> None:
         logger.debug("run_ledger close skipped: %s", e)
 
 
-def _reap_stale(pg) -> None:
+def _reap_stale(pg, lane: str | None = None) -> None:
     import os as _os
 
     stale_s = int(_os.environ.get("KART_STALE_SECONDS", "3600"))
@@ -99,7 +165,9 @@ def _reap_stale(pg) -> None:
         for x in _os.environ.get("KART_REAP_EXEMPT_IDS", "").split(",")
         if x.strip()
     ]
-    reaped = pg.reap_stale_tasks(max_age_seconds=stale_s, exempt_ids=exempt)
+    reaped = pg.reap_stale_tasks(
+        max_age_seconds=stale_s, exempt_ids=exempt, lane=lane
+    )
     if reaped:
         logger.warning("kart reaped stale running tasks: %s", reaped)
 
@@ -198,7 +266,7 @@ def _maybe_reload_self() -> None:
                 logger.warning("kart_worker reload failed: %s", re)
 
 
-def _kart_loop_batch(interval: int, pg) -> None:
+def _kart_loop_batch(interval: int, pg, owner_id: str) -> None:
     """One batch task at a time — does not block fast workers in other processes."""
     from core.kart_lanes import KART_LANE_BATCH
 
@@ -207,9 +275,11 @@ def _kart_loop_batch(interval: int, pg) -> None:
         try:
             _maybe_write_heartbeat()
             _maybe_reload_self()
-            _reap_stale(pg)
+            _reap_stale(pg, lane=KART_LANE_BATCH)
             _maybe_prune_completed(pg)
-            claimed = pg.claim_kart_tasks(limit=1, lane=KART_LANE_BATCH)
+            claimed = pg.claim_kart_tasks(
+                limit=1, lane=KART_LANE_BATCH, claim_owner=owner_id
+            )
             if not claimed:
                 time.sleep(interval)
                 continue
@@ -237,10 +307,11 @@ def _kart_loop_batch(interval: int, pg) -> None:
             from core.pg_bridge import PgBridge
 
             pg = PgBridge()
+            _recover_prior_worker_claims(pg, owner_id, KART_LANE_BATCH)
             time.sleep(interval)
 
 
-def _kart_loop_fast(interval: int, pg) -> None:
+def _kart_loop_fast(interval: int, pg, owner_id: str) -> None:
     """Concurrent fast-lane executor — gh/git/shell never wait on batch."""
     from core.kart_lanes import KART_LANE_FAST, fast_worker_slots
 
@@ -260,12 +331,14 @@ def _kart_loop_fast(interval: int, pg) -> None:
         try:
             _maybe_write_heartbeat()
             _maybe_reload_self()
-            _reap_stale(pg)
+            _reap_stale(pg, lane=KART_LANE_FAST)
             _maybe_prune_completed(pg)
             with lock:
                 slots = max_workers - len(in_flight)
             if slots > 0:
-                claimed = pg.claim_kart_tasks(limit=slots, lane=KART_LANE_FAST)
+                claimed = pg.claim_kart_tasks(
+                    limit=slots, lane=KART_LANE_FAST, claim_owner=owner_id
+                )
                 for row in claimed:
                     with lock:
                         in_flight.add(row["id"])
@@ -281,10 +354,11 @@ def _kart_loop_fast(interval: int, pg) -> None:
             from core.pg_bridge import PgBridge
 
             pg = PgBridge()
+            _recover_prior_worker_claims(pg, owner_id, KART_LANE_FAST)
             time.sleep(interval)
 
 
-def _kart_loop_legacy(interval: int, pg) -> None:
+def _kart_loop_legacy(interval: int, pg, owner_id: str) -> None:
     """Deprecated: single-threaded fast-then-batch (KART_WORKER_LANE=all)."""
     from core.kart_lanes import KART_LANE_BATCH, KART_LANE_FAST
 
@@ -295,9 +369,13 @@ def _kart_loop_legacy(interval: int, pg) -> None:
             _maybe_reload_self()
             _reap_stale(pg)
             _maybe_prune_completed(pg)
-            claimed = pg.claim_kart_tasks(limit=1, lane=KART_LANE_FAST)
+            claimed = pg.claim_kart_tasks(
+                limit=1, lane=KART_LANE_FAST, claim_owner=owner_id
+            )
             if not claimed:
-                claimed = pg.claim_kart_tasks(limit=1, lane=KART_LANE_BATCH)
+                claimed = pg.claim_kart_tasks(
+                    limit=1, lane=KART_LANE_BATCH, claim_owner=owner_id
+                )
             if not claimed:
                 time.sleep(interval)
                 continue
@@ -324,6 +402,8 @@ def _kart_loop_legacy(interval: int, pg) -> None:
             from core.pg_bridge import PgBridge
 
             pg = PgBridge()
+            _recover_prior_worker_claims(pg, owner_id, KART_LANE_FAST)
+            _recover_prior_worker_claims(pg, owner_id, KART_LANE_BATCH)
             time.sleep(interval)
 
 
@@ -357,13 +437,18 @@ def kart_loop(interval: int = 5) -> None:
     global _HEARTBEAT_LAST_MONO
     _HEARTBEAT_LAST_MONO = 0.0
     _maybe_write_heartbeat(tick_ok=True)
+    owner_id = _new_worker_owner()
     pg = PgBridge()
     if mode == KART_WORKER_MODE_FAST:
-        _kart_loop_fast(interval, pg)
+        _recover_prior_worker_claims(pg, owner_id, KART_WORKER_MODE_FAST)
+        _kart_loop_fast(interval, pg, owner_id)
     elif mode == KART_WORKER_MODE_BATCH:
-        _kart_loop_batch(interval, pg)
+        _recover_prior_worker_claims(pg, owner_id, KART_WORKER_MODE_BATCH)
+        _kart_loop_batch(interval, pg, owner_id)
     elif mode == KART_WORKER_MODE_ALL:
         logger.warning("KART_WORKER_LANE=all is deprecated; use split fast/batch units")
-        _kart_loop_legacy(interval, pg)
+        _recover_prior_worker_claims(pg, owner_id, KART_WORKER_MODE_FAST)
+        _recover_prior_worker_claims(pg, owner_id, KART_WORKER_MODE_BATCH)
+        _kart_loop_legacy(interval, pg, owner_id)
     else:
         raise RuntimeError(f"unsupported kart worker mode: {mode}")
