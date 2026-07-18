@@ -219,7 +219,9 @@ def _process_task_row(row: dict, *, context: str = "daemon") -> None:
             submitter_run_id=row.get("submitter_run_id"),
         )
         status, result = execute_task_row(
-            row, pg, timeout=kart_timeout(context), context=context
+            row, pg,
+            timeout=kart_timeout(context, lane=row.get("lane")),
+            context=context,
         )
         pg.task_complete(task_id, result, status)
         if status == "completed":

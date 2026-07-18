@@ -23,9 +23,27 @@ _ALLOW_LOCALHOST_LINE = "# allow_localhost"
 _FENCE_RE = re.compile(r"```(bash|sh|python3?|python)?\n?(.*?)```", re.DOTALL)
 
 
-def kart_timeout(context: str = "poll") -> int:
+def kart_timeout(context: str = "poll", lane: str | None = None) -> int:
+    """Resolve the subprocess ceiling for a task.
+
+    ``poll`` (synchronous kart_task_run / kart_poll) is short and
+    lane-independent (120s). In ``daemon`` context the ceiling is LANE-AWARE:
+    the fast lane gets its own short ceiling (``fast_timeout_seconds()``, 300s)
+    so a hung fast task frees its slot quickly, while batch/unknown keeps the
+    1800s daemon ceiling. ``lane`` defaults to None so existing callers that do
+    not pass it keep today's daemon behaviour.
+    """
     if context == "daemon":
-        return int(os.environ.get("KART_DAEMON_TIMEOUT", "1800"))
+        from core.kart_lanes import (
+            KART_LANE_FAST,
+            daemon_timeout_seconds,
+            fast_timeout_seconds,
+            normalize_lane,
+        )
+
+        if lane is not None and normalize_lane(lane) == KART_LANE_FAST:
+            return fast_timeout_seconds()
+        return daemon_timeout_seconds()
     return int(os.environ.get("KART_POLL_TIMEOUT", "120"))
 
 
@@ -126,6 +144,7 @@ def run_shell_task(
     *,
     timeout: int | None = None,
     context: str = "poll",
+    lane: str | None = None,
     net_authorized: bool = False,
     net_denied_reason: str = "",
 ) -> tuple[str, dict]:
@@ -145,7 +164,7 @@ def run_shell_task(
     if blocked:
         return "failed", blocked
 
-    timeout = timeout if timeout is not None else kart_timeout(context)
+    timeout = timeout if timeout is not None else kart_timeout(context, lane=lane)
     cmd_body, allow_net, allow_localhost = _parse_task_network_directives(task_text)
     net_requested = allow_net
     allow_net = allow_net and net_authorized
@@ -518,6 +537,7 @@ def _dispatch_task_row(
             cmd,
             timeout=timeout,
             context=context,
+            lane=row.get("lane"),
             net_authorized=net_ok,
             net_denied_reason=net_reason,
         )
