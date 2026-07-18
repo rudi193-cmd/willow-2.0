@@ -167,7 +167,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [holon-run/holon](https://github.com/holon-run/holon) | holon-run | fix: allow Sleep while waiting on same-WorkItem background command_task (#1416) | [PR #1435](https://github.com/holon-run/holon/pull/1435) closed |
 | [abhixdd/ghgrab](https://github.com/abhixdd/ghgrab) | abhixdd | feat: Homebrew formula + agent integration docs (Willow) | [PR #65](https://github.com/abhixdd/ghgrab/pull/65) closed |
 | [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) | ComposioHQ | feat: add 10 development methodology skills | [PR #885](https://github.com/ComposioHQ/awesome-claude-skills/pull/885) closed |
-| [Gentleman-Programming/engram](https://github.com/Gentleman-Programming/engram) | Gentleman-Programming | fix(cloud): constant-time credential comparisons (#350) | [PR #399](https://github.com/Gentleman-Programming/engram/pull/399) closed |
 
 
 ## Contributors to Willow
