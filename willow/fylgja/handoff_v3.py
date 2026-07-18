@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from willow.fylgja.handoff_project import resolve_handoff_project
@@ -198,11 +198,60 @@ def _block_for_session(agent: str, session_id: str, *, written_by: str) -> dict 
     return None
 
 
-def should_write_stop_hook_handoff(agent: str, session_id: str = "") -> bool:
-    """True when session_stop should emit a crash-safe skeleton handoff."""
+# A model handoff written within this window of session stop is treated as
+# belonging to the current working session. Matches collect_machine_skeleton's
+# `--since=12 hours ago` window — the codebase's notion of one session's span.
+_SESSION_RECENCY_HOURS = 12.0
+
+
+def _parse_iso(ts: object) -> datetime | None:
+    try:
+        dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
+def _recent_block(agent: str, *, written_by: str, within_hours: float) -> dict | None:
+    """Newest handoff block from `written_by` written within `within_hours` of now."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=within_hours)
+    for path in reversed(_handoff_paths_for_agent(agent)):
+        try:
+            block = extract_machine_block(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not block or block.get("written_by") != written_by:
+            continue
+        written_at = _parse_iso(block.get("written_at"))
+        if written_at is not None and written_at >= cutoff:
+            return block
+    return None
+
+
+def should_write_stop_hook_handoff(
+    agent: str,
+    session_id: str = "",
+    *,
+    recency_hours: float = _SESSION_RECENCY_HOURS,
+) -> bool:
+    """True when session_stop should emit a crash-safe skeleton handoff.
+
+    Skip when this session already produced a handoff:
+      * exact session_id match on a prior stop_hook or model handoff (precise), or
+      * a model_tool_call handoff written within the recent-session window.
+
+    The recency fallback is load-bearing: the model handoff path
+    (handoff_write_v3) usually cannot stamp its own session_id, so the precise
+    session_id match never fires for it. Without the fallback, the stop hook
+    writes a skeleton on top of a rich model handoff and — sorting to a later
+    session letter — that empty skeleton shadows the model's handoff at next
+    boot (the "Session ended without model handoff" placeholder wins).
+    """
     if session_id and _block_for_session(agent, session_id, written_by="stop_hook"):
         return False
     if session_id and _block_for_session(agent, session_id, written_by="model_tool_call"):
+        return False
+    if _recent_block(agent, written_by="model_tool_call", within_hours=recency_hours):
         return False
     return True
 
