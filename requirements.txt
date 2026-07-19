@@ -20,3 +20,6 @@ platformdirs>=4.10.0
 pywin32>=312; sys_platform == "win32"  # Windows only
 windows-curses>=2.4.2; sys_platform == "win32"  # Windows only
 openclaw-sap-gate @ git+https://github.com/rudi193-cmd/openclaw-sap-gate.git@710860045db25bee4b3fb2cfe5831ad04661c813
+# kart stage-5 Tier-1: core/kart_sandbox.py delegates its isolation primitives to the
+# shipped kartikeya package (fylgja-decoupled, equivalence proven). Same PyPI pin as willow-mcp.
+kartikeya>=0.0.3,<0.1.0
