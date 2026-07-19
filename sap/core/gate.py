@@ -122,7 +122,15 @@ _CANONICAL_PGP_FP = "9B6F87BEB4AE56E23D3D055724AED1D0216053F5"
 
 
 def _expected_pgp_fingerprint() -> str:
-    raw = (os.environ.get("WILLOW_PGP_FINGERPRINT") or "").strip()
+    # Trust anchor: prefer the fleet env name, fall back to the SAP-standard name
+    # so this gate resolves the same key as the published openclaw-sap-gate when
+    # they share an environment. Behavior otherwise unchanged: if neither is set,
+    # fall back to the pinned _CANONICAL_PGP_FP (fleet default).
+    raw = (
+        os.environ.get("WILLOW_PGP_FINGERPRINT")
+        or os.environ.get("SAP_PGP_FINGERPRINT")
+        or ""
+    ).strip()
     if not raw:
         raw = _CANONICAL_PGP_FP
     return raw.upper().replace(" ", "")
