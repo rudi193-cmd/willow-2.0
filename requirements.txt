@@ -6,7 +6,7 @@ requests>=2.34.2
 mcp>=1.28.1,<2.0.0
 pytest>=9.1.1
 pytest-timeout>=2.4.0
-litellm>=1.92.0; python_version < '3.14'
+litellm>=1.93.0; python_version < '3.14'
 litellm>=1.83.7,<1.84; python_version >= '3.14'
 textual>=8.2.8
 watchdog>=6.0.0
