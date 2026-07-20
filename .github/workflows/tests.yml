@@ -234,5 +234,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      # kart stage-5 Tier-1: core/kart_sandbox.py's bind/env-building checks (S1,
+      # S8, S9, ...) now exercise real behaviour delegated to kartikeya, so the
+      # audit needs it installed to check anything beyond static source text.
+      - name: Install kartikeya (kart sandbox delegation target)
+        run: pip install 'kartikeya>=0.0.3,<0.1.0'
+
       - name: Kart sandbox audit — gated findings must stay closed
         run: python3 scripts/audit_verify.py
