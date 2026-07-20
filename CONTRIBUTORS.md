@@ -35,6 +35,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | fix(detect): Tier 2 comment guard for apiPatterns (closes #28) | [PR #30](https://github.com/Redential/redential-cli/pull/30) merged |
 | [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | Map official MCP SDK imports to ai/mcp | [PR #19](https://github.com/Redential/redential-cli/pull/19) merged |
 | [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | Add Model Context Protocol taxonomy slug | [PR #18](https://github.com/Redential/redential-cli/pull/18) merged |
 | [AllHailSeizure/Imageination](https://github.com/AllHailSeizure/Imageination) | AllHailSeizure | docs: make setup commands portable | [PR #7](https://github.com/AllHailSeizure/Imageination/pull/7) merged |
@@ -132,7 +133,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(mcp): restore write_note overwrite schema for external clients (#818) | [PR #841](https://github.com/basicmachines-co/basic-memory/pull/841) merged |
 | [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | docs(installer): use pgvector image for Postgres compose | [PR #840](https://github.com/basicmachines-co/basic-memory/pull/840) merged |
 | [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | fix(mcp): merge hot-cold cache and context-cold into MCP index | [PR #202](https://github.com/manojmallick/sigmap/pull/202) merged |
-| [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | fix(detect): Tier 2 comment guard for apiPatterns (closes #28) | [PR #30](https://github.com/Redential/redential-cli/pull/30) open |
 | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat(plugins): dreaming memory consolidation (config.yaml re-scope) | [PR #64281](https://github.com/NousResearch/hermes-agent/pull/64281) open |
 | [alash3al/stash](https://github.com/alash3al/stash) | alash3al | docs: clarify that curl /sse holding open is expected SSE behavior (#11) | [PR #14](https://github.com/alash3al/stash/pull/14) open |
 | [castroquiles/glapagos](https://github.com/castroquiles/glapagos) | castroquiles | feat(api): export committed OpenAPI spec and cover the API (#13) | [PR #20](https://github.com/castroquiles/glapagos/pull/20) open |
@@ -161,7 +161,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [openclaw/openclaw](https://github.com/openclaw/openclaw) | openclaw | fix(memory): do not filter FTS keyword search by embedding model (#48300) | [PR #90165](https://github.com/openclaw/openclaw/pull/90165) closed |
 | [alibaizhanov/mengram](https://github.com/alibaizhanov/mengram) | alibaizhanov | docs: add CONTRIBUTING.md with local setup and PR guidelines | [PR #40](https://github.com/alibaizhanov/mengram/pull/40) closed |
 | [ogham-mcp/ogham-mcp](https://github.com/ogham-mcp/ogham-mcp) | ogham-mcp | feat: Memory Tool 6-op conformance CI (#52) | [PR #53](https://github.com/ogham-mcp/ogham-mcp/pull/53) closed |
-| [holon-run/holon](https://github.com/holon-run/holon) | holon-run | fix: allow Sleep while waiting on same-WorkItem background command_task (#1416) | [PR #1435](https://github.com/holon-run/holon/pull/1435) closed |
 
 
 ## Contributors to Willow
