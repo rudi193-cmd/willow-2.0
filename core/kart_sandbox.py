@@ -15,7 +15,6 @@ import os
 import re
 import shutil
 import subprocess
-import sysconfig
 import tempfile
 import time
 from pathlib import Path
@@ -26,13 +25,42 @@ _ALLOW_NET_DIRECTIVE = "# allow_net"
 _ALLOW_LOCALHOST_DIRECTIVE = "# allow_localhost"
 _DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "willow" / "fylgja" / "config" / "kart-sandbox.json"
 
-# Credential-bearing env prefixes (GAP-B). Only passed into the sandbox when a task
-# opts into network (allow_net) — a no-network task receives zero credentials.
-# Overridable via the "credential_env_prefixes" key in kart-sandbox.json.
-_DEFAULT_CREDENTIAL_PREFIXES = (
-    "TWINE_", "PYPI_", "ANTHROPIC_", "OPENROUTER_", "GROQ_", "GITHUB_",
-    "NPM_", "HUGGINGFACE_", "HF_", "OPENAI_", "AWS_", "DISCORD_",
+# --- kart stage-5 Tier-1: delegation to the shipped `kartikeya` package --------
+# The fleet-decoupled data-producers — collect_bind_mounts, collect_mcp_trust_ro_overlays,
+# and kart_env — now delegate to `kartikeya`, which stripped the `willow.fylgja` coupling
+# while preserving the logic byte-for-byte (equivalence proven: willow_compose store record
+# kart_migration/3d91bb5a — pointing kartikeya at the fleet config reproduces this module's
+# mounts/overlays/env exactly for every network mode). Two fleet-specific inputs kartikeya
+# cannot know are injected via its documented env seams, set here with setdefault so an
+# operator override always wins:
+#   * KART_SANDBOX_CONFIG -> the fleet bwrap mount policy (kart-sandbox.json)
+#   * KART_EXTRA_VENVS    -> the fleet venv fylgja binds (~/github/willow-2.0/.venv-dev)
+# Deliberately NOT delegated in this step:
+#   * build_bwrap_argv — thin bwrap-flag assembly over the delegated producers; kept so the
+#     per-root config seam and the module-level monkeypatch points the tests rely on stay
+#     intact (its output is proven to reassemble byte-identically).
+#   * scan_bash — kartikeya's is a strict security upgrade (fork-bomb detection), a behaviour
+#     change owed its own review, not an equivalence swap.
+#   * run_shell — kartikeya's enables resource caps by default; that behaviour change gets
+#     its own reviewed step.
+#   * Tier-2 pieces (load_sandbox_config, …) — behaviour diverged; reconcile with review.
+os.environ.setdefault("KART_SANDBOX_CONFIG", str(_DEFAULT_CONFIG))
+os.environ.setdefault(
+    "KART_EXTRA_VENVS", str(Path.home() / "github" / "willow-2.0" / ".venv-dev")
 )
+
+
+def _kk():
+    """Lazy handle to the kartikeya sandbox backend (Tier-1 delegation target).
+
+    Imported on first use, not at module load, so that importing this module for
+    its non-delegated helpers (load_sandbox_config, collect_config_symlinks,
+    parse_task_network, the audit-verify structural checks, …) does not require
+    kartikeya to be installed — only the delegated data-producers below do.
+    Python caches the import in sys.modules, so repeat calls are free.
+    """
+    from kartikeya import sandbox
+    return sandbox
 
 
 def bwrap_available() -> bool:
@@ -105,121 +133,16 @@ def load_sandbox_config(root: Path | None = None) -> dict:
     return {}
 
 
-def _discover_worktree_targets(scan_roots: list[Path]) -> list[Path]:
-    """Bind worktrees/ once; add external symlink targets only.
-
-    Per-child directory binds are redundant (the parent rw bind covers them) and
-    can leave stale host mount entries that block ``git worktree remove`` with
-    EBUSY after Kart exits. Symlinked worktrees pointing outside the parent
-    still need an explicit bind at their resolved path.
-    """
-    found: list[Path] = []
-    seen: set[str] = set()
-    for root in scan_roots:
-        if not root.is_dir():
-            continue
-        try:
-            resolved_root = root.resolve()
-        except OSError:
-            continue
-        key = str(resolved_root)
-        if key not in seen:
-            seen.add(key)
-            found.append(resolved_root)
-        try:
-            children = list(root.iterdir())
-        except OSError:
-            continue
-        for candidate in children:
-            if not candidate.is_symlink():
-                continue
-            try:
-                resolved = candidate.resolve()
-            except OSError:
-                continue
-            if not resolved.exists():
-                continue
-            key = str(resolved)
-            if key in seen:
-                continue
-            seen.add(key)
-            found.append(resolved)
-    return found
-
-
 def collect_bind_mounts(root: Path | None = None) -> list[tuple[Path, Path, bool]]:
     """
     Return unique (host, container, read_only) mount triples for bwrap.
     read_only=False means read-write bind.
+
+    Delegates to `kartikeya` (Tier-1). Root is resolved here the willow-2.0 way and
+    passed through so the fleet's repo/worktree layout drives the mount set; the fleet
+    config + venv reach kartikeya via KART_SANDBOX_CONFIG / KART_EXTRA_VENVS (set above).
     """
-    repo = root or willow_repo_root()
-    cfg = load_sandbox_config(repo)
-    ctx = _template_ctx(repo)
-
-    mounts: dict[str, tuple[Path, Path, bool]] = {}
-
-    def _add(host: Path, read_only: bool, *, required: bool = False) -> None:
-        try:
-            if not host.exists():
-                # KP6a (S9): a required bind that is missing is usually config rot —
-                # surface it. bind_try entries are optional, so they stay silent.
-                if required:
-                    _log.warning("kart-sandbox: required bind target missing, skipped: %s", host)
-                return
-            resolved = host.resolve()
-        except OSError:
-            return
-        key = str(resolved)
-        ro = read_only
-        if key in mounts:
-            existing = mounts[key]
-            mounts[key] = (existing[0], existing[1], existing[2] and ro)
-        else:
-            mounts[key] = (resolved, resolved, ro)
-
-    for raw in cfg.get("bind_read_only", []):
-        _add(Path(_render(str(raw), ctx)), True, required=True)
-    for raw in cfg.get("bind_try_read_only", []):
-        _add(Path(_render(str(raw), ctx)), True)
-    for raw in cfg.get("bind_read_write", []):
-        _add(Path(_render(str(raw), ctx)), False, required=True)
-    for raw in cfg.get("bind_try", []):
-        _add(Path(_render(str(raw), ctx)), False)
-
-    scan_roots = [
-        Path(_render(str(raw), ctx))
-        for raw in cfg.get("worktree_scan_roots", ["{{WILLOW_ROOT}}/worktrees"])
-    ]
-    for wt in _discover_worktree_targets(scan_roots):
-        _add(wt, False)
-
-    # Python runtime paths for Willow venvs / psycopg2 inside bwrap.
-    # Worktrees usually do not have .venv-dev, so bind every known venv candidate.
-    try:
-        from willow.fylgja.python_env import venv_candidates
-        for venv in venv_candidates(repo):
-            if venv.is_dir():
-                _add(venv, True)
-    except Exception:
-        repo_venv = (repo / ".venv-dev") if repo else None
-        if repo_venv and repo_venv.is_dir():
-            _add(repo_venv, True)
-        home_venv = Path.home() / ".willow-venv"
-        if home_venv.is_dir() and (not repo_venv or home_venv.resolve() != repo_venv.resolve()):
-            _add(home_venv, True)
-    try:
-        import psycopg2 as _pg2
-
-        _add(Path(_pg2.__file__).resolve().parent, True)
-        libs = Path(_pg2.__file__).resolve().parent.parent / "psycopg2_binary.libs"
-        _add(libs, True)
-    except ImportError:
-        pass
-    user_site = sysconfig.get_path("purelib")
-    if user_site:
-        _add(Path(user_site), True)
-
-    return sorted(mounts.values(), key=lambda t: str(t[0]))
+    return _kk().collect_bind_mounts(root or willow_repo_root())
 
 
 def collect_mcp_trust_ro_overlays(root: Path | None = None) -> list[Path]:
@@ -229,26 +152,10 @@ def collect_mcp_trust_ro_overlays(root: Path | None = None) -> list[Path]:
     confirmed OAuth records — the gate for host stdio/serve. The fleet home is
     bind-mounted read-write for store/kart logs; this overlay blocks sandbox tasks
     from rewriting the ACLs that gate them (FRANK baf2f63a / #777).
-    """
-    from willow.fylgja.willow_home import willow_home, willow_home_alias
 
-    repo = root or willow_repo_root()
-    seen: set[str] = set()
-    overlays: list[Path] = []
-    for base in (willow_home(repo), willow_home_alias()):
-        trust = base / "mcp_apps"
-        try:
-            if not trust.is_dir():
-                continue
-            resolved = trust.resolve()
-        except OSError:
-            continue
-        key = str(resolved)
-        if key in seen:
-            continue
-        seen.add(key)
-        overlays.append(resolved)
-    return overlays
+    Delegates to `kartikeya` (Tier-1); root resolved the willow-2.0 way, passed through.
+    """
+    return _kk().collect_mcp_trust_ro_overlays(root or willow_repo_root())
 
 
 def collect_config_symlinks(root: Path | None = None) -> list[tuple[str, str]]:
@@ -289,6 +196,13 @@ def build_bwrap_argv(
     allow_localhost: bool = False,
     root: Path | None = None,
 ) -> list[str]:
+    # Thin bwrap-flag assembly. Deliberately NOT delegated: it consumes the
+    # delegated data-producers (collect_bind_mounts / collect_mcp_trust_ro_overlays,
+    # now kartikeya-backed) plus willow-2.0's own collect_config_symlinks by name, so
+    # per-root config resolution and the module-level monkeypatch seams the test suite
+    # relies on stay intact. The mount/overlay/env *content* — the fleet-decoupled part
+    # — is what moved to kartikeya; this glue is proven to reassemble it byte-identically
+    # (kart_migration/3d91bb5a). Full delegation of the assembly is a later step.
     args = ["bwrap"]
     # Isolated: --unshare-net blocks all sockets (including 127.0.0.1:11434 Ollama).
     # allow_localhost shares the host net ns so loopback services work, but does NOT
@@ -456,139 +370,25 @@ def parse_task_network(task_text: str) -> tuple[str, bool, bool]:
     return "\n".join(lines).strip(), allow_net, allow_localhost
 
 
-def _parse_fleet_env_file(path: Path, prefixes: tuple[str, ...]) -> dict[str, str]:
-    """Parse a shell KEY=VALUE env file. Skips comments and blank lines.
-    Only includes keys matching prefixes. Strips surrounding quotes from values."""
-    result: dict[str, str] = {}
-    try:
-        for raw in path.read_text(encoding="utf-8").splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, val = line.partition("=")
-            key = key.strip()
-            if not key or not key.startswith(prefixes):
-                continue
-            val = val.strip()
-            if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
-                val = val[1:-1]
-            if val:
-                result[key] = val
-    except Exception:
-        pass
-    return result
-
-
 def kart_env(
     root: Path | None = None,
     *,
     allow_net: bool = False,
     allow_localhost: bool = False,
 ) -> dict[str, str]:
-    repo = root or willow_repo_root()
-    cfg = load_sandbox_config(repo)
-    prefixes = tuple(cfg.get("env_prefixes") or ("WILLOW_", "GROVE_", "PG", "POSTGRES", "OLLAMA_", "GIT_", "ANTHROPIC_", "GROQ_"))
-    # GAP-B: credential-bearing env vars only reach the sandbox on a network-opted
-    # task. A no-network task cannot exfil keys it was never handed.
-    cred_prefixes = tuple(cfg.get("credential_env_prefixes") or _DEFAULT_CREDENTIAL_PREFIXES)
+    """Build the environment handed into the sandbox (incl. GAP-B credential gating).
 
-    env = {
-        "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
-        "HOME": str(Path.home()),
-        "LANG": os.environ.get("LANG", "en_US.UTF-8"),
-        "PYTHONUNBUFFERED": "1",
-        # Marker so code inside bwrap tasks can detect the Kart sandbox context.
-        "WILLOW_IN_KART": "1",
-        "WILLOW_KART_ALLOW_NET": "1" if allow_net else "0",
-        "WILLOW_KART_ALLOW_LOCALHOST": "1" if allow_localhost and not allow_net else "0",
-    }
-    for key, val in os.environ.items():
-        if key.startswith(prefixes):
-            env[key] = val
-
-    # Supplement with fleet env file so API keys (ANTHROPIC_API_KEY, GROQ_API_KEY, …)
-    # reach bwrap tasks even when the calling process (MCP server, kart worker) didn't
-    # inherit them from the user's shell. os.environ values take priority.
-    from willow.fylgja.willow_home import willow_home
-
-    _fleet_env_path = willow_home(repo) / "env"
-    for k, v in _parse_fleet_env_file(_fleet_env_path, prefixes).items():
-        if k not in env:
-            env[k] = v
-
-    # Resolved repo wins over inherited env (MCP may pass $HOME or a stale path).
-    if repo:
-        env["WILLOW_ROOT"] = str(repo.resolve())
-        env["PYTHONPATH"] = str(repo.resolve())
-
-    try:
-        from willow.fylgja.python_env import venv_bin_dirs, willow_python
-        env["WILLOW_PYTHON"] = willow_python(repo)
-        for bin_dir in reversed(venv_bin_dirs(repo)):
-            venv_bin = str(bin_dir)
-            if venv_bin not in env["PATH"].split(":"):
-                env["PATH"] = venv_bin + ":" + env["PATH"]
-    except Exception:
-        venv_bin = None
-        if repo and (repo / ".venv-dev" / "bin").is_dir():
-            venv_bin = str(repo / ".venv-dev" / "bin")
-        elif (Path.home() / ".willow-venv" / "bin").is_dir():
-            venv_bin = str(Path.home() / ".willow-venv" / "bin")
-        if venv_bin and venv_bin not in env["PATH"]:
-            env["PATH"] = venv_bin + ":" + env["PATH"]
-
-    # KP5 (S6): ensure host user + npm-global bin dirs are on PATH so host-installed
-    # shims (cursor-agent, npm-global CLIs) resolve inside the sandbox. Appended at
-    # the tail so they never shadow venv/system binaries.
-    _user_bins = [str(Path.home() / ".local" / "bin")]
-    _npm_prefix = os.environ.get("NPM_CONFIG_PREFIX")
-    if _npm_prefix:
-        _user_bins.append(str(Path(_npm_prefix) / "bin"))
-    _user_bins.append(str(Path.home() / ".npm-global" / "bin"))
-    _user_bins.append(str(Path.home() / ".fly" / "bin"))
-    _path_parts = env["PATH"].split(":")
-    for _b in _user_bins:
-        if _b not in _path_parts:
-            env["PATH"] = env["PATH"] + ":" + _b
-            _path_parts.append(_b)
-
-    if "GIT_AUTHOR_NAME" not in env:
-        try:
-            name = subprocess.check_output(["git", "config", "--global", "user.name"], text=True).strip()
-            email = subprocess.check_output(["git", "config", "--global", "user.email"], text=True).strip()
-            if name:
-                env["GIT_AUTHOR_NAME"] = name
-                env["GIT_COMMITTER_NAME"] = name
-            if email:
-                env["GIT_AUTHOR_EMAIL"] = email
-                env["GIT_COMMITTER_EMAIL"] = email
-        except Exception:
-            pass
-
-    # Inside bwrap, /var/run is not present (collect_bind_mounts resolves the
-    # /var/run → /run symlink away). psycopg2 with host=None defaults to
-    # /var/run/postgresql, which doesn't exist in the container.
-    # Set WILLOW_PG_HOST to the real socket directory so pg_bridge finds it.
-    if not env.get("WILLOW_PG_HOST"):
-        import glob as _glob
-        for _sock in _glob.glob("/run/postgresql/.s.PGSQL.*") + _glob.glob("/tmp/.s.PGSQL.*"):
-            env["WILLOW_PG_HOST"] = str(Path(_sock).parent)
-            break
-
-    # The SAP gate requires WILLOW_SAFE_ROOT to initialize; without it classify
-    # fails inside bwrap and promote_intake falls back to heuristic routing.
-    if not env.get("WILLOW_SAFE_ROOT"):
-        default_safe = Path.home() / "github" / "SAFE" / "Applications"
-        if default_safe.is_dir():
-            env["WILLOW_SAFE_ROOT"] = str(default_safe)
-
-    # GAP-B: strip credential env vars unless the task opted into network. Done last
-    # so it catches keys sourced from both os.environ and the fleet env file.
-    if not allow_net and cred_prefixes:
-        for key in [k for k in env if k.startswith(cred_prefixes)]:
-            del env[key]
-
-    return env
+    Delegates to `kartikeya` (Tier-1). Proven byte-identical to the former inline
+    implementation for every (allow_net, allow_localhost) mode when kartikeya is
+    pointed at the fleet config (kart_migration/3d91bb5a): same env-prefix passthrough,
+    fleet env-file supplement, venv/PATH assembly, git identity, PG-socket discovery,
+    and the credential strip on no-network tasks. Root resolved the willow-2.0 way.
+    """
+    return _kk().kart_env(
+        root or willow_repo_root(),
+        allow_net=allow_net,
+        allow_localhost=allow_localhost,
+    )
 
 
 def sandbox_manifest(

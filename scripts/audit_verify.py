@@ -175,10 +175,24 @@ def chk_s6():
 
 
 def chk_s9():
-    src = _source("core/kart_sandbox.py")
-    return (CLOSED, "missing required bind logs a warning") \
-        if "required bind target missing" in src \
-        else (OPEN, "silent bind skip")
+    """A missing required bind must log a warning, not fail silently.
+
+    collect_bind_mounts (Tier-1, kart stage-5) now delegates to kartikeya, so the
+    warning-emitting source may live there instead of in this repo. Check
+    willow-2.0's own source first (pre-delegation / future re-inlining), then fall
+    back to kartikeya's installed source.
+    """
+    needle = "required bind target missing"
+    if needle in _source("core/kart_sandbox.py"):
+        return CLOSED, "missing required bind logs a warning"
+    try:
+        import kartikeya.sandbox as _kk_sandbox
+        kk_src = Path(_kk_sandbox.__file__).read_text(encoding="utf-8")
+    except (ImportError, OSError):
+        kk_src = ""
+    if needle in kk_src:
+        return CLOSED, "missing required bind logs a warning (kartikeya)"
+    return OPEN, "silent bind skip"
 
 
 def chk_s5():
