@@ -123,6 +123,24 @@ def _render(path_template: str, ctx: dict[str, str]) -> str:
 
 
 def load_sandbox_config(root: Path | None = None) -> dict:
+    """Resolve the bwrap mount policy.
+
+    An explicit `root` always wins (per-root resolution — worktrees, and the test
+    suite's synthetic repos, depend on this). Only when no root is given does
+    $KART_SANDBOX_CONFIG apply: the delegated Tier-1 producers (collect_bind_mounts,
+    kart_env, via kartikeya) already honor it, so a root-less caller here — run_shell's
+    _rtk_rewrite is the one in this module — must resolve the same config an operator
+    override intends, instead of silently reading the hardcoded fleet default.
+    """
+    if root is None:
+        env = os.environ.get("KART_SANDBOX_CONFIG", "").strip()
+        if env:
+            env_path = Path(env).expanduser()
+            if env_path.is_file():
+                try:
+                    return json.loads(env_path.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
     repo = root or willow_repo_root()
     path = (repo / "willow" / "fylgja" / "config" / "kart-sandbox.json") if repo else _DEFAULT_CONFIG
     if path.is_file():
