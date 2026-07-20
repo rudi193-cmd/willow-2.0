@@ -76,19 +76,3 @@ class Vault:
         rows = conn.execute("SELECT name FROM secrets ORDER BY name").fetchall()
         conn.close()
         return [r[0] for r in rows]
-
-
-def default_vault() -> Vault:
-    """Return a Vault instance pointing at $WILLOW_HOME/vault.db, initialized."""
-    v = Vault()
-    home = willow_home()
-    db_exists  = (home / "vault.db").exists()
-    key_exists = (home / "vault.key").exists()
-    if db_exists and not key_exists:
-        raise FileNotFoundError(
-            f"Vault database exists but key file is missing: {v._key_path}\n"
-            "Restore the key from backup or delete the vault and re-initialize."
-        )
-    if not db_exists:
-        v.init()
-    return v
