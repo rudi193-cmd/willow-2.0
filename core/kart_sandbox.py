@@ -50,6 +50,25 @@ os.environ.setdefault(
 )
 
 
+# Home coherence (kart stage-5 Tier-3): fylgja's willow_home is private-config-aware
+# (→ ~/github/.willow, or the repo-local generated pack) while kartikeya's is generic
+# ($WILLOW_HOME, else ~/.willow). They AGREE whenever WILLOW_HOME is exported and DIVERGE
+# when it is not. Tier-1 delegated home-derived sandbox paths (mcp_apps trust overlays,
+# the fleet env-file lookup, the nsswitch shim) to kartikeya, while this module's own
+# _kart_logs_root / write_task_log still resolve through fylgja — so an unset WILLOW_HOME
+# would split the sandbox and its logs across two different home directories, and Tier-1's
+# proven equivalence quietly depended on WILLOW_HOME being set. Pin it here to fylgja's OWN
+# resolved fleet home: idempotent for every fylgja caller (they already return this value),
+# and it forces kartikeya to resolve the same home — making all home-derived kart paths
+# coherent unconditionally. An operator/fleet export still wins (setdefault). Guarded so a
+# missing fylgja (kartikeya-only environments) simply falls back to kartikeya's default.
+try:
+    from willow.fylgja.willow_home import willow_home as _fylgja_willow_home
+    os.environ.setdefault("WILLOW_HOME", str(_fylgja_willow_home()))
+except Exception:
+    pass
+
+
 def _kk():
     """Lazy handle to the kartikeya sandbox backend (Tier-1 delegation target).
 
