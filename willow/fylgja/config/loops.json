@@ -29,6 +29,32 @@
       "harness": null
     },
     {
+      "id": "host-divergence-watch",
+      "status": "active",
+      "trigger": {
+        "kind": "timer",
+        "spec": "OnCalendar=daily",
+        "unit": "host-divergence-watch.timer"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "willow/fylgja/host_divergence_watch.py",
+        "model": null
+      },
+      "verify": {
+        "class": "recount",
+        "predicate": "suite runs twice under synthetic private/public HOMEs and every test reports the same outcome in both arms"
+      },
+      "attention": "tests/ outcomes under private_config_available() true vs false — the branch CI can never exercise",
+      "exit": "one pass per timer tick",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "host_divergence_watch",
+        "interval_sec": 86400
+      },
+      "harness": null
+    },
+    {
       "id": "stuck-loop-watch",
       "status": "active",
       "trigger": {
