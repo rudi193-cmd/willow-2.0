@@ -173,7 +173,7 @@ def test_main_exits_2_and_marks_heartbeat_failed_when_an_arm_breaks(monkeypatch,
         lambda tick_ok, counts, error="": beats.append({"tick_ok": tick_ok, "error": error}),
     )
     monkeypatch.setattr(hdw, "open_flag", lambda *a, **k: pytest.fail("must not flag on a broken arm"))
-    monkeypatch.setattr("sys.argv", ["host_divergence_watch.py", "--dry-run"])
+    monkeypatch.setattr("sys.argv", ["host_divergence_watch.py", "--dry-run", "--no-warmup"])
 
     assert hdw.main() == 2
     assert beats and beats[0]["tick_ok"] is False
@@ -189,7 +189,7 @@ def test_main_exits_1_and_flags_on_divergence(monkeypatch):
     monkeypatch.setattr(hdw, "write_heartbeat", lambda *a, **k: None)
     flagged: list = []
     monkeypatch.setattr(hdw, "open_flag", lambda findings, counts: flagged.append(findings))
-    monkeypatch.setattr("sys.argv", ["host_divergence_watch.py"])
+    monkeypatch.setattr("sys.argv", ["host_divergence_watch.py", "--no-warmup"])
 
     assert hdw.main() == 1
     assert flagged and flagged[0][0]["test"] == "t::a"
@@ -202,7 +202,7 @@ def test_main_dry_run_does_not_flag(monkeypatch):
     monkeypatch.setattr(hdw, "run_arm", fake_run_arm)
     monkeypatch.setattr(hdw, "write_heartbeat", lambda *a, **k: None)
     monkeypatch.setattr(hdw, "open_flag", lambda *a, **k: pytest.fail("dry-run must not flag"))
-    monkeypatch.setattr("sys.argv", ["host_divergence_watch.py", "--dry-run"])
+    monkeypatch.setattr("sys.argv", ["host_divergence_watch.py", "--dry-run", "--no-warmup"])
 
     assert hdw.main() == 1
 
@@ -214,7 +214,7 @@ def test_main_exits_0_and_heartbeats_when_arms_agree(monkeypatch):
         hdw, "write_heartbeat",
         lambda tick_ok, counts, error="": beats.append({"tick_ok": tick_ok, "counts": counts}),
     )
-    monkeypatch.setattr("sys.argv", ["host_divergence_watch.py"])
+    monkeypatch.setattr("sys.argv", ["host_divergence_watch.py", "--no-warmup"])
 
     assert hdw.main() == 0
     assert beats and beats[0]["tick_ok"] is True
@@ -244,7 +244,7 @@ def test_main_writes_report_and_says_how_many_were_not_shown(tmp_path, monkeypat
     report = tmp_path / "r.json"
     monkeypatch.setattr(hdw, "run_arm", fake_run_arm)
     monkeypatch.setattr(hdw, "write_heartbeat", lambda *a, **k: None)
-    monkeypatch.setattr("sys.argv", ["h.py", "--dry-run", "--report", str(report)])
+    monkeypatch.setattr("sys.argv", ["h.py", "--dry-run", "--no-warmup", "--report", str(report)])
 
     assert hdw.main() == 1
     out = capsys.readouterr().out
@@ -257,7 +257,7 @@ def test_main_writes_report_on_a_clean_pass(tmp_path, monkeypatch):
     report = tmp_path / "clean.json"
     monkeypatch.setattr(hdw, "run_arm", lambda *a, **k: ({"t::a": "passed"}, ""))
     monkeypatch.setattr(hdw, "write_heartbeat", lambda *a, **k: None)
-    monkeypatch.setattr("sys.argv", ["h.py", "--report", str(report)])
+    monkeypatch.setattr("sys.argv", ["h.py", "--no-warmup", "--report", str(report)])
 
     assert hdw.main() == 0
     assert json.loads(report.read_text(encoding="utf-8"))["findings"] == []
