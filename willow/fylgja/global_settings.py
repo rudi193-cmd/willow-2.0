@@ -25,10 +25,15 @@ SETTINGS_PATH = Path(
 CONSENT_LEGACY_PATH = WILLOW_HOME / "consent.json"
 
 CONSENT_KEYS = ("internet", "cloud_llm", "lan")
+# B-31 (willow-mcp docs/BUGS.md): consent FAILS CLOSED. A fresh install, a
+# missing consent block, or a malformed one is DENIED until the operator grants
+# each channel explicitly. The egress gate (core/egress_authority.py) already
+# reads with `is True` strictness; these defaults make the general reader and
+# the settings writer agree with the enforced semantic instead of inverting it.
 DEFAULT_CONSENT: dict[str, bool] = {
-    "internet": True,
-    "cloud_llm": True,
-    "lan": True,
+    "internet": False,
+    "cloud_llm": False,
+    "lan": False,
 }
 
 # Fleet feature flags (enabled=false until implemented)
@@ -138,9 +143,15 @@ def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]
 
 
 def _normalize_consent(raw: Any) -> dict[str, bool]:
+    """Fail-closed normalization (B-31): only a literal JSON ``true`` grants.
+
+    A non-dict block, a missing key, or a truthy-but-not-True value
+    (``"true"``, ``1``, ``"yes"``) all normalize to denied — the same
+    strictness as ``core.egress_authority`` and willow-mcp's consent reader.
+    """
     if not isinstance(raw, dict):
         return dict(DEFAULT_CONSENT)
-    return {k: bool(raw.get(k, DEFAULT_CONSENT[k])) for k in CONSENT_KEYS}
+    return {k: raw.get(k) is True for k in CONSENT_KEYS}
 
 
 def _read_legacy_consent(path: Path | None = None) -> dict[str, bool] | None:
