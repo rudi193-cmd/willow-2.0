@@ -19,8 +19,6 @@ import tempfile
 import time
 from pathlib import Path
 
-from kartikeya import sandbox as _kk_sandbox
-
 _log = logging.getLogger("kart.sandbox")
 
 _ALLOW_NET_DIRECTIVE = "# allow_net"
@@ -50,6 +48,19 @@ os.environ.setdefault("KART_SANDBOX_CONFIG", str(_DEFAULT_CONFIG))
 os.environ.setdefault(
     "KART_EXTRA_VENVS", str(Path.home() / "github" / "willow-2.0" / ".venv-dev")
 )
+
+
+def _kk():
+    """Lazy handle to the kartikeya sandbox backend (Tier-1 delegation target).
+
+    Imported on first use, not at module load, so that importing this module for
+    its non-delegated helpers (load_sandbox_config, collect_config_symlinks,
+    parse_task_network, the audit-verify structural checks, …) does not require
+    kartikeya to be installed — only the delegated data-producers below do.
+    Python caches the import in sys.modules, so repeat calls are free.
+    """
+    from kartikeya import sandbox
+    return sandbox
 
 
 def bwrap_available() -> bool:
@@ -131,7 +142,7 @@ def collect_bind_mounts(root: Path | None = None) -> list[tuple[Path, Path, bool
     passed through so the fleet's repo/worktree layout drives the mount set; the fleet
     config + venv reach kartikeya via KART_SANDBOX_CONFIG / KART_EXTRA_VENVS (set above).
     """
-    return _kk_sandbox.collect_bind_mounts(root or willow_repo_root())
+    return _kk().collect_bind_mounts(root or willow_repo_root())
 
 
 def collect_mcp_trust_ro_overlays(root: Path | None = None) -> list[Path]:
@@ -144,7 +155,7 @@ def collect_mcp_trust_ro_overlays(root: Path | None = None) -> list[Path]:
 
     Delegates to `kartikeya` (Tier-1); root resolved the willow-2.0 way, passed through.
     """
-    return _kk_sandbox.collect_mcp_trust_ro_overlays(root or willow_repo_root())
+    return _kk().collect_mcp_trust_ro_overlays(root or willow_repo_root())
 
 
 def collect_config_symlinks(root: Path | None = None) -> list[tuple[str, str]]:
@@ -373,7 +384,7 @@ def kart_env(
     fleet env-file supplement, venv/PATH assembly, git identity, PG-socket discovery,
     and the credential strip on no-network tasks. Root resolved the willow-2.0 way.
     """
-    return _kk_sandbox.kart_env(
+    return _kk().kart_env(
         root or willow_repo_root(),
         allow_net=allow_net,
         allow_localhost=allow_localhost,
