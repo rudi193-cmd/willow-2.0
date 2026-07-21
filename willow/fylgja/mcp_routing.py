@@ -135,7 +135,7 @@ def format_cheat_sheet(*, max_groups: int = 8) -> str:
         if examples:
             lines.append(f"  {g}: {examples}")
     lines.append("  start: willow_status · willow_find · willow_remember · willow_run")
-    lines.append(f"  exec: git inspect in Bash · mutations → willow_run(run_now=True)")
+    lines.append("  exec: git inspect in Bash · mutations → willow_run(run_now=True)")
     lines.append("  data: willow_find(scope=…) · fleet → willow_status")
     return "\n".join(lines)
 
