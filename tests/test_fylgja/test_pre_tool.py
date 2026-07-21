@@ -36,23 +36,35 @@ def test_blocks_ls():
     assert "MCP" in reason or "kart" in reason.lower()
 
 
-def test_blocks_git():
-    # git via agent Bash has no creds and is the canonical Kart use case — block
-    # on first attempt so the agent routes to Kart immediately (worktree cleanup
-    # is exempted earlier in check_bash_block; see test_allows_worktree_cleanup_git).
-    result = check_bash_block("git log --oneline -10")
-    assert result is not None
-    decision, reason = result
-    assert decision == "block"
-    assert "agent_task_submit" in reason or "kart" in reason.lower()
+def test_allows_git_inspect():
+    assert check_bash_block("git log --oneline -10") is None
+    assert check_bash_block("git status -sb") is None
 
 
-def test_blocks_gh():
-    result = check_bash_block("gh pr list --limit 5")
+def test_allows_gh_inspect():
+    assert check_bash_block("gh pr list --limit 5") is None
+    assert check_bash_block("gh pr view 440") is None
+
+
+def test_blocks_git_mutations():
+    result = check_bash_block("git commit -m 'test'")
     assert result is not None
-    decision, reason = result
-    assert decision == "block"
-    assert "allow_net" in reason.lower()
+    assert result[0] == "block"
+    assert "willow_run" in result[1]
+
+
+def test_blocks_git_push():
+    result = check_bash_block("git push origin HEAD")
+    assert result is not None
+    assert result[0] == "block"
+    assert "willow_run" in result[1]
+
+
+def test_blocks_gh_create():
+    result = check_bash_block("gh pr create --title 'x'")
+    assert result is not None
+    assert result[0] == "block"
+    assert "willow_run" in result[1]
 
 
 def test_allows_worktree_cleanup_git():
@@ -133,11 +145,8 @@ def test_allows_review_subagents():
     assert check_agent_block("security-review") is None
 
 
-def test_blocks_git_after_cd():
-    result = check_bash_block("cd /home/sean/github/willow-2.0 && git status -sb")
-    assert result is not None
-    assert result[0] == "block"
-    assert "git" in result[1].lower() or "Kart" in result[1]
+def test_allows_git_status_after_cd():
+    assert check_bash_block("cd /home/sean/github/willow-2.0 && git status -sb") is None
 
 
 def test_blocks_python_os_walk():

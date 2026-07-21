@@ -348,6 +348,32 @@
       },
       "note": "Schmidt Sciences Tier 1 grant workspace \u2014 SOIL lane sean/schmidt/*, agent schmidt."
     },
+    "github": {
+      "path": "{{HOME}}/github",
+      "agent": "willow",
+      "profile": "core",
+      "servers": [
+        "willow-mcp",
+        "codebase-memory-mcp"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
+      "env": {
+        "WILLOW_STORE_ROOT": "{{HOME}}/github/.willow/store",
+        "WILLOW_HANDOFF_PROJECT": "github",
+        "WILLOW_PROJECT_ROOT": "{{HOME}}/github"
+      },
+      "wiring": {
+        "hooks": false,
+        "active_agent": true,
+        "cursor_settings": false,
+        "claude_settings": false,
+        "python": false
+      },
+      "note": "Cursor workspace root (~/github) \u2014 willow-mcp + codebase-memory-mcp; MCP-only (no Fylgja hooks)."
+    },
     "willow": {
       "path": "{{HOME}}/github/willow",
       "agent": "willow",
