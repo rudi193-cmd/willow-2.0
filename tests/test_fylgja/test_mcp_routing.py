@@ -9,21 +9,30 @@ def test_redirect_ls_blocks_to_kart():
     result = redirect_for_command("ls -la /tmp")
     assert result is not None
     assert result[0] == "block"
-    assert "agent_task_submit" in result[1]
+    assert "willow_run" in result[1]
 
 
-def test_redirect_git_blocks_to_kart():
-    result = redirect_for_command("git status -sb")
+def test_redirect_git_inspect_allowed():
+    assert redirect_for_command("git status -sb") is None
+    assert redirect_for_command("git log --oneline -5") is None
+
+
+def test_redirect_git_mutations_blocked():
+    result = redirect_for_command("git commit -m 'x'")
     assert result is not None
     assert result[0] == "block"
-    assert "agent_task_submit" in result[1]
+    assert "willow_run" in result[1]
 
 
-def test_redirect_gh_blocks_to_kart():
-    result = redirect_for_command("gh pr view 440")
+def test_redirect_gh_inspect_allowed():
+    assert redirect_for_command("gh pr view 440") is None
+
+
+def test_redirect_gh_mutations_blocked():
+    result = redirect_for_command("gh pr create --title x")
     assert result is not None
     assert result[0] == "block"
-    assert "allow_net" in result[1].lower()
+    assert "willow_run" in result[1]
 
 
 def test_redirect_grep_routes_to_available_tools():
@@ -82,4 +91,4 @@ def test_check_bash_block_ls(pre_tool_check):
     result = pre_tool_check("ls")
     assert result is not None
     assert result[0] == "block"
-    assert "agent_task_submit" in result[1]
+    assert "willow_run" in result[1]

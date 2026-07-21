@@ -239,13 +239,13 @@ def test_kp1_ssh_dir_never_bound(repo_root):
     assert ssh_dir not in _mount_map(repo_root)
 
 
-def test_kp1_github_is_read_only(repo_root):
-    """S4/GAP-A: ~/github defaults to read-only (WILLOW_ROOT nests rw on top)."""
+def test_kp1_github_is_read_write(repo_root):
+    """Operator desk: ~/github is read-write so Kart git mutations work."""
     gh = Path.home() / "github"
     if not gh.exists():
         pytest.skip("~/github absent on this host")
     mounts = _mount_map(repo_root)
-    assert mounts.get(str(gh.resolve())) is True
+    assert mounts.get(str(gh.resolve())) is False
 
 
 def test_kp1_willow_root_is_read_write_under_github(repo_root):
@@ -313,7 +313,7 @@ def test_kp3_manifest_shape(repo_root):
     m = sandbox_manifest(allow_net=False, root=repo_root)
     for key in ("engine", "allow_net", "bound_rw", "bound_ro", "tmpfs", "path_dirs"):
         assert key in m, f"manifest missing {key}"
-    # WILLOW_ROOT is read-write; ~/github (if present) is read-only.
+    # WILLOW_ROOT and ~/github are read-write on the operator desk.
     assert str(repo_root.resolve()) in m["bound_rw"]
     if m["engine"] == "bwrap":
         assert "/tmp" in m["tmpfs"]

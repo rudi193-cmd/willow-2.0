@@ -348,6 +348,10 @@ def check_bash_block(command: str) -> tuple[str, str] | None:
     for pattern in _BASH_ALLOW_PATTERNS:
         if re.search(pattern, command, re.MULTILINE):
             return None
+    from willow.fylgja.mcp_routing import is_git_gh_inspect_allowed
+
+    if is_git_gh_inspect_allowed(command):
+        return None
     for pattern, decision, mcp_hint in _MCP_BASH_TO_MCP:
         if re.search(pattern, command, re.MULTILINE):
             return decision, f"Use MCP instead of shell. → {mcp_hint}"
