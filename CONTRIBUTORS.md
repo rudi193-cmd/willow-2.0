@@ -127,12 +127,8 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [smaramwbc/statewave](https://github.com/smaramwbc/statewave) | smaramwbc | feat(server): add make test-cold for cold-install verification (#68) | [PR #154](https://github.com/smaramwbc/statewave/pull/154) merged |
 | [alash3al/stash](https://github.com/alash3al/stash) | alash3al | docs: post-install guide + fix MCP copy buttons (#6) | [PR #8](https://github.com/alash3al/stash/pull/8) merged |
 | [Doorman11991/smallcode](https://github.com/Doorman11991/smallcode) | Doorman11991 | feat(skills): bundle Willow dev-methodology skill pack | [PR #32](https://github.com/Doorman11991/smallcode/pull/32) merged |
-| [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(cli): ignore CancelledError in background task done callback (#839) | [PR #842](https://github.com/basicmachines-co/basic-memory/pull/842) merged |
-| [zeroc00I/DontFeedTheAI](https://github.com/zeroc00I/DontFeedTheAI) | zeroc00I | feat: OpenAI-compatible chat completions proxy (#1) | [PR #5](https://github.com/zeroc00I/DontFeedTheAI/pull/5) merged |
-| [zeroc00I/DontFeedTheAI](https://github.com/zeroc00I/DontFeedTheAI) | zeroc00I | docs: add MIT LICENSE file (#3) | [PR #4](https://github.com/zeroc00I/DontFeedTheAI/pull/4) merged |
-| [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(mcp): restore write_note overwrite schema for external clients (#818) | [PR #841](https://github.com/basicmachines-co/basic-memory/pull/841) merged |
-| [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | docs(installer): use pgvector image for Postgres compose | [PR #840](https://github.com/basicmachines-co/basic-memory/pull/840) merged |
-| [manojmallick/sigmap](https://github.com/manojmallick/sigmap) | manojmallick | fix(mcp): merge hot-cold cache and context-cold into MCP index | [PR #202](https://github.com/manojmallick/sigmap/pull/202) merged |
+| [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Fix npm test runner so compiled tests actually execute | [PR #2](https://github.com/dpmadsen/multimodels-mcp/pull/2) open |
+| [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Make the Codex lane and control panel cross-platform | [PR #1](https://github.com/dpmadsen/multimodels-mcp/pull/1) open |
 | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat(plugins): dreaming memory consolidation (config.yaml re-scope) | [PR #64281](https://github.com/NousResearch/hermes-agent/pull/64281) open |
 | [alash3al/stash](https://github.com/alash3al/stash) | alash3al | docs: clarify that curl /sse holding open is expected SSE behavior (#11) | [PR #14](https://github.com/alash3al/stash/pull/14) open |
 | [castroquiles/glapagos](https://github.com/castroquiles/glapagos) | castroquiles | feat(api): export committed OpenAPI spec and cover the API (#13) | [PR #20](https://github.com/castroquiles/glapagos/pull/20) open |
@@ -159,8 +155,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat(plugins): dreaming — automatic background memory consolidation | [PR #40737](https://github.com/NousResearch/hermes-agent/pull/40737) closed |
 | [voidcraft-labs/commcare-nova](https://github.com/voidcraft-labs/commcare-nova) | voidcraft-labs | fix(mcp): sanitize Long-like values before Firestore writes | [PR #57](https://github.com/voidcraft-labs/commcare-nova/pull/57) closed |
 | [openclaw/openclaw](https://github.com/openclaw/openclaw) | openclaw | fix(memory): do not filter FTS keyword search by embedding model (#48300) | [PR #90165](https://github.com/openclaw/openclaw/pull/90165) closed |
-| [alibaizhanov/mengram](https://github.com/alibaizhanov/mengram) | alibaizhanov | docs: add CONTRIBUTING.md with local setup and PR guidelines | [PR #40](https://github.com/alibaizhanov/mengram/pull/40) closed |
-| [ogham-mcp/ogham-mcp](https://github.com/ogham-mcp/ogham-mcp) | ogham-mcp | feat: Memory Tool 6-op conformance CI (#52) | [PR #53](https://github.com/ogham-mcp/ogham-mcp/pull/53) closed |
 
 
 ## Contributors to Willow
