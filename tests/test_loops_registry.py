@@ -16,7 +16,7 @@ from willow.fylgja.loops.registry import (
 def test_seed_loads_thirty_loops():
     seed = load_seed()
     assert seed["version"] == 1
-    assert len(seed["loops"]) == 30
+    assert len(seed["loops"]) == 31
 
 
 def test_validate_registry_seed_ok():

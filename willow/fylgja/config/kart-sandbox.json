@@ -45,7 +45,6 @@
     "/usr",
     "/etc",
     "/sys",
-    "{{HOME}}/github",
     "{{HOME}}/agents",
     "{{HOME}}/.config/git",
     "{{HOME}}/.config/systemd"
@@ -54,7 +53,8 @@
     "{{WILLOW_ROOT}}",
     "{{HOME}}/.willow",
     "{{HOME}}/.local",
-    "/var/run/postgresql"
+    "/var/run/postgresql",
+    "{{HOME}}/github"
   ],
   "bind_try": [
     "{{HOME}}/Desktop",
@@ -127,7 +127,7 @@
     "_note": "Off by default. rtk-plus (dioptx fork, security-reviewed 2026-07-05, patched to redact secret-shaped command args before its own local tracking DB, built from source with telemetry compiled out) rewrites a shell command to its own compressing wrapper (e.g. `git status` -> `rtk-plus git status`) before Kart executes it. Flip enabled to true once observed working on real tasks."
   },
   "_security_notes": {
-    "github_ro": "~/github is read-only by default (S4/GAP-A). WILLOW_ROOT + worktrees + WILLOW_GROVE_ROOT nest as read-write on top. Operator-promoted RW: DispatchesFromReality, safe-app-store-public, almanac-template, almanac-data, almanac-data-dotgithub, climate-almanac, health/economy/environment/civic-almanac, education/science/energy/agriculture/transportation/justice-almanac, willow (constitution repo), willow-bot, willow-mcp, codebase-memory-mcp, courtlistener-mcp, mcp-memory-service (operator decision 2026-07-07/08), quiet-corner, community, jeles-remote, awesome-sovereign-software. Private safe-app-store stays read-only.",
+    "github_rw": "~/github is read-write on the operator desk (2026-07-21) — single-session host; git mutations via Kart must not hit EROFS. bind_try per-repo RW overlays remain for explicit promotion on shared hosts. Private safe-app-store stays read-only via bind_try_read_only.",
     "safe_ro": "SAFE store + agents + data-vault are read-only via bind_try_read_only (GAP-A: the sovereign data must not be mutable by an arbitrary task).",
     "ssh_dropped": "~/.ssh is no longer bound (S1). SSH git uses SSH_AUTH_SOCK (reachable via /run/user) + ~/.ssh/known_hosts ro, both only on allow_net. Private keys never enter the sandbox.",
     "creds_gated": "~/.config/gh + ~/.netrc and credential_env_prefixes are present only on allow_net (S1/GAP-B). A no-network task gets zero credentials.",

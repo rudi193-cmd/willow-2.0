@@ -776,6 +776,32 @@
         "interval_sec": 86400
       },
       "harness": null
+    },
+    {
+      "id": "constitution-compliance",
+      "status": "active",
+      "trigger": {
+        "kind": "timer",
+        "spec": "OnBootSec=5min OnUnitActiveSec=6h",
+        "unit": "constitution-compliance.timer"
+      },
+      "task": {
+        "kind": "script",
+        "ref": "scripts/constitution_compliance_witness.py",
+        "model": null
+      },
+      "verify": {
+        "class": "exitcode",
+        "predicate": "witness exits 0; every eternity-clause probe held; verdicts appended to FRANK; breaches escalated to human_required"
+      },
+      "attention": "Article-0 eternity-clause gates (CONST-0-3 egress reach; more as probes are added)",
+      "exit": "one witness pass per timer tick",
+      "on_failure": "open_flag",
+      "heartbeat": {
+        "watchmen_key": "constitution_compliance",
+        "interval_sec": 21600
+      },
+      "harness": null
     }
   ]
 }

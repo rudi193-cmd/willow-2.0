@@ -127,6 +127,25 @@ def list_projects(*, package_root: Path | None = None) -> list[dict[str, Any]]:
     return rows
 
 
+def _egress_public_key_env() -> dict[str, str]:
+    """Best-effort public key path for materialized MCP configs (no willow-mcp import)."""
+    manifest = Path.home() / ".config" / "willow-mcp" / "egress" / "manifest.json"
+    if manifest.is_file():
+        try:
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            pub = data.get("public_key")
+            if isinstance(pub, str) and pub.strip():
+                path = Path(pub).expanduser()
+                if path.is_file():
+                    return {"WILLOW_MCP_EGRESS_PUBLIC_KEY": str(path.resolve())}
+        except (OSError, json.JSONDecodeError):
+            pass
+    default = Path.home() / ".config" / "willow-mcp" / "egress" / "public.pem"
+    if default.is_file():
+        return {"WILLOW_MCP_EGRESS_PUBLIC_KEY": str(default.resolve())}
+    return {}
+
+
 def _willow_mcp_server_block(
     *,
     agent: str,
@@ -141,6 +160,7 @@ def _willow_mcp_server_block(
     }
     if human_orchestrator or agent.strip().lower() == "willow":
         env["WILLOW_HUMAN_ORCHESTRATOR"] = "1"
+    env.update(_egress_public_key_env())
     for key, val in (extra_env or {}).items():
         if isinstance(val, str):
             env[key] = expand_home(val)
