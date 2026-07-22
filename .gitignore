@@ -92,7 +92,6 @@ scripts/sean.md
 *.sqlite
 *.sqlite3
 *.db
-!benchmarks/sidecars/cartographer_code_memory/cartographer_code_memory_sidecar.db
 sap/tools/handoffs.db
 gaps.db
 archive/*.db
