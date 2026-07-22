@@ -35,6 +35,8 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Make the Codex lane and control panel cross-platform | [PR #4](https://github.com/dpmadsen/multimodels-mcp/pull/4) merged |
+| [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Fix npm test runner so compiled tests actually execute | [PR #3](https://github.com/dpmadsen/multimodels-mcp/pull/3) merged |
 | [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | fix(detect): Tier 2 comment guard for apiPatterns (closes #28) | [PR #30](https://github.com/Redential/redential-cli/pull/30) merged |
 | [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | Map official MCP SDK imports to ai/mcp | [PR #19](https://github.com/Redential/redential-cli/pull/19) merged |
 | [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | Add Model Context Protocol taxonomy slug | [PR #18](https://github.com/Redential/redential-cli/pull/18) merged |
@@ -122,8 +124,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [Emerging-Rule/community](https://github.com/Emerging-Rule/community) | Emerging-Rule | Example: AI Literacy 9-12 series + Scribe companion (Issue #5) | [PR #9](https://github.com/Emerging-Rule/community/pull/9) merged |
 | [Emerging-Rule/community](https://github.com/Emerging-Rule/community) | Emerging-Rule | feat(research): AI and Education reading list for teachers | [PR #8](https://github.com/Emerging-Rule/community/pull/8) merged |
 | [Emerging-Rule/community](https://github.com/Emerging-Rule/community) | Emerging-Rule | feat(lessons): The Scribe Who Forgot His Dreams — K-12 AI literacy (story) | [PR #7](https://github.com/Emerging-Rule/community/pull/7) merged |
-| [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Make the Codex lane and control panel cross-platform | [PR #4](https://github.com/dpmadsen/multimodels-mcp/pull/4) open |
-| [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Fix npm test runner so compiled tests actually execute | [PR #3](https://github.com/dpmadsen/multimodels-mcp/pull/3) open |
 | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat(plugins): dreaming memory consolidation (config.yaml re-scope) | [PR #64281](https://github.com/NousResearch/hermes-agent/pull/64281) open |
 | [alash3al/stash](https://github.com/alash3al/stash) | alash3al | docs: clarify that curl /sse holding open is expected SSE behavior (#11) | [PR #14](https://github.com/alash3al/stash/pull/14) open |
 | [castroquiles/glapagos](https://github.com/castroquiles/glapagos) | castroquiles | feat(api): export committed OpenAPI spec and cover the API (#13) | [PR #20](https://github.com/castroquiles/glapagos/pull/20) open |
