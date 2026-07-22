@@ -133,10 +133,20 @@ def _is_willow_repo_path(path: str) -> bool:
     return any(rel.startswith(p) for p in WILLOW_PATH_PREFIXES)
 
 
-def _verify_file_path(path: str) -> tuple[str, str]:
+def _verify_file_path(path: str, thread_repo: str = "") -> tuple[str, str]:
+    rel_raw = path.lstrip("./").strip()
+    # A bare path in a comment on someone else's repo describes THEIR tree, not ours.
+    # Only claims made on willow-2.0 threads, or explicit willow-2.0/blob/ links,
+    # are checkable against willow-2.0 HEAD.
+    if "willow-2.0/blob/" not in rel_raw and thread_repo and not thread_repo.endswith(
+        "/willow-2.0"
+    ):
+        return (
+            "EXTERNAL",
+            f"target-repo path (thread on `{thread_repo}`, not a willow-2.0 claim): `{rel_raw}`",
+        )
     if not _is_willow_repo_path(path):
-        rel = path.lstrip("./")
-        return "EXTERNAL", f"target-repo path (not checked in willow-2.0): `{rel}`"
+        return "EXTERNAL", f"target-repo path (not checked in willow-2.0): `{rel_raw}`"
     rel = _normalize_willow_path(path)
     full = ROOT / rel
     if full.is_file():
@@ -160,7 +170,7 @@ def _extract_promises(tl: ThreadTimeline, *, operator: str) -> list[Promise]:
                     paths.add(p)
 
         for path in sorted(paths):
-            verdict, evidence = _verify_file_path(path)
+            verdict, evidence = _verify_file_path(path, tl.thread.repo)
             promises.append(
                 Promise(
                     thread_label=label,
