@@ -1,87 +1,16 @@
 # Upstream promise ledger
 
 *Generated: 2026-07-16 05:05 UTC · operator: `rudi193-cmd`*
+*Reclassified 2026-07-22: 64 file-reference claims from external-repo threads moved STALE → EXTERNAL — bare paths in comments on other repos describe their trees, not willow-2.0's (classifier fix in `scripts/upstream_desk_intel.py`).*
 
 Claims extracted from **your** comments (authored + commenter registers).
 Auto-checks: file paths on disk · re-review pings vs live PR state.
 
-**Total claims:** 229 · VERIFIED: 29 · STALE: 66 · OPEN: 2 · EXTERNAL: 120 · ADVISORY: 12
+**Total claims:** 229 · VERIFIED: 29 · STALE: 2 · OPEN: 2 · EXTERNAL: 184 · ADVISORY: 12
 
 ---
 
-## STALE (66)
-
-### alash3al/stash #14
-
-- URL: https://github.com/alash3al/stash/pull/14
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/GETTING_STARTED.md`
-- Evidence: missing at `docs/GETTING_STARTED.md` (willow-2.0 HEAD)
-
-### castroquiles/glapagos #20
-
-- URL: https://github.com/castroquiles/glapagos/pull/20
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/api/index.md`
-- Evidence: missing at `docs/api/index.md` (willow-2.0 HEAD)
-
-### castroquiles/glapagos #20
-
-- URL: https://github.com/castroquiles/glapagos/pull/20
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/api/openapi.json`
-- Evidence: missing at `docs/api/openapi.json` (willow-2.0 HEAD)
-
-### castroquiles/glapagos #20
-
-- URL: https://github.com/castroquiles/glapagos/pull/20
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/api/openapi.yaml`
-- Evidence: missing at `docs/api/openapi.yaml` (willow-2.0 HEAD)
-
-### castroquiles/glapagos #20
-
-- URL: https://github.com/castroquiles/glapagos/pull/20
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/export_openapi.py`
-- Evidence: missing at `scripts/export_openapi.py` (willow-2.0 HEAD)
-
-### castroquiles/glapagos #20
-
-- URL: https://github.com/castroquiles/glapagos/pull/20
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/unit/test_openapi.py`
-- Evidence: missing at `tests/unit/test_openapi.py` (willow-2.0 HEAD)
-
-### castroquiles/HeatWatch #20
-
-- URL: https://github.com/castroquiles/HeatWatch/pull/20
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_geo_utils.py`
-- Evidence: missing at `tests/test_geo_utils.py` (willow-2.0 HEAD)
-
-### openedx/codejail #309
-
-- URL: https://github.com/openedx/codejail/pull/309
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_jail_code.py`
-- Evidence: missing at `tests/test_jail_code.py` (willow-2.0 HEAD)
-
-### openedx/codejail #309
-
-- URL: https://github.com/openedx/codejail/pull/309
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/util.py`
-- Evidence: missing at `tests/util.py` (willow-2.0 HEAD)
+## STALE (2)
 
 ### moazbuilds/claudeclaw #234
 
@@ -98,448 +27,6 @@ Auto-checks: file paths on disk · re-review pings vs live PR state.
 - Kind: `re_review_ping`
 - Claim: Re-review / ready for another look
 - Evidence: still OPEN with `CHANGES_REQUESTED`
-
-### almanac-data/almanac-template #19
-
-- URL: https://github.com/almanac-data/almanac-template/pull/19
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/alert_on_recovery_rot.py`
-- Evidence: missing at `scripts/alert_on_recovery_rot.py` (willow-2.0 HEAD)
-
-### almanac-data/almanac-template #19
-
-- URL: https://github.com/almanac-data/almanac-template/pull/19
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/check_recovery_rot.py`
-- Evidence: missing at `scripts/check_recovery_rot.py` (willow-2.0 HEAD)
-
-### almanac-data/almanac-template #16
-
-- URL: https://github.com/almanac-data/almanac-template/pull/16
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/migrate_v1_v2.py`
-- Evidence: missing at `scripts/migrate_v1_v2.py` (willow-2.0 HEAD)
-
-### almanac-data/almanac-template #15
-
-- URL: https://github.com/almanac-data/almanac-template/pull/15
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/migrate_v1_v2.py`
-- Evidence: missing at `scripts/migrate_v1_v2.py` (willow-2.0 HEAD)
-
-### almanac-data/almanac-template #15
-
-- URL: https://github.com/almanac-data/almanac-template/pull/15
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/migrate_v1_v2.py`
-- Evidence: missing at `scripts/migrate_v1_v2.py` (willow-2.0 HEAD)
-
-### almanac-data/almanac-template #13
-
-- URL: https://github.com/almanac-data/almanac-template/pull/13
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/recovery_bot.py`
-- Evidence: missing at `scripts/recovery_bot.py` (willow-2.0 HEAD)
-
-### almanac-data/almanac-template #9
-
-- URL: https://github.com/almanac-data/almanac-template/pull/9
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/check_links.py`
-- Evidence: missing at `scripts/check_links.py` (willow-2.0 HEAD)
-
-### almanac-data/almanac-template #9
-
-- URL: https://github.com/almanac-data/almanac-template/pull/9
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/migrate_v1_v2.py`
-- Evidence: missing at `scripts/migrate_v1_v2.py` (willow-2.0 HEAD)
-
-### almanac-data/almanac-template #9
-
-- URL: https://github.com/almanac-data/almanac-template/pull/9
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/validate.py`
-- Evidence: missing at `scripts/validate.py` (willow-2.0 HEAD)
-
-### almanac-data/almanac-template #8
-
-- URL: https://github.com/almanac-data/almanac-template/pull/8
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/migrate_v1_v2.py`
-- Evidence: missing at `scripts/migrate_v1_v2.py` (willow-2.0 HEAD)
-
-### almanac-data/civic-almanac #6
-
-- URL: https://github.com/almanac-data/civic-almanac/pull/6
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/check_links.py`
-- Evidence: missing at `scripts/check_links.py` (willow-2.0 HEAD)
-
-### almanac-data/civic-almanac #6
-
-- URL: https://github.com/almanac-data/civic-almanac/pull/6
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_catalog.py`
-- Evidence: missing at `tests/test_catalog.py` (willow-2.0 HEAD)
-
-### almanac-data/environment-almanac #6
-
-- URL: https://github.com/almanac-data/environment-almanac/pull/6
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/check_links.py`
-- Evidence: missing at `scripts/check_links.py` (willow-2.0 HEAD)
-
-### almanac-data/environment-almanac #6
-
-- URL: https://github.com/almanac-data/environment-almanac/pull/6
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_catalog.py`
-- Evidence: missing at `tests/test_catalog.py` (willow-2.0 HEAD)
-
-### almanac-data/economy-almanac #6
-
-- URL: https://github.com/almanac-data/economy-almanac/pull/6
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/check_links.py`
-- Evidence: missing at `scripts/check_links.py` (willow-2.0 HEAD)
-
-### almanac-data/economy-almanac #6
-
-- URL: https://github.com/almanac-data/economy-almanac/pull/6
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_catalog.py`
-- Evidence: missing at `tests/test_catalog.py` (willow-2.0 HEAD)
-
-### almanac-data/health-almanac #6
-
-- URL: https://github.com/almanac-data/health-almanac/pull/6
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/check_links.py`
-- Evidence: missing at `scripts/check_links.py` (willow-2.0 HEAD)
-
-### almanac-data/health-almanac #6
-
-- URL: https://github.com/almanac-data/health-almanac/pull/6
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_catalog.py`
-- Evidence: missing at `tests/test_catalog.py` (willow-2.0 HEAD)
-
-### almanac-data/climate-almanac #33
-
-- URL: https://github.com/almanac-data/climate-almanac/pull/33
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/check_links.py`
-- Evidence: missing at `scripts/check_links.py` (willow-2.0 HEAD)
-
-### almanac-data/climate-almanac #33
-
-- URL: https://github.com/almanac-data/climate-almanac/pull/33
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_catalog.py`
-- Evidence: missing at `tests/test_catalog.py` (willow-2.0 HEAD)
-
-### almanac-data/almanac-template #1
-
-- URL: https://github.com/almanac-data/almanac-template/pull/1
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/check_links.py`
-- Evidence: missing at `scripts/check_links.py` (willow-2.0 HEAD)
-
-### almanac-data/almanac-template #1
-
-- URL: https://github.com/almanac-data/almanac-template/pull/1
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_catalog.py`
-- Evidence: missing at `tests/test_catalog.py` (willow-2.0 HEAD)
-
-### almanac-data/climate-almanac #29
-
-- URL: https://github.com/almanac-data/climate-almanac/pull/29
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/alert_on_dead_links.py`
-- Evidence: missing at `scripts/alert_on_dead_links.py` (willow-2.0 HEAD)
-
-### almanac-data/climate-almanac #29
-
-- URL: https://github.com/almanac-data/climate-almanac/pull/29
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/check_links.py`
-- Evidence: missing at `scripts/check_links.py` (willow-2.0 HEAD)
-
-### almanac-data/climate-almanac #28
-
-- URL: https://github.com/almanac-data/climate-almanac/pull/28
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/check_links.py`
-- Evidence: missing at `scripts/check_links.py` (willow-2.0 HEAD)
-
-### almanac-data/climate-almanac #3
-
-- URL: https://github.com/almanac-data/climate-almanac/pull/3
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/check_links.py`
-- Evidence: missing at `scripts/check_links.py` (willow-2.0 HEAD)
-
-### almanac-data/climate-almanac #1
-
-- URL: https://github.com/almanac-data/climate-almanac/pull/1
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/DEVELOPMENT.md`
-- Evidence: missing at `docs/DEVELOPMENT.md` (willow-2.0 HEAD)
-
-### Filippo-Venturini/ctxvault #34
-
-- URL: https://github.com/Filippo-Venturini/ctxvault/pull/34
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `core/embedding.py`
-- Evidence: missing at `core/embedding.py` (willow-2.0 HEAD)
-
-### Filippo-Venturini/ctxvault #34
-
-- URL: https://github.com/Filippo-Venturini/ctxvault/pull/34
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_cli.py`
-- Evidence: missing at `tests/test_cli.py` (willow-2.0 HEAD)
-
-### Filippo-Venturini/ctxvault #34
-
-- URL: https://github.com/Filippo-Venturini/ctxvault/pull/34
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_core.py`
-- Evidence: missing at `tests/test_core.py` (willow-2.0 HEAD)
-
-### wanxingai/LightAgent #60
-
-- URL: https://github.com/wanxingai/LightAgent/pull/60
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/memory_security.md`
-- Evidence: missing at `docs/memory_security.md` (willow-2.0 HEAD)
-
-### wanxingai/LightAgent #60
-
-- URL: https://github.com/wanxingai/LightAgent/pull/60
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/vector_memory_adapter.md`
-- Evidence: missing at `docs/vector_memory_adapter.md` (willow-2.0 HEAD)
-
-### max-rh/sshelf #3
-
-- URL: https://github.com/max-rh/sshelf/pull/3
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/progress.md`
-- Evidence: missing at `docs/progress.md` (willow-2.0 HEAD)
-
-### max-rh/sshelf #3
-
-- URL: https://github.com/max-rh/sshelf/pull/3
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/ssh-command.md`
-- Evidence: missing at `docs/ssh-command.md` (willow-2.0 HEAD)
-
-### max-rh/sshelf #3
-
-- URL: https://github.com/max-rh/sshelf/pull/3
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/ux.md`
-- Evidence: missing at `docs/ux.md` (willow-2.0 HEAD)
-
-### alash3al/stash #9
-
-- URL: https://github.com/alash3al/stash/pull/9
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/LOCAL_OLLAMA.md`
-- Evidence: missing at `docs/LOCAL_OLLAMA.md` (willow-2.0 HEAD)
-
-### RikyZ90/ShibaClaw #38
-
-- URL: https://github.com/RikyZ90/ShibaClaw/pull/38
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/API_REFERENCE.md`
-- Evidence: missing at `docs/API_REFERENCE.md` (willow-2.0 HEAD)
-
-### RikyZ90/ShibaClaw #38
-
-- URL: https://github.com/RikyZ90/ShibaClaw/pull/38
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/GATEWAY_PROTOCOL.md`
-- Evidence: missing at `docs/GATEWAY_PROTOCOL.md` (willow-2.0 HEAD)
-
-### smaramwbc/statewave #154
-
-- URL: https://github.com/smaramwbc/statewave/pull/154
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/smoke/test_live_stack.py`
-- Evidence: missing at `tests/smoke/test_live_stack.py` (willow-2.0 HEAD)
-
-### alash3al/stash #8
-
-- URL: https://github.com/alash3al/stash/pull/8
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/GETTING_STARTED.md`
-- Evidence: missing at `docs/GETTING_STARTED.md` (willow-2.0 HEAD)
-
-### basicmachines-co/basic-memory #842
-
-- URL: https://github.com/basicmachines-co/basic-memory/pull/842
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/deps/test_task_failure_callback.py`
-- Evidence: missing at `tests/deps/test_task_failure_callback.py` (willow-2.0 HEAD)
-
-### zeroc00I/DontFeedTheAI #5
-
-- URL: https://github.com/zeroc00I/DontFeedTheAI/pull/5
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/providers.md`
-- Evidence: missing at `docs/providers.md` (willow-2.0 HEAD)
-
-### basicmachines-co/basic-memory #840
-
-- URL: https://github.com/basicmachines-co/basic-memory/pull/840
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/semantic-search.md`
-- Evidence: missing at `docs/semantic-search.md` (willow-2.0 HEAD)
-
-### basicmachines-co/basic-memory #840
-
-- URL: https://github.com/basicmachines-co/basic-memory/pull/840
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/README.md`
-- Evidence: missing at `tests/README.md` (willow-2.0 HEAD)
-
-### liatrio-labs/claude-deep-review #5
-
-- URL: https://github.com/liatrio-labs/claude-deep-review/pull/5
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/finding_dedup.py`
-- Evidence: missing at `scripts/finding_dedup.py` (willow-2.0 HEAD)
-
-### liatrio-labs/claude-deep-review #5
-
-- URL: https://github.com/liatrio-labs/claude-deep-review/pull/5
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `scripts/finding_dedup.py`
-- Evidence: missing at `scripts/finding_dedup.py` (willow-2.0 HEAD)
-
-### liatrio-labs/claude-deep-review #5
-
-- URL: https://github.com/liatrio-labs/claude-deep-review/pull/5
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_finding_dedup.py`
-- Evidence: missing at `tests/test_finding_dedup.py` (willow-2.0 HEAD)
-
-### TensorBlock/awesome-mcp-servers #401
-
-- URL: https://github.com/TensorBlock/awesome-mcp-servers/pull/401
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/security.md`
-- Evidence: missing at `docs/security.md` (willow-2.0 HEAD)
-
-### ogham-mcp/ogham-mcp #53
-
-- URL: https://github.com/ogham-mcp/ogham-mcp/pull/53
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/test_memory_tool_conformance.py`
-- Evidence: missing at `tests/test_memory_tool_conformance.py` (willow-2.0 HEAD)
-
-### abhixdd/ghgrab #65
-
-- URL: https://github.com/abhixdd/ghgrab/pull/65
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/agent-integrations.md`
-- Evidence: missing at `docs/agent-integrations.md` (willow-2.0 HEAD)
-
-### abhixdd/ghgrab #65
-
-- URL: https://github.com/abhixdd/ghgrab/pull/65
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `docs/agent-integrations.md`
-- Evidence: missing at `docs/agent-integrations.md` (willow-2.0 HEAD)
-
-### modelcontextprotocol/python-sdk #2640
-
-- URL: https://github.com/modelcontextprotocol/python-sdk/pull/2640
-- When: —
-- Kind: `file_reference`
-- Claim: Referenced `tests/issues/test_1401_client_session_error_handling.py`
-- Evidence: missing at `tests/issues/test_1401_client_session_error_handling.py` (willow-2.0 HEAD)
-
-### alash3al/stash #11
-
-- URL: https://github.com/alash3al/stash/issues/11
-- When: 2026-06-30 18:03 UTC
-- Kind: `file_reference`
-- Claim: Referenced `docs/GETTING_STARTED.md`
-- Evidence: missing at `docs/GETTING_STARTED.md` (willow-2.0 HEAD)
-
-### RikyZ90/ShibaClaw #26
-
-- URL: https://github.com/RikyZ90/ShibaClaw/issues/26
-- When: 2026-05-25 18:02 UTC
-- Kind: `file_reference`
-- Claim: Referenced `docs/GATEWAY_PROTOCOL.md`
-- Evidence: missing at `docs/GATEWAY_PROTOCOL.md` (willow-2.0 HEAD)
-
-### zeroc00I/DontFeedTheAI #1
-
-- URL: https://github.com/zeroc00I/DontFeedTheAI/issues/1
-- When: 2026-05-20 18:42 UTC
-- Kind: `file_reference`
-- Claim: Referenced `docs/providers.md`
-- Evidence: missing at `docs/providers.md` (willow-2.0 HEAD)
-
----
 
 ## OPEN (2)
 
@@ -661,7 +148,7 @@ Auto-checks: file paths on disk · re-review pings vs live PR state.
 
 ---
 
-## EXTERNAL (120)
+## EXTERNAL (184)
 
 ### NousResearch/hermes-agent #64281
 
@@ -1622,6 +1109,520 @@ Auto-checks: file paths on disk · re-review pings vs live PR state.
 - Kind: `file_reference`
 - Claim: Referenced `CONTRIBUTING.md`
 - Evidence: target-repo path (not checked in willow-2.0): `CONTRIBUTING.md`
+
+---
+
+### alash3al/stash #14
+
+- URL: https://github.com/alash3al/stash/pull/14
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/GETTING_STARTED.md`
+- Evidence: target-repo path (thread on `alash3al/stash`, not a willow-2.0 claim): `docs/GETTING_STARTED.md`
+
+### castroquiles/glapagos #20
+
+- URL: https://github.com/castroquiles/glapagos/pull/20
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/api/index.md`
+- Evidence: target-repo path (thread on `castroquiles/glapagos`, not a willow-2.0 claim): `docs/api/index.md`
+
+### castroquiles/glapagos #20
+
+- URL: https://github.com/castroquiles/glapagos/pull/20
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/api/openapi.json`
+- Evidence: target-repo path (thread on `castroquiles/glapagos`, not a willow-2.0 claim): `docs/api/openapi.json`
+
+### castroquiles/glapagos #20
+
+- URL: https://github.com/castroquiles/glapagos/pull/20
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/api/openapi.yaml`
+- Evidence: target-repo path (thread on `castroquiles/glapagos`, not a willow-2.0 claim): `docs/api/openapi.yaml`
+
+### castroquiles/glapagos #20
+
+- URL: https://github.com/castroquiles/glapagos/pull/20
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/export_openapi.py`
+- Evidence: target-repo path (thread on `castroquiles/glapagos`, not a willow-2.0 claim): `scripts/export_openapi.py`
+
+### castroquiles/glapagos #20
+
+- URL: https://github.com/castroquiles/glapagos/pull/20
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/unit/test_openapi.py`
+- Evidence: target-repo path (thread on `castroquiles/glapagos`, not a willow-2.0 claim): `tests/unit/test_openapi.py`
+
+### castroquiles/HeatWatch #20
+
+- URL: https://github.com/castroquiles/HeatWatch/pull/20
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/test_geo_utils.py`
+- Evidence: target-repo path (thread on `castroquiles/HeatWatch`, not a willow-2.0 claim): `tests/test_geo_utils.py`
+
+### openedx/codejail #309
+
+- URL: https://github.com/openedx/codejail/pull/309
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/test_jail_code.py`
+- Evidence: target-repo path (thread on `openedx/codejail`, not a willow-2.0 claim): `tests/test_jail_code.py`
+
+### openedx/codejail #309
+
+- URL: https://github.com/openedx/codejail/pull/309
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/util.py`
+- Evidence: target-repo path (thread on `openedx/codejail`, not a willow-2.0 claim): `tests/util.py`
+
+### almanac-data/almanac-template #19
+
+- URL: https://github.com/almanac-data/almanac-template/pull/19
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/alert_on_recovery_rot.py`
+- Evidence: target-repo path (thread on `almanac-data/almanac-template`, not a willow-2.0 claim): `scripts/alert_on_recovery_rot.py`
+
+### almanac-data/almanac-template #19
+
+- URL: https://github.com/almanac-data/almanac-template/pull/19
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/check_recovery_rot.py`
+- Evidence: target-repo path (thread on `almanac-data/almanac-template`, not a willow-2.0 claim): `scripts/check_recovery_rot.py`
+
+### almanac-data/almanac-template #16
+
+- URL: https://github.com/almanac-data/almanac-template/pull/16
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/migrate_v1_v2.py`
+- Evidence: target-repo path (thread on `almanac-data/almanac-template`, not a willow-2.0 claim): `scripts/migrate_v1_v2.py`
+
+### almanac-data/almanac-template #15
+
+- URL: https://github.com/almanac-data/almanac-template/pull/15
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/migrate_v1_v2.py`
+- Evidence: target-repo path (thread on `almanac-data/almanac-template`, not a willow-2.0 claim): `scripts/migrate_v1_v2.py`
+
+### almanac-data/almanac-template #15
+
+- URL: https://github.com/almanac-data/almanac-template/pull/15
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/migrate_v1_v2.py`
+- Evidence: target-repo path (thread on `almanac-data/almanac-template`, not a willow-2.0 claim): `scripts/migrate_v1_v2.py`
+
+### almanac-data/almanac-template #13
+
+- URL: https://github.com/almanac-data/almanac-template/pull/13
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/recovery_bot.py`
+- Evidence: target-repo path (thread on `almanac-data/almanac-template`, not a willow-2.0 claim): `scripts/recovery_bot.py`
+
+### almanac-data/almanac-template #9
+
+- URL: https://github.com/almanac-data/almanac-template/pull/9
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/check_links.py`
+- Evidence: target-repo path (thread on `almanac-data/almanac-template`, not a willow-2.0 claim): `scripts/check_links.py`
+
+### almanac-data/almanac-template #9
+
+- URL: https://github.com/almanac-data/almanac-template/pull/9
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/migrate_v1_v2.py`
+- Evidence: target-repo path (thread on `almanac-data/almanac-template`, not a willow-2.0 claim): `scripts/migrate_v1_v2.py`
+
+### almanac-data/almanac-template #9
+
+- URL: https://github.com/almanac-data/almanac-template/pull/9
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/validate.py`
+- Evidence: target-repo path (thread on `almanac-data/almanac-template`, not a willow-2.0 claim): `scripts/validate.py`
+
+### almanac-data/almanac-template #8
+
+- URL: https://github.com/almanac-data/almanac-template/pull/8
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/migrate_v1_v2.py`
+- Evidence: target-repo path (thread on `almanac-data/almanac-template`, not a willow-2.0 claim): `scripts/migrate_v1_v2.py`
+
+### almanac-data/civic-almanac #6
+
+- URL: https://github.com/almanac-data/civic-almanac/pull/6
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/check_links.py`
+- Evidence: target-repo path (thread on `almanac-data/civic-almanac`, not a willow-2.0 claim): `scripts/check_links.py`
+
+### almanac-data/civic-almanac #6
+
+- URL: https://github.com/almanac-data/civic-almanac/pull/6
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/test_catalog.py`
+- Evidence: target-repo path (thread on `almanac-data/civic-almanac`, not a willow-2.0 claim): `tests/test_catalog.py`
+
+### almanac-data/environment-almanac #6
+
+- URL: https://github.com/almanac-data/environment-almanac/pull/6
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/check_links.py`
+- Evidence: target-repo path (thread on `almanac-data/environment-almanac`, not a willow-2.0 claim): `scripts/check_links.py`
+
+### almanac-data/environment-almanac #6
+
+- URL: https://github.com/almanac-data/environment-almanac/pull/6
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/test_catalog.py`
+- Evidence: target-repo path (thread on `almanac-data/environment-almanac`, not a willow-2.0 claim): `tests/test_catalog.py`
+
+### almanac-data/economy-almanac #6
+
+- URL: https://github.com/almanac-data/economy-almanac/pull/6
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/check_links.py`
+- Evidence: target-repo path (thread on `almanac-data/economy-almanac`, not a willow-2.0 claim): `scripts/check_links.py`
+
+### almanac-data/economy-almanac #6
+
+- URL: https://github.com/almanac-data/economy-almanac/pull/6
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/test_catalog.py`
+- Evidence: target-repo path (thread on `almanac-data/economy-almanac`, not a willow-2.0 claim): `tests/test_catalog.py`
+
+### almanac-data/health-almanac #6
+
+- URL: https://github.com/almanac-data/health-almanac/pull/6
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/check_links.py`
+- Evidence: target-repo path (thread on `almanac-data/health-almanac`, not a willow-2.0 claim): `scripts/check_links.py`
+
+### almanac-data/health-almanac #6
+
+- URL: https://github.com/almanac-data/health-almanac/pull/6
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/test_catalog.py`
+- Evidence: target-repo path (thread on `almanac-data/health-almanac`, not a willow-2.0 claim): `tests/test_catalog.py`
+
+### almanac-data/climate-almanac #33
+
+- URL: https://github.com/almanac-data/climate-almanac/pull/33
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/check_links.py`
+- Evidence: target-repo path (thread on `almanac-data/climate-almanac`, not a willow-2.0 claim): `scripts/check_links.py`
+
+### almanac-data/climate-almanac #33
+
+- URL: https://github.com/almanac-data/climate-almanac/pull/33
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/test_catalog.py`
+- Evidence: target-repo path (thread on `almanac-data/climate-almanac`, not a willow-2.0 claim): `tests/test_catalog.py`
+
+### almanac-data/almanac-template #1
+
+- URL: https://github.com/almanac-data/almanac-template/pull/1
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/check_links.py`
+- Evidence: target-repo path (thread on `almanac-data/almanac-template`, not a willow-2.0 claim): `scripts/check_links.py`
+
+### almanac-data/almanac-template #1
+
+- URL: https://github.com/almanac-data/almanac-template/pull/1
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/test_catalog.py`
+- Evidence: target-repo path (thread on `almanac-data/almanac-template`, not a willow-2.0 claim): `tests/test_catalog.py`
+
+### almanac-data/climate-almanac #29
+
+- URL: https://github.com/almanac-data/climate-almanac/pull/29
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/alert_on_dead_links.py`
+- Evidence: target-repo path (thread on `almanac-data/climate-almanac`, not a willow-2.0 claim): `scripts/alert_on_dead_links.py`
+
+### almanac-data/climate-almanac #29
+
+- URL: https://github.com/almanac-data/climate-almanac/pull/29
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/check_links.py`
+- Evidence: target-repo path (thread on `almanac-data/climate-almanac`, not a willow-2.0 claim): `scripts/check_links.py`
+
+### almanac-data/climate-almanac #28
+
+- URL: https://github.com/almanac-data/climate-almanac/pull/28
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/check_links.py`
+- Evidence: target-repo path (thread on `almanac-data/climate-almanac`, not a willow-2.0 claim): `scripts/check_links.py`
+
+### almanac-data/climate-almanac #3
+
+- URL: https://github.com/almanac-data/climate-almanac/pull/3
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/check_links.py`
+- Evidence: target-repo path (thread on `almanac-data/climate-almanac`, not a willow-2.0 claim): `scripts/check_links.py`
+
+### almanac-data/climate-almanac #1
+
+- URL: https://github.com/almanac-data/climate-almanac/pull/1
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/DEVELOPMENT.md`
+- Evidence: target-repo path (thread on `almanac-data/climate-almanac`, not a willow-2.0 claim): `docs/DEVELOPMENT.md`
+
+### Filippo-Venturini/ctxvault #34
+
+- URL: https://github.com/Filippo-Venturini/ctxvault/pull/34
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `core/embedding.py`
+- Evidence: target-repo path (thread on `Filippo-Venturini/ctxvault`, not a willow-2.0 claim): `core/embedding.py`
+
+### Filippo-Venturini/ctxvault #34
+
+- URL: https://github.com/Filippo-Venturini/ctxvault/pull/34
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/test_cli.py`
+- Evidence: target-repo path (thread on `Filippo-Venturini/ctxvault`, not a willow-2.0 claim): `tests/test_cli.py`
+
+### Filippo-Venturini/ctxvault #34
+
+- URL: https://github.com/Filippo-Venturini/ctxvault/pull/34
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/test_core.py`
+- Evidence: target-repo path (thread on `Filippo-Venturini/ctxvault`, not a willow-2.0 claim): `tests/test_core.py`
+
+### wanxingai/LightAgent #60
+
+- URL: https://github.com/wanxingai/LightAgent/pull/60
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/memory_security.md`
+- Evidence: target-repo path (thread on `wanxingai/LightAgent`, not a willow-2.0 claim): `docs/memory_security.md`
+
+### wanxingai/LightAgent #60
+
+- URL: https://github.com/wanxingai/LightAgent/pull/60
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/vector_memory_adapter.md`
+- Evidence: target-repo path (thread on `wanxingai/LightAgent`, not a willow-2.0 claim): `docs/vector_memory_adapter.md`
+
+### max-rh/sshelf #3
+
+- URL: https://github.com/max-rh/sshelf/pull/3
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/progress.md`
+- Evidence: target-repo path (thread on `max-rh/sshelf`, not a willow-2.0 claim): `docs/progress.md`
+
+### max-rh/sshelf #3
+
+- URL: https://github.com/max-rh/sshelf/pull/3
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/ssh-command.md`
+- Evidence: target-repo path (thread on `max-rh/sshelf`, not a willow-2.0 claim): `docs/ssh-command.md`
+
+### max-rh/sshelf #3
+
+- URL: https://github.com/max-rh/sshelf/pull/3
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/ux.md`
+- Evidence: target-repo path (thread on `max-rh/sshelf`, not a willow-2.0 claim): `docs/ux.md`
+
+### alash3al/stash #9
+
+- URL: https://github.com/alash3al/stash/pull/9
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/LOCAL_OLLAMA.md`
+- Evidence: target-repo path (thread on `alash3al/stash`, not a willow-2.0 claim): `docs/LOCAL_OLLAMA.md`
+
+### RikyZ90/ShibaClaw #38
+
+- URL: https://github.com/RikyZ90/ShibaClaw/pull/38
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/API_REFERENCE.md`
+- Evidence: target-repo path (thread on `RikyZ90/ShibaClaw`, not a willow-2.0 claim): `docs/API_REFERENCE.md`
+
+### RikyZ90/ShibaClaw #38
+
+- URL: https://github.com/RikyZ90/ShibaClaw/pull/38
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/GATEWAY_PROTOCOL.md`
+- Evidence: target-repo path (thread on `RikyZ90/ShibaClaw`, not a willow-2.0 claim): `docs/GATEWAY_PROTOCOL.md`
+
+### smaramwbc/statewave #154
+
+- URL: https://github.com/smaramwbc/statewave/pull/154
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/smoke/test_live_stack.py`
+- Evidence: target-repo path (thread on `smaramwbc/statewave`, not a willow-2.0 claim): `tests/smoke/test_live_stack.py`
+
+### alash3al/stash #8
+
+- URL: https://github.com/alash3al/stash/pull/8
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/GETTING_STARTED.md`
+- Evidence: target-repo path (thread on `alash3al/stash`, not a willow-2.0 claim): `docs/GETTING_STARTED.md`
+
+### basicmachines-co/basic-memory #842
+
+- URL: https://github.com/basicmachines-co/basic-memory/pull/842
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/deps/test_task_failure_callback.py`
+- Evidence: target-repo path (thread on `basicmachines-co/basic-memory`, not a willow-2.0 claim): `tests/deps/test_task_failure_callback.py`
+
+### zeroc00I/DontFeedTheAI #5
+
+- URL: https://github.com/zeroc00I/DontFeedTheAI/pull/5
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/providers.md`
+- Evidence: target-repo path (thread on `zeroc00I/DontFeedTheAI`, not a willow-2.0 claim): `docs/providers.md`
+
+### basicmachines-co/basic-memory #840
+
+- URL: https://github.com/basicmachines-co/basic-memory/pull/840
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/semantic-search.md`
+- Evidence: target-repo path (thread on `basicmachines-co/basic-memory`, not a willow-2.0 claim): `docs/semantic-search.md`
+
+### basicmachines-co/basic-memory #840
+
+- URL: https://github.com/basicmachines-co/basic-memory/pull/840
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/README.md`
+- Evidence: target-repo path (thread on `basicmachines-co/basic-memory`, not a willow-2.0 claim): `tests/README.md`
+
+### liatrio-labs/claude-deep-review #5
+
+- URL: https://github.com/liatrio-labs/claude-deep-review/pull/5
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/finding_dedup.py`
+- Evidence: target-repo path (thread on `liatrio-labs/claude-deep-review`, not a willow-2.0 claim): `scripts/finding_dedup.py`
+
+### liatrio-labs/claude-deep-review #5
+
+- URL: https://github.com/liatrio-labs/claude-deep-review/pull/5
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `scripts/finding_dedup.py`
+- Evidence: target-repo path (thread on `liatrio-labs/claude-deep-review`, not a willow-2.0 claim): `scripts/finding_dedup.py`
+
+### liatrio-labs/claude-deep-review #5
+
+- URL: https://github.com/liatrio-labs/claude-deep-review/pull/5
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/test_finding_dedup.py`
+- Evidence: target-repo path (thread on `liatrio-labs/claude-deep-review`, not a willow-2.0 claim): `tests/test_finding_dedup.py`
+
+### TensorBlock/awesome-mcp-servers #401
+
+- URL: https://github.com/TensorBlock/awesome-mcp-servers/pull/401
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/security.md`
+- Evidence: target-repo path (thread on `TensorBlock/awesome-mcp-servers`, not a willow-2.0 claim): `docs/security.md`
+
+### ogham-mcp/ogham-mcp #53
+
+- URL: https://github.com/ogham-mcp/ogham-mcp/pull/53
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/test_memory_tool_conformance.py`
+- Evidence: target-repo path (thread on `ogham-mcp/ogham-mcp`, not a willow-2.0 claim): `tests/test_memory_tool_conformance.py`
+
+### abhixdd/ghgrab #65
+
+- URL: https://github.com/abhixdd/ghgrab/pull/65
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/agent-integrations.md`
+- Evidence: target-repo path (thread on `abhixdd/ghgrab`, not a willow-2.0 claim): `docs/agent-integrations.md`
+
+### abhixdd/ghgrab #65
+
+- URL: https://github.com/abhixdd/ghgrab/pull/65
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `docs/agent-integrations.md`
+- Evidence: target-repo path (thread on `abhixdd/ghgrab`, not a willow-2.0 claim): `docs/agent-integrations.md`
+
+### modelcontextprotocol/python-sdk #2640
+
+- URL: https://github.com/modelcontextprotocol/python-sdk/pull/2640
+- When: —
+- Kind: `file_reference`
+- Claim: Referenced `tests/issues/test_1401_client_session_error_handling.py`
+- Evidence: target-repo path (thread on `modelcontextprotocol/python-sdk`, not a willow-2.0 claim): `tests/issues/test_1401_client_session_error_handling.py`
+
+### alash3al/stash #11
+
+- URL: https://github.com/alash3al/stash/issues/11
+- When: 2026-06-30 18:03 UTC
+- Kind: `file_reference`
+- Claim: Referenced `docs/GETTING_STARTED.md`
+- Evidence: target-repo path (thread on `alash3al/stash`, not a willow-2.0 claim): `docs/GETTING_STARTED.md`
+
+### RikyZ90/ShibaClaw #26
+
+- URL: https://github.com/RikyZ90/ShibaClaw/issues/26
+- When: 2026-05-25 18:02 UTC
+- Kind: `file_reference`
+- Claim: Referenced `docs/GATEWAY_PROTOCOL.md`
+- Evidence: target-repo path (thread on `RikyZ90/ShibaClaw`, not a willow-2.0 claim): `docs/GATEWAY_PROTOCOL.md`
+
+### zeroc00I/DontFeedTheAI #1
+
+- URL: https://github.com/zeroc00I/DontFeedTheAI/issues/1
+- When: 2026-05-20 18:42 UTC
+- Kind: `file_reference`
+- Claim: Referenced `docs/providers.md`
+- Evidence: target-repo path (thread on `zeroc00I/DontFeedTheAI`, not a willow-2.0 claim): `docs/providers.md`
 
 ---
 
