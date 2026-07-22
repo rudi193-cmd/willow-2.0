@@ -53,8 +53,7 @@
     "{{WILLOW_ROOT}}",
     "{{HOME}}/.willow",
     "{{HOME}}/.local",
-    "/var/run/postgresql",
-    "{{HOME}}/github"
+    "/var/run/postgresql"
   ],
   "bind_try": [
     "{{HOME}}/Desktop",
@@ -79,6 +78,7 @@
     "{{HOME}}/github/willow",
     "{{HOME}}/github/willow-bot",
     "{{HOME}}/github/willow-mcp",
+    "{{HOME}}/github/kartikeya",
     "{{HOME}}/github/safe-design",
     "{{HOME}}/github/codebase-memory-mcp",
     "{{HOME}}/github/courtlistener-mcp",
@@ -109,7 +109,6 @@
   "bind_try_read_only": [
     "{{WILLOW_SAFE_ROOT}}",
     "{{WILLOW_AGENTS_ROOT}}",
-    "{{HOME}}/sean-data-vault",
     "{{HOME}}/.claude/projects",
     "{{HOME}}/.cursor",
     "/lib32",
