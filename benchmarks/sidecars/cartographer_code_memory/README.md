@@ -11,7 +11,7 @@ dataset from `~/Desktop/Nest`.
 
 | File | Purpose |
 | --- | --- |
-| `cartographer_code_memory_sidecar.db` | SQLite sidecar database with runs, tool counts, criteria, and summary rows. |
+| `cartographer_code_memory_sidecar.json` | Full table export (runs, tool counts, criteria, summary) — the canonical tracked form. The `.db` is untracked now (binary blobs are unreviewable in PRs and this one leaked operator paths — #744); `runs.path` is reduced to the transcript basename, `session_uid` remains the join key. |
 | `cartographer_code_memory_runs.json` | Full machine-readable report. |
 | `cartographer_code_memory_runs.md` | Human-readable chart and interpretation. |
 | `normalize_cartographer_code_memory_sessions.py` | Rebuilds all three artifacts from the fixed transcript ID list. |
