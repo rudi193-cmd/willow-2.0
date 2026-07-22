@@ -109,7 +109,6 @@
   "bind_try_read_only": [
     "{{WILLOW_SAFE_ROOT}}",
     "{{WILLOW_AGENTS_ROOT}}",
-    "{{HOME}}/sean-data-vault",
     "{{HOME}}/.claude/projects",
     "{{HOME}}/.cursor",
     "/lib32",
