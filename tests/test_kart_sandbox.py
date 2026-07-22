@@ -239,17 +239,45 @@ def test_kp1_ssh_dir_never_bound(repo_root):
     assert ssh_dir not in _mount_map(repo_root)
 
 
-def test_kp1_github_is_read_write(repo_root):
-    """Operator desk: ~/github is read-write so Kart git mutations work."""
-    gh = Path.home() / "github"
-    if not gh.exists():
-        pytest.skip("~/github absent on this host")
-    mounts = _mount_map(repo_root)
-    assert mounts.get(str(gh.resolve())) is False
+def test_kp1_github_enumerated_not_blanket_bound(repo_root):
+    """KP1 (2026-07-22): repealed the ~/github rw blanket — law is enumeration, not containment.
+
+    Replaces test_kp1_github_is_read_write, which asserted {{HOME}}/github was
+    bind_read_write. After vault-unbind (0AEAFA7A), the blanket is gone; kartikeya
+    and per-repo bind_try entries replace it, and the operator vault must not appear.
+    """
+    cfg = load_sandbox_config(repo_root)
+    bind_lists = (
+        "bind_read_only",
+        "bind_read_write",
+        "bind_try",
+        "bind_try_read_only",
+    )
+    config_paths = [
+        str(p) for key in bind_lists for p in cfg.get(key, [])
+    ]
+    blanket = "{{HOME}}/github"
+    offenders = [p for p in config_paths if p == blanket]
+    assert offenders == [], f"~/github blanket in bind lists: {offenders}"
+
+    bind_try = [str(p) for p in cfg.get("bind_try", [])]
+    assert "{{HOME}}/github/kartikeya" in bind_try, (
+        "kartikeya must be enumerated in bind_try for editable install reachability"
+    )
+
+    vault_in_config = [p for p in config_paths if "sean-data-vault" in p]
+    assert vault_in_config == [], f"vault path in config bind lists: {vault_in_config}"
+
+    vault_in_mounts = [
+        str(host)
+        for host, _container, _read_only in collect_bind_mounts(repo_root)
+        if "sean-data-vault" in str(host)
+    ]
+    assert vault_in_mounts == [], f"vault path mounted into sandbox: {vault_in_mounts}"
 
 
-def test_kp1_willow_root_is_read_write_under_github(repo_root):
-    """WILLOW_ROOT (under the now-ro ~/github) must still be read-write."""
+def test_kp1_willow_root_is_read_write(repo_root):
+    """WILLOW_ROOT is read-write via {{WILLOW_ROOT}} bind, not the repealed ~/github blanket."""
     mounts = _mount_map(repo_root)
     assert mounts.get(str(repo_root.resolve())) is False
 
