@@ -35,6 +35,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | docs(schema-v2): mark open items 1–4 done — they shipped; only the auto-promote decision remains | [PR #21](https://github.com/almanac-data/almanac-template/pull/21) merged |
 | [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Make the Codex lane and control panel cross-platform | [PR #4](https://github.com/dpmadsen/multimodels-mcp/pull/4) merged |
 | [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Fix npm test runner so compiled tests actually execute | [PR #3](https://github.com/dpmadsen/multimodels-mcp/pull/3) merged |
 | [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | fix(detect): Tier 2 comment guard for apiPatterns (closes #28) | [PR #30](https://github.com/Redential/redential-cli/pull/30) merged |
