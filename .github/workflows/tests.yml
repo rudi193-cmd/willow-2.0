@@ -5,7 +5,16 @@ on:
     branches: ["master", "main"]
   pull_request:
     branches: ["master", "main"]
+  schedule:
+    # Daily drift catcher, off the :00/:30 peak-load minutes — the fleet
+    # pattern (which started from this repo's own reasoning): a dependency
+    # point release, runner-image change, or pgvector image update should
+    # not wait for the next push to surface.
+    - cron: "27 6 * * *"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   lint:
