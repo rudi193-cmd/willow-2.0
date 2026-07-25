@@ -2,7 +2,7 @@
 
 **Companion to:** [METR/eval-analysis-public#40 — measure multi-session coherence](https://github.com/METR/eval-analysis-public/issues/40)
 
-**Repo:** [rudi193-cmd/willow-2.0](https://github.com/rudi193-cmd/willow-2.0) · **License:** PolyForm Noncommercial 1.0.0
+**Repo:** [rudi193-cmd/willow-2.0](https://github.com/rudi193-cmd/willow-2.0) · **License:** Apache-2.0
 
 ---
 

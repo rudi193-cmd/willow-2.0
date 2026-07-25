@@ -1,6 +1,6 @@
 # Contributors & acknowledgments
 
-Willow 2.0 — local-first AI stack. PolyForm Noncommercial 1.0.0.
+Willow 2.0 — local-first AI stack. Apache-2.0.
 
 ## Built by
 
