@@ -7,6 +7,7 @@ name = "willow"
 version = "2.0.0"
 description = "Willow 2.0 — local-first AI stack (Ollama by default)"
 readme = "README.md"
+license = { text = "Apache-2.0" }
 requires-python = ">=3.11,<3.15"
 dependencies = [
     "psycopg2-binary>=2.9.12",

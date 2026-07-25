@@ -179,6 +179,6 @@ Optional: `./willow.sh providers enable anthropic YOUR_KEY` (or OpenAI / Gemini)
 
 ## License
 
-PolyForm Noncommercial 1.0.0 — see [`LICENSE`](LICENSE).
+Apache-2.0 — see [`LICENSE`](LICENSE).
 
 *Plant the tree. Tend the roots. Name the ones you love. Let nothing be lost.*
