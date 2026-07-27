@@ -146,7 +146,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [coleam00/mcp-mem0](https://github.com/coleam00/mcp-mem0) | coleam00 | fix: disable Mem0 telemetry via env (Fixes #3) | [PR #18](https://github.com/coleam00/mcp-mem0/pull/18) closed |
 | [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(mcp): keep search index type in vector hydration | [PR #984](https://github.com/basicmachines-co/basic-memory/pull/984) closed |
 | [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(mcp): keep search index type in vector hydration | [PR #983](https://github.com/basicmachines-co/basic-memory/pull/983) closed |
-| [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat(plugins): dreaming — automatic background memory consolidation | [PR #40737](https://github.com/NousResearch/hermes-agent/pull/40737) closed |
 
 
 ## Contributors to Willow
