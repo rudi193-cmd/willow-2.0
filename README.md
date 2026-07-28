@@ -152,7 +152,20 @@ Optional: `./willow.sh providers enable anthropic YOUR_KEY` (or OpenAI / Gemini)
 
 **Beta (2.0)** — tests and packaging are in place; wiki and archive specs may lag code. Honest gaps: [`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md). Audit snapshot: [`docs/BETA_AUDIT_REPORT.md`](docs/BETA_AUDIT_REPORT.md).
 
-**Canonical repo:** `willow-1.9`, `willow-mcp`, `willow-nest`, and `willow-seed` are archived — everything ships here now. Upgrading from 1.9: [`docs/CODE_DIFF_1.9_to_2.0.md`](docs/CODE_DIFF_1.9_to_2.0.md).
+**Migrating to `willow-mcp`.** Willow 2.0 is a building block, not the final
+home: the good here is being folded into
+[`willow-mcp`](https://github.com/rudi193-cmd/willow-mcp) and its associated
+repos, which is where new work should land. `willow-2.0` remains live while that
+is in progress — it still owns the shared fleet Postgres schema
+(`core/pg_bridge.py`) and several subsystems that have not moved yet — so treat
+it as the current runtime and `willow-mcp` as the destination.
+
+The inventory of what moves, what folds and what becomes a standalone library is
+[`willow-mcp/docs/repatriation/CONSOLIDATION_MATRIX.md`](https://github.com/rudi193-cmd/willow-mcp/blob/master/docs/repatriation/CONSOLIDATION_MATRIX.md);
+it is a plan, not a completion record.
+
+`willow-1.9`, `willow-nest` and `willow-seed` are archived. Upgrading from 1.9:
+[`docs/CODE_DIFF_1.9_to_2.0.md`](docs/CODE_DIFF_1.9_to_2.0.md).
 
 ---
 
