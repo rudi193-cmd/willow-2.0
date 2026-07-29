@@ -348,6 +348,26 @@
       },
       "note": "Schmidt Sciences Tier 1 grant workspace \u2014 SOIL lane sean/schmidt/*, agent schmidt."
     },
+    "terpsi-music": {
+      "path": "{{HOME}}/github/terpsi-music",
+      "agent": "willow",
+      "profile": "core",
+      "servers": [
+        "willow"
+      ],
+      "ides": [
+        "cursor",
+        "claude"
+      ],
+      "wiring": {
+        "hooks": true,
+        "active_agent": true,
+        "cursor_settings": "symlink",
+        "claude_settings": "project",
+        "python": "fleet"
+      },
+      "note": "Terpsi music workspace \u2014 core fleet project; bootstrap empty repo."
+    },
     "github": {
       "path": "{{HOME}}/github",
       "agent": "willow",
