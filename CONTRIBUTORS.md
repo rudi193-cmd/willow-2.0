@@ -36,6 +36,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
 | [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | Document exit-code contract for scripting and CI (#29) | [PR #57](https://github.com/Redential/redential-cli/pull/57) merged |
+| [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | Auth flow structural detection (session, oauth, jwt-refresh) | [PR #54](https://github.com/Redential/redential-cli/pull/54) merged |
 | [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | Taxonomy 1.8.0: auth flow slugs (session, oauth, jwt-refresh) | [PR #53](https://github.com/Redential/redential-cli/pull/53) merged |
 | [almanac-data/almanac-data](https://github.com/almanac-data/almanac-data) | almanac-data | docs: document full almanac fleet project sync | [PR #1](https://github.com/almanac-data/almanac-data/pull/1) merged |
 | [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | test: RFC #13 fixture backdated-segment negative contract | [PR #39](https://github.com/Redential/redential-cli/pull/39) merged |
@@ -120,7 +121,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [moazbuilds/claudeclaw](https://github.com/moazbuilds/claudeclaw) | moazbuilds | fix(discord): ignore thread recap system messages (#230) | [PR #239](https://github.com/moazbuilds/claudeclaw/pull/239) merged |
 | [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix: promote first project when config default missing from DB (#974) | [PR #985](https://github.com/basicmachines-co/basic-memory/pull/985) merged |
 | [Filippo-Venturini/ctxvault](https://github.com/Filippo-Venturini/ctxvault) | Filippo-Venturini | fix: remove stale reindex vault_config kwarg | [PR #31](https://github.com/Filippo-Venturini/ctxvault/pull/31) merged |
-| [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | Auth flow structural detection (session, oauth, jwt-refresh) | [PR #54](https://github.com/Redential/redential-cli/pull/54) open |
 | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat(plugins): dreaming memory consolidation (config.yaml re-scope) | [PR #64281](https://github.com/NousResearch/hermes-agent/pull/64281) open |
 | [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Fix npm test runner so compiled tests actually execute | [PR #2](https://github.com/dpmadsen/multimodels-mcp/pull/2) closed |
 | [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Make the Codex lane and control panel cross-platform | [PR #1](https://github.com/dpmadsen/multimodels-mcp/pull/1) closed |
