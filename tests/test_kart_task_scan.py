@@ -86,6 +86,18 @@ def test_hook_tamper_disabled_via_kart_scan_env(monkeypatch):
     assert check_kart_task("", script_body=body) is None
 
 
+def test_fork_bomb_blocked_in_kart_task():
+    out = check_kart_task(":(){ :|:& };:")
+    assert out is not None
+    assert out["kart_scan"]["category"] == "resource_exhaustion"
+
+
+def test_fork_bomb_blocked_even_on_fleet_pytest_line():
+    out = check_kart_task("pytest -q && :(){ :|:& };:")
+    assert out is not None
+    assert out["kart_scan"]["category"] == "resource_exhaustion"
+
+
 def test_run_shell_task_blocks_at_execution():
     from core.kart_execute import run_shell_task
 

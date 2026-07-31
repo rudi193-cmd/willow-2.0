@@ -166,6 +166,23 @@ class TestScanBashAllowlist:
         assert not scan_bash(cmd, allowed_patterns=[r"https://internal\.corp\.com"])
 
 
+# ── scan_bash: resource exhaustion (#111) ─────────────────────────────────────
+
+class TestScanBashResourceExhaustion:
+    def test_fork_bomb_blocked(self):
+        issues = scan_bash(":(){ :|:& };:")
+        assert any(i.category == "resource_exhaustion" for i in issues)
+        assert worst(issues).severity == SEV_HIGH
+
+    def test_infinite_spin_blocked(self):
+        issues = scan_bash("while true; do :; done")
+        assert any(i.category == "resource_exhaustion" for i in issues)
+
+    def test_legitimate_deploy_function_allowed(self):
+        issues = scan_bash("deploy() { build | log & }")
+        assert not any(i.category == "resource_exhaustion" for i in issues)
+
+
 # ── scan_write: protected paths ───────────────────────────────────────────────
 
 class TestScanWriteProtectedPaths:

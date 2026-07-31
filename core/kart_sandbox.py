@@ -15,8 +15,6 @@ import os
 import re
 import shutil
 import subprocess
-import tempfile
-import time
 from pathlib import Path
 
 _log = logging.getLogger("kart.sandbox")
@@ -39,10 +37,10 @@ _DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "willow" / "fylgja" /
 #   * build_bwrap_argv — thin bwrap-flag assembly over the delegated producers; kept so the
 #     per-root config seam and the module-level monkeypatch points the tests rely on stay
 #     intact (its output is proven to reassemble byte-identically).
-#   * scan_bash — kartikeya's is a strict security upgrade (fork-bomb detection), a behaviour
-#     change owed its own review, not an equivalence swap.
-#   * run_shell — kartikeya's enables resource caps by default; that behaviour change gets
-#     its own reviewed step.
+#   * scan_bash — upgraded in fylgja security_scan (#111 resource_exhaustion); Kart +
+#     PreToolUse share the fleet-canonical patterns.
+#   * run_shell — delegates to kartikeya.sandbox.run_shell (resource caps on by default;
+#     disable with WILLOW_KART_NO_RLIMIT=1). Behaviour change from stage-5 §5.x.B.
 #   * Tier-2 pieces (load_sandbox_config, …) — behaviour diverged; reconcile with review.
 os.environ.setdefault("KART_SANDBOX_CONFIG", str(_DEFAULT_CONFIG))
 os.environ.setdefault(
@@ -542,113 +540,18 @@ def run_shell(
 ) -> dict:
     """
     Execute one shell command via bash -c (inside bwrap when enabled).
-    Returns {returncode, stdout, stderr, elapsed_s, sandbox: bwrap|plain}.
+    Returns {returncode, stdout, stderr, elapsed_s, sandbox: bwrap|plain, ...}.
     """
-    started = time.time()
-    run_env = kart_env(allow_net=allow_net, allow_localhost=allow_localhost)
-    if env:
-        run_env.update(env)
-    if cwd:
-        run_env["PWD"] = cwd
+    from kartikeya.sandbox import run_shell as _kartikeya_run_shell
 
-    if not cmd.strip():
-        return {
-            "returncode": 1,
-            "stdout": "",
-            "stderr": "empty command",
-            "elapsed_s": 0.0,
-            "sandbox": "none",
-        }
-
-    original_cmd = cmd
-    cmd = _rtk_rewrite(cmd, load_sandbox_config())
-    rtk_rewritten = cmd != original_cmd
-
-    # Use bash -c so shell operators (&&, |, $(), redirects) work correctly.
-    bash = _sandbox_bash()
-    argv = [bash, "-c", cmd]
-    sandbox = "plain"
-    pass_fds: tuple[int, ...] = ()
-    status_file = None
-    if use_bwrap():
-        prefix = build_bwrap_argv(
-            allow_net=allow_net, allow_localhost=allow_localhost
-        )
-        # KP3/S15: --json-status-fd lets us tell a sandbox-SETUP failure (mount/ns
-        # error, bwrap exits before exec) from a COMMAND failure. bwrap writes
-        # {"child-pid":N} once the child execs; its absence on a non-zero exit
-        # means setup failed. Feature-gated so an old bwrap is unaffected.
-        if _bwrap_supports_json_status():
-            status_file = tempfile.TemporaryFile(mode="w+")
-            fd = status_file.fileno()
-            prefix = [prefix[0], "--json-status-fd", str(fd)] + prefix[1:]
-            pass_fds = (fd,)
-        full = prefix + ["--", bash, "-c", cmd]
-        sandbox = "bwrap"
-    else:
-        full = argv
-
-    def _setup_state() -> str | None:
-        if status_file is None:
-            return None
-        try:
-            status_file.seek(0)
-            txt = status_file.read()
-        except Exception:
-            return None
-        return "ok" if '"child-pid"' in txt else "failed"
-
-    try:
-        proc = subprocess.run(
-            full,
-            shell=False,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            env=run_env,
-            cwd=cwd,
-            pass_fds=pass_fds,
-        )
-        elapsed = round(time.time() - started, 2)
-        setup = _setup_state()
-        out = {
-            "returncode": proc.returncode,
-            "stdout": proc.stdout,
-            "stderr": proc.stderr,
-            "elapsed_s": elapsed,
-            "sandbox": sandbox,
-        }
-        if rtk_rewritten:
-            out["rtk_rewritten"] = True
-        if setup is not None:
-            out["sandbox_setup"] = setup
-            if setup == "failed":
-                out["error"] = "sandbox_setup_failed"
-        return out
-    except subprocess.TimeoutExpired as e:
-        return {
-            "returncode": -1,
-            "stdout": (e.stdout or "") if isinstance(e.stdout, str) else "",
-            "stderr": (e.stderr or "") if isinstance(e.stderr, str) else "",
-            "elapsed_s": round(time.time() - started, 2),
-            "error": "timeout",
-            "sandbox": sandbox,
-        }
-    except Exception as e:
-        return {
-            "returncode": -1,
-            "stdout": "",
-            "stderr": str(e),
-            "elapsed_s": round(time.time() - started, 2),
-            "error": str(e),
-            "sandbox": sandbox,
-        }
-    finally:
-        if status_file is not None:
-            try:
-                status_file.close()
-            except Exception:
-                pass
+    return _kartikeya_run_shell(
+        cmd,
+        timeout=timeout,
+        allow_net=allow_net,
+        allow_localhost=allow_localhost,
+        cwd=cwd,
+        env=env,
+    )
 
 
 def clip_output(text: str, limit: int) -> str:
@@ -689,6 +592,8 @@ def run_shell_result_for_task(
     }
     if raw.get("sandbox_setup"):
         result["sandbox_setup"] = raw["sandbox_setup"]
+    if raw.get("resource_limit"):
+        result["resource_limit"] = raw["resource_limit"]
     if raw.get("error"):
         result["error"] = raw["error"]
     # Uniform error capture: every failed task carries a non-empty, human-readable
