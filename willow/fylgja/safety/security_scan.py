@@ -107,6 +107,19 @@ _DESTRUCTIVE = _compile([
     (r"chown\s+-R\s+.*\s+/", SEV_HIGH, "Recursive ownership change on system path"),
 ])
 
+# Resource-exhaustion / local-DoS (#111, kart stage-5). Aligned with kartikeya
+# security_scan._RESOURCE_EXHAUSTION — fleet-canonical for PreToolUse + Kart.
+_RESOURCE_EXHAUSTION = _compile([
+    (r"(?P<fn>[\w:]+)\s*\(\)\s*\{[^{}]*(?P=fn)[^{}]*\|[^{}]*&", SEV_HIGH,
+     "Fork bomb (self-referential pipe + background)"),
+    (r":\s*\|\s*:\s*&", SEV_HIGH, "Fork-bomb body (`:|:&`)"),
+    (r"while\s+(true|:)\s*;?\s*do\s*(:|true)?\s*;?\s*done", SEV_HIGH, "Infinite CPU spin loop"),
+    (r"for\s*\(\(\s*;\s*;\s*\)\)", SEV_HIGH, "Infinite for-loop (for ((;;)))"),
+    (r"dd\s+if=/dev/(zero|urandom|random)\b", SEV_HIGH, "Disk-filling dd from an endless source"),
+    (r"cat\s+/dev/(zero|urandom|random)\s*>", SEV_HIGH, "Filling a file from an endless /dev source"),
+    (r"\byes\b[^|<>\n]*>\s*\S", SEV_MEDIUM, "Disk-filling `yes` redirect"),
+])
+
 _RM_RF_RE = re.compile(
     r"rm\s+(-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*|-[a-zA-Z]*f[a-zA-Z]*r[a-zA-Z]*)\s+([^;&|`\n]+)",
     re.IGNORECASE,
@@ -302,6 +315,7 @@ def scan_bash(command: str, allowed_patterns: Sequence[str] = ()) -> list[ScanIs
     issues.extend(_check_destructive_rm(command))
     issues.extend(_check(command, _SUSPICIOUS_INSTALL, "suspicious_install"))
     issues.extend(_check(command, _OBFUSCATION, "obfuscation"))
+    issues.extend(_check(command, _RESOURCE_EXHAUSTION, "resource_exhaustion"))
     return issues
 
 

@@ -52,7 +52,9 @@ _FLEET_ALLOWED: tuple[str, ...] = (
     r"^\$\{WILLOW_PYTHON:-python3\}\s+",
 )
 
-_ALWAYS_BLOCK_CATEGORIES = frozenset({"exfiltration", "obfuscation", "secret_access"})
+_ALWAYS_BLOCK_CATEGORIES = frozenset({
+    "exfiltration", "obfuscation", "secret_access", "resource_exhaustion",
+})
 
 # Mirrors willow/fylgja/events/pre_tool.py's _HOOK_GUARD_FRAGMENTS — keep in sync.
 _HOOK_GUARD_FRAGMENTS: tuple[str, ...] = (
