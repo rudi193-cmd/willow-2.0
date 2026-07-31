@@ -35,6 +35,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | Document exit-code contract for scripting and CI (#29) | [PR #57](https://github.com/Redential/redential-cli/pull/57) merged |
 | [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | Taxonomy 1.8.0: auth flow slugs (session, oauth, jwt-refresh) | [PR #53](https://github.com/Redential/redential-cli/pull/53) merged |
 | [almanac-data/almanac-data](https://github.com/almanac-data/almanac-data) | almanac-data | docs: document full almanac fleet project sync | [PR #1](https://github.com/almanac-data/almanac-data/pull/1) merged |
 | [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | test: RFC #13 fixture backdated-segment negative contract | [PR #39](https://github.com/Redential/redential-cli/pull/39) merged |
@@ -142,8 +143,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [stevesolun/ctx](https://github.com/stevesolun/ctx) | stevesolun | fix: support networkx < 3.4 in node_link_data/node_link_graph calls | [PR #120](https://github.com/stevesolun/ctx/pull/120) closed |
 | [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | DeusData | fix: skip Antigravity IDE install roots during discovery | [PR #468](https://github.com/DeusData/codebase-memory-mcp/pull/468) closed |
 | [coleam00/mcp-mem0](https://github.com/coleam00/mcp-mem0) | coleam00 | fix: disable Mem0 telemetry via env (Fixes #3) | [PR #18](https://github.com/coleam00/mcp-mem0/pull/18) closed |
-| [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(mcp): keep search index type in vector hydration | [PR #984](https://github.com/basicmachines-co/basic-memory/pull/984) closed |
-| [basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory) | basicmachines-co | fix(mcp): keep search index type in vector hydration | [PR #983](https://github.com/basicmachines-co/basic-memory/pull/983) closed |
 
 
 ## Contributors to Willow
