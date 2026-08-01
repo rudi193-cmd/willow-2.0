@@ -138,7 +138,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [openedx/codejail](https://github.com/openedx/codejail) | openedx | feat: introduce CodeJailConfig class; keep module-level backward compat | [PR #309](https://github.com/openedx/codejail/pull/309) closed |
 | [stevesolun/ctx](https://github.com/stevesolun/ctx) | stevesolun | fix: support networkx < 3.4 in node_link_data/node_link_graph calls | [PR #120](https://github.com/stevesolun/ctx/pull/120) closed |
 | [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | DeusData | fix: skip Antigravity IDE install roots during discovery | [PR #468](https://github.com/DeusData/codebase-memory-mcp/pull/468) closed |
-| [coleam00/mcp-mem0](https://github.com/coleam00/mcp-mem0) | coleam00 | fix: disable Mem0 telemetry via env (Fixes #3) | [PR #18](https://github.com/coleam00/mcp-mem0/pull/18) closed |
 
 
 ## Contributors to Willow
