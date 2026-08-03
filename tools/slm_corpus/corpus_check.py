@@ -124,6 +124,7 @@ class Witness:
         self.errors: list[str] = []
         self.warnings: list[str] = []
         self.counts: dict[str, int] = {"files": 0, "records": 0}
+        self.visited: set[Path] = set()
 
     # ── families ──────────────────────────────────────────────────────────
 
@@ -156,6 +157,7 @@ class Witness:
     # ── file kinds ────────────────────────────────────────────────────────
 
     def _records(self, path: Path, required: tuple[str, ...]) -> list[tuple[int, dict]]:
+        self.visited.add(path.resolve())
         self.counts["files"] += 1
         recs = _read_jsonl_strict(path, self.errors)
         seen: set[str] = set()
@@ -251,12 +253,29 @@ class Witness:
 
     # ── driver ────────────────────────────────────────────────────────────
 
+    def check_unknown_files(self) -> None:
+        """Data the layout doesn't name is still data: leak-sweep it anyway.
+
+        The fingerprint hashes every *.jsonl recursively; witnessing fewer
+        files than it fingerprints would be a blind spot (found in the field:
+        a corpus dir whose only jsonl lived outside the canonical names
+        fingerprinted as non-empty while the witness saw nothing).
+        """
+        for path in sorted(self.corpus.rglob("*.jsonl")):
+            if path.resolve() in self.visited:
+                continue
+            self.warnings.append(
+                f"{path.relative_to(self.corpus)}: unrecognized corpus file — "
+                f"leak-swept only, no schema lint")
+            self._records(path, ())
+
     def run(self) -> None:
         tasks = self.check_inputs()
         self.check_outputs_dir("gold", tasks)
         self.check_outputs_dir("baseline", tasks)
         self.check_sft()
         self.check_dpo()
+        self.check_unknown_files()
 
     def fingerprint(self) -> str:
         h = hashlib.sha256()
@@ -277,6 +296,22 @@ class Witness:
         }
 
 
+def _resolve_dir(cli: str, env: str | None) -> Path:
+    """--dir, else the env var, else harvest's own resolution.
+
+    Field bug this replaces: Path("") stringifies to "." — the old falsy
+    check never fired and the witness silently scanned the CURRENT
+    DIRECTORY (the repo checkout, whose own jsonl files produced a stable,
+    baffling fingerprint) instead of the corpus.
+    """
+    if cli:
+        return Path(cli).expanduser()
+    if env:
+        return Path(env).expanduser()
+    from tools.slm_corpus.harvest import corpus_dir
+    return corpus_dir()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="SLM corpus witness")
     ap.add_argument("--dir", default="", help="corpus dir (default: WILLOW_SLM_CORPUS_DIR)")
@@ -286,14 +321,11 @@ def main() -> int:
                     help="benign path username to exempt (repeatable), e.g. runner")
     args = ap.parse_args()
 
-    corpus = Path(args.dir) if args.dir else Path(
-        os.environ.get("WILLOW_SLM_CORPUS_DIR", ""))
-    if not args.dir and not str(corpus):
-        from tools.slm_corpus.harvest import corpus_dir
-        corpus = corpus_dir()
+    corpus = _resolve_dir(args.dir, os.environ.get("WILLOW_SLM_CORPUS_DIR"))
     if not corpus.is_dir():
         print(f"corpus dir not found: {corpus}", file=sys.stderr)
         return 2
+    print(f"witnessing: {corpus}")
 
     w = Witness(corpus, set(args.allow_user))
     w.run()
