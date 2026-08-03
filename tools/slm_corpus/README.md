@@ -22,6 +22,13 @@ atoms whose `sensitivity` is not `open` unless `--include-sensitive`.
 ## Flow
 
 ```
+corpus_check.py  the witness: independently re-sweeps the finished corpus
+                (redaction superset, path guard for data, structural lint)
+                and emits a content-free receipt. harvest transforms,
+                corpus_check ratifies — never the same hand (§0.2). The gate
+                itself is proven in CI by tests/test_corpus_check.py's
+                planted violations; the real run happens where the corpus
+                lives:  python3 tools/slm_corpus/corpus_check.py --strict
 harvest.py    real fleet inputs → inputs.jsonl
                 sources: knowledge atoms (+semantic-neighbor pairs),
                 intake JSONL, session transcripts, git history, Grove
