@@ -296,6 +296,22 @@ class Witness:
         }
 
 
+def _resolve_dir(cli: str, env: str | None) -> Path:
+    """--dir, else the env var, else harvest's own resolution.
+
+    Field bug this replaces: Path("") stringifies to "." — the old falsy
+    check never fired and the witness silently scanned the CURRENT
+    DIRECTORY (the repo checkout, whose own jsonl files produced a stable,
+    baffling fingerprint) instead of the corpus.
+    """
+    if cli:
+        return Path(cli).expanduser()
+    if env:
+        return Path(env).expanduser()
+    from tools.slm_corpus.harvest import corpus_dir
+    return corpus_dir()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="SLM corpus witness")
     ap.add_argument("--dir", default="", help="corpus dir (default: WILLOW_SLM_CORPUS_DIR)")
@@ -305,14 +321,11 @@ def main() -> int:
                     help="benign path username to exempt (repeatable), e.g. runner")
     args = ap.parse_args()
 
-    corpus = Path(args.dir) if args.dir else Path(
-        os.environ.get("WILLOW_SLM_CORPUS_DIR", ""))
-    if not args.dir and not str(corpus):
-        from tools.slm_corpus.harvest import corpus_dir
-        corpus = corpus_dir()
+    corpus = _resolve_dir(args.dir, os.environ.get("WILLOW_SLM_CORPUS_DIR"))
     if not corpus.is_dir():
         print(f"corpus dir not found: {corpus}", file=sys.stderr)
         return 2
+    print(f"witnessing: {corpus}")
 
     w = Witness(corpus, set(args.allow_user))
     w.run()

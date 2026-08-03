@@ -9,6 +9,7 @@ fixture must pass, and the receipt must never contain a planted secret
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from tools.slm_corpus.corpus_check import Witness, _mask
 from tools.slm_corpus.templates import canonicalize_output
@@ -208,3 +209,14 @@ def test_unknown_files_count_as_witnessed(tmp_path):
     w = _run(tmp_path)
     assert w.receipt()["verdict"] == "PASS"
     assert w.counts["records"] == 1
+
+
+def test_dir_resolution_never_falls_back_to_cwd(monkeypatch, tmp_path):
+    """Path('') is '.', not nothing — the field bug that scanned the repo."""
+    from tools.slm_corpus import corpus_check as cc
+    assert cc._resolve_dir("/x", None) == Path("/x")
+    assert cc._resolve_dir("", "/y") == Path("/y")
+    monkeypatch.setattr("tools.slm_corpus.harvest.corpus_dir", lambda: tmp_path)
+    resolved = cc._resolve_dir("", None)
+    assert resolved == tmp_path
+    assert resolved != Path(".")
