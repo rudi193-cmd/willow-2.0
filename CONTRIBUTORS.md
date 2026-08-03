@@ -134,7 +134,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [castroquiles/HeatWatch](https://github.com/castroquiles/HeatWatch) | castroquiles | fix(geo_utils): correct clip_array_to_bounds off-by-one; add geo_utils tests + NDVI no-data guard | [PR #20](https://github.com/castroquiles/HeatWatch/pull/20) closed |
 | [PDFMathTranslate/PDFMathTranslate](https://github.com/PDFMathTranslate/PDFMathTranslate) | PDFMathTranslate | feat: mirror source directory tree in batch translation output | [PR #1148](https://github.com/PDFMathTranslate/PDFMathTranslate/pull/1148) closed |
 | [openedx/codejail](https://github.com/openedx/codejail) | openedx | feat: introduce CodeJailConfig class; keep module-level backward compat | [PR #309](https://github.com/openedx/codejail/pull/309) closed |
-| [stevesolun/ctx](https://github.com/stevesolun/ctx) | stevesolun | fix: support networkx < 3.4 in node_link_data/node_link_graph calls | [PR #120](https://github.com/stevesolun/ctx/pull/120) closed |
 
 
 ## Contributors to Willow
