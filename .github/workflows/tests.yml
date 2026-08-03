@@ -178,7 +178,9 @@ jobs:
           # where the default signal method never fires.
           if [ "${{ matrix.with-coverage }}" = "true" ]; then
             coverage run -m pytest --ignore=tests/adversarial/e2e -v --timeout=120 --timeout-method=thread
-            coverage report -m --include='core/*,sap/*,willow/*' --fail-under=10
+            # Floor, not target: measured 56% on master (run 30744368696).
+            # Ratchet up as coverage rises; never lower it to make a PR pass.
+            coverage report -m --include='core/*,sap/*,willow/*' --fail-under=50
           else
             python3 -m pytest --ignore=tests/adversarial/e2e -v --timeout=120 --timeout-method=thread
           fi
