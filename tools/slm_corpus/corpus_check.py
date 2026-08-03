@@ -273,7 +273,11 @@ class Witness:
             "records": self.counts["records"],
             "errors": len(self.errors),
             "warnings": len(self.warnings),
-            "verdict": "FAIL" if self.errors else "PASS",
+            # A vacuous scan is not a clean one (the store's
+            # vault-lint rule): zero records can PASS nothing.
+            "verdict": ("FAIL" if self.errors
+                        else "EMPTY" if not self.counts["records"]
+                        else "PASS"),
         }
 
 
@@ -310,7 +314,14 @@ def main() -> int:
     if args.receipt:
         Path(args.receipt).write_text(json.dumps(r, indent=2) + "\n")
 
-    return 1 if (args.strict and w.errors) else 0
+    if args.strict and w.errors:
+        return 1
+    if args.strict and not w.counts["records"]:
+        print("--strict refuses an empty corpus: nothing was witnessed. "
+              "Is WILLOW_SLM_CORPUS_DIR set to where harvest wrote?",
+              file=sys.stderr)
+        return 2
+    return 0
 
 
 if __name__ == "__main__":

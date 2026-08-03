@@ -191,3 +191,10 @@ def test_mask_never_reveals_short_or_long_values():
     long = "ghp_" + "x" * 30
     m = _mask(long)
     assert long not in m and "gh" in m and "chars" in m
+
+
+def test_empty_corpus_is_not_a_pass(tmp_path):
+    """A vacuous scan is not a clean one — zero records can PASS nothing."""
+    w = _run(tmp_path)
+    assert w.errors == []
+    assert w.receipt()["verdict"] == "EMPTY"
