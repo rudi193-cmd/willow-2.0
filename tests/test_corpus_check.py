@@ -191,3 +191,20 @@ def test_mask_never_reveals_short_or_long_values():
     long = "ghp_" + "x" * 30
     m = _mask(long)
     assert long not in m and "gh" in m and "chars" in m
+
+
+def test_unrecognized_jsonl_is_leak_swept_not_ignored(tmp_path):
+    """Every file the fingerprint sees, the witness must examine."""
+    _base_corpus(tmp_path)
+    _write(tmp_path, "old-runs/notes.jsonl", [
+        {"note": "key ghp_" + "Z9y8X7w6V5u4T3s2R1q0P9o8N7m6"}])
+    w = _run(tmp_path)
+    assert any("unrecognized corpus file" in x for x in w.warnings), w.warnings
+    assert any("secret-shaped" in e and "notes.jsonl" in e for e in w.errors), w.errors
+
+
+def test_unknown_files_count_as_witnessed(tmp_path):
+    (tmp_path / "stray.jsonl").write_text('{"payload": "harmless"}\n')
+    w = _run(tmp_path)
+    assert w.receipt()["verdict"] == "PASS"
+    assert w.counts["records"] == 1
