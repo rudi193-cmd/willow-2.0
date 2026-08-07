@@ -162,13 +162,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [almanac-data/health-almanac](https://github.com/almanac-data/health-almanac) | almanac-data | feat: headless reachability fallback (propagated from template) | [PR #6](https://github.com/almanac-data/health-almanac/pull/6) merged |
 | [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | feat: headless reachability fallback (propagated from template) | [PR #33](https://github.com/almanac-data/climate-almanac/pull/33) merged |
 | [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | feat: headless reachability fallback | [PR #1](https://github.com/almanac-data/almanac-template/pull/1) merged |
-| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Point repo links at the almanac-data org | [PR #32](https://github.com/almanac-data/climate-almanac/pull/32) merged |
-| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Auto-open dead-link issues from the daily reachability probe | [PR #29](https://github.com/almanac-data/climate-almanac/pull/29) merged |
-| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Add GitHub issue forms for dataset suggestions and dead-link reports | [PR #28](https://github.com/almanac-data/climate-almanac/pull/28) merged |
-| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Add good first issues badge to README | [PR #27](https://github.com/almanac-data/climate-almanac/pull/27) merged |
-| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Automate daily link checks with reliable curl probes | [PR #3](https://github.com/almanac-data/climate-almanac/pull/3) merged |
-| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Seed catalog wave 1: 13 major climate datasets | [PR #2](https://github.com/almanac-data/climate-almanac/pull/2) merged |
-| [almanac-data/climate-almanac](https://github.com/almanac-data/climate-almanac) | almanac-data | Add agent guide, pyproject, and fleet development docs | [PR #1](https://github.com/almanac-data/climate-almanac/pull/1) merged |
 | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat(plugins): dreaming memory consolidation (config.yaml re-scope) | [PR #64281](https://github.com/NousResearch/hermes-agent/pull/64281) open |
 | [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Fix npm test runner so compiled tests actually execute | [PR #2](https://github.com/dpmadsen/multimodels-mcp/pull/2) closed |
 | [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Make the Codex lane and control panel cross-platform | [PR #1](https://github.com/dpmadsen/multimodels-mcp/pull/1) closed |
@@ -183,7 +176,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [almanac-data/energy-almanac](https://github.com/almanac-data/energy-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #2](https://github.com/almanac-data/energy-almanac/pull/2) closed |
 | [almanac-data/agriculture-almanac](https://github.com/almanac-data/agriculture-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #2](https://github.com/almanac-data/agriculture-almanac/pull/2) closed |
 | [almanac-data/health-almanac](https://github.com/almanac-data/health-almanac) | almanac-data | chore(engine): propagate changes from almanac-template | [PR #10](https://github.com/almanac-data/health-almanac/pull/10) closed |
-| [alash3al/stash](https://github.com/alash3al/stash) | alash3al | docs: clarify that curl /sse holding open is expected SSE behavior (#11) | [PR #14](https://github.com/alash3al/stash/pull/14) closed |
 
 
 ## Contributors to Willow
