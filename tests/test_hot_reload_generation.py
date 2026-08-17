@@ -31,7 +31,7 @@ def _write_mini(dirpath: Path, body: str) -> None:
 
     path = dirpath / f"{_MINI}.py"
     path.write_text(textwrap.dedent(f"""
-        from mcp.server.fastmcp import FastMCP
+        from mcp.server.mcpserver import MCPServer as FastMCP
 
         mcp = FastMCP("mini")
         pg = "live-pg-singleton"
