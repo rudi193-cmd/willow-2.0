@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from sap.mcp_profiles import active_profile, format_tool_guide
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer as FastMCP
 
 
 def register(mcp: "FastMCP") -> None:
