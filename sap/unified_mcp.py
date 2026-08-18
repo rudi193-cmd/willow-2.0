@@ -14,7 +14,7 @@ from __future__ import annotations
 import argparse
 from typing import Any
 
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import Tool as MCPTool
 
 from sap.mcp_enrich import enrich_tools

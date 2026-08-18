@@ -16,7 +16,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer as FastMCP
 
 OPENCLAW = str(Path.home() / ".local" / "bin" / "openclaw")
 

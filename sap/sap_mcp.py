@@ -98,9 +98,11 @@ logger = logging.getLogger("sap.server")
 
 # ── FastMCP ───────────────────────────────────────────────────────────────────
 try:
-    from mcp.server.fastmcp import FastMCP
+    # MCP SDK 2.0 removed mcp.server.fastmcp; MCPServer is the drop-in successor
+    # (same .tool()/.list_tools()/.call_tool()/.run()/lifespan surface used here).
+    from mcp.server.mcpserver import MCPServer as FastMCP
 except ImportError:
-    print("FastMCP not installed. Run: pip install 'mcp>=1.6'", file=sys.stderr)
+    print("MCP SDK not installed. Run: pip install 'mcp>=2.0,<3'", file=sys.stderr)
     sys.exit(1)
 
 # ── Middleware ────────────────────────────────────────────────────────────────

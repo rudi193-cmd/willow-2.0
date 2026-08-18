@@ -15,7 +15,7 @@ import asyncio
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer as FastMCP
 
 # ── Grove DB imports (grove repo must be on PYTHONPATH) ───────────────────────
 

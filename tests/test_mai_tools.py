@@ -9,7 +9,7 @@ from sap.mai import tools as mai_tools
 
 
 def _list_mai_tools():
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer as FastMCP
 
     m = FastMCP("test-mai")
     mai_tools.register(m)
@@ -20,14 +20,16 @@ def test_mai_write_file_on_disk(tmp_path):
     path = tmp_path / "doc.md"
     content = "@markdownai v1.0\n\n# Test\n\nHello.\n"
 
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer as FastMCP
 
     m = FastMCP("test-mai")
     mai_tools.register(m)
     result = asyncio.run(
         m.call_tool("mai_write_file", {"path": str(path), "content": content})
     )
-    assert '"ok": true' in str(result[0]) or "ok': True" in str(result[0])
+    # MCP SDK 2.0's call_tool returns a CallToolResult (not a subscriptable
+    # list as FastMCP did); its str() carries the tool's JSON payload.
+    assert '"ok": true' in str(result) or "ok': True" in str(result)
     assert path.read_text(encoding="utf-8") == content
 
 

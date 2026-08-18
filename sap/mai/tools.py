@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from sap.mai import parser
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer as FastMCP
 
 _MAI_HEADER = "@markdownai"
 
