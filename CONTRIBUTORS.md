@@ -35,6 +35,7 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 
 | Project | Maintainer | What we contributed | Status |
 |---------|-----------|---------------------|--------|
+| [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | feat(http): honor HTTP_PROXY/HTTPS_PROXY/NO_PROXY on login and submit | [PR #84](https://github.com/Redential/redential-cli/pull/84) merged |
 | [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | DeusData | fix(registry): drop suffix_match CALLS across language boundaries | [PR #1647](https://github.com/DeusData/codebase-memory-mcp/pull/1647) merged |
 | [almanac-data/almanac-template](https://github.com/almanac-data/almanac-template) | almanac-data | chore(repo): untrack sibling-checkout symlinks and ignore them | [PR #28](https://github.com/almanac-data/almanac-template/pull/28) merged |
 | [almanac-data/environment-almanac](https://github.com/almanac-data/environment-almanac) | almanac-data | chore(monitor): refresh observed from the daily probe | [PR #16](https://github.com/almanac-data/environment-almanac/pull/16) merged |
@@ -110,7 +111,6 @@ These projects power Willow. When their maintainers merge our PRs, they earn a p
 | [AllHailSeizure/Imageination](https://github.com/AllHailSeizure/Imageination) | AllHailSeizure | docs: make setup commands portable | [PR #7](https://github.com/AllHailSeizure/Imageination/pull/7) merged |
 | [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | DeusData | fix(mcp): emit trace evidence columns in header order | [PR #1703](https://github.com/DeusData/codebase-memory-mcp/pull/1703) open |
 | [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) | DeusData | fix(registry): drop unique_name CALLS across language boundaries | [PR #1702](https://github.com/DeusData/codebase-memory-mcp/pull/1702) open |
-| [Redential/redential-cli](https://github.com/Redential/redential-cli) | Redential | feat(http): honor HTTP_PROXY/HTTPS_PROXY/NO_PROXY on login and submit | [PR #84](https://github.com/Redential/redential-cli/pull/84) open |
 | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | NousResearch | feat(plugins): dreaming memory consolidation (config.yaml re-scope) | [PR #64281](https://github.com/NousResearch/hermes-agent/pull/64281) open |
 | [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Fix npm test runner so compiled tests actually execute | [PR #2](https://github.com/dpmadsen/multimodels-mcp/pull/2) closed |
 | [dpmadsen/multimodels-mcp](https://github.com/dpmadsen/multimodels-mcp) | dpmadsen | Make the Codex lane and control panel cross-platform | [PR #1](https://github.com/dpmadsen/multimodels-mcp/pull/1) closed |
